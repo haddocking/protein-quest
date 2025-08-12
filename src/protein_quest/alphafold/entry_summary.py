@@ -10,9 +10,6 @@ class EntrySummary:
     """
 
     entryId: str
-    gene: str | None
-    sequenceChecksum: str | None
-    sequenceVersionDate: str | None
     uniprotAccession: str
     uniprotId: str
     uniprotDescription: str
@@ -29,8 +26,11 @@ class EntrySummary:
     pdbUrl: str
     paeImageUrl: str
     paeDocUrl: str
-    amAnnotationsUrl: str | None
-    amAnnotationsHg19Url: str | None
-    amAnnotationsHg38Url: str | None
-    isReviewed: bool | None
-    isReferenceProteome: bool | None
+    gene: str | None = None
+    sequenceChecksum: str | None = None
+    sequenceVersionDate: str | None = None
+    amAnnotationsUrl: str | None = None
+    amAnnotationsHg19Url: str | None = None
+    amAnnotationsHg38Url: str | None = None
+    isReviewed: bool | None = None
+    isReferenceProteome: bool | None = None
