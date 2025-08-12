@@ -1,0 +1,8 @@
+{
+    "recommendations": [
+        "ms-toolsai.jupyter",
+        "ms-python.vscode-pylance",
+        "ms-python.python",
+        "charliermarsh.ruff"
+    ]
+}

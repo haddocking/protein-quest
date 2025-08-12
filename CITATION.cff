@@ -1,0 +1,26 @@
+# YAML 1.2
+---
+cff-version: 1.2.0
+title: protein quest
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - affiliation: "Netherlands eScience Center"
+    family-names: Verhoeven
+    given-names: Stefan
+    orcid: "https://orcid.org/0000-0002-5821-2060"
+  - given-names: Anna
+    family-names: Engel
+    affiliation: '@UtrechtUniversity'
+    orcid: "https://orcid.org/0009-0002-1806-7951"
+  - given-names: Alexandre
+    family-names: Bonvin
+    affiliation: '@UtrechtUniversity'    
+    orcid: "https://orcid.org/0000-0001-7369-1322"
+repository-code: https://github.com/haddocking/protein-quest
+identifiers:
+  - description: Latest version of software
+    type: doi
+    value: 10.5281/zenodo.15632658

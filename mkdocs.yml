@@ -1,0 +1,80 @@
+site_name: Protein Quest
+site_url: https://bonvinlab.org/protein_quest
+repo_name: haddocking/protein-quest
+repo_url: https://github.com/haddocking/protein-quest
+watch: [mkdocs.yml, README.md, src/protein_quest]
+exclude_docs: |
+  cli_doc_hook.py
+hooks:
+  - docs/cli_doc_hook.py
+use_directory_urls: false
+theme: 
+  name: material
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - content.code.copy
+  palette:
+    # Palette toggle for automatic mode
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default 
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+
+plugins:
+  - search
+  - autorefs
+  - mkdocs-jupyter:
+        remove_tag_config:
+            remove_input_tags:
+                - hide_code
+  - mkdocs-autoapi:
+      autoapi_dir: src
+  - mkdocstrings:
+      handlers:
+        python:
+          paths:
+            - src
+          inventories:
+            - https://docs.python.org/3/objects.inv
+            - https://duckdb.org/docs/stable/clients/python/reference/objects.inv
+            - https://pandas.pydata.org/docs/objects.inv
+            - https://numpy.org/doc/stable/objects.inv
+            - https://atomium.bio/objects.inv
+          options:
+            docstring_style: google
+            show_source: false
+
+markdown_extensions:
+  # Use to render part of README as home
+  - pymdownx.snippets:
+      base_path: [!relative $config_dir]
+      check_paths: true
+  - pymdownx.highlight
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+nav:
+  - Home: index.md
+  - CLI Reference: cli.md
+  - Contributing guidelines: CONTRIBUTING.md

@@ -1,0 +1,159 @@
+[project]
+name = "protein_quest"
+dynamic = ["version"]
+description = "Search/retrieve/filter proteins and protein structures"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "aiofiles>=24.1.0",
+    "aiohttp>=3.11.18",
+    "aiohttp-retry>=2.9.1",
+    "attrs>=25.3.0",
+    "bokeh>=3.7.3",
+    "cattrs>=24.1.3",
+    "dask>=2025.5.1",
+    "distributed>=2025.5.1",
+    "gemmi>=0.7.3",
+    "molviewspec>=1.6.0",
+    "pandas>=2.3.0",
+    "platformdirs>=4.3.8",
+    "psutil>=7.0.0",
+    "rich>=14.0.0",
+    "sparqlwrapper>=2.0.0",
+    "tqdm>=4.67.1",
+    "urllib3>=2.4.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/haddocking/protein-quest"
+Issues = "https://github.com/haddocking/protein-quest/issues"
+Documentation = "https://www.bonvinlab.org/protein-quest/"
+Source = "https://github.com/haddocking/protein-quest"
+
+[project.scripts]
+protein-quest = "protein_quest.cli:main"
+
+[dependency-groups]
+dev = [
+    "pyrefly>=0.23.1",
+    "pytest>=8.3.5",
+    "types-aiofiles>=24.1.0.20250326",
+    "types-tqdm>=4.67.0.20250513",
+]
+docs = [
+    "duckdb-engine>=0.17.0",
+    "ipykernel>=6.29.5",
+    "ipywidgets>=8.1.7",
+    "jupysql>=0.11.1",
+    "matplotlib>=3.10.3",
+    "mkdocs>=1.6.1",
+    "mkdocs-autoapi>=0.4.1",
+    "mkdocs-jupyter>=0.25.1",
+    "mkdocs-material>=9.6.14",
+    "mkdocstrings[python]>=0.29.1",
+    "nbconvert>=7.16.6",
+    "toml>=0.10.2",
+]
+docs-type = [
+    "marimo[sql]>=0.13.15",
+    "pyrefly>=0.23.1",
+]
+
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/protein_quest/__version__.py"
+
+[tool.ruff]
+line-length = 120
+extend-include = ["*.ipynb"]
+
+[tool.ruff.lint]
+select = [
+    "A",
+    # TODO enable ANN and make code more typed
+    # "ANN",
+    "ARG",
+    "B",
+    "BLE",
+    "C",
+    # TODO enable D and make code more descriptive
+    # "D",
+    "D417",
+    "DTZ",
+    "E",
+    "EM",
+    "ERA",
+    "F",
+    # TODO enable FBT and factor out booleans args to seperate functions
+    # "FBT",
+    "FURB",
+    "I",
+    "ICN",
+    "ISC",
+    "LOG",
+    "N",
+    # TODO enable NPT and use modern random
+    # "NPY",
+    "PD",
+    "PERF",
+    "PGH",
+    "PLC",
+    "PLE",
+    # TODO enable PLR and make code less complex
+    # "PLR",
+    # TODO enable PT for tests/**
+    # "PT",
+    "PTH",
+    "PLW",
+    "Q",
+    "RET",
+    "RSE",
+    "RUF",
+    "S",
+    "SLOT",
+    "SIM",
+    "T",
+    "TCH",
+    "TID",
+    "TRY",
+    "UP",
+    "W",
+    "YTT"
+]
+ignore = [
+    # Conflicts with formatting
+    "ISC001",
+    # Conflicts with default rules
+    "PLC0414",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = [
+    "ARG", "ANN", "D", "E501", "DTZ001", "N802", "S101", "S108", "PLR2004"
+]
+"docs/**/*.ipynb" = [
+    # Allow wide lines in notebooks
+    "E501",
+    # Allow prints
+    "T201",
+    # Allow pprints
+    "T203",
+    # Allow bare async
+    "PLE1142",
+    # Allow generic variable name
+    "PD901",
+    # Allow suspicious-url-open-usage
+    "S310",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+known-first-party = ["protein_quest"]
+
+[tool.jupysql.SqlMagic]
+displaylimit = 100
