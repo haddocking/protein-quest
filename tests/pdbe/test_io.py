@@ -1,4 +1,3 @@
-import logging
 from pathlib import Path
 
 import gemmi
@@ -54,9 +53,7 @@ def test_write_single_chain_pdb_file_happypath(cif_path: Path, tmp_path: Path):
     assert len(chain) == 6  # 6 residues in chain Z
 
 
-def test_write_single_chain_pdb_file_unknown_chain(
-    cif_path: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture
-):
+def test_write_single_chain_pdb_file_unknown_chain(cif_path: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture):
     chain2keep = "B=1-20"
 
     output_file = write_single_chain_pdb_file(
@@ -69,4 +66,3 @@ def test_write_single_chain_pdb_file_unknown_chain(
 
     assert output_file is None
     assert "Chain B not found in" in caplog.text
-
