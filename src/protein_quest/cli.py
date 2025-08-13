@@ -371,7 +371,7 @@ def _handle_retrieve_alphafold(args):
     # TODO besides `uniprot_acc,af_id\n` csv also allow headless single column format
     #
     af_ids = [r["af_id"] for r in _read_alphafold_csv(args.alphafold_csv)]
-    validated_what = structure(what_af_formats, set[DownloadableFormat])
+    validated_what: set[DownloadableFormat] = structure(what_af_formats, set[DownloadableFormat])
     rprint(f"Retrieving {len(af_ids)} AlphaFold entries with formats {validated_what}")
     afs = af_fetch(af_ids, download_dir, what=validated_what, max_parallel_downloads=args.max_parallel_downloads)
 
