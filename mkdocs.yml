@@ -41,10 +41,6 @@ theme:
 plugins:
   - search
   - autorefs
-  - mkdocs-jupyter:
-        remove_tag_config:
-            remove_input_tags:
-                - hide_code
   - mkdocs-autoapi:
       autoapi_dir: src
   - mkdocstrings:
