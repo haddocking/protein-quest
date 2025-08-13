@@ -99,6 +99,14 @@ class AlphaFoldEntry:
         attr = self.format2attr(dl_format)
         return getattr(self, attr, None)
 
+    def nr_of_files(self) -> int:
+        """Nr of _file properties that are set
+
+        Returns:
+            The number of _file properties that are set.
+        """
+        return sum(1 for attr in vars(self) if attr.endswith("_file") and getattr(self, attr) is not None)
+
 
 async def fetch_summmary(qualifier: str, session: RetryClient, semaphore: Semaphore) -> list[EntrySummary]:
     url = f"https://alphafold.ebi.ac.uk/api/prediction/{qualifier}"
