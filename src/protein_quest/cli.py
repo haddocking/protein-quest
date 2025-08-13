@@ -104,6 +104,12 @@ def _add_retrieve_alphafold_parser(retrieve_subparsers: argparse._SubParsersActi
         help=dedent("""AlphaFold formats to retrieve. Can be specified multiple times.
             Default is 'pdb'. Summary is always downloaded as `<entryId>.json`."""),
     )
+    parser.add_argument(
+        "--max-parallel-downloads",
+        type=int,
+        default=5,
+        help="Maximum number of parallel downloads",
+    )
 
 
 def _add_filter_confidence_parser(filter_subparsers: argparse._SubParsersAction):
@@ -243,7 +249,9 @@ def _handle_retrieve_alphafold(args):
         what_af_formats = {"pdb"}
 
     af_ids = [r["af_id"] for r in _read_alphafold_csv(args.alphafold_csv)]
-    afs = af_fetch(af_ids, download_dir, what=what_af_formats)
+    validated_what = structure(what_af_formats, set[DownloadableFormat])
+    rprint(f"Retrieving {len(af_ids)} AlphaFold entries with formats {validated_what}")
+    afs = af_fetch(af_ids, download_dir, what=validated_what, max_parallel_downloads=args.max_parallel_downloads)
 
     for af in tqdm(afs, unit="entry", desc="Writing summaries to disk"):
         # TODO move writing of summary.json to af_fetch function and do concurrently

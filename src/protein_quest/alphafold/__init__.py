@@ -126,7 +126,7 @@ def url2name(url: str) -> str:
 
 
 async def fetch_many_async(
-    ids: Iterable[str], save_dir: Path, what: set[DownloadableFormat]
+    ids: Iterable[str], save_dir: Path, what: set[DownloadableFormat], max_parallel_downloads: int = 5
 ) -> AsyncGenerator[AlphaFoldEntry]:
     """Asynchronously fetches summaries and pdb and pae (predicted alignment error) files from
     [AlphaFold Protein Structure Database](https://alphafold.ebi.ac.uk/).
@@ -135,11 +135,12 @@ async def fetch_many_async(
         ids: A set of Uniprot IDs to fetch.
         save_dir: The directory to save the fetched files to.
         what: A set of formats to download.
+        max_parallel_downloads: The maximum number of parallel downloads.
 
     Yields:
         A dataclass containing the summary, pdb file, and pae file.
     """
-    summaries = [s async for s in fetch_summaries(ids)]
+    summaries = [s async for s in fetch_summaries(ids, max_parallel_downloads=max_parallel_downloads)]
 
     files = files_to_download(what, summaries)
 
@@ -147,6 +148,7 @@ async def fetch_many_async(
         files,
         save_dir,
         desc="Downloading AlphaFold files",
+        max_parallel_downloads=max_parallel_downloads,
     )
     for summary in summaries:
         yield AlphaFoldEntry(
@@ -195,20 +197,26 @@ def files_to_download(what: set[DownloadableFormat], summaries: Iterable[EntrySu
     return files
 
 
-def fetch_many(ids: Iterable[str], save_dir: Path, what: set[DownloadableFormat]) -> list[AlphaFoldEntry]:
+def fetch_many(
+    ids: Iterable[str], save_dir: Path, what: set[DownloadableFormat], max_parallel_downloads: int = 5
+) -> list[AlphaFoldEntry]:
     """Synchronously fetches summaries and pdb and pae files from AlphaFold Protein Structure Database.
 
     Args:
         ids: A set of Uniprot IDs to fetch.
         save_dir: The directory to save the fetched files to.
         what: A set of formats to download.
+        max_parallel_downloads: The maximum number of parallel downloads.
 
     Returns:
         A list of AlphaFoldEntry dataclasses containing the summary, pdb file, and pae file.
     """
 
     async def gather_entries():
-        return [entry async for entry in fetch_many_async(ids, save_dir, what)]
+        return [
+            entry
+            async for entry in fetch_many_async(ids, save_dir, what, max_parallel_downloads=max_parallel_downloads)
+        ]
 
     def run_async_task():
         return asyncio.run(gather_entries())
