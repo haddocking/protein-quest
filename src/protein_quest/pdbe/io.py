@@ -125,7 +125,7 @@ def filter_and_write_single_chain_pdb_file(
     new_structure.info["_struct_keywords.pdbx_keywords"] = new_title.upper()
     new_si = gemmi.SoftwareItem()
     new_si.classification = gemmi.SoftwareItem.Classification.DataExtraction
-    new_si.name = "Protein Detective"
+    new_si.name = "protein-quest"
     new_si.version = str(__version__)
     new_structure.meta.software.append(new_si)
     new_model = gemmi.Model(1)
