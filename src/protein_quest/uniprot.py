@@ -268,7 +268,7 @@ def _execute_sparql_search(
     Execute a SPARQL query.
     """
     if timeout > 2_700:
-        msg = "Uniprot SPARQL timeout is limited to 2,700 seconds (45 minutes)."
+        msg = "Uniprot SPARQL timeout is limited to 2700 seconds (45 minutes)."
         raise ValueError(msg)
 
     # Execute the query
