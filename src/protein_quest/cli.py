@@ -204,7 +204,8 @@ def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
         type=argparse.FileType("w", encoding="UTF-8"),
         help=dedent("""\
             Write filter statistics to file.
-            In CSV format with `<input_file>,<residue_count>,<passed>,<output_file>` columns."""),
+            In CSV format with `<input_file>,<residue_count>,<passed>,<output_file>` columns.
+            Use `-` for stdout."""),
     )
 
 
