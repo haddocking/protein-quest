@@ -1,10 +1,8 @@
 import argparse
 import csv
-import json
 import logging
 import os
 from collections.abc import Callable, Iterable
-from dataclasses import asdict
 from io import TextIOWrapper
 from pathlib import Path
 from shutil import copyfile
@@ -18,7 +16,6 @@ from tqdm.rich import tqdm
 
 from protein_quest.__version__ import __version__
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
-from protein_quest.alphafold.entry_summary import EntrySummary
 from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_formats
 from protein_quest.alphafold.fetch import fetch_many as af_fetch
 from protein_quest.pdbe import fetch as pdbe_fetch
@@ -352,12 +349,6 @@ def _handle_search_alphafold(args):
     results = search4af(accs, limit=args.limit, timeout=args.timeout)
     rprint(f"Found {len(results)} AlphaFold entries, written to {args.output_csv.name}")
     _write_alphafold_csv(args.output_csv, results)
-
-
-def _write_alphafold_summary(summary: EntrySummary, download_dir: Path):
-    data = asdict(summary)
-    fn = download_dir / f"{summary.entryId}.json"
-    fn.write_text(json.dumps(data, indent=2))
 
 
 def _handle_retrieve_pdbe(args):
