@@ -17,7 +17,7 @@ from rich_argparse import ArgumentDefaultsRichHelpFormatter
 from tqdm.rich import tqdm
 
 from protein_quest.__version__ import __version__
-from protein_quest.alphafold.confidence import DensityFilterQuery, filter_files_on_confidence
+from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
 from protein_quest.alphafold.entry_summary import EntrySummary
 from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_formats
 from protein_quest.alphafold.fetch import fetch_many as af_fetch
@@ -186,7 +186,7 @@ def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
         "confidence",
         help="Filter AlphaFold PDBs by confidence",
         description=dedent("""\
-            Filter AlphaFold PDB files by confidence.
+            Filter AlphaFold PDB files by confidence (plDDT).
             Passed files are written with residues below threshold removed."""),
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
@@ -393,12 +393,12 @@ def _handle_filter_confidence(args):
             "min_threshold": args.min_residues,
             "max_threshold": args.max_residues,
         },
-        DensityFilterQuery,
+        ConfidenceFilterQuery,
     )
     passed_count = 0
     for r in tqdm(list(filter_files_on_confidence(pdb_files, query, args.output_dir)), unit="pdb"):
         # TODO log the nr of residues in a csv file if --store-count is given
-        if r.density_filtered_file:
+        if r.filtered_file:
             passed_count += 1
 
     rprint(f"Filtered {passed_count} PDB files by confidence, written to {args.output_dir} directory")

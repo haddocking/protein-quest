@@ -88,7 +88,7 @@ For each entry downloads the summary.json and cif file.
 
 ### To filter AlphaFold structures on confidence
 
-Filter AlphaFoldDB structures based on density confidence.
+Filter AlphaFoldDB structures based on confidence (pLDDT).
 Keeps entries with requested number of residues which have a confidence score above the threshold.
 Also writes pdb files with only those residues.
 
