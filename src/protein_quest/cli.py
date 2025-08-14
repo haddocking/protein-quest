@@ -17,10 +17,10 @@ from rich_argparse import ArgumentDefaultsRichHelpFormatter
 from tqdm.rich import tqdm
 
 from protein_quest.__version__ import __version__
-from protein_quest.alphafold import DownloadableFormat, downloadable_formats
-from protein_quest.alphafold import fetch_many as af_fetch
-from protein_quest.alphafold.confidence import DensityFilterQuery, filter_on_density
+from protein_quest.alphafold.confidence import DensityFilterQuery, filter_files_on_confidence
 from protein_quest.alphafold.entry_summary import EntrySummary
+from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_formats
+from protein_quest.alphafold.fetch import fetch_many as af_fetch
 from protein_quest.pdbe import fetch as pdbe_fetch
 from protein_quest.pdbe.io import (
     is_chain_in_residues_range,
@@ -379,13 +379,6 @@ def _handle_retrieve_alphafold(args):
     validated_what: set[DownloadableFormat] = structure(what_af_formats, set[DownloadableFormat])
     rprint(f"Retrieving {len(af_ids)} AlphaFold entries with formats {validated_what}")
     afs = af_fetch(af_ids, download_dir, what=validated_what, max_parallel_downloads=args.max_parallel_downloads)
-
-    for af in tqdm(afs, unit="entry", desc="Writing summaries to disk"):
-        # TODO move writing of summary.json to af_fetch function and do concurrently
-        if af.summary is None:
-            continue
-        _write_alphafold_summary(af.summary, download_dir)
-
     total_nr_files = sum(af.nr_of_files() for af in afs)
     rprint(f"Retrieved {total_nr_files} AlphaFold files and {len(afs)} summaries, written to {download_dir}")
 
@@ -403,7 +396,7 @@ def _handle_filter_confidence(args):
         DensityFilterQuery,
     )
     passed_count = 0
-    for r in tqdm(list(filter_on_density(pdb_files, query, args.output_dir)), unit="pdb"):
+    for r in tqdm(list(filter_files_on_confidence(pdb_files, query, args.output_dir)), unit="pdb"):
         # TODO log the nr of residues in a csv file if --store-count is given
         if r.density_filtered_file:
             passed_count += 1

@@ -1,9 +1,12 @@
 import asyncio
-import concurrent.futures
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 
+import nest_asyncio
+
 from protein_quest.utils import retrieve_files
+
+nest_asyncio.apply()
 
 
 def _map_id_mmcif(pdb_id: str) -> tuple[str, str]:
@@ -47,14 +50,5 @@ def fetch(ids: Iterable[str], save_dir: Path, max_parallel_downloads: int = 5) -
     urls = list(id2urls.values())
     id2paths = {pdb_id: save_dir / fn for pdb_id, (_, fn) in id2urls.items()}
 
-    # TODO switch to nest_asyncio instead of this ThreadPoolExecutor
-    def run_async_task():
-        return asyncio.run(retrieve_files(urls, save_dir, max_parallel_downloads, desc="Downloading PDBe mmCIF files"))
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(run_async_task)
-        result = future.result()
-        if set(result) != set(id2paths.values()):
-            msg = "Not all files were downloaded successfully."
-            raise ValueError(msg)
-        return id2paths
+    asyncio.run(retrieve_files(urls, save_dir, max_parallel_downloads, desc="Downloading PDBe mmCIF files"))
+    return id2paths

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from collections.abc import Iterable
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -7,6 +8,8 @@ import aiofiles
 import aiohttp
 from aiohttp_retry import ExponentialRetry, RetryClient
 from tqdm.asyncio import tqdm
+
+logger = logging.getLogger(__name__)
 
 
 async def retrieve_files(
@@ -63,6 +66,7 @@ async def _retrieve_file(
         if ovewrite:
             save_path.unlink()
         else:
+            logger.debug(f"File {save_path} already exists. Skipping download from {url}.")
             return save_path
     async with (
         semaphore,
