@@ -51,8 +51,8 @@ def filter_out_low_confidence_residues(input_pdb_file: Path, allowed_residues: s
 
 
 @dataclass
-class DensityFilterQuery:
-    """Query for filtering AlphaFoldDB structures based on density confidence.
+class ConfidenceFilterQuery:
+    """Query for filtering AlphaFoldDB structures based on confidence.
 
     Parameters:
         confidence: The confidence threshold for filtering residues.
@@ -67,30 +67,30 @@ class DensityFilterQuery:
 
 
 @dataclass
-class DensityFilterResult:
-    """Result of filtering AlphaFoldDB structures based on density confidence.
+class ConfidenceFilterResult:
+    """Result of filtering AlphaFoldDB structures based on confidence (pLDDT).
 
     Parameters:
         pdb_file: The name of the PDB file that was processed.
         count: The number of residues with a pLDDT above the confidence threshold.
-        density_filtered_file: The path to the density filtered PDB file, if passed filter.
+        filtered_file: The path to the filtered PDB file, if passed filter.
     """
 
     pdb_file: str
     count: int
-    density_filtered_file: Path | None = None
+    filtered_file: Path | None = None
 
 
 # TODO make work on cif file, not just pdb formatted files
 def filter_files_on_confidence(
-    alphafold_pdb_files: list[Path], query: DensityFilterQuery, density_filtered_dir: Path
-) -> Generator[DensityFilterResult]:
-    """Filter AlphaFoldDB structures based on density confidence.
+    alphafold_pdb_files: list[Path], query: ConfidenceFilterQuery, filtered_dir: Path
+) -> Generator[ConfidenceFilterResult]:
+    """Filter AlphaFoldDB structures based on confidence.
 
     Args:
         alphafold_pdb_files: List of PDB files from AlphaFoldDB to filter.
-        query: The density filter query containing the confidence thresholds.
-        density_filtered_dir: Directory where the filtered PDB files will be saved.
+        query: The confidence filter query containing the confidence thresholds.
+        filtered_dir: Directory where the filtered PDB files will be saved.
 
     Yields:
         For each PDB files yields whether it was filtered or not,
@@ -100,20 +100,20 @@ def filter_files_on_confidence(
         residues = set(find_high_confidence_residues(pdb_file, query.confidence))
         count = len(residues)
         if count < query.min_threshold or count > query.max_threshold:
-            yield DensityFilterResult(
+            yield ConfidenceFilterResult(
                 pdb_file=pdb_file.name,
                 count=count,
             )
             # Skip structure that is outside the min and max threshold
             continue
-        density_filtered_file = density_filtered_dir / pdb_file.name
+        filtered_file = filtered_dir / pdb_file.name
         filter_out_low_confidence_residues(
             pdb_file,
             residues,
-            density_filtered_file,
+            filtered_file,
         )
-        yield DensityFilterResult(
+        yield ConfidenceFilterResult(
             pdb_file=pdb_file.name,
             count=count,
-            density_filtered_file=density_filtered_file,
+            filtered_file=filtered_file,
         )

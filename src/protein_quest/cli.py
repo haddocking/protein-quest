@@ -1,10 +1,8 @@
 import argparse
 import csv
-import json
 import logging
 import os
 from collections.abc import Callable, Iterable
-from dataclasses import asdict
 from io import TextIOWrapper
 from pathlib import Path
 from shutil import copyfile
@@ -17,8 +15,7 @@ from rich_argparse import ArgumentDefaultsRichHelpFormatter
 from tqdm.rich import tqdm
 
 from protein_quest.__version__ import __version__
-from protein_quest.alphafold.confidence import DensityFilterQuery, filter_files_on_confidence
-from protein_quest.alphafold.entry_summary import EntrySummary
+from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
 from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_formats
 from protein_quest.alphafold.fetch import fetch_many as af_fetch
 from protein_quest.pdbe import fetch as pdbe_fetch
@@ -186,7 +183,7 @@ def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
         "confidence",
         help="Filter AlphaFold PDBs by confidence",
         description=dedent("""\
-            Filter AlphaFold PDB files by confidence.
+            Filter AlphaFold PDB files by confidence (plDDT).
             Passed files are written with residues below threshold removed."""),
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
@@ -201,6 +198,14 @@ def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
         type=int,
         default=10_000_000,
         help="Maximum number of high-confidence residues a structure should have",
+    )
+    parser.add_argument(
+        "--write-stats",
+        type=argparse.FileType("w", encoding="UTF-8"),
+        help=dedent("""\
+            Write filter statistics to file.
+            In CSV format with `<input_file>,<residue_count>,<passed>,<output_file>` columns.
+            Use `-` for stdout."""),
     )
 
 
@@ -354,12 +359,6 @@ def _handle_search_alphafold(args):
     _write_alphafold_csv(args.output_csv, results)
 
 
-def _write_alphafold_summary(summary: EntrySummary, download_dir: Path):
-    data = asdict(summary)
-    fn = download_dir / f"{summary.entryId}.json"
-    fn.write_text(json.dumps(data, indent=2))
-
-
 def _handle_retrieve_pdbe(args):
     pdb_ids = _read_pdbe_ids_from_csv(args.pdbe_csv)
     rprint(f"Retrieving {len(pdb_ids)} PDBe entries")
@@ -383,25 +382,41 @@ def _handle_retrieve_alphafold(args):
     rprint(f"Retrieved {total_nr_files} AlphaFold files and {len(afs)} summaries, written to {download_dir}")
 
 
-def _handle_filter_confidence(args):
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-    pdb_files = sorted(args.input_dir.glob("*.pdb"))
-    rprint(f"Filtering {len(pdb_files)} AlphaFold PDB files from {args.input_dir} directory by confidence")
+def _handle_filter_confidence(args: argparse.Namespace):
+    # we are repeating types here and in add_argument call
+    # TODO replace argparse with modern alternative like cyclopts
+    # to get rid of duplication
+    input_dir = structure(args.input_dir, Path)
+    output_dir = structure(args.output_dir, Path)
+    confidence_threshold = structure(args.confidence_threshold, float)
+    # TODO add min/max
+    min_residues = structure(args.min_residues, int)
+    max_residues = structure(args.max_residues, int)
+    stats_file: TextIOWrapper | None = args.write_stats
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    pdb_files = sorted(input_dir.glob("*.pdb"))
+    rprint(f"Filtering {len(pdb_files)} AlphaFold PDB files from {input_dir} directory by confidence")
     query = structure(
         {
-            "confidence": args.confidence_threshold,
-            "min_threshold": args.min_residues,
-            "max_threshold": args.max_residues,
+            "confidence": confidence_threshold,
+            "min_threshold": min_residues,
+            "max_threshold": max_residues,
         },
-        DensityFilterQuery,
+        ConfidenceFilterQuery,
     )
-    passed_count = 0
-    for r in tqdm(list(filter_files_on_confidence(pdb_files, query, args.output_dir)), unit="pdb"):
-        # TODO log the nr of residues in a csv file if --store-count is given
-        if r.density_filtered_file:
-            passed_count += 1
+    if stats_file:
+        writer = csv.writer(stats_file)
+        writer.writerow(["input_file", "residue_count", "passed", "output_file"])
 
-    rprint(f"Filtered {passed_count} PDB files by confidence, written to {args.output_dir} directory")
+    passed_count = 0
+    for r in tqdm(filter_files_on_confidence(pdb_files, query, output_dir), total=len(pdb_files), unit="pdb"):
+        if r.filtered_file:
+            passed_count += 1
+        if stats_file:
+            writer.writerow([r.pdb_file, r.count, r.filtered_file is not None, r.filtered_file])
+
+    rprint(f"Filtered {passed_count} PDB files by confidence, written to {output_dir} directory")
 
 
 def _handle_filter_chain(args):
