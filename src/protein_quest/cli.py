@@ -19,7 +19,7 @@ from tqdm.rich import tqdm
 from protein_quest.__version__ import __version__
 from protein_quest.alphafold import DownloadableFormat, downloadable_formats
 from protein_quest.alphafold import fetch_many as af_fetch
-from protein_quest.alphafold.confidence import DensityFilterQuery, filter_on_density
+from protein_quest.alphafold.confidence import DensityFilterQuery, filter_files_on_confidence
 from protein_quest.alphafold.entry_summary import EntrySummary
 from protein_quest.pdbe import fetch as pdbe_fetch
 from protein_quest.pdbe.io import (
@@ -403,7 +403,7 @@ def _handle_filter_confidence(args):
         DensityFilterQuery,
     )
     passed_count = 0
-    for r in tqdm(list(filter_on_density(pdb_files, query, args.output_dir)), unit="pdb"):
+    for r in tqdm(list(filter_files_on_confidence(pdb_files, query, args.output_dir)), unit="pdb"):
         # TODO log the nr of residues in a csv file if --store-count is given
         if r.density_filtered_file:
             passed_count += 1

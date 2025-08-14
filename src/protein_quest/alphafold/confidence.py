@@ -82,7 +82,7 @@ class DensityFilterResult:
 
 
 # TODO make work on cif file, not just pdb formatted files
-def filter_on_density(
+def filter_files_on_confidence(
     alphafold_pdb_files: list[Path], query: DensityFilterQuery, density_filtered_dir: Path
 ) -> Generator[DensityFilterResult]:
     """Filter AlphaFoldDB structures based on density confidence.
