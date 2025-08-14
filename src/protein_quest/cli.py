@@ -17,8 +17,8 @@ from rich_argparse import ArgumentDefaultsRichHelpFormatter
 from tqdm.rich import tqdm
 
 from protein_quest.__version__ import __version__
-from protein_quest.alphafold import DownloadableFormat, downloadable_formats
-from protein_quest.alphafold import fetch_many as af_fetch
+from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_formats
+from protein_quest.alphafold.fetch import fetch_many as af_fetch
 from protein_quest.alphafold.confidence import DensityFilterQuery, filter_files_on_confidence
 from protein_quest.alphafold.entry_summary import EntrySummary
 from protein_quest.pdbe import fetch as pdbe_fetch
