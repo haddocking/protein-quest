@@ -31,6 +31,38 @@ class Query:
     molecular_function_go: str | list[str] | None
 
 
+def _first_chain_from_uniprot_chains(uniprot_chains: str) -> str:
+    """Extracts the first chain identifier from a UniProt chains string.
+
+    The UniProt chains string is formatted (with EBNF notation) as follows:
+
+        chain_group(=range)?(,chain_group(=range)?)*
+
+    where:
+        chain_group := chain_id(/chain_id)*
+        chain_id    := [A-Za-z]+
+        range       := start-end
+        start, end  := integer
+
+    Args:
+        uniprot_chains: A string representing UniProt chains, For example "B/D=1-81".
+    Returns:
+        The first chain identifier from the UniProt chain string. For example "B".
+    """
+    chains = uniprot_chains.split("=")
+    parts = chains[0].split("/")
+    chain = parts[0]
+    try:
+        # Workaround for Q9Y2Q5 │ 5YK3 │ 1/B/G=1-124, 1 does not exist but B does
+        int(chain)
+        if len(parts) > 1:
+            return parts[1]
+    except ValueError:
+        # A letter
+        pass
+    return chain
+
+
 @dataclass(frozen=True)
 class PdbResult:
     """Result of a PDB search in UniProtKB.
@@ -46,6 +78,11 @@ class PdbResult:
     method: str
     uniprot_chains: str
     resolution: str | None = None
+
+    @property
+    def chain(self) -> str:
+        """The first chain from the UniProt chains aka self.uniprot_chains."""
+        return _first_chain_from_uniprot_chains(self.uniprot_chains)
 
 
 def _query2dynamic_sparql_triples(query: Query):

@@ -26,7 +26,7 @@ from protein_quest.pdbe.io import (
     is_chain_in_residues_range,
     write_single_chain_pdb_file,
 )
-from protein_quest.uniprot import Query, search4af, search4pdb, search4uniprot
+from protein_quest.uniprot import PdbResult, Query, search4af, search4pdb, search4uniprot
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +88,12 @@ def _add_search_pdbe_parser(subparsers: argparse._SubParsersAction):
     parser.add_argument(
         "output_csv",
         type=argparse.FileType("w", encoding="UTF-8"),
-        help="Output CSV with PDB info per UniProt accession. Use `-` for stdout.",
+        help=dedent("""\
+            Output CSV with `uniprot_acc`, `pdb_id`, `method`, `resolution`, `uniprot_chains`, `chain` columns.
+            Where `uniprot_chains` is the raw UniProt chain string, for example `A=1-100`.
+            and where `chain` is the first chain from `uniprot_chains`, for example `A`.
+            Use `-` for stdout.
+        """),
     )
     parser.add_argument(
         "--limit", type=int, default=10_000, help="Maximum number of PDB uniprot accessions combinations to return"
@@ -127,7 +132,7 @@ def _add_retrieve_pdbe_parser(subparsers: argparse._SubParsersAction):
         help="Retrieve PDBe gzipped mmCIF files for PDB IDs in CSV.",
         description=dedent("""\
             Retrieve mmCIF files from Protein Data Bank in Europe Knowledge Base (PDBe) website
-            for PDB IDs listed in a CSV file.
+            for unique PDB IDs listed in a CSV file.
         """),
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
@@ -203,27 +208,27 @@ def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
     """Add filter chain subcommand parser."""
     parser = subparsers.add_parser(
         "chain",
-        help="Keep first UniProt chain from PDBe mmCIF",
+        help="Filter on chain.",
         description=dedent("""\
-            For each input PDB and uniprot combination
-            write a PDB file with just the first chain belonging to that Uniprot accession
+            For each input PDB and chain combination
+            write a PDB file with just the given chain
             and rename it to chain `A`."""),
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
     parser.add_argument(
         "pdbe_csv",
         type=argparse.FileType("r", encoding="UTF-8"),
-        help="CSV file with `pdb_id`, `uniprot_id` and `uniprot_chain` columns.",
+        help="CSV file with `pdb_id` and `chain` columns.",
     )
     parser.add_argument(
         "input_dir",
         type=Path,
         help=dedent("""\
         Directory with PDB/mmCIF files.
-        Allowed formats are `.cif.gz`, `.cif`, `.pdb.gz` or `.pdb`.
+        Expected filenames are `{pdb_id}.cif.gz`, `{pdb_id}.cif`, `{pdb_id}.pdb.gz` or `{pdb_id}.pdb`.
     """),
     )
-    parser.add_argument("output_dir", type=Path, help="Directory to write single-chain PDB files")
+    parser.add_argument("output_dir", type=Path, help="Directory to write the single-chain PDB files")
 
 
 def _add_filter_residue_parser(subparsers: argparse._SubParsersAction):
@@ -408,7 +413,6 @@ def _handle_filter_confidence(args):
 
 def _handle_filter_chain(args):
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    # TODO allow simpler csv, uniprot_chain `A=1-100` can simplified to chain 'A'
     # TODO use range from uniprot_chain to only write residues in that range
     # TODO make handler smaller, by moving code to functions that do not use args.*
     rows = list(_iter_pdbe_csv(args.pdbe_csv))
@@ -418,9 +422,7 @@ def _handle_filter_chain(args):
         pdb_id = row["pdb_id"]
         input_file = _locate_structure_file(args.input_dir, pdb_id)
         # TODO allow to specify output format, similar to input
-        output_file = write_single_chain_pdb_file(
-            input_file, row["uniprot_chains"], row["uniprot_acc"], args.output_dir
-        )
+        output_file = write_single_chain_pdb_file(input_file, row["chain"], args.output_dir)
         if output_file:
             nr_written += 1
 
@@ -429,6 +431,9 @@ def _handle_filter_chain(args):
 
 def _locate_structure_file(root: Path, pdb_id: str) -> Path:
     exts = [".cif.gz", ".cif", ".pdb.gz", ".pdb"]
+    # files downloaded from https://www.ebi.ac.uk/pdbe/ website
+    # have file names like pdb6t5y.ent or pdb6t5y.ent.gz for a PDB formatted file.
+    # TODO support pdb6t5y.ent or pdb6t5y.ent.gz file names
     for ext in exts:
         candidate = root / f"{pdb_id.lower()}{ext}"
         if candidate.exists():
@@ -488,9 +493,9 @@ def _write_lines(file: TextIOWrapper, lines: Iterable[str]):
     file.writelines(line + os.linesep for line in lines)
 
 
-def _write_pdbe_csv(path: TextIOWrapper, data: dict[str, set]):
+def _write_pdbe_csv(path: TextIOWrapper, data: dict[str, set[PdbResult]]):
     _make_sure_parent_exists(path)
-    fieldnames = ["uniprot_acc", "pdb_id", "method", "resolution", "uniprot_chains"]
+    fieldnames = ["uniprot_acc", "pdb_id", "method", "resolution", "uniprot_chains", "chain"]
     writer = csv.DictWriter(path, fieldnames=fieldnames)
     writer.writeheader()
     for uniprot_acc, entries in sorted(data.items()):
@@ -502,6 +507,7 @@ def _write_pdbe_csv(path: TextIOWrapper, data: dict[str, set]):
                     "method": e.method,
                     "resolution": e.resolution or "",
                     "uniprot_chains": e.uniprot_chains,
+                    "chain": e.chain,
                 }
             )
 
