@@ -382,31 +382,41 @@ def _handle_retrieve_alphafold(args):
     rprint(f"Retrieved {total_nr_files} AlphaFold files and {len(afs)} summaries, written to {download_dir}")
 
 
-def _handle_filter_confidence(args):
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-    pdb_files = sorted(args.input_dir.glob("*.pdb"))
-    rprint(f"Filtering {len(pdb_files)} AlphaFold PDB files from {args.input_dir} directory by confidence")
+def _handle_filter_confidence(args: argparse.Namespace):
+    # we are repeating types here and in add_argument call
+    # TODO replace argparse with modern alternative like cyclopts
+    # to get rid of duplication
+    input_dir = structure(args.input_dir, Path)
+    output_dir = structure(args.output_dir, Path)
+    confidence_threshold = structure(args.confidence_threshold, float)
+    # TODO add min/max
+    min_residues = structure(args.min_residues, int)
+    max_residues = structure(args.max_residues, int)
+    stats_file: TextIOWrapper | None = args.write_stats
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    pdb_files = sorted(input_dir.glob("*.pdb"))
+    rprint(f"Filtering {len(pdb_files)} AlphaFold PDB files from {input_dir} directory by confidence")
     query = structure(
         {
-            "confidence": args.confidence_threshold,
-            "min_threshold": args.min_residues,
-            "max_threshold": args.max_residues,
+            "confidence": confidence_threshold,
+            "min_threshold": min_residues,
+            "max_threshold": max_residues,
         },
         ConfidenceFilterQuery,
     )
-    passed_count = 0
-    if args.write_stats:
-        writer = csv.writer(args.write_stats)
+    if stats_file:
+        writer = csv.writer(stats_file)
         writer.writerow(["input_file", "residue_count", "passed", "output_file"])
 
-    for r in tqdm(list(filter_files_on_confidence(pdb_files, query, args.output_dir)), unit="pdb"):
-        # TODO log the nr of residues in a csv file if --store-count is given
+    passed_count = 0
+    for r in tqdm(filter_files_on_confidence(pdb_files, query, output_dir), total=len(pdb_files), unit="pdb"):
         if r.filtered_file:
             passed_count += 1
-        if args.write_stats:
+        if stats_file:
             writer.writerow([r.pdb_file, r.count, r.filtered_file is not None, r.filtered_file])
 
-    rprint(f"Filtered {passed_count} PDB files by confidence, written to {args.output_dir} directory")
+    rprint(f"Filtered {passed_count} PDB files by confidence, written to {output_dir} directory")
 
 
 def _handle_filter_chain(args):
