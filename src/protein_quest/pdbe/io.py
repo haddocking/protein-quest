@@ -8,38 +8,6 @@ from protein_quest import __version__
 logger = logging.getLogger(__name__)
 
 
-def first_chain_from_uniprot_chains(uniprot_chains: str) -> str:
-    """Extracts the first chain identifier from a UniProt chains string.
-
-    The UniProt chains string is formatted (with EBNF notation) as follows:
-
-        chain_group(=range)?(,chain_group(=range)?)*
-
-    where:
-        chain_group := chain_id(/chain_id)*
-        chain_id    := [A-Za-z]+
-        range       := start-end
-        start, end  := integer
-
-    Args:
-        uniprot_chains: A string representing UniProt chains, For example "B/D=1-81".
-    Returns:
-        The first chain identifier from the UniProt chain string. For example "B".
-    """
-    chains = uniprot_chains.split("=")
-    parts = chains[0].split("/")
-    chain = parts[0]
-    try:
-        # Workaround for Q9Y2Q5 │ 5YK3 │ 1/B/G=1-124, 1 does not exist but B does
-        int(chain)
-        if len(parts) > 1:
-            return parts[1]
-    except ValueError:
-        # A letter
-        pass
-    return chain
-
-
 def is_chain_in_residues_range(
     file: Path | str,
     min_residues: int,
@@ -92,21 +60,19 @@ def find_chain_in_model(model: gemmi.Model, wanted_chain: str) -> gemmi.Chain | 
 
 
 def write_single_chain_pdb_file(
-    input_file: Path, uniprot_chain: str, uniprot_acc: str, output_dir: Path, out_chain: str = "A"
+    input_file: Path, chain2keep: str, output_dir: Path, out_chain: str = "A"
 ) -> Path | None:
     """Write a single chain PDB file from a mmCIF file.
 
     Args:
         input_file: Path to the input mmCIF file.
-        uniprot_chain: The UniProt chain to keep.
-        uniprot_acc: The UniProt accession number.
+        chain2keep: The chain to keep.
         output_dir: Directory to save the output PDB file.
         out_chain: The chain identifier for the output PDB file.
 
     Returns:
         Path to the output PDB file or None if not created.
     """
-    chain2keep = first_chain_from_uniprot_chains(uniprot_chain)
 
     structure = gemmi.read_structure(str(input_file))
     model = structure[0]
@@ -122,7 +88,8 @@ def write_single_chain_pdb_file(
             input_file,
         )
         return None
-    output_file = output_dir / f"{uniprot_acc}_{input_file.stem}_{chain}2A.pdb"
+    stemmed_input_file = input_file.stem.replace(".gz", "").replace(".cif", "").replace(".pdb", "")
+    output_file = output_dir / f"{stemmed_input_file}_{chain.name}2{out_chain}.pdb"
 
     new_structure = gemmi.Structure()
     new_structure.resolution = structure.resolution
