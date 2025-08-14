@@ -199,6 +199,13 @@ def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
         default=10_000_000,
         help="Maximum number of high-confidence residues a structure should have",
     )
+    parser.add_argument(
+        "--write-stats",
+        type=argparse.FileType("w", encoding="UTF-8"),
+        help=dedent("""\
+            Write filter statistics to file.
+            In CSV format with `<input_file>,<residue_count>,<passed>,<output_file>` columns."""),
+    )
 
 
 def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
@@ -387,10 +394,16 @@ def _handle_filter_confidence(args):
         ConfidenceFilterQuery,
     )
     passed_count = 0
+    if args.write_stats:
+        writer = csv.writer(args.write_stats)
+        writer.writerow(["input_file", "residue_count", "passed", "output_file"])
+
     for r in tqdm(list(filter_files_on_confidence(pdb_files, query, args.output_dir)), unit="pdb"):
         # TODO log the nr of residues in a csv file if --store-count is given
         if r.filtered_file:
             passed_count += 1
+        if args.write_stats:
+            writer.writerow([r.pdb_file, r.count, r.filtered_file is not None, r.filtered_file])
 
     rprint(f"Filtered {passed_count} PDB files by confidence, written to {args.output_dir} directory")
 
