@@ -34,3 +34,5 @@ class EntrySummary:
     amAnnotationsHg38Url: str | None = None
     isReviewed: bool | None = None
     isReferenceProteome: bool | None = None
+    # TODO add new fields from https://alphafold.ebi.ac.uk/#/public-api/get_uniprot_summary_api_uniprot_summary__qualifier__json_get
+    # TODO like fractionPlddt* fields which can be used in filter_files_on_confidence()

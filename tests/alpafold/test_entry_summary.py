@@ -1,0 +1,15 @@
+from cattrs.preconf.orjson import make_converter
+
+from protein_quest.alphafold.entry_summary import EntrySummary
+
+converter = make_converter()
+
+
+def test_loads_from_json_string():
+    summary_json = '[{"toolUsed":"AlphaFold Monomer v2.0 pipeline","providerId":"GDM","entityType":"protein","isUniProt":true,"modelEntityId":"AF-A0A087WUV0-F1","modelCreatedDate":"2022-06-01T00:00:00Z","sequenceVersionDate":"2014-10-29T00:00:00Z","globalMetricValue":65.58,"fractionPlddtVeryLow":0.375,"fractionPlddtLow":0.082,"fractionPlddtConfident":0.284,"fractionPlddtVeryHigh":0.259,"latestVersion":4,"allVersions":[1,2,3,4],"sequence":"MEPEGRGSLFEDSDLLHAGNPKENDVTAVLLTPGSQELMIRDMAEALTQWRQLNSPQGDVPEKPRNLVLLGLPISTPDVISQLEHEEELEREVSKAASQKHWETIPESKELTPEKDISEEESAPGVLIVRFSKESSSECEDSLESQQENHEKHLIQEAVTEKSSRERSYQSDEFRRNCTQRSLLVQQQGERLHHCDSFKNNLKQNSDIIRHERICAGKKPWKCNECEKAFSYYSAFVLHQRIHTGEKPYECNECGKAFSQSIHLTLHQRIHTGEKPYECHECGKAFSHRSALIRHHIIHTGEKPYECNECGKAFNQSSYLTQHQRIHTGEKPYECNECGKAFSQSTFLTQHQVIHTGEKPYKCNECGKAFSDRSGLIQHQRTHTGERPYECNECGKAFGYCSALTQHQRTHTGEKPYKCNDCAKAFSDRSALIRHQRTHTGEKPYKCKDCGKAFSQSSSLTKHQKTHTGEKPYKCKECGKAFSQSSSLSQHQKTHAGVKTKKYVQALSEHLTFGQHKRIHTG","sequenceStart":1,"sequenceEnd":522,"sequenceChecksum":"5DE83E4BE25B68BD","isUniProtReviewed":false,"uniprotAccession":"A0A087WUV0","uniprotId":"A0A087WUV0_HUMAN","uniprotDescription":"Uncharacterized protein","taxId":9606,"organismScientificName":"Homo sapiens","isUniProtReferenceProteome":true,"bcifUrl":"https://alphafold.ebi.ac.uk/files/AF-A0A087WUV0-F1-model_v4.bcif","cifUrl":"https://alphafold.ebi.ac.uk/files/AF-A0A087WUV0-F1-model_v4.cif","pdbUrl":"https://alphafold.ebi.ac.uk/files/AF-A0A087WUV0-F1-model_v4.pdb","paeImageUrl":"https://alphafold.ebi.ac.uk/files/AF-A0A087WUV0-F1-predicted_aligned_error_v4.png","paeDocUrl":"https://alphafold.ebi.ac.uk/files/AF-A0A087WUV0-F1-predicted_aligned_error_v4.json","amAnnotationsUrl":"https://alphafold.ebi.ac.uk/files/AF-A0A087WUV0-F1-aa-substitutions.csv","amAnnotationsHg38Url":"https://alphafold.ebi.ac.uk/files/AF-A0A087WUV0-F1-hg38.csv","entryId":"AF-A0A087WUV0-F1","uniprotSequence":"MEPEGRGSLFEDSDLLHAGNPKENDVTAVLLTPGSQELMIRDMAEALTQWRQLNSPQGDVPEKPRNLVLLGLPISTPDVISQLEHEEELEREVSKAASQKHWETIPESKELTPEKDISEEESAPGVLIVRFSKESSSECEDSLESQQENHEKHLIQEAVTEKSSRERSYQSDEFRRNCTQRSLLVQQQGERLHHCDSFKNNLKQNSDIIRHERICAGKKPWKCNECEKAFSYYSAFVLHQRIHTGEKPYECNECGKAFSQSIHLTLHQRIHTGEKPYECHECGKAFSHRSALIRHHIIHTGEKPYECNECGKAFNQSSYLTQHQRIHTGEKPYECNECGKAFSQSTFLTQHQVIHTGEKPYKCNECGKAFSDRSGLIQHQRTHTGERPYECNECGKAFGYCSALTQHQRTHTGEKPYKCNDCAKAFSDRSALIRHQRTHTGEKPYKCKDCGKAFSQSSSLTKHQKTHTGEKPYKCKECGKAFSQSSSLSQHQKTHAGVKTKKYVQALSEHLTFGQHKRIHTG","uniprotStart":1,"uniprotEnd":522,"isReferenceProteome":true,"isReviewed":false}]'
+
+    result = converter.loads(summary_json, list[EntrySummary])
+
+    assert isinstance(result, list)
+    assert all(isinstance(item, EntrySummary) for item in result)
+    assert result[0].uniprotAccession == "A0A087WUV0"

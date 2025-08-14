@@ -1,21 +1,25 @@
+# TODO move guts to fetch.py, be careful of circular imports
 import asyncio
 import logging
 from asyncio import Semaphore
 from collections.abc import AsyncGenerator, Iterable
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+import nest_asyncio
 from aiohttp_retry import RetryClient
-from cattrs import structure
+from aiopath import AsyncPath
+from cattrs.preconf.orjson import make_converter
 from tqdm.asyncio import tqdm
 
 from protein_quest.alphafold.entry_summary import EntrySummary
 from protein_quest.utils import friendly_session, retrieve_files
 
-logger = logging.getLogger(__name__)
+nest_asyncio.apply()
 
+logger = logging.getLogger(__name__)
+converter = make_converter()
 
 DownloadableFormat = Literal[
     "bcif",
@@ -108,18 +112,51 @@ class AlphaFoldEntry:
         return sum(1 for attr in vars(self) if attr.endswith("_file") and getattr(self, attr) is not None)
 
 
-async def fetch_summmary(qualifier: str, session: RetryClient, semaphore: Semaphore) -> list[EntrySummary]:
+async def fetch_summary(
+    qualifier: str, session: RetryClient, semaphore: Semaphore, save_dir: Path | None
+) -> list[EntrySummary]:
+    """Fetches a summary from the AlphaFold database for a given qualifier.
+
+    Args:
+        qualifier: The uniprot accession for the protein or entry to fetch.
+            For example `Q5VSL9`.
+        session: An asynchronous HTTP client session with retry capabilities.
+        semaphore: A semaphore to limit the number of concurrent requests.
+        save_dir: An optional directory to save the fetched summary as a JSON file.
+            If set and summary exists then summary will be loaded from disk instead of being fetched from the API.
+            If not set then the summary will not be saved to disk and will always be fetched from the API.
+
+    Returns:
+        A list of EntrySummary objects representing the fetched summary.
+
+    Raises:
+        HTTPError: If the HTTP request returns an error status code.
+        Exception: If there is an error during file reading/writing or data conversion.
+    """
     url = f"https://alphafold.ebi.ac.uk/api/prediction/{qualifier}"
+    fn: AsyncPath | None = None
+    if save_dir is not None:
+        fn = AsyncPath(save_dir / f"{qualifier}.json")
+        if await fn.exists():
+            logger.debug(f"File {fn} already exists. Skipping download from {url}.")
+            raw_data = await fn.read_bytes()
+            return converter.loads(raw_data, list[EntrySummary])
     async with semaphore, session.get(url) as response:
         response.raise_for_status()
-        data = await response.json()
-        return structure(data, list[EntrySummary])
+        raw_data = await response.content.read()
+        if fn is not None:
+            await fn.write_bytes(raw_data)
+        return converter.loads(raw_data, list[EntrySummary])
 
 
-async def fetch_summaries(qualifiers: Iterable[str], max_parallel_downloads: int = 5) -> AsyncGenerator[EntrySummary]:
+async def fetch_summaries(
+    qualifiers: Iterable[str], save_dir: Path | None = None, max_parallel_downloads: int = 5
+) -> AsyncGenerator[EntrySummary]:
     semaphore = Semaphore(max_parallel_downloads)
+    if save_dir is not None:
+        save_dir.mkdir(parents=True, exist_ok=True)
     async with friendly_session() as session:
-        tasks = [fetch_summmary(qualifier, session, semaphore) for qualifier in qualifiers]
+        tasks = [fetch_summary(qualifier, session, semaphore, save_dir) for qualifier in qualifiers]
         summaries_per_qualifier: list[list[EntrySummary]] = await tqdm.gather(
             *tasks, desc="Fetching Alphafold summaries"
         )
@@ -148,7 +185,7 @@ async def fetch_many_async(
     Yields:
         A dataclass containing the summary, pdb file, and pae file.
     """
-    summaries = [s async for s in fetch_summaries(ids, max_parallel_downloads=max_parallel_downloads)]
+    summaries = [s async for s in fetch_summaries(ids, save_dir, max_parallel_downloads=max_parallel_downloads)]
 
     files = files_to_download(what, summaries)
 
@@ -226,12 +263,7 @@ def fetch_many(
             async for entry in fetch_many_async(ids, save_dir, what, max_parallel_downloads=max_parallel_downloads)
         ]
 
-    def run_async_task():
-        return asyncio.run(gather_entries())
-
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(run_async_task)
-        return future.result()
+    return asyncio.run(gather_entries())
 
 
 def relative_to(entry: AlphaFoldEntry, session_dir: Path) -> AlphaFoldEntry:

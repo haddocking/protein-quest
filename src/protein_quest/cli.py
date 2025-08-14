@@ -379,13 +379,6 @@ def _handle_retrieve_alphafold(args):
     validated_what: set[DownloadableFormat] = structure(what_af_formats, set[DownloadableFormat])
     rprint(f"Retrieving {len(af_ids)} AlphaFold entries with formats {validated_what}")
     afs = af_fetch(af_ids, download_dir, what=validated_what, max_parallel_downloads=args.max_parallel_downloads)
-
-    for af in tqdm(afs, unit="entry", desc="Writing summaries to disk"):
-        # TODO move writing of summary.json to af_fetch function and do concurrently
-        if af.summary is None:
-            continue
-        _write_alphafold_summary(af.summary, download_dir)
-
     total_nr_files = sum(af.nr_of_files() for af in afs)
     rprint(f"Retrieved {total_nr_files} AlphaFold files and {len(afs)} summaries, written to {download_dir}")
 
