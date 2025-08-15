@@ -123,6 +123,7 @@ protein-quest filter residue  \
 
 Protein quest can also help LLMs like Claude Sonnet 4 by providing a set of tools for protein structure searches.
 
+<!-- TODO make image work on mkdocs and pypi-->
 ![Protein Quest MCP workflow](docs/protein-quest-mcp.png)
 
 To run mcp server you have to install the `mcp` extra with:
