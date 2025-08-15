@@ -154,7 +154,7 @@ def _add_retrieve_alphafold_parser(subparsers: argparse._SubParsersAction):
     parser.add_argument(
         "alphafold_csv",
         type=argparse.FileType("r", encoding="UTF-8"),
-        help="CSV file with `af_id` column. Other columns are ignored.Use `-` for stdin.",
+        help="CSV file with `af_id` column. Other columns are ignored. Use `-` for stdin.",
     )
     parser.add_argument("output_dir", type=Path, help="Directory to store downloaded AlphaFold files")
     parser.add_argument(
