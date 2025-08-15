@@ -15,7 +15,7 @@ class Query:
     """Search query for UniProtKB.
 
     Parameters:
-        taxon_id: Taxon ID to filter results by organism (e.g., "9606" for human).
+        taxon_id: NCBI Taxon ID to filter results by organism (e.g., "9606" for human).
         reviewed: Whether to filter results by reviewed status (True for reviewed, False for unreviewed).
         subcellular_location_uniprot: Subcellular location in UniProt format (e.g., "nucleus").
         subcellular_location_go: Subcellular location in GO format. Can be a single GO term
@@ -24,11 +24,12 @@ class Query:
             (e.g., "GO:0003674") or a collection of GO terms (e.g., ["GO:0003674", "GO:0008150"]).
     """
 
+    # TODO make taxon_id an int
     taxon_id: str | None
-    reviewed: bool | None
-    subcellular_location_uniprot: str | None
-    subcellular_location_go: str | list[str] | None
-    molecular_function_go: str | list[str] | None
+    reviewed: bool | None = None
+    subcellular_location_uniprot: str | None = None
+    subcellular_location_go: str | list[str] | None = None
+    molecular_function_go: str | list[str] | None = None
 
 
 def _first_chain_from_uniprot_chains(uniprot_chains: str) -> str:
