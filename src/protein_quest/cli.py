@@ -18,10 +18,10 @@ from protein_quest.__version__ import __version__
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
 from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_formats
 from protein_quest.alphafold.fetch import fetch_many as af_fetch
+from protein_quest.filters import filter_files_on_chain
 from protein_quest.pdbe import fetch as pdbe_fetch
 from protein_quest.pdbe.io import (
     is_chain_in_residues_range,
-    write_single_chain_pdb_file,
 )
 from protein_quest.uniprot import PdbResult, Query, search4af, search4pdb, search4uniprot
 
@@ -136,7 +136,7 @@ def _add_retrieve_pdbe_parser(subparsers: argparse._SubParsersAction):
     parser.add_argument(
         "pdbe_csv",
         type=argparse.FileType("r", encoding="UTF-8"),
-        help="CSV file with `pdb_id` column. Use `-` for stdin.",
+        help="CSV file with `pdb_id` column. Other columns are ignored. Use `-` for stdin.",
     )
     parser.add_argument("output_dir", type=Path, help="Directory to store downloaded PDBe mmCIF files")
     parser.add_argument(
@@ -158,7 +158,7 @@ def _add_retrieve_alphafold_parser(subparsers: argparse._SubParsersAction):
     parser.add_argument(
         "alphafold_csv",
         type=argparse.FileType("r", encoding="UTF-8"),
-        help="CSV file with `af_id` column. Use `-` for stdin.",
+        help="CSV file with `af_id` column. Other columns are ignored.Use `-` for stdin.",
     )
     parser.add_argument("output_dir", type=Path, help="Directory to store downloaded AlphaFold files")
     parser.add_argument(
@@ -217,13 +217,14 @@ def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
         description=dedent("""\
             For each input PDB and chain combination
             write a PDB file with just the given chain
-            and rename it to chain `A`."""),
+            and rename it to chain `A`.
+            Filtering is done in parallel using a Dask cluster."""),
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
     parser.add_argument(
         "pdbe_csv",
         type=argparse.FileType("r", encoding="UTF-8"),
-        help="CSV file with `pdb_id` and `chain` columns.",
+        help="CSV file with `pdb_id` and `chain` columns. Other columns are ignored.",
     )
     parser.add_argument(
         "input_dir",
@@ -234,6 +235,10 @@ def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
     """),
     )
     parser.add_argument("output_dir", type=Path, help="Directory to write the single-chain PDB files")
+    parser.add_argument(
+        "--scheduler-address",
+        help="Address of the Dask scheduler to connect to. If not provided, will create a local cluster.",
+    )
 
 
 def _add_filter_residue_parser(subparsers: argparse._SubParsersAction):
@@ -449,35 +454,16 @@ def _handle_filter_chain(args):
     input_dir = args.input_dir
     output_dir = args.output_dir
     pdbe_csv = args.pdbe_csv
+    scheduler_address = args.scheduler_address
 
-    output_dir.mkdir(parents=True, exist_ok=True)
-    # TODO use range from uniprot_chain to only write residues in that range
-    # TODO make handler smaller, by moving code to functions that do not use args.*
     rows = list(_iter_pdbe_csv(pdbe_csv))
-    rprint(f"Filtering {len(rows)} PDBe entries for uniprot chain")
-    nr_written = 0
-    for row in tqdm(rows, unit="file"):
-        pdb_id = row["pdb_id"]
-        input_file = _locate_structure_file(input_dir, pdb_id)
-        # TODO allow to specify output format, similar to input
-        output_file = write_single_chain_pdb_file(input_file, row["chain"], output_dir)
-        if output_file:
-            nr_written += 1
+    id2chains: dict[str, str] = {row["pdb_id"]: row["chain"] for row in rows}
+
+    new_files = filter_files_on_chain(input_dir, id2chains, output_dir, scheduler_address)
+
+    nr_written = len([r for r in new_files if r[2] is not None])
 
     rprint(f"Wrote {nr_written} single-chain PDB files to {output_dir}.")
-
-
-def _locate_structure_file(root: Path, pdb_id: str) -> Path:
-    exts = [".cif.gz", ".cif", ".pdb.gz", ".pdb"]
-    # files downloaded from https://www.ebi.ac.uk/pdbe/ website
-    # have file names like pdb6t5y.ent or pdb6t5y.ent.gz for a PDB formatted file.
-    # TODO support pdb6t5y.ent or pdb6t5y.ent.gz file names
-    for ext in exts:
-        candidate = root / f"{pdb_id.lower()}{ext}"
-        if candidate.exists():
-            return candidate
-    msg = f"No structure file found for {pdb_id} in {root}"
-    raise FileNotFoundError(msg)
 
 
 def _handle_filter_residue(args):
