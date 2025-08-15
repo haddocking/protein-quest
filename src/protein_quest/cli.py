@@ -252,7 +252,6 @@ def _add_filter_residue_parser(subparsers: argparse._SubParsersAction):
         """),
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
-    # TODO besides *.pdb also allow *.cif, *.pdb.gz and *.cif.gz
     parser.add_argument("input_dir", type=Path, help="Directory with PDB/mmCIF files (e.g., from 'filter chain')")
     parser.add_argument(
         "output_dir",
