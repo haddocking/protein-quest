@@ -6,8 +6,6 @@ import nest_asyncio
 
 from protein_quest.utils import retrieve_files
 
-nest_asyncio.apply()
-
 
 def _map_id_mmcif(pdb_id: str) -> tuple[str, str]:
     """
@@ -50,5 +48,6 @@ def fetch(ids: Iterable[str], save_dir: Path, max_parallel_downloads: int = 5) -
     urls = list(id2urls.values())
     id2paths = {pdb_id: save_dir / fn for pdb_id, (_, fn) in id2urls.items()}
 
+    nest_asyncio.apply()
     asyncio.run(retrieve_files(urls, save_dir, max_parallel_downloads, desc="Downloading PDBe mmCIF files"))
     return id2paths
