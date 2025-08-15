@@ -1,12 +1,19 @@
 import logging
 from pathlib import Path
+from shutil import copyfile
 from typing import cast
 
 from dask.distributed import Client, progress
 from distributed.deploy.cluster import Cluster
+from tqdm.auto import tqdm
 
 from protein_quest.parallel import configure_dask_scheduler
-from protein_quest.pdbe.io import locate_structure_file, write_single_chain_pdb_file
+from protein_quest.pdbe.io import (
+    glob_structure_files,
+    is_chain_in_residues_range,
+    locate_structure_file,
+    write_single_chain_pdb_file,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -51,3 +58,34 @@ def filter_files_on_chain(
 
         results = client.gather(futures)
         return cast("list[tuple[str,str, Path | None]]", results)
+
+
+def filter_files_on_residues(
+    input_dir: Path,
+    output_dir: Path,
+    min_residues: int,
+    max_residues: int,
+) -> tuple[int, int]:
+    """Filter PDB/mmCIF files by number of residues in chain A.
+
+    Args:
+        input_dir: The directory containing the input PDB files.
+        output_dir: The directory where the filtered files will be written.
+        min_residues: The minimum number of residues in chain A.
+        max_residues: The maximum number of residues in chain A.
+
+    Returns:
+        A tuple containing the number of passed and discarded files.
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+    passed_count = 0
+    input_files = sorted(glob_structure_files(input_dir))
+    for input_file in tqdm(input_files, unit="file"):
+        # TODO log the nr of residues in a csv file if --write-stats is given
+        if not is_chain_in_residues_range(input_file, min_residues, max_residues, chain="A"):
+            continue
+        copyfile(input_file, output_dir / input_file.name)
+        passed_count += 1
+
+    discarded_count = len(input_files) - passed_count
+    return passed_count, discarded_count

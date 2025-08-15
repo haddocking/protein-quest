@@ -1,5 +1,6 @@
 import gzip
 import logging
+from collections.abc import Generator
 from pathlib import Path
 
 import gemmi
@@ -127,6 +128,19 @@ def locate_structure_file(root: Path, pdb_id: str) -> Path:
             return candidate
     msg = f"No structure file found for {pdb_id} in {root}"
     raise FileNotFoundError(msg)
+
+
+def glob_structure_files(input_dir: Path) -> Generator[Path]:
+    """Glob for structure files in a directory.
+
+    Args:
+        input_dir: The input directory to search for structure files.
+
+    Yields:
+        Paths to the found structure files.
+    """
+    for ext in [".cif.gz", ".cif", ".pdb.gz", ".pdb"]:
+        yield from input_dir.glob(f"*{ext}")
 
 
 def write_single_chain_pdb_file(

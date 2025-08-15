@@ -5,7 +5,6 @@ import os
 from collections.abc import Callable, Iterable
 from io import TextIOWrapper
 from pathlib import Path
-from shutil import copyfile
 from textwrap import dedent
 
 from cattrs import structure
@@ -18,11 +17,8 @@ from protein_quest.__version__ import __version__
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
 from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_formats
 from protein_quest.alphafold.fetch import fetch_many as af_fetch
-from protein_quest.filters import filter_files_on_chain
+from protein_quest.filters import filter_files_on_chain, filter_files_on_residues
 from protein_quest.pdbe import fetch as pdbe_fetch
-from protein_quest.pdbe.io import (
-    is_chain_in_residues_range,
-)
 from protein_quest.uniprot import PdbResult, Query, search4af, search4pdb, search4uniprot
 
 logger = logging.getLogger(__name__)
@@ -250,15 +246,21 @@ def _add_filter_residue_parser(subparsers: argparse._SubParsersAction):
     """Add filter residue subcommand parser."""
     parser = subparsers.add_parser(
         "residue",
-        help="Filter PDBs by number of residues in chain A",
+        help="Filter PDB/mmCIF files by number of residues in chain A",
         description=dedent("""\
-            Filter PDBs by number of residues in chain A.
+            Filter PDB/mmCIF files by number of residues in chain A.
         """),
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
     # TODO besides *.pdb also allow *.cif, *.pdb.gz and *.cif.gz
-    parser.add_argument("input_dir", type=Path, help="Directory with PDB files (e.g., from 'filter chain')")
-    parser.add_argument("output_dir", type=Path, help="Directory to write filtered PDB files")
+    parser.add_argument("input_dir", type=Path, help="Directory with PDB/mmCIF files (e.g., from 'filter chain')")
+    parser.add_argument(
+        "output_dir",
+        type=Path,
+        help=dedent("""\
+        Directory to write filtered PDB/mmCIF files. Files are copied without modification.
+    """),
+    )
     parser.add_argument("--min-residues", type=int, default=0, help="Min residues in chain A")
     parser.add_argument("--max-residues", type=int, default=10_000_000, help="Max residues in chain A")
 
@@ -468,7 +470,7 @@ def _handle_filter_chain(args):
 
     nr_written = len([r for r in new_files if r[2] is not None])
 
-    rprint(f"Wrote {nr_written} single-chain PDB files to {output_dir}.")
+    rprint(f"Wrote {nr_written} single-chain PDB/mmCIF files to {output_dir}.")
 
 
 def _handle_filter_residue(args):
@@ -477,20 +479,9 @@ def _handle_filter_residue(args):
     min_residues = args.min_residues
     max_residues = args.max_residues
 
-    output_dir.mkdir(parents=True, exist_ok=True)
-    passed_count = 0
-    # TODO run in parallel using dask.distributed
-    # TODO make handler smaller, by moving code to functions that do not use args.*
-    input_files = sorted(input_dir.glob("*.pdb"))
-    for input_file in tqdm(input_files, unit="file"):
-        # TODO log the nr of residues in a csv file if --store-count is given
-        if not is_chain_in_residues_range(input_file, min_residues, max_residues, chain="A"):
-            continue
-        copyfile(input_file, output_dir / input_file.name)
-        passed_count += 1
-
-    discarded_count = len(input_files) - passed_count
-    rprint(f"Completed filtering on residues. Filtered {passed_count} and discarded {discarded_count} pdb files.")
+    passed_count, discarded_count = filter_files_on_residues(input_dir, output_dir, min_residues, max_residues)
+    rprint(f"Filtered {passed_count} and discarded {discarded_count} files.")
+    rprint(f"Filtered files written to {output_dir} directory.")
 
 
 HANDLERS: dict[tuple[str, str | None], Callable] = {
