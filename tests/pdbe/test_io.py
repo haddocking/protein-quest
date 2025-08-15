@@ -20,7 +20,7 @@ def test_write_single_chain_pdb_file_happypath(cif_path: Path, tmp_path: Path):
     )
 
     assert output_file is not None
-    assert output_file.name == "2y29_A2Z.pdb"
+    assert output_file.name == "2y29_A2Z.cif"
     assert output_file.exists()
     structure = gemmi.read_structure(str(output_file))
     assert len(structure) == 1  # One model

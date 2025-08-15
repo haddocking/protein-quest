@@ -58,7 +58,7 @@ class ConfidenceFilterQuery:
         confidence: The confidence threshold for filtering residues.
             Residues with a pLDDT (b-factor) above this value are considered high confidence.
         min_threshold: The minimum number of high-confidence residues required to keep the structure.
-        max_threshold: The maximum number of high-confidence residues allowed to keep the structure.
+        max_threshold: The maximum number of high-confidence residues required to keep the structure.
     """
 
     confidence: float
@@ -96,6 +96,9 @@ def filter_files_on_confidence(
         For each PDB files yields whether it was filtered or not,
             and number of residues with pLDDT above the confidence threshold.
     """
+    # Note on why code looks duplicated:
+    # In ../filter.py:filter_files_on_residues() we filter on number of residues on a file level
+    # here we filter on file level and inside file remove low confidence residues
     for pdb_file in alphafold_pdb_files:
         residues = set(find_high_confidence_residues(pdb_file, query.confidence))
         count = len(residues)

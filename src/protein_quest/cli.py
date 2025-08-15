@@ -5,7 +5,6 @@ import os
 from collections.abc import Callable, Iterable
 from io import TextIOWrapper
 from pathlib import Path
-from shutil import copyfile
 from textwrap import dedent
 
 from cattrs import structure
@@ -18,11 +17,8 @@ from protein_quest.__version__ import __version__
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
 from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_formats
 from protein_quest.alphafold.fetch import fetch_many as af_fetch
+from protein_quest.filters import filter_files_on_chain, filter_files_on_residues
 from protein_quest.pdbe import fetch as pdbe_fetch
-from protein_quest.pdbe.io import (
-    is_chain_in_residues_range,
-    write_single_chain_pdb_file,
-)
 from protein_quest.uniprot import PdbResult, Query, search4af, search4pdb, search4uniprot
 
 logger = logging.getLogger(__name__)
@@ -136,7 +132,7 @@ def _add_retrieve_pdbe_parser(subparsers: argparse._SubParsersAction):
     parser.add_argument(
         "pdbe_csv",
         type=argparse.FileType("r", encoding="UTF-8"),
-        help="CSV file with `pdb_id` column. Use `-` for stdin.",
+        help="CSV file with `pdb_id` column. Other columns are ignored. Use `-` for stdin.",
     )
     parser.add_argument("output_dir", type=Path, help="Directory to store downloaded PDBe mmCIF files")
     parser.add_argument(
@@ -158,7 +154,7 @@ def _add_retrieve_alphafold_parser(subparsers: argparse._SubParsersAction):
     parser.add_argument(
         "alphafold_csv",
         type=argparse.FileType("r", encoding="UTF-8"),
-        help="CSV file with `af_id` column. Use `-` for stdin.",
+        help="CSV file with `af_id` column. Other columns are ignored. Use `-` for stdin.",
     )
     parser.add_argument("output_dir", type=Path, help="Directory to store downloaded AlphaFold files")
     parser.add_argument(
@@ -215,15 +211,16 @@ def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
         "chain",
         help="Filter on chain.",
         description=dedent("""\
-            For each input PDB and chain combination
-            write a PDB file with just the given chain
-            and rename it to chain `A`."""),
+            For each input PDB/mmCIF and chain combination
+            write a PDB/mmCIF file with just the given chain
+            and rename it to chain `A`.
+            Filtering is done in parallel using a Dask cluster."""),
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
     parser.add_argument(
-        "pdbe_csv",
+        "chains",
         type=argparse.FileType("r", encoding="UTF-8"),
-        help="CSV file with `pdb_id` and `chain` columns.",
+        help="CSV file with `pdb_id` and `chain` columns. Other columns are ignored.",
     )
     parser.add_argument(
         "input_dir",
@@ -233,22 +230,36 @@ def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
         Expected filenames are `{pdb_id}.cif.gz`, `{pdb_id}.cif`, `{pdb_id}.pdb.gz` or `{pdb_id}.pdb`.
     """),
     )
-    parser.add_argument("output_dir", type=Path, help="Directory to write the single-chain PDB files")
+    parser.add_argument(
+        "output_dir",
+        type=Path,
+        help=dedent("""\
+        Directory to write the single-chain PDB/mmCIF files. Output files are in same format as input files."""),
+    )
+    parser.add_argument(
+        "--scheduler-address",
+        help="Address of the Dask scheduler to connect to. If not provided, will create a local cluster.",
+    )
 
 
 def _add_filter_residue_parser(subparsers: argparse._SubParsersAction):
     """Add filter residue subcommand parser."""
     parser = subparsers.add_parser(
         "residue",
-        help="Filter PDBs by number of residues in chain A",
+        help="Filter PDB/mmCIF files by number of residues in chain A",
         description=dedent("""\
-            Filter PDBs by number of residues in chain A.
+            Filter PDB/mmCIF files by number of residues in chain A.
         """),
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
-    # TODO besides *.pdb also allow *.cif, *.pdb.gz and *.cif.gz
-    parser.add_argument("input_dir", type=Path, help="Directory with PDB files (e.g., from 'filter chain')")
-    parser.add_argument("output_dir", type=Path, help="Directory to write filtered PDB files")
+    parser.add_argument("input_dir", type=Path, help="Directory with PDB/mmCIF files (e.g., from 'filter chain')")
+    parser.add_argument(
+        "output_dir",
+        type=Path,
+        help=dedent("""\
+        Directory to write filtered PDB/mmCIF files. Files are copied without modification.
+    """),
+    )
     parser.add_argument("--min-residues", type=int, default=0, help="Min residues in chain A")
     parser.add_argument("--max-residues", type=int, default=10_000_000, help="Max residues in chain A")
 
@@ -325,59 +336,85 @@ def main():
 
 
 def _handle_search_uniprot(args):
+    taxon_id = args.taxon_id
+    reviewed = args.reviewed
+    subcellular_location_uniprot = args.subcellular_location_uniprot
+    subcellular_location_go = args.subcellular_location_go
+    molecular_function_go = args.molecular_function_go
+    limit = args.limit
+    timeout = args.timeout
+    output_file = args.output
+
     query = structure(
         {
-            "taxon_id": args.taxon_id,
-            "reviewed": args.reviewed,
-            "subcellular_location_uniprot": args.subcellular_location_uniprot,
-            "subcellular_location_go": _as_scalar_or_list(args.subcellular_location_go),
-            "molecular_function_go": _as_scalar_or_list(args.molecular_function_go),
+            "taxon_id": taxon_id,
+            "reviewed": reviewed,
+            "subcellular_location_uniprot": subcellular_location_uniprot,
+            "subcellular_location_go": _as_scalar_or_list(subcellular_location_go),
+            "molecular_function_go": _as_scalar_or_list(molecular_function_go),
         },
         Query,
     )
     rprint("Searching for UniProt accessions")
-    accs = search4uniprot(query=query, limit=args.limit, timeout=args.timeout)
-    rprint(f"Found {len(accs)} UniProt accessions, written to {args.output.name}")
-    _write_lines(args.output, sorted(accs))
+    accs = search4uniprot(query=query, limit=limit, timeout=timeout)
+    rprint(f"Found {len(accs)} UniProt accessions, written to {output_file.name}")
+    _write_lines(output_file, sorted(accs))
 
 
 def _handle_search_pdbe(args):
-    accs = set(_read_lines(args.uniprot_accs))
+    uniprot_accs = args.uniprot_accs
+    limit = args.limit
+    timeout = args.timeout
+    output_csv = args.output_csv
+
+    accs = set(_read_lines(uniprot_accs))
     rprint(f"Finding PDB entries for {len(accs)} uniprot accessions")
-    results = search4pdb(accs, limit=args.limit, timeout=args.timeout)
+    results = search4pdb(accs, limit=limit, timeout=timeout)
     total_pdbs = sum([len(v) for v in results.values()])
     rprint(f"Found {total_pdbs} PDB entries for {len(results)} uniprot accessions")
-    rprint(f"Written to {args.output_csv.name}")
-    _write_pdbe_csv(args.output_csv, results)
+    rprint(f"Written to {output_csv.name}")
+    _write_pdbe_csv(output_csv, results)
 
 
 def _handle_search_alphafold(args):
-    accs = _read_lines(args.uniprot_accs)
+    uniprot_accs = args.uniprot_accs
+    limit = args.limit
+    timeout = args.timeout
+    output_csv = args.output_csv
+
+    accs = _read_lines(uniprot_accs)
     rprint(f"Finding AlphaFold entries for {len(accs)} uniprot accessions")
-    results = search4af(accs, limit=args.limit, timeout=args.timeout)
-    rprint(f"Found {len(results)} AlphaFold entries, written to {args.output_csv.name}")
-    _write_alphafold_csv(args.output_csv, results)
+    results = search4af(accs, limit=limit, timeout=timeout)
+    rprint(f"Found {len(results)} AlphaFold entries, written to {output_csv.name}")
+    _write_alphafold_csv(output_csv, results)
 
 
 def _handle_retrieve_pdbe(args):
-    pdb_ids = _read_pdbe_ids_from_csv(args.pdbe_csv)
+    pdbe_csv = args.pdbe_csv
+    output_dir = args.output_dir
+    max_parallel_downloads = args.max_parallel_downloads
+
+    pdb_ids = _read_pdbe_ids_from_csv(pdbe_csv)
     rprint(f"Retrieving {len(pdb_ids)} PDBe entries")
-    result = pdbe_fetch.fetch(pdb_ids, args.output_dir, max_parallel_downloads=args.max_parallel_downloads)
+    result = pdbe_fetch.fetch(pdb_ids, output_dir, max_parallel_downloads=max_parallel_downloads)
     rprint(f"Retrieved {len(result)} PDBe entries")
 
 
 def _handle_retrieve_alphafold(args):
     download_dir = args.output_dir
     what_af_formats = args.what_af_formats
+    alphafold_csv = args.alphafold_csv
+    max_parallel_downloads = args.max_parallel_downloads
+
     if what_af_formats is None:
         what_af_formats = {"pdb"}
 
     # TODO besides `uniprot_acc,af_id\n` csv also allow headless single column format
     #
-    af_ids = [r["af_id"] for r in _read_alphafold_csv(args.alphafold_csv)]
+    af_ids = [r["af_id"] for r in _read_alphafold_csv(alphafold_csv)]
     validated_what: set[DownloadableFormat] = structure(what_af_formats, set[DownloadableFormat])
     rprint(f"Retrieving {len(af_ids)} AlphaFold entries with formats {validated_what}")
-    afs = af_fetch(af_ids, download_dir, what=validated_what, max_parallel_downloads=args.max_parallel_downloads)
+    afs = af_fetch(af_ids, download_dir, what=validated_what, max_parallel_downloads=max_parallel_downloads)
     total_nr_files = sum(af.nr_of_files() for af in afs)
     rprint(f"Retrieved {total_nr_files} AlphaFold files and {len(afs)} summaries, written to {download_dir}")
 
@@ -420,51 +457,30 @@ def _handle_filter_confidence(args: argparse.Namespace):
 
 
 def _handle_filter_chain(args):
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-    # TODO use range from uniprot_chain to only write residues in that range
-    # TODO make handler smaller, by moving code to functions that do not use args.*
-    rows = list(_iter_pdbe_csv(args.pdbe_csv))
-    rprint(f"Filtering {len(rows)} PDBe entries for uniprot chain")
-    nr_written = 0
-    for row in tqdm(rows, unit="file"):
-        pdb_id = row["pdb_id"]
-        input_file = _locate_structure_file(args.input_dir, pdb_id)
-        # TODO allow to specify output format, similar to input
-        output_file = write_single_chain_pdb_file(input_file, row["chain"], args.output_dir)
-        if output_file:
-            nr_written += 1
+    input_dir = args.input_dir
+    output_dir = args.output_dir
+    pdb_id2chain_mapping_file = args.chains
+    scheduler_address = args.scheduler_address
 
-    rprint(f"Wrote {nr_written} single-chain PDB files to {args.output_dir}.")
+    rows = list(_iter_pdbe_csv(pdb_id2chain_mapping_file))
+    id2chains: dict[str, str] = {row["pdb_id"]: row["chain"] for row in rows}
 
+    new_files = filter_files_on_chain(input_dir, id2chains, output_dir, scheduler_address)
 
-def _locate_structure_file(root: Path, pdb_id: str) -> Path:
-    exts = [".cif.gz", ".cif", ".pdb.gz", ".pdb"]
-    # files downloaded from https://www.ebi.ac.uk/pdbe/ website
-    # have file names like pdb6t5y.ent or pdb6t5y.ent.gz for a PDB formatted file.
-    # TODO support pdb6t5y.ent or pdb6t5y.ent.gz file names
-    for ext in exts:
-        candidate = root / f"{pdb_id.lower()}{ext}"
-        if candidate.exists():
-            return candidate
-    msg = f"No structure file found for {pdb_id} in {root}"
-    raise FileNotFoundError(msg)
+    nr_written = len([r for r in new_files if r[2] is not None])
+
+    rprint(f"Wrote {nr_written} single-chain PDB/mmCIF files to {output_dir}.")
 
 
 def _handle_filter_residue(args):
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-    passed_count = 0
-    # TODO run in parallel using dask.distributed
-    # TODO make handler smaller, by moving code to functions that do not use args.*
-    input_files = sorted(args.input_dir.glob("*.pdb"))
-    for pdb in tqdm(input_files, unit="file"):
-        # TODO log the nr of residues in a csv file if --store-count is given
-        if not is_chain_in_residues_range(pdb, args.min_residues, args.max_residues, chain="A"):
-            continue
-        copyfile(pdb, args.output_dir / pdb.name)
-        passed_count += 1
+    input_dir = args.input_dir
+    output_dir = args.output_dir
+    min_residues = args.min_residues
+    max_residues = args.max_residues
 
-    discarded_count = len(input_files) - passed_count
-    rprint(f"Completed filtering on residues. Filtered {passed_count} and discarded {discarded_count} pdb files.")
+    passed_count, discarded_count = filter_files_on_residues(input_dir, output_dir, min_residues, max_residues)
+    rprint(f"Filtered {passed_count} and discarded {discarded_count} files.")
+    rprint(f"Filtered files written to {output_dir} directory.")
 
 
 HANDLERS: dict[tuple[str, str | None], Callable] = {

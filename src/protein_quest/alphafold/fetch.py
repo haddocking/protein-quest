@@ -15,8 +15,6 @@ from tqdm.asyncio import tqdm
 from protein_quest.alphafold.entry_summary import EntrySummary
 from protein_quest.utils import friendly_session, retrieve_files
 
-nest_asyncio.apply()
-
 logger = logging.getLogger(__name__)
 converter = make_converter()
 
@@ -262,6 +260,7 @@ def fetch_many(
             async for entry in fetch_many_async(ids, save_dir, what, max_parallel_downloads=max_parallel_downloads)
         ]
 
+    nest_asyncio.apply()
     return asyncio.run(gather_entries())
 
 
