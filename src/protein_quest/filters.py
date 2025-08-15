@@ -6,22 +6,9 @@ from dask.distributed import Client, progress
 from distributed.deploy.cluster import Cluster
 
 from protein_quest.parallel import configure_dask_scheduler
-from protein_quest.pdbe.io import write_single_chain_pdb_file
+from protein_quest.pdbe.io import locate_structure_file, write_single_chain_pdb_file
 
 logger = logging.getLogger(__name__)
-
-
-def _locate_structure_file(root: Path, pdb_id: str) -> Path:
-    exts = [".cif.gz", ".cif", ".pdb.gz", ".pdb"]
-    # files downloaded from https://www.ebi.ac.uk/pdbe/ website
-    # have file names like pdb6t5y.ent or pdb6t5y.ent.gz for a PDB formatted file.
-    # TODO support pdb6t5y.ent or pdb6t5y.ent.gz file names
-    for ext in exts:
-        candidate = root / f"{pdb_id.lower()}{ext}"
-        if candidate.exists():
-            return candidate
-    msg = f"No structure file found for {pdb_id} in {root}"
-    raise FileNotFoundError(msg)
 
 
 def filter_files_on_chain(
@@ -52,7 +39,7 @@ def filter_files_on_chain(
 
     def task(id2chain: tuple[str, str]) -> tuple[str, str, Path | None]:
         pdb_id, chain = id2chain
-        input_file = _locate_structure_file(input_dir, pdb_id)
+        input_file = locate_structure_file(input_dir, pdb_id)
         return pdb_id, chain, write_single_chain_pdb_file(input_file, chain, output_dir, out_chain=out_chain)
 
     with Client(scheduler_address) as client:

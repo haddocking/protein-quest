@@ -104,6 +104,31 @@ def _split_name_and_extension(name: str) -> tuple[str, str]:
     raise ValueError(msg)
 
 
+def locate_structure_file(root: Path, pdb_id: str) -> Path:
+    """Locate a structure file for a given PDB ID in the specified directory.
+
+    Args:
+        root: The root directory to search in.
+        pdb_id: The PDB ID to locate.
+
+    Returns:
+        The path to the located structure file.
+
+    Raises:
+        FileNotFoundError: If no structure file is found for the given PDB ID.
+    """
+    exts = [".cif.gz", ".cif", ".pdb.gz", ".pdb"]
+    # files downloaded from https://www.ebi.ac.uk/pdbe/ website
+    # have file names like pdb6t5y.ent or pdb6t5y.ent.gz for a PDB formatted file.
+    # TODO support pdb6t5y.ent or pdb6t5y.ent.gz file names
+    for ext in exts:
+        candidate = root / f"{pdb_id.lower()}{ext}"
+        if candidate.exists():
+            return candidate
+    msg = f"No structure file found for {pdb_id} in {root}"
+    raise FileNotFoundError(msg)
+
+
 def write_single_chain_pdb_file(
     input_file: Path, chain2keep: str, output_dir: Path, out_chain: str = "A"
 ) -> Path | None:
