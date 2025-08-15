@@ -19,6 +19,7 @@ from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_forma
 from protein_quest.alphafold.fetch import fetch_many as af_fetch
 from protein_quest.filters import filter_files_on_chain, filter_files_on_residues
 from protein_quest.pdbe import fetch as pdbe_fetch
+from protein_quest.pdbe.io import glob_structure_files
 from protein_quest.uniprot import PdbResult, Query, search4af, search4pdb, search4uniprot
 
 logger = logging.getLogger(__name__)
@@ -177,14 +178,14 @@ def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
     """Add filter confidence subcommand parser."""
     parser = subparsers.add_parser(
         "confidence",
-        help="Filter AlphaFold PDBs by confidence",
+        help="Filter AlphaFold mmcif/PDB files by confidence",
         description=dedent("""\
-            Filter AlphaFold PDB files by confidence (plDDT).
+            Filter AlphaFold mmcif/PDB files by confidence (plDDT).
             Passed files are written with residues below threshold removed."""),
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
-    parser.add_argument("input_dir", type=Path, help="Directory with AlphaFold PDB files")
-    parser.add_argument("output_dir", type=Path, help="Directory to write filtered PDB files")
+    parser.add_argument("input_dir", type=Path, help="Directory with AlphaFold mmcif/PDB files")
+    parser.add_argument("output_dir", type=Path, help="Directory to write filtered mmcif/PDB files")
     parser.add_argument("--confidence-threshold", type=float, default=70, help="pLDDT confidence threshold (0-100)")
     parser.add_argument(
         "--min-residues", type=int, default=0, help="Minimum number of high-confidence residues a structure should have"
@@ -432,8 +433,9 @@ def _handle_filter_confidence(args: argparse.Namespace):
     stats_file: TextIOWrapper | None = args.write_stats
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    pdb_files = sorted(input_dir.glob("*.pdb"))
-    rprint(f"Filtering {len(pdb_files)} AlphaFold PDB files from {input_dir} directory by confidence")
+    input_files = sorted(glob_structure_files(input_dir))
+    nr_input_files = len(input_files)
+    rprint(f"Starting confidence filtering of {nr_input_files} mmcif/PDB files in {input_dir} directory.")
     query = structure(
         {
             "confidence": confidence_threshold,
@@ -447,13 +449,15 @@ def _handle_filter_confidence(args: argparse.Namespace):
         writer.writerow(["input_file", "residue_count", "passed", "output_file"])
 
     passed_count = 0
-    for r in tqdm(filter_files_on_confidence(pdb_files, query, output_dir), total=len(pdb_files), unit="pdb"):
+    for r in tqdm(filter_files_on_confidence(input_files, query, output_dir), total=len(input_files), unit="file"):
         if r.filtered_file:
             passed_count += 1
         if stats_file:
-            writer.writerow([r.pdb_file, r.count, r.filtered_file is not None, r.filtered_file])
+            writer.writerow([r.input_file, r.count, r.filtered_file is not None, r.filtered_file])
 
-    rprint(f"Filtered {passed_count} PDB files by confidence, written to {output_dir} directory")
+    rprint(f"Filtered {passed_count} mmcif/PDB files by confidence, written to {output_dir} directory")
+    if stats_file:
+        rprint(f"Statistics written to {stats_file.name}")
 
 
 def _handle_filter_chain(args):

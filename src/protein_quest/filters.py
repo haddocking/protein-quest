@@ -28,7 +28,7 @@ def filter_files_on_chain(
     """Filter mmcif/PDB files by chain.
 
     Args:
-        input_dir: The directory containing the input PDB files.
+        input_dir: The directory containing the input mmcif/PDB files.
         id2chains: Which chain to keep for each PDB ID. Key is the PDB ID, value is the chain ID.
         output_dir: The directory where the filtered files will be written.
         scheduler_address: The address of the Dask scheduler.

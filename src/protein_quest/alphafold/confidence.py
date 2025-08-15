@@ -3,6 +3,10 @@ from collections.abc import Generator
 from dataclasses import dataclass
 from pathlib import Path
 
+import gemmi
+
+from protein_quest.pdbe.io import write_structure
+
 """
 Methods to filter AlphaFoldDB structures on confidence scores.
 
@@ -15,39 +19,49 @@ See https://www.ebi.ac.uk/training/online/courses/alphafold/inputs-and-outputs/e
 logger = logging.getLogger(__name__)
 
 
-def find_high_confidence_residues(pdb_file: Path, confidence: float) -> Generator[int]:
-    prev_res_index = None
-    with pdb_file.open("r") as f:
-        for line in f:
-            if line.startswith("ATOM"):
-                # Extract the b-factor value from the PDB line
-                b_factor = float(line[60:66].strip())
-                if b_factor > confidence:
-                    # Extract the residue index from the PDB line
-                    res_index = int(line[22:26].strip())
-                    # yield once per residue, not for every atom of the residue
-                    if res_index != prev_res_index:
-                        yield res_index
-                        prev_res_index = res_index
+def find_high_confidence_residues(structure: gemmi.Structure, confidence: float) -> Generator[int]:
+    """Find residues in the structure with pLDDT confidence above the given threshold.
+
+    Args:
+        structure: The AlphaFoldDB structure to search.
+        confidence: The confidence threshold (pLDDT) to use for filtering.
+
+    Yields:
+        The sequence numbers of residues with pLDDT above the confidence threshold.
+    """
+    for model in structure:
+        for chain in model:
+            for res in chain:
+                res_confidence = res[0].b_iso
+                if res_confidence > confidence:
+                    seqid = res.seqid.num
+                    if seqid is not None:
+                        yield seqid
 
 
-def filter_out_low_confidence_residues(input_pdb_file: Path, allowed_residues: set[int], output_pdb_file: Path):
-    # TODO if residue is removed from ATOM lines also remove it
-    # elsewhere in the file (SEQRES, TER).
-    # TODO do we need to take model/chain into account?
-    # now assumes single model and single chain
-    if output_pdb_file.exists():
-        logger.info(f"Output file {output_pdb_file} already exists. Skipping filtering for {input_pdb_file}.")
-        return
-    with input_pdb_file.open("r") as input_file, output_pdb_file.open("w") as output_file:
-        for line in input_file:
-            if line.startswith("ATOM"):
-                # Extract the residue index from the PDB line
-                res_index = int(line[22:26].strip())
-                if res_index in allowed_residues:
-                    output_file.write(line)
-            else:
-                output_file.write(line)
+def filter_out_low_confidence_residues(structure: gemmi.Structure, allowed_residues: set[int]) -> gemmi.Structure:
+    """Filter out residues from the structure that do not have high confidence.
+
+    Args:
+        structure: The AlphaFoldDB structure to filter.
+        allowed_residues: The set of residue sequence numbers to keep.
+
+    Returns:
+        A new AlphaFoldDB structure with low confidence residues removed.
+    """
+    new_structure = structure.clone()
+    for model in new_structure:
+        new_chains = []
+        for chain in model:
+            new_chain = gemmi.Chain(chain.name)
+            for res in chain:
+                if res.seqid.num in allowed_residues:
+                    new_chain.add_residue(res)
+            new_chains.append(new_chain)
+        for new_chain in new_chains:
+            model.remove_chain(new_chain.name)
+            model.add_chain(new_chain)
+    return new_structure
 
 
 @dataclass
@@ -71,52 +85,52 @@ class ConfidenceFilterResult:
     """Result of filtering AlphaFoldDB structures based on confidence (pLDDT).
 
     Parameters:
-        pdb_file: The name of the PDB file that was processed.
+        input_file: The name of the mmcif/PDB file that was processed.
         count: The number of residues with a pLDDT above the confidence threshold.
-        filtered_file: The path to the filtered PDB file, if passed filter.
+        filtered_file: The path to the filtered mmcif/PDB file, if passed filter.
     """
 
-    pdb_file: str
+    input_file: str
     count: int
     filtered_file: Path | None = None
 
 
-# TODO make work on cif file, not just pdb formatted files
 def filter_files_on_confidence(
     alphafold_pdb_files: list[Path], query: ConfidenceFilterQuery, filtered_dir: Path
 ) -> Generator[ConfidenceFilterResult]:
     """Filter AlphaFoldDB structures based on confidence.
 
     Args:
-        alphafold_pdb_files: List of PDB files from AlphaFoldDB to filter.
+        alphafold_pdb_files: List of mmcif/PDB files from AlphaFoldDB to filter.
         query: The confidence filter query containing the confidence thresholds.
-        filtered_dir: Directory where the filtered PDB files will be saved.
+        filtered_dir: Directory where the filtered mmcif/PDB files will be saved.
 
     Yields:
-        For each PDB files yields whether it was filtered or not,
+        For each mmcif/PDB files yields whether it was filtered or not,
             and number of residues with pLDDT above the confidence threshold.
     """
     # Note on why code looks duplicated:
     # In ../filter.py:filter_files_on_residues() we filter on number of residues on a file level
     # here we filter on file level and inside file remove low confidence residues
     for pdb_file in alphafold_pdb_files:
-        residues = set(find_high_confidence_residues(pdb_file, query.confidence))
+        structure = gemmi.read_structure(str(pdb_file))
+        residues = set(find_high_confidence_residues(structure, query.confidence))
         count = len(residues)
         if count < query.min_threshold or count > query.max_threshold:
             yield ConfidenceFilterResult(
-                pdb_file=pdb_file.name,
+                input_file=pdb_file.name,
                 count=count,
             )
             # Skip structure that is outside the min and max threshold
             continue
         filtered_file = filtered_dir / pdb_file.name
-        filter_out_low_confidence_residues(
-            pdb_file,
+        new_structure = filter_out_low_confidence_residues(
+            structure,
             residues,
-            filtered_file,
         )
+        write_structure(new_structure, filtered_file)
         yield ConfidenceFilterResult(
-            pdb_file=pdb_file.name,
+            input_file=pdb_file.name,
             count=count,
             filtered_file=filtered_file,
         )
