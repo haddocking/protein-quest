@@ -325,59 +325,85 @@ def main():
 
 
 def _handle_search_uniprot(args):
+    taxon_id = args.taxon_id
+    reviewed = args.reviewed
+    subcellular_location_uniprot = args.subcellular_location_uniprot
+    subcellular_location_go = args.subcellular_location_go
+    molecular_function_go = args.molecular_function_go
+    limit = args.limit
+    timeout = args.timeout
+    output_file = args.output
+
     query = structure(
         {
-            "taxon_id": args.taxon_id,
-            "reviewed": args.reviewed,
-            "subcellular_location_uniprot": args.subcellular_location_uniprot,
-            "subcellular_location_go": _as_scalar_or_list(args.subcellular_location_go),
-            "molecular_function_go": _as_scalar_or_list(args.molecular_function_go),
+            "taxon_id": taxon_id,
+            "reviewed": reviewed,
+            "subcellular_location_uniprot": subcellular_location_uniprot,
+            "subcellular_location_go": _as_scalar_or_list(subcellular_location_go),
+            "molecular_function_go": _as_scalar_or_list(molecular_function_go),
         },
         Query,
     )
     rprint("Searching for UniProt accessions")
-    accs = search4uniprot(query=query, limit=args.limit, timeout=args.timeout)
-    rprint(f"Found {len(accs)} UniProt accessions, written to {args.output.name}")
-    _write_lines(args.output, sorted(accs))
+    accs = search4uniprot(query=query, limit=limit, timeout=timeout)
+    rprint(f"Found {len(accs)} UniProt accessions, written to {output_file.name}")
+    _write_lines(output_file, sorted(accs))
 
 
 def _handle_search_pdbe(args):
-    accs = set(_read_lines(args.uniprot_accs))
+    uniprot_accs = args.uniprot_accs
+    limit = args.limit
+    timeout = args.timeout
+    output_csv = args.output_csv
+
+    accs = set(_read_lines(uniprot_accs))
     rprint(f"Finding PDB entries for {len(accs)} uniprot accessions")
-    results = search4pdb(accs, limit=args.limit, timeout=args.timeout)
+    results = search4pdb(accs, limit=limit, timeout=timeout)
     total_pdbs = sum([len(v) for v in results.values()])
     rprint(f"Found {total_pdbs} PDB entries for {len(results)} uniprot accessions")
-    rprint(f"Written to {args.output_csv.name}")
-    _write_pdbe_csv(args.output_csv, results)
+    rprint(f"Written to {output_csv.name}")
+    _write_pdbe_csv(output_csv, results)
 
 
 def _handle_search_alphafold(args):
-    accs = _read_lines(args.uniprot_accs)
+    uniprot_accs = args.uniprot_accs
+    limit = args.limit
+    timeout = args.timeout
+    output_csv = args.output_csv
+
+    accs = _read_lines(uniprot_accs)
     rprint(f"Finding AlphaFold entries for {len(accs)} uniprot accessions")
-    results = search4af(accs, limit=args.limit, timeout=args.timeout)
-    rprint(f"Found {len(results)} AlphaFold entries, written to {args.output_csv.name}")
-    _write_alphafold_csv(args.output_csv, results)
+    results = search4af(accs, limit=limit, timeout=timeout)
+    rprint(f"Found {len(results)} AlphaFold entries, written to {output_csv.name}")
+    _write_alphafold_csv(output_csv, results)
 
 
 def _handle_retrieve_pdbe(args):
-    pdb_ids = _read_pdbe_ids_from_csv(args.pdbe_csv)
+    pdbe_csv = args.pdbe_csv
+    output_dir = args.output_dir
+    max_parallel_downloads = args.max_parallel_downloads
+
+    pdb_ids = _read_pdbe_ids_from_csv(pdbe_csv)
     rprint(f"Retrieving {len(pdb_ids)} PDBe entries")
-    result = pdbe_fetch.fetch(pdb_ids, args.output_dir, max_parallel_downloads=args.max_parallel_downloads)
+    result = pdbe_fetch.fetch(pdb_ids, output_dir, max_parallel_downloads=max_parallel_downloads)
     rprint(f"Retrieved {len(result)} PDBe entries")
 
 
 def _handle_retrieve_alphafold(args):
     download_dir = args.output_dir
     what_af_formats = args.what_af_formats
+    alphafold_csv = args.alphafold_csv
+    max_parallel_downloads = args.max_parallel_downloads
+
     if what_af_formats is None:
         what_af_formats = {"pdb"}
 
     # TODO besides `uniprot_acc,af_id\n` csv also allow headless single column format
     #
-    af_ids = [r["af_id"] for r in _read_alphafold_csv(args.alphafold_csv)]
+    af_ids = [r["af_id"] for r in _read_alphafold_csv(alphafold_csv)]
     validated_what: set[DownloadableFormat] = structure(what_af_formats, set[DownloadableFormat])
     rprint(f"Retrieving {len(af_ids)} AlphaFold entries with formats {validated_what}")
-    afs = af_fetch(af_ids, download_dir, what=validated_what, max_parallel_downloads=args.max_parallel_downloads)
+    afs = af_fetch(af_ids, download_dir, what=validated_what, max_parallel_downloads=max_parallel_downloads)
     total_nr_files = sum(af.nr_of_files() for af in afs)
     rprint(f"Retrieved {total_nr_files} AlphaFold files and {len(afs)} summaries, written to {download_dir}")
 
@@ -420,21 +446,25 @@ def _handle_filter_confidence(args: argparse.Namespace):
 
 
 def _handle_filter_chain(args):
-    args.output_dir.mkdir(parents=True, exist_ok=True)
+    input_dir = args.input_dir
+    output_dir = args.output_dir
+    pdbe_csv = args.pdbe_csv
+
+    output_dir.mkdir(parents=True, exist_ok=True)
     # TODO use range from uniprot_chain to only write residues in that range
     # TODO make handler smaller, by moving code to functions that do not use args.*
-    rows = list(_iter_pdbe_csv(args.pdbe_csv))
+    rows = list(_iter_pdbe_csv(pdbe_csv))
     rprint(f"Filtering {len(rows)} PDBe entries for uniprot chain")
     nr_written = 0
     for row in tqdm(rows, unit="file"):
         pdb_id = row["pdb_id"]
-        input_file = _locate_structure_file(args.input_dir, pdb_id)
+        input_file = _locate_structure_file(input_dir, pdb_id)
         # TODO allow to specify output format, similar to input
-        output_file = write_single_chain_pdb_file(input_file, row["chain"], args.output_dir)
+        output_file = write_single_chain_pdb_file(input_file, row["chain"], output_dir)
         if output_file:
             nr_written += 1
 
-    rprint(f"Wrote {nr_written} single-chain PDB files to {args.output_dir}.")
+    rprint(f"Wrote {nr_written} single-chain PDB files to {output_dir}.")
 
 
 def _locate_structure_file(root: Path, pdb_id: str) -> Path:
@@ -451,16 +481,21 @@ def _locate_structure_file(root: Path, pdb_id: str) -> Path:
 
 
 def _handle_filter_residue(args):
-    args.output_dir.mkdir(parents=True, exist_ok=True)
+    input_dir = args.input_dir
+    output_dir = args.output_dir
+    min_residues = args.min_residues
+    max_residues = args.max_residues
+
+    output_dir.mkdir(parents=True, exist_ok=True)
     passed_count = 0
     # TODO run in parallel using dask.distributed
     # TODO make handler smaller, by moving code to functions that do not use args.*
-    input_files = sorted(args.input_dir.glob("*.pdb"))
-    for pdb in tqdm(input_files, unit="file"):
+    input_files = sorted(input_dir.glob("*.pdb"))
+    for input_file in tqdm(input_files, unit="file"):
         # TODO log the nr of residues in a csv file if --store-count is given
-        if not is_chain_in_residues_range(pdb, args.min_residues, args.max_residues, chain="A"):
+        if not is_chain_in_residues_range(input_file, min_residues, max_residues, chain="A"):
             continue
-        copyfile(pdb, args.output_dir / pdb.name)
+        copyfile(input_file, output_dir / input_file.name)
         passed_count += 1
 
     discarded_count = len(input_files) - passed_count
