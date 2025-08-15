@@ -36,6 +36,12 @@ Source = "https://github.com/haddocking/protein-quest"
 [project.scripts]
 protein-quest = "protein_quest.cli:main"
 
+[project.optional-dependencies]
+mcp = [
+    "fastmcp>=2.11.3",
+    "pydantic>=2.11.7",
+]
+
 [dependency-groups]
 dev = [
     "pyrefly>=0.23.1",
