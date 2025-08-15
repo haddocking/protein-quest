@@ -15,7 +15,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v6
       - name: Install the project
-        run: uv sync --locked --dev
+        run: uv sync --locked --dev --extra mcp
       - name: Install pocl
         run: uv pip install pocl-binary-distribution==3.0
       - name: Run tests
@@ -46,6 +46,6 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v6
       - name: Install the project
-        run: uv sync --locked --dev        
+        run: uv sync --locked --dev --extra mcp
       - name: Run type checkers
         run: uv run pyrefly check src tests

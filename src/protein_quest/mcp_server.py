@@ -64,11 +64,12 @@ def search_pdb(
     dict[str, set[PdbResult]],
     Field(
         description=dedent(f"""\
-            Dictionary with protein IDs as keys and sets of PDB results as values. 
+            Dictionary with protein IDs as keys and sets of PDB results as values.
             A PDB result is {PdbResult.__doc__}""")
     ),
 ]:
     """Search PDBe structures for given uniprot accessions."""
     return search4pdb(uniprot_accs, limit=limit)
+
 
 # TODO add all cli subcommands as mcp tools
