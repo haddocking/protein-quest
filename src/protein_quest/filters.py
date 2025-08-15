@@ -31,24 +31,20 @@ def filter_files_on_chain(
     scheduler_address: str | Cluster | None = None,
     out_chain: str = "A",
 ) -> list[tuple[str, str, Path | None]]:
-    """Filter PDB files by chain.
+    """Filter mmcif/PDB files by chain.
 
     Args:
         input_dir: The directory containing the input PDB files.
         id2chains: Which chain to keep for each PDB ID. Key is the PDB ID, value is the chain ID.
-        output_dir: The directory where the filtered PDB files will be written.
+        output_dir: The directory where the filtered files will be written.
         scheduler_address: The address of the Dask scheduler.
         out_chain: Under what name to write the kept chain.
 
     Returns:
-        A list of tuples containing the PDB ID, chain ID, and path to the filtered PDB file.
+        A list of tuples containing the PDB ID, chain ID, and path to the filtered file.
         Last tuple item is None if something went wrong like chain not present.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
-    # TODO use range from uniprot_chain to only write residues in that range
-    # TODO make handler smaller, by moving code to functions that do not use args.*
-    # the input_dir and pdbe csv can be out of sync (pdb_ids in csv do not exist as files or vice versa)
-    # TODO handle input dir and csv not being in sync
     scheduler_address = configure_dask_scheduler(
         scheduler_address,
         name="filter-chain",
@@ -56,7 +52,6 @@ def filter_files_on_chain(
 
     def task(id2chain: tuple[str, str]) -> tuple[str, str, Path | None]:
         pdb_id, chain = id2chain
-        # TODO write output is same format as input. aka if input_file is cif.gz, output should be cif.gz
         input_file = _locate_structure_file(input_dir, pdb_id)
         return pdb_id, chain, write_single_chain_pdb_file(input_file, chain, output_dir, out_chain=out_chain)
 

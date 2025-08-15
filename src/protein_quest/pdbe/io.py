@@ -1,3 +1,4 @@
+import gzip
 import logging
 from pathlib import Path
 
@@ -59,19 +60,63 @@ def find_chain_in_model(model: gemmi.Model, wanted_chain: str) -> gemmi.Chain | 
     return chain
 
 
+def write_structure(structure: gemmi.Structure, path: Path):
+    """Write a gemmi structure to a file.
+
+    Args:
+        structure: The gemmi structure to write.
+        path: The file path to write the structure to.
+            The format depends on the file extension.
+            Supported extensions are .pdb, .pdb.gz, .cif, .cif.gz.
+    """
+    if path.name.endswith(".pdb"):
+        body: str = structure.make_pdb_string()
+        path.write_text(body)
+    elif path.name.endswith(".pdb.gz"):
+        body: str = structure.make_pdb_string()
+        with gzip.open(path, "wt") as f:
+            f.write(body)
+    elif path.name.endswith(".cif"):
+        doc = structure.make_mmcif_document()
+        doc.write_file(str(path))
+    elif path.name.endswith(".cif.gz"):
+        doc = structure.make_mmcif_document()
+        cif_str = doc.as_string()
+        with gzip.open(path, "wt") as f:
+            f.write(cif_str)
+
+
+def _split_name_and_extension(name: str) -> tuple[str, str]:
+    # 1234.pdb -> (1234, .pdb)
+    # 1234.pdb.gz -> (1234, .pdb.gz)
+    # 1234.cif -> (1234, .cif)
+    # 1234.cif.gz -> (1234, .cif.gz)
+    if name.endswith(".pdb.gz"):
+        return name.replace(".pdb.gz", ""), ".pdb.gz"
+    if name.endswith(".cif.gz"):
+        return name.replace(".cif.gz", ""), ".cif.gz"
+    if name.endswith(".pdb"):
+        return name.replace(".pdb", ""), ".pdb"
+    if name.endswith(".cif"):
+        return name.replace(".cif", ""), ".cif"
+
+    msg = f"Unknown file extension in {name}. Supported extensions are .pdb, .pdb.gz, .cif, .cif.gz"
+    raise ValueError(msg)
+
+
 def write_single_chain_pdb_file(
     input_file: Path, chain2keep: str, output_dir: Path, out_chain: str = "A"
 ) -> Path | None:
-    """Write a single chain PDB file from a mmCIF file.
+    """Write a single chain from a mmCIF/pdb file to a new mmCIF/pdb file.
 
     Args:
-        input_file: Path to the input mmCIF file.
+        input_file: Path to the input mmCIF/pdb file.
         chain2keep: The chain to keep.
-        output_dir: Directory to save the output PDB file.
-        out_chain: The chain identifier for the output PDB file.
+        output_dir: Directory to save the output file.
+        out_chain: The chain identifier for the output file.
 
     Returns:
-        Path to the output PDB file or None if not created.
+        Path to the output mmCIF/pdb file or None if not created.
     """
 
     structure = gemmi.read_structure(str(input_file))
@@ -88,8 +133,8 @@ def write_single_chain_pdb_file(
             input_file,
         )
         return None
-    stemmed_input_file = input_file.stem.replace(".gz", "").replace(".cif", "").replace(".pdb", "")
-    output_file = output_dir / f"{stemmed_input_file}_{chain.name}2{out_chain}.pdb"
+    name, extension = _split_name_and_extension(input_file.name)
+    output_file = output_dir / f"{name}_{chain.name}2{out_chain}{extension}"
 
     new_structure = gemmi.Structure()
     new_structure.resolution = structure.resolution
@@ -108,6 +153,6 @@ def write_single_chain_pdb_file(
     chain.name = out_chain
     new_model.add_chain(chain)
     new_structure.add_model(new_model)
-    new_structure.write_pdb(str(output_file))
+    write_structure(new_structure, output_file)
 
     return output_file

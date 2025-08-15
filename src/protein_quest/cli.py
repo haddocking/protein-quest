@@ -215,14 +215,14 @@ def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
         "chain",
         help="Filter on chain.",
         description=dedent("""\
-            For each input PDB and chain combination
-            write a PDB file with just the given chain
+            For each input PDB/mmCIF and chain combination
+            write a PDB/mmCIF file with just the given chain
             and rename it to chain `A`.
             Filtering is done in parallel using a Dask cluster."""),
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
     parser.add_argument(
-        "pdbe_csv",
+        "chains",
         type=argparse.FileType("r", encoding="UTF-8"),
         help="CSV file with `pdb_id` and `chain` columns. Other columns are ignored.",
     )
@@ -234,7 +234,12 @@ def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
         Expected filenames are `{pdb_id}.cif.gz`, `{pdb_id}.cif`, `{pdb_id}.pdb.gz` or `{pdb_id}.pdb`.
     """),
     )
-    parser.add_argument("output_dir", type=Path, help="Directory to write the single-chain PDB files")
+    parser.add_argument(
+        "output_dir",
+        type=Path,
+        help=dedent("""\
+        Directory to write the single-chain PDB/mmCIF files. Output files are in same format as input files."""),
+    )
     parser.add_argument(
         "--scheduler-address",
         help="Address of the Dask scheduler to connect to. If not provided, will create a local cluster.",
@@ -453,10 +458,10 @@ def _handle_filter_confidence(args: argparse.Namespace):
 def _handle_filter_chain(args):
     input_dir = args.input_dir
     output_dir = args.output_dir
-    pdbe_csv = args.pdbe_csv
+    pdb_id2chain_mapping_file = args.chains
     scheduler_address = args.scheduler_address
 
-    rows = list(_iter_pdbe_csv(pdbe_csv))
+    rows = list(_iter_pdbe_csv(pdb_id2chain_mapping_file))
     id2chains: dict[str, str] = {row["pdb_id"]: row["chain"] for row in rows}
 
     new_files = filter_files_on_chain(input_dir, id2chains, output_dir, scheduler_address)
