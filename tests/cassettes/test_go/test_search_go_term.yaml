@@ -1,0 +1,39 @@
+interactions:
+- request:
+    body: null
+    headers: {}
+    method: GET
+    uri: https://www.ebi.ac.uk/QuickGO/services/ontology/go/search?query=GO:0043293&limit=100&page=1
+  response:
+    body:
+      string: '{"numberOfHits":4,"results":[{"id":"GO:0043293","isObsolete":false,"name":"apoptosome","definition":{"text":"A
+        multisubunit protein complex involved in the signaling phase of the apoptotic
+        process. In mammals it is typically composed of seven Apaf-1 subunits bound
+        to cytochrome c and caspase-9. A similar complex to promote apoptosis is formed
+        from homologous gene products in other eukaryotic organisms."},"aspect":"cellular_component"},{"id":"GO:0000811","isObsolete":false,"name":"GINS
+        complex","definition":{"text":"A heterotetrameric protein complex that associates
+        with replication origins, where it is required for the initiation of DNA replication,
+        and with replication forks."},"aspect":"cellular_component"},{"id":"GO:0070966","isObsolete":false,"name":"nuclear-transcribed
+        mRNA catabolic process, no-go decay","definition":{"text":"The chemical reactions
+        and pathways resulting in the breakdown of the transcript body of a nuclear-transcribed
+        mRNA with stalls in translation elongation."},"aspect":"biological_process"},{"id":"GO:0001591","isObsolete":false,"name":"dopamine
+        neurotransmitter receptor activity, coupled via Gi/Go","definition":{"text":"Combining
+        with the neurotransmitter dopamine and activating adenylate cyclase via coupling
+        to Gi/Go to initiate a change in cell activity."},"aspect":"molecular_function"}],"pageInfo":{"resultsPerPage":100,"current":1,"total":1}}'
+    headers:
+      Access-Control-Allow-Headers:
+      - Content-Type
+      Access-Control-Allow-Origin:
+      - '*'
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 18 Aug 2025 13:57:47 GMT
+      Strict-Transport-Security:
+      - max-age=0
+      Transfer-Encoding:
+      - chunked
+    status:
+      code: 200
+      message: ''
+version: 1
