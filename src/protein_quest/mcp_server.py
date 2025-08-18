@@ -33,13 +33,18 @@ Examples:
 
 """
 
+from collections.abc import Collection, Generator, Mapping
+from pathlib import Path
 from textwrap import dedent
 from typing import Annotated
 
 from fastmcp import FastMCP
 from pydantic import Field
 
-from protein_quest.uniprot import PdbResult, Query, search4pdb, search4uniprot
+from protein_quest.go import Aspect, search_go_term
+from protein_quest.pdbe.fetch import fetch as pdbe_fetch
+from protein_quest.pdbe.io import glob_structure_files, nr_residues_in_chain, write_single_chain_pdb_file
+from protein_quest.uniprot import PdbResult, Query, Taxon, search4pdb, search4taxon, search4uniprot
 
 mcp = FastMCP("protein-quest")
 
@@ -72,4 +77,63 @@ def search_pdb(
     return search4pdb(uniprot_accs, limit=limit)
 
 
+@mcp.tool
+def fetch_structure_from_pdbe(
+    ids: set[str], save_dir: Path
+) -> Annotated[Mapping[str, Path], Field(description="Mapping of PDB IDs to their file paths.")]:
+    """Fetch PDB structures as mmCIF files from PDBe and save them to the specified directory."""
+    return pdbe_fetch(ids, save_dir)
+
+
+# MCP tool for extracting a single chain from a structure file
+@mcp.tool
+def extract_single_chain_from_structure(
+    input_file: Path,
+    chain2keep: str,
+    output_dir: Path,
+    out_chain: str = "A",
+) -> Path | None:
+    """
+    Extract a single chain from a mmCIF/pdb file and write to a new file.
+
+    Args:
+        input_file: Path to the input mmCIF/pdb file.
+        chain2keep: The chain to keep.
+        output_dir: Directory to save the output file.
+        out_chain: The chain identifier for the output file.
+
+    Returns:
+        Path to the output mmCIF/pdb file or None if not created.
+    """
+    return write_single_chain_pdb_file(input_file, chain2keep, output_dir, out_chain)
+
+
+@mcp.tool
+def list_structure_files(path: Path) -> Generator[Path]:
+    """List structure files (.pdb, .pdb.gz, .cif, .cif.gz) in the specified directory."""
+    yield from glob_structure_files(path)
+
+
+@mcp.tool
+def count_residues_in_chain(file: Path, chain: str = "A") -> int:
+    """Count the number of residues in a specific chain of a structure file."""
+    return nr_residues_in_chain(file, chain)
+
+
+@mcp.tool
+def search_taxon_by_name(term: str) -> Collection[Taxon]:
+    """Search NCBI Taxonomy by common or scientific name."""
+    return search4taxon(term)
+
+
+@mcp.tool
+def search_gene_ontology_term(term: str, aspect: Aspect | None = None):
+    """Search Gene Ontology (GO) terms by name and aspect.
+
+    If aspect is not provided, all aspects are included.
+    """
+    return search_go_term(term, aspect)
+
 # TODO add all cli subcommands as mcp tools
+# - Alphafold fetch and filter
+# - use @mcp.resource and @mcp.prompt
