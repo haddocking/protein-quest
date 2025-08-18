@@ -1,4 +1,6 @@
-from protein_quest.go import SearchResponse, converter
+import pytest
+
+from protein_quest.go import GoTerm, SearchResponse, converter, search_go_term
 
 
 def test_converter():
@@ -14,3 +16,25 @@ def test_converter():
         == "The directed movement of calcium (Ca) ions into, out of or within a cell, or between cells, by means of some agent such as a transporter or pore."
     )
     assert result.results[0].is_obsolete is False
+
+
+@pytest.mark.vcr
+@pytest.mark.asyncio
+async def test_search_go_term():
+    results = await search_go_term("GO:0043293", limit=1)
+
+    expected = [
+        GoTerm(
+            id="GO:0043293",
+            is_obsolete=False,
+            name="apoptosome",
+            definition="A multisubunit protein complex involved in the signaling "
+            "phase of the apoptotic process. In mammals it is typically "
+            "composed of seven Apaf-1 subunits bound to cytochrome c "
+            "and caspase-9. A similar complex to promote apoptosis is "
+            "formed from homologous gene products in other eukaryotic "
+            "organisms.",
+            aspect="cellular_component",
+        )
+    ]
+    assert results == expected

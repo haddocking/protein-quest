@@ -1,0 +1,71 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/sparql-results+json,application/json,text/javascript,application/javascript
+      Connection:
+      - close
+      Host:
+      - sparql.uniprot.org
+      User-Agent:
+      - sparqlwrapper 2.0.0 (rdflib.github.io/sparqlwrapper)
+    method: GET
+    uri: https://sparql.uniprot.org/sparql?query=%0A++++++++PREFIX+up%3A+%3Chttp%3A//purl.uniprot.org/core/%3E%0A++++++++PREFIX+taxon%3A+%3Chttp%3A//purl.uniprot.org/taxonomy/%3E%0A++++++++PREFIX+rdf%3A+%3Chttp%3A//www.w3.org/1999/02/22-rdf-syntax-ns%23%3E%0A++++++++PREFIX+rdfs%3A+%3Chttp%3A//www.w3.org/2000/01/rdf-schema%23%3E%0A++++++++PREFIX+skos%3A+%3Chttp%3A//www.w3.org/2004/02/skos/core%23%3E%0A++++++++PREFIX+GO%3A%3Chttp%3A//purl.obolibrary.org/obo/GO_%3E%0A%0A++++++++SELECT+%3Fprotein+%3Fpdb_db+%3Fpdb_method+%3Fpdb_resolution%0A+%28GROUP_CONCAT%28DISTINCT+%3Fpdb_chain%3B+separator%3D%22%2C%22%29+AS+%3Fpdb_chains%29%0A%0A++++++++WHERE+%7B%0A%0A++++++++%23+---+Protein+Selection+---%0A++++++++VALUES+%28%3Fac%29+%7B+%28%22P05067%22%29%7D%0A++++++++BIND+%28IRI%28CONCAT%28%22http%3A//purl.uniprot.org/uniprot/%22%2C%3Fac%29%29+AS+%3Fprotein%29%0A++++++++%3Fprotein+a+up%3AProtein+.%0A%0A%0A%23+---+PDB+Info+---%0A%3Fprotein+rdfs%3AseeAlso+%3Fpdb_db+.%0A%3Fpdb_db+up%3Adatabase+%3Chttp%3A//purl.uniprot.org/database/PDB%3E+.%0A%3Fpdb_db+up%3Amethod+%3Fpdb_method+.%0A%3Fpdb_db+up%3AchainSequenceMapping+%3FchainSequenceMapping+.%0ABIND%28STRAFTER%28STR%28%3FchainSequenceMapping%29%2C+%22isoforms/%22%29+AS+%3FisoformPart%29%0AFILTER%28STRSTARTS%28%3FisoformPart%2C+CONCAT%28%3Fac%2C+%22-%22%29%29%29%0A%3FchainSequenceMapping+up%3Achain+%3Fpdb_chain+.%0AOPTIONAL+%7B+%3Fpdb_db+up%3Aresolution+%3Fpdb_resolution+.+%7D%0A%0A%0A++++++++%7D%0A+++++++++GROUP+BY+%3Fprotein+%3Fpdb_db+%3Fpdb_method+%3Fpdb_resolution%0A++++++++LIMIT+1%0A&format=json&output=json&results=json
+  response:
+    body:
+      string: "{\n  \"head\" : {\n    \"vars\" : [\n      \"protein\",\n      \"pdb_db\",\n
+        \     \"pdb_method\",\n      \"pdb_resolution\",\n      \"pdb_chains\"\n    ]\n
+        \ },\n  \"results\" : {\n    \"bindings\" : [\n      {\n        \"protein\"
+        : {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P05067\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1AAP\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.5\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=287-344\"\n        }\n      }\n    ]\n  }\n}"
+    headers:
+      Access-Control-Allow-Headers:
+      - origin, x-requested-with, content-type, X-Release, queryid
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - X-Total-Results, X-Release, queryid, content-type, user-agent, cache-control,
+        etag, range
+      Cache-Control:
+      - public
+      Connection:
+      - close
+      Content-Disposition:
+      - attachment; filename="sparql-F52A566A4EBDCB2B71D58224959F5B99.srj"
+      Content-Length:
+      - '826'
+      Content-Type:
+      - application/sparql-results+json
+      Date:
+      - Mon, 18 Aug 2025 13:40:15 GMT
+      ETag:
+      - W/"2025_03"
+      Expires:
+      - Tue, 19 Aug 2025 13:40:14 GMT
+      Server:
+      - Apache
+      Strict-Transport-Security:
+      - max-age=31536001; includeSubDomains
+      Vary:
+      - Negotiate,Accept,Accept-Encoding,Content-Type
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Powered-By:
+      - sib.swiss
+      X-Release:
+      - '2025_03'
+      queryid:
+      - '10827012251'
+    status:
+      code: 200
+      message: ''
+version: 1

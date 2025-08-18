@@ -6,10 +6,16 @@ on:
     - main
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: test
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
@@ -19,7 +25,26 @@ jobs:
       - name: Install pocl
         run: uv pip install pocl-binary-distribution==3.0
       - name: Run tests
-        run: uv run pytest
+        run: |
+          uv run pytest --cov --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
+          echo $? > pytest-exitcode
+        continue-on-error: true
+      # Always upload coverage and test results, even if tests fail
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          use_oidc: true
+          files: coverage.xml
+      - uses: codecov/test-results-action@v1
+        with:
+          use_oidc: true
+          files: junit.xml
+      - name: Fail job if pytest failed
+        run: |
+          if [ -f pytest-exitcode ] && [ "$(cat pytest-exitcode)" -ne 0 ]; then
+            echo "Pytest failed, failing job."
+            exit 1
+          fi
   build:
     name: build
     runs-on: ubuntu-latest
