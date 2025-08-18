@@ -88,6 +88,5 @@ The code coverage and tests results are stored at https://app.codecov.io/gh/hadd
 
 The search functions of the protein-quest package talk to web services on the Internet.
 To have fast tests we use [pytest-recording](https://github.com/kiwicom/pytest-recording) to record and replay HTTP interactions.
-
 See [pytest-recording documentation](https://github.com/kiwicom/pytest-recording) for more details on how to use it.
 Like overwrite previous recordings in test/cassettes/**.yaml files with `--record-mode=rewrite`.
