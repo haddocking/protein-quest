@@ -84,6 +84,8 @@ python3 -m http.server -d site
 
 ## Contributing to tests
 
+The code coverage and tests results are stored at https://app.codecov.io/gh/haddocking/protein-quest/ .
+
 The search functions of the protein-quest package talk to web services on the Internet.
 To have fast tests we use [pytest-recording](https://github.com/kiwicom/pytest-recording) to record and replay HTTP interactions.
 
