@@ -3,11 +3,18 @@ from textwrap import dedent
 import pytest
 
 from protein_quest.uniprot import (
+    PdbResult,
     Query,
+    Taxon,
     _append_subcellular_location_filters,
     _build_sparql_query_pdb,
     _build_sparql_query_uniprot,
     _first_chain_from_uniprot_chains,
+    search4af,
+    search4emdb,
+    search4pdb,
+    search4taxon,
+    search4uniprot,
 )
 
 
@@ -258,3 +265,61 @@ def test_first_chain_from_uniprot_chains(query, expected):
     result = _first_chain_from_uniprot_chains(query)
 
     assert result == expected
+
+
+@pytest.mark.vcr()
+def test_search4uniprot():
+    query = Query(
+        taxon_id="9606",
+        reviewed=True,
+        subcellular_location_uniprot="nucleus",
+        subcellular_location_go="GO:0005634",  # Cellular component - Nucleus
+        molecular_function_go="GO:0003677",  # Molecular function - DNA binding
+    )
+
+    results = search4uniprot(query, limit=1)
+
+    expected = {"A0A087WUV0"}
+    assert results == expected
+
+
+@pytest.mark.vcr()
+def test_search4pdb():
+    uniprot_accession = "P05067"
+
+    results = search4pdb({uniprot_accession}, limit=1)
+
+    expected = {
+        uniprot_accession: {
+            PdbResult(id="1AAP", method="X-Ray_Crystallography", resolution="1.5", uniprot_chains="A/B=287-344")
+        }
+    }
+    assert results == expected
+    assert next(iter(results[uniprot_accession])).chain == "A"
+
+
+@pytest.mark.vcr()
+def test_search4af():
+    uniprot_accession = "P05067"
+
+    results = search4af({uniprot_accession}, limit=1)
+
+    expected = {uniprot_accession: {uniprot_accession}}
+    assert results == expected
+
+
+@pytest.mark.vcr()
+def test_search4emdb():
+    uniprot_accession = "P05067"
+    results = search4emdb({uniprot_accession}, limit=1)
+
+    expected = {uniprot_accession: {"EMD-0405"}}
+    assert results == expected
+
+
+@pytest.mark.vcr()
+def test_search4taxon():
+    results = search4taxon("Human", limit=1)
+
+    expected = [Taxon(taxon_id="9606", scientific_name="Homo sapiens", common_name="Human", rank="Species")]
+    assert results == expected

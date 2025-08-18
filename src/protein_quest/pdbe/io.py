@@ -49,6 +49,9 @@ def write_structure(structure: gemmi.Structure, path: Path):
         path: The file path to write the structure to.
             The format depends on the file extension.
             Supported extensions are .pdb, .pdb.gz, .cif, .cif.gz.
+
+    Raises:
+        NotImplementedError: If the file extension is not supported.
     """
     if path.name.endswith(".pdb"):
         body: str = structure.make_pdb_string()
@@ -65,6 +68,9 @@ def write_structure(structure: gemmi.Structure, path: Path):
         cif_str = doc.as_string()
         with gzip.open(path, "wt") as f:
             f.write(cif_str)
+    else:
+        msg = f"Unsupported file extension in {path.name}. Supported extensions are .pdb, .pdb.gz, .cif, .cif.gz"
+        raise ValueError(msg)
 
 
 def _split_name_and_extension(name: str) -> tuple[str, str]:

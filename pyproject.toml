@@ -46,6 +46,7 @@ dev = [
     "pyrefly>=0.23.1",
     "pytest>=8.3.5",
     "pytest-cov>=6.2.1",
+    "pytest-vcr>=1.0.2",
     "types-aiofiles>=24.1.0.20250326",
     "types-tqdm>=4.67.0.20250513",
 ]

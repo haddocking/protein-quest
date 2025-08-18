@@ -3,7 +3,13 @@ from pathlib import Path
 import gemmi
 import pytest
 
-from protein_quest.pdbe.io import nr_residues_in_chain, write_single_chain_pdb_file
+from protein_quest.pdbe.io import (
+    glob_structure_files,
+    locate_structure_file,
+    nr_residues_in_chain,
+    write_single_chain_pdb_file,
+    write_structure,
+)
 
 
 @pytest.fixture
@@ -54,3 +60,22 @@ def test_nr_residues_in_chain_wrongchain(cif_path: Path, caplog):
 
     assert residue_count == 0
     assert "Chain Z not found in" in caplog.text
+
+
+@pytest.mark.parametrize("extension", [".pdb", ".pdb.gz", ".cif", ".cif.gz"])
+def test_write_structure(cif_path: Path, tmp_path: Path, extension: str):
+    structure = gemmi.read_structure(str(cif_path))
+    output_file = tmp_path / f"bla{extension}"
+
+    write_structure(structure, output_file)
+
+    found_files = list(glob_structure_files(tmp_path))
+    assert len(found_files) == 1
+    assert found_files[0].name == output_file.name
+
+
+def test_locate_structure_file(cif_path: Path):
+    root = cif_path.parent
+    result = locate_structure_file(root, "2y29")
+
+    assert result == cif_path
