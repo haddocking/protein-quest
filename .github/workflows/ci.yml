@@ -26,7 +26,7 @@ jobs:
         run: uv pip install pocl-binary-distribution==3.0
       - name: Run tests
         run: |
-          uv run pytest --cov --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
+          uv run pytest --cov --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
           echo $? > pytest-exitcode
         continue-on-error: true
       # Always upload coverage and test results, even if tests fail
