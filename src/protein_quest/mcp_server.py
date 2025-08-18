@@ -43,7 +43,7 @@ from pydantic import Field
 
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, ConfidenceFilterResult, filter_file_on_residues
 from protein_quest.alphafold.fetch import AlphaFoldEntry, DownloadableFormat, fetch_many
-from protein_quest.go import Aspect, search_go_term
+from protein_quest.go import Aspect, GoTerm, search_go_term
 from protein_quest.pdbe.fetch import fetch as pdbe_fetch
 from protein_quest.pdbe.io import glob_structure_files, nr_residues_in_chain, write_single_chain_pdb_file
 from protein_quest.uniprot import PdbResult, Query, Taxon, search4af, search4pdb, search4taxon, search4uniprot
@@ -110,9 +110,9 @@ def extract_single_chain_from_structure(
 
 
 @mcp.tool
-def list_structure_files(path: Path) -> Generator[Path]:
+def list_structure_files(path: Path) -> list[Path]:
     """List structure files (.pdb, .pdb.gz, .cif, .cif.gz) in the specified directory."""
-    yield from glob_structure_files(path)
+    return list(glob_structure_files(path))
 
 
 @mcp.tool
@@ -128,12 +128,12 @@ def search_taxon_by_name(term: str) -> Collection[Taxon]:
 
 
 @mcp.tool
-def search_gene_ontology_term(term: str, aspect: Aspect | None = None):
+async def search_gene_ontology_term(term: str, aspect: Aspect | None = None) -> list[GoTerm]:
     """Search Gene Ontology (GO) terms by name and aspect.
 
     If aspect is not provided, all aspects are included.
     """
-    return search_go_term(term, aspect)
+    return await search_go_term(term, aspect)
 
 
 @mcp.tool
