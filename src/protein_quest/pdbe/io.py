@@ -51,7 +51,7 @@ def write_structure(structure: gemmi.Structure, path: Path):
             Supported extensions are .pdb, .pdb.gz, .cif, .cif.gz.
 
     Raises:
-        NotImplementedError: If the file extension is not supported.
+        ValueError: If the file extension is not supported.
     """
     if path.name.endswith(".pdb"):
         body: str = structure.make_pdb_string()
