@@ -95,6 +95,41 @@ class ConfidenceFilterResult:
     filtered_file: Path | None = None
 
 
+def filter_file_on_residues(file: Path, query: ConfidenceFilterQuery, filtered_dir: Path) -> ConfidenceFilterResult:
+    """Filter a single AlphaFoldDB structure file based on confidence.
+
+    Args:
+        file: The path to the PDB file to filter.
+        query: The confidence filter query.
+        filtered_dir: The directory to save the filtered PDB file.
+
+    Returns:
+        result with filtered_file property set to Path where filtered PDB file is saved.
+        or None if structure was filtered out.
+    """
+    structure = gemmi.read_structure(str(file))
+    residues = set(find_high_confidence_residues(structure, query.confidence))
+    count = len(residues)
+    if count < query.min_threshold or count > query.max_threshold:
+        # Skip structure that is outside the min and max threshold
+        # just return number of high confidence residues
+        return ConfidenceFilterResult(
+            input_file=file.name,
+            count=count,
+        )
+    filtered_file = filtered_dir / file.name
+    new_structure = filter_out_low_confidence_residues(
+        structure,
+        residues,
+    )
+    write_structure(new_structure, filtered_file)
+    return ConfidenceFilterResult(
+        input_file=file.name,
+        count=count,
+        filtered_file=filtered_file,
+    )
+
+
 def filter_files_on_confidence(
     alphafold_pdb_files: list[Path], query: ConfidenceFilterQuery, filtered_dir: Path
 ) -> Generator[ConfidenceFilterResult]:
@@ -113,24 +148,4 @@ def filter_files_on_confidence(
     # In ../filter.py:filter_files_on_residues() we filter on number of residues on a file level
     # here we filter on file level and inside file remove low confidence residues
     for pdb_file in alphafold_pdb_files:
-        structure = gemmi.read_structure(str(pdb_file))
-        residues = set(find_high_confidence_residues(structure, query.confidence))
-        count = len(residues)
-        if count < query.min_threshold or count > query.max_threshold:
-            yield ConfidenceFilterResult(
-                input_file=pdb_file.name,
-                count=count,
-            )
-            # Skip structure that is outside the min and max threshold
-            continue
-        filtered_file = filtered_dir / pdb_file.name
-        new_structure = filter_out_low_confidence_residues(
-            structure,
-            residues,
-        )
-        write_structure(new_structure, filtered_file)
-        yield ConfidenceFilterResult(
-            input_file=pdb_file.name,
-            count=count,
-            filtered_file=filtered_file,
-        )
+        yield filter_file_on_residues(pdb_file, query, filtered_dir)

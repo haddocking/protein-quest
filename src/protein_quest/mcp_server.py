@@ -41,10 +41,12 @@ from typing import Annotated
 from fastmcp import FastMCP
 from pydantic import Field
 
+from protein_quest.alphafold.confidence import ConfidenceFilterQuery, ConfidenceFilterResult, filter_file_on_residues
+from protein_quest.alphafold.fetch import AlphaFoldEntry, DownloadableFormat, fetch_many
 from protein_quest.go import Aspect, search_go_term
 from protein_quest.pdbe.fetch import fetch as pdbe_fetch
 from protein_quest.pdbe.io import glob_structure_files, nr_residues_in_chain, write_single_chain_pdb_file
-from protein_quest.uniprot import PdbResult, Query, Taxon, search4pdb, search4taxon, search4uniprot
+from protein_quest.uniprot import PdbResult, Query, Taxon, search4af, search4pdb, search4taxon, search4uniprot
 
 mcp = FastMCP("protein-quest")
 
@@ -64,7 +66,7 @@ def search_uniprot(
 @mcp.tool
 def search_pdb(
     uniprot_accs: set[str],
-    limit: Annotated[int, Field(gt=0, description="Limit the number of pdb entries returned")] = 100,
+    limit: Annotated[int, Field(gt=0, description="Limit the number of entries returned")] = 100,
 ) -> Annotated[
     dict[str, set[PdbResult]],
     Field(
@@ -78,14 +80,13 @@ def search_pdb(
 
 
 @mcp.tool
-def fetch_structure_from_pdbe(
+def fetch_structures_from_pdbe(
     ids: set[str], save_dir: Path
 ) -> Annotated[Mapping[str, Path], Field(description="Mapping of PDB IDs to their file paths.")]:
     """Fetch PDB structures as mmCIF files from PDBe and save them to the specified directory."""
     return pdbe_fetch(ids, save_dir)
 
 
-# MCP tool for extracting a single chain from a structure file
 @mcp.tool
 def extract_single_chain_from_structure(
     input_file: Path,
@@ -134,6 +135,84 @@ def search_gene_ontology_term(term: str, aspect: Aspect | None = None):
     """
     return search_go_term(term, aspect)
 
-# TODO add all cli subcommands as mcp tools
-# - Alphafold fetch and filter
-# - use @mcp.resource and @mcp.prompt
+
+@mcp.tool
+def search_alphafolds(
+    uniprot_accs: set[str],
+    limit: Annotated[int, Field(gt=0, description="Limit the number of entries returned")] = 100,
+) -> Annotated[
+    set[str],
+    Field(description="Set of uniprot accessions which have an AlphaFold entry"),
+]:
+    """Search for AlphaFold entries in UniProtKB accessions."""
+    # each uniprot accesion can have one or more AlphaFold IDs
+    # an AlphaFold ID is the same as the uniprot accession
+    # so we return a subset of uniprot_accs
+    results = search4af(uniprot_accs, limit)
+    return {k for k, v in results.items() if v}
+
+
+@mcp.tool
+def fetch_alphafold_structures(uniprot_accs: set[str], save_dir: Path) -> list[AlphaFoldEntry]:
+    """Fetch the AlphaFold summary and mmcif file for given UniProt accessions.
+
+    Args:
+        uniprot_accs: A set of UniProt accessions.
+        save_dir: The directory to save the fetched files.
+
+    Returns:
+        A list of AlphaFold entries.
+    """
+    what: set[DownloadableFormat] = {"cif"}
+    return fetch_many(uniprot_accs, save_dir, what)
+
+
+@mcp.tool
+def alphafold_confidence_filter(file: Path, query: ConfidenceFilterQuery, filtered_dir: Path) -> ConfidenceFilterResult:
+    """Take a mmcif/PDB file and filter it based on confidence (plDDT) scores.
+
+    If passes filter writes file to filtered_dir with residues above confidence threshold.
+    """
+    return filter_file_on_residues(file, query, filtered_dir)
+
+
+@mcp.prompt
+def candidate_structures(
+    species: str = "Human",
+    cellular_location: str = "nucleus",
+    confidence: int = 90,
+    min_residues: int = 100,
+    max_residues: int = 200,
+) -> str:
+    """Prompt to find candidate structures.
+
+    Args:
+        species: The species to search for (default: "Human").
+        cellular_location: The cellular location to search for (default: "nucleus").
+        confidence: The confidence threshold for AlphaFold structures (default: 90).
+        min_residues: Minimum number of high confidence residues (default: 100).
+        max_residues: Maximum number of high confidence residues (default: 200).
+
+    Returns:
+        A prompt string to find candidate structures.
+    """
+    return dedent(f"""\
+        Given the species '{species}' and cellular location '{cellular_location}' find the candidate structures.
+        Download structures from 2 sources namely PDB and Alphafold.
+        For alphafold I only want to use high confidence scores of over {confidence}.
+        and only keep structures with number of high confidence residues between {min_residues} and {max_residues}.
+
+        1. Search uniprot for proteins related to {species} and {cellular_location}.
+            1. For the species find the NCBI taxonomy id.
+            2. For cellular location find the associated GO term.
+            3. Find uniprot accessions based on NCBI taxonomy id and cellular location GO term.
+        2. For PDB
+            1. Search for structures related to the identified proteins.
+            2. Download each PDB entry from PDBe
+            3. Extract chain for the protein of interest.
+        3. For Alphafold
+            1. Search for AlphaFold entries related to the identified proteins.
+            2. Download each AlphaFold entry.
+            3. Filter the structures based on {confidence} as confidence
+               and nr residues between {min_residues} and {max_residues}.
+    """)

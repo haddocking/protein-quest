@@ -140,6 +140,8 @@ The server can be started with:
 protein-quest mcp
 ```
 
+The mcp server contains an prompt template to search/retrieve/filter candidate structures.
+
 ## Contributing
 
 For development information and contribution guidelines, please see [CONTRIBUTING.md](CONTRIBUTING.md).
