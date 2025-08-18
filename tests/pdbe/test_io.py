@@ -54,4 +54,3 @@ def test_nr_residues_in_chain_wrongchain(cif_path: Path, caplog):
 
     assert residue_count == 0
     assert "Chain Z not found in" in caplog.text
-
