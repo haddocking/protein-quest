@@ -3,6 +3,7 @@ import csv
 import logging
 import os
 from collections.abc import Callable, Iterable
+from importlib.util import find_spec
 from io import TextIOWrapper
 from pathlib import Path
 from textwrap import dedent
@@ -304,6 +305,25 @@ def _add_filter_subcommands(subparsers: argparse._SubParsersAction):
     _add_filter_residue_parser(subsubparsers)
 
 
+def _add_mcp_command(subparsers: argparse._SubParsersAction):
+    """Add MCP command."""
+
+    parser = subparsers.add_parser(
+        "mcp",
+        help="Run Model Context Protocol (MCP) server",
+        description=(
+            "Run Model Context Protocol (MCP) server. "
+            "Can be used by agentic LLMs like Claude Sonnet 4 as a set of tools."
+        ),
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+    )
+    parser.add_argument(
+        "--transport", default="stdio", choices=["stdio", "http", "streamable-http"], help="Transport protocol to use"
+    )
+    parser.add_argument("--host", default="127.0.0.1", help="Host to bind the server to")
+    parser.add_argument("--port", default=8000, type=int, help="Port to bind the server to")
+
+
 def make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Protein Quest CLI", prog="protein-quest", formatter_class=ArgumentDefaultsRichHelpFormatter
@@ -316,6 +336,7 @@ def make_parser() -> argparse.ArgumentParser:
     _add_search_subcommands(subparsers)
     _add_retrieve_subcommands(subparsers)
     _add_filter_subcommands(subparsers)
+    _add_mcp_command(subparsers)
 
     return parser
 
@@ -487,6 +508,19 @@ def _handle_filter_residue(args):
     rprint(f"Filtered files written to {output_dir} directory.")
 
 
+def _handle_mcp(args):
+    if find_spec("fastmcp") is None:
+        msg = "Unable to start MCP server, please install `protein-quest[mcp]`."
+        raise ImportError(msg)
+
+    from protein_quest.mcp_server import mcp  # noqa: PLC0415
+
+    if args.transport == "stdio":
+        mcp.run(transport=args.transport)
+    else:
+        mcp.run(transport=args.transport, host=args.host, port=args.port)
+
+
 HANDLERS: dict[tuple[str, str | None], Callable] = {
     ("search", "uniprot"): _handle_search_uniprot,
     ("search", "pdbe"): _handle_search_pdbe,
@@ -496,6 +530,7 @@ HANDLERS: dict[tuple[str, str | None], Callable] = {
     ("filter", "confidence"): _handle_filter_confidence,
     ("filter", "chain"): _handle_filter_chain,
     ("filter", "residue"): _handle_filter_residue,
+    ("mcp", None): _handle_mcp,
 }
 
 

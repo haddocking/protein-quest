@@ -119,6 +119,28 @@ protein-quest filter residue  \
     ./filtered-chains ./filtered
 ```
 
+##  Model Context Protocol (MCP) server
+
+Protein quest can also help LLMs like Claude Sonnet 4 by providing a [set of tools](https://modelcontextprotocol.io/docs/learn/server-concepts#tools-ai-actions) for protein structures.
+
+![Protein Quest MCP workflow](https://github.com/haddocking/protein-quest/raw/main/docs/protein-quest-mcp.png)
+
+To run mcp server you have to install the `mcp` extra with:
+
+```shell
+pip install protein-quest[mcp]
+# or in development
+uv sync --all-extras --all-groups
+```
+
+The server can be started with:
+
+```shell
+protein-quest mcp
+```
+
+The mcp server contains an prompt template to search/retrieve/filter candidate structures.
+
 ## Contributing
 
 For development information and contribution guidelines, please see [CONTRIBUTING.md](CONTRIBUTING.md).

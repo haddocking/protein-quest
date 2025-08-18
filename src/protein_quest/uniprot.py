@@ -15,7 +15,7 @@ class Query:
     """Search query for UniProtKB.
 
     Parameters:
-        taxon_id: Taxon ID to filter results by organism (e.g., "9606" for human).
+        taxon_id: NCBI Taxon ID to filter results by organism (e.g., "9606" for human).
         reviewed: Whether to filter results by reviewed status (True for reviewed, False for unreviewed).
         subcellular_location_uniprot: Subcellular location in UniProt format (e.g., "nucleus").
         subcellular_location_go: Subcellular location in GO format. Can be a single GO term
@@ -24,11 +24,12 @@ class Query:
             (e.g., "GO:0003674") or a collection of GO terms (e.g., ["GO:0003674", "GO:0008150"]).
     """
 
+    # TODO make taxon_id an int
     taxon_id: str | None
-    reviewed: bool | None
-    subcellular_location_uniprot: str | None
-    subcellular_location_go: str | list[str] | None
-    molecular_function_go: str | list[str] | None
+    reviewed: bool | None = None
+    subcellular_location_uniprot: str | None = None
+    subcellular_location_go: str | list[str] | None = None
+    molecular_function_go: str | list[str] | None = None
 
 
 def _first_chain_from_uniprot_chains(uniprot_chains: str) -> str:
@@ -506,3 +507,60 @@ def search4emdb(uniprot_accs: Iterable[str], limit: int = 10_000, timeout: int =
     )
     limit_check("Search for EMDB entries on uniprot", limit, len(raw_results))
     return _flatten_results_emdb(raw_results)
+
+
+@dataclass(frozen=True)
+class Taxon:
+    taxon_id: str
+    scientific_name: str
+    rank: str
+    common_name: str | None = None
+
+
+def search4taxon(term: str, limit: int = 10_000, timeout: int = 1_800) -> Collection[Taxon]:
+    """
+    Search for taxon information in UniProtKB.
+
+    Search is case sensitive. So use `Homo sapiens` as the search term.
+
+    Args:
+        term: Search term for the taxon (scientific name, common name).
+        limit: Maximum number of results to return.
+        timeout: Timeout for the SPARQL query in seconds.
+
+    Returns:
+        Collection of Taxon objects matching the search term.
+    """
+    # TODO make case insensitive and contains, but still fast
+    # TODO also search otherName, but still fast and group concatenated names
+    sparql_query = dedent(f"""
+        PREFIX up: <http://purl.uniprot.org/core/>
+        PREFIX taxon: <http://purl.uniprot.org/taxonomy/>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+        SELECT ?ncbiTaxid ?scientific_name ?ncbiRank ?common_name
+        WHERE {{
+            ?taxon a up:Taxon .
+            ?taxon up:scientificName ?scientific_name .
+            ?taxon up:rank ?rank .
+            BIND(strafter(str(?taxon), 'onomy/') AS ?ncbiTaxid)
+            BIND(strafter(str(?rank), '/Taxonomic_Rank_') AS ?ncbiRank)
+            OPTIONAL {{ ?taxon up:commonName ?common_name . }}
+            FILTER (
+                ?scientific_name = "{term}" ||
+                ?common_name = "{term}"
+            )
+        }}
+        LIMIT {limit}
+    """)
+
+    raw_results = _execute_sparql_search(sparql_query=sparql_query, timeout=timeout)
+    return [
+        Taxon(
+            taxon_id=result["ncbiTaxid"]["value"],
+            scientific_name=result["scientific_name"]["value"],
+            rank=result["ncbiRank"]["value"],
+            common_name=result.get("common_name", {}).get("value"),
+        )
+        for result in raw_results
+    ]
