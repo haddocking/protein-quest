@@ -39,11 +39,11 @@ interactions:
       Content-Type:
       - application/sparql-results+json
       Date:
-      - Mon, 18 Aug 2025 13:28:42 GMT
+      - Mon, 18 Aug 2025 13:40:18 GMT
       ETag:
       - W/"2025_03"
       Expires:
-      - Tue, 19 Aug 2025 13:28:41 GMT
+      - Tue, 19 Aug 2025 13:40:18 GMT
       Server:
       - Apache
       Strict-Transport-Security:
@@ -59,7 +59,7 @@ interactions:
       X-Release:
       - '2025_03'
       queryid:
-      - '10827012125'
+      - '10827012252'
     status:
       code: 200
       message: ''

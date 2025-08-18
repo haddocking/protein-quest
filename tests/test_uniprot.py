@@ -267,7 +267,7 @@ def test_first_chain_from_uniprot_chains(query, expected):
     assert result == expected
 
 
-@pytest.mark.vcr()
+@pytest.mark.vcr
 def test_search4uniprot():
     query = Query(
         taxon_id="9606",
@@ -283,7 +283,7 @@ def test_search4uniprot():
     assert results == expected
 
 
-@pytest.mark.vcr()
+@pytest.mark.vcr
 def test_search4pdb():
     uniprot_accession = "P05067"
 
@@ -298,7 +298,7 @@ def test_search4pdb():
     assert next(iter(results[uniprot_accession])).chain == "A"
 
 
-@pytest.mark.vcr()
+@pytest.mark.vcr
 def test_search4af():
     uniprot_accession = "P05067"
 
@@ -308,7 +308,7 @@ def test_search4af():
     assert results == expected
 
 
-@pytest.mark.vcr()
+@pytest.mark.vcr
 def test_search4emdb():
     uniprot_accession = "P05067"
     results = search4emdb({uniprot_accession}, limit=1)
@@ -317,7 +317,7 @@ def test_search4emdb():
     assert results == expected
 
 
-@pytest.mark.vcr()
+@pytest.mark.vcr
 def test_search4taxon():
     results = search4taxon("Human", limit=1)
 
