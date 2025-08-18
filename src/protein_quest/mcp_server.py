@@ -33,7 +33,7 @@ Examples:
 
 """
 
-from collections.abc import Collection, Generator, Mapping
+from collections.abc import Collection, Mapping
 from pathlib import Path
 from textwrap import dedent
 from typing import Annotated
