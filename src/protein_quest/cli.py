@@ -264,6 +264,14 @@ def _add_filter_residue_parser(subparsers: argparse._SubParsersAction):
     )
     parser.add_argument("--min-residues", type=int, default=0, help="Min residues in chain A")
     parser.add_argument("--max-residues", type=int, default=10_000_000, help="Max residues in chain A")
+    parser.add_argument(
+        "--write-stats",
+        type=argparse.FileType("w", encoding="UTF-8"),
+        help=dedent("""\
+            Write filter statistics to file.
+            In CSV format with `<input_file>,<residue_count>,<passed>,<output_file>` columns.
+            Use `-` for stdout."""),
+    )
 
 
 def _add_search_subcommands(subparsers: argparse._SubParsersAction):
@@ -498,14 +506,29 @@ def _handle_filter_chain(args):
 
 
 def _handle_filter_residue(args):
-    input_dir = args.input_dir
-    output_dir = args.output_dir
-    min_residues = args.min_residues
-    max_residues = args.max_residues
+    input_dir = structure(args.input_dir, Path)
+    output_dir = structure(args.output_dir, Path)
+    min_residues = structure(args.min_residues, int)
+    max_residues = structure(args.max_residues, int)
+    stats_file: TextIOWrapper | None = args.write_stats
 
-    passed_count, discarded_count = filter_files_on_residues(input_dir, output_dir, min_residues, max_residues)
-    rprint(f"Filtered {passed_count} and discarded {discarded_count} files.")
-    rprint(f"Filtered files written to {output_dir} directory.")
+    if stats_file:
+        writer = csv.writer(stats_file)
+        writer.writerow(["input_file", "residue_count", "passed", "output_file"])
+
+    nr_passed = 0
+    input_files = sorted(glob_structure_files(input_dir))
+    nr_total = len(input_files)
+    rprint(f"Filtering {nr_total} files in {input_dir} directory by number of residues in chain A.")
+    for r in filter_files_on_residues(input_files, output_dir, min_residues=min_residues, max_residues=max_residues):
+        if stats_file:
+            writer.writerow([r.input_file, r.residue_count, r.passed, r.output_file])
+        if r.passed:
+            nr_passed += 1
+
+    rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
+    if stats_file:
+        rprint(f"Statistics written to {stats_file.name}")
 
 
 def _handle_mcp(args):
