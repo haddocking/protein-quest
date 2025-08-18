@@ -3,7 +3,7 @@ from pathlib import Path
 import gemmi
 import pytest
 
-from protein_quest.pdbe.io import write_single_chain_pdb_file
+from protein_quest.pdbe.io import nr_residues_in_chain, write_single_chain_pdb_file
 
 
 @pytest.fixture
@@ -41,3 +41,17 @@ def test_write_single_chain_pdb_file_unknown_chain(cif_path: Path, tmp_path: Pat
 
     assert output_file is None
     assert "Chain B not found in" in caplog.text
+
+
+def test_nr_residues_in_chain(cif_path: Path):
+    residue_count = nr_residues_in_chain(cif_path, chain="A")
+
+    assert residue_count == 8
+
+
+def test_nr_residues_in_chain_wrongchain(cif_path: Path, caplog):
+    residue_count = nr_residues_in_chain(cif_path, chain="Z")
+
+    assert residue_count == 0
+    assert "Chain Z not found in" in caplog.text
+

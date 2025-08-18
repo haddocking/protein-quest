@@ -10,27 +10,6 @@ from protein_quest import __version__
 logger = logging.getLogger(__name__)
 
 
-def is_chain_in_residues_range(
-    file: Path | str,
-    min_residues: int,
-    max_residues: int,
-    chain: str = "A",
-) -> bool:
-    """Checks if a specific chain in a mmCIF/pdb file has a number of residues within a specified range.
-
-    Args:
-        file: Path to the input mmCIF/pdb file.
-        min_residues: Minimum number of residues.
-        max_residues: Maximum number of residues.
-        chain: Chain to check.
-
-    Returns:
-        True if the chain has a number of residues within the specified range, False otherwise.
-    """
-    nr_residues = nr_residues_in_chain(file, chain)
-    return min_residues <= nr_residues <= max_residues
-
-
 def nr_residues_in_chain(file: Path | str, chain: str = "A") -> int:
     """Returns the number of residues in a specific chain from a mmCIF/pdb file.
 
@@ -45,6 +24,7 @@ def nr_residues_in_chain(file: Path | str, chain: str = "A") -> int:
     model = structure[0]
     gchain = find_chain_in_model(model, chain)
     if gchain is None:
+        logger.warning("Chain %s not found in %s. Returning 0.", chain, file)
         return 0
     return len(gchain)
 

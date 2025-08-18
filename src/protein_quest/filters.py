@@ -1,4 +1,6 @@
 import logging
+from collections.abc import Generator
+from dataclasses import dataclass
 from pathlib import Path
 from shutil import copyfile
 from typing import cast
@@ -9,9 +11,8 @@ from tqdm.auto import tqdm
 
 from protein_quest.parallel import configure_dask_scheduler
 from protein_quest.pdbe.io import (
-    glob_structure_files,
-    is_chain_in_residues_range,
     locate_structure_file,
+    nr_residues_in_chain,
     write_single_chain_pdb_file,
 )
 
@@ -60,32 +61,45 @@ def filter_files_on_chain(
         return cast("list[tuple[str,str, Path | None]]", results)
 
 
+@dataclass
+class FilterStat:
+    """Statistics for filtering files based on residue count in a specific chain.
+
+    Parameters:
+        input_file: The path to the input file.
+        residue_count: The number of residues.
+        passed: Whether the file passed the filtering criteria.
+        output_file: The path to the output file, if passed.
+    """
+
+    input_file: Path
+    residue_count: int
+    passed: bool
+    output_file: Path | None
+
+
 def filter_files_on_residues(
-    input_dir: Path,
-    output_dir: Path,
-    min_residues: int,
-    max_residues: int,
-) -> tuple[int, int]:
-    """Filter PDB/mmCIF files by number of residues in chain A.
+    input_files: list[Path], output_dir: Path, min_residues: int, max_residues: int, chain: str = "A"
+) -> Generator[FilterStat]:
+    """Filter PDB/mmCIF files by number of residues in given chain.
 
     Args:
-        input_dir: The directory containing the input PDB files.
+        input_files: The list of input PDB/mmCIF files.
         output_dir: The directory where the filtered files will be written.
-        min_residues: The minimum number of residues in chain A.
-        max_residues: The maximum number of residues in chain A.
+        min_residues: The minimum number of residues in chain.
+        max_residues: The maximum number of residues in chain.
+        chain: The chain to count residues of.
 
-    Returns:
-        A tuple containing the number of passed and discarded files.
+    Yields:
+        FilterStat objects containing information about the filtering process for each input file.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
-    passed_count = 0
-    input_files = sorted(glob_structure_files(input_dir))
     for input_file in tqdm(input_files, unit="file"):
-        # TODO log the nr of residues in a csv file if --write-stats is given
-        if not is_chain_in_residues_range(input_file, min_residues, max_residues, chain="A"):
-            continue
-        copyfile(input_file, output_dir / input_file.name)
-        passed_count += 1
-
-    discarded_count = len(input_files) - passed_count
-    return passed_count, discarded_count
+        residue_count = nr_residues_in_chain(input_file, chain=chain)
+        passed = min_residues <= residue_count <= max_residues
+        if passed:
+            output_file = output_dir / input_file.name
+            copyfile(input_file, output_file)
+            yield FilterStat(input_file, residue_count, True, output_file)
+        else:
+            yield FilterStat(input_file, residue_count, False, None)
