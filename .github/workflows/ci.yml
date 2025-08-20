@@ -26,19 +26,15 @@ jobs:
         run: uv pip install pocl-binary-distribution==3.0
       - name: Run tests
         run: |
-          uv run pytest --cov --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
+          uv run pytest --cov --cov-report=xml
           echo $? > pytest-exitcode
         continue-on-error: true
-      # Always upload coverage and test results, even if tests fail
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5
+      # Always upload coverage, even if tests fail
+      - name: Run codacy-coverage-reporter
+        uses: codacy/codacy-coverage-reporter-action@v1.3.0
         with:
-          use_oidc: true
-          files: coverage.xml
-      - uses: codecov/test-results-action@v1
-        with:
-          use_oidc: true
-          files: junit.xml
+          project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+          coverage-reports: coverage.xml
       - name: Fail job if pytest failed
         run: |
           if [ -f pytest-exitcode ] && [ "$(cat pytest-exitcode)" -ne 0 ]; then
