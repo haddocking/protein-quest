@@ -9,7 +9,6 @@ from io import TextIOWrapper
 from pathlib import Path
 from textwrap import dedent
 
-import nest_asyncio
 from cattrs import structure
 from rich import print as rprint
 from rich.logging import RichHandler
@@ -455,7 +454,6 @@ def _handle_search_go(args):
         rprint(f"Searching for GO terms matching '{term}' with aspect '{aspect}'")
     else:
         rprint(f"Searching for GO terms matching '{term}'")
-    nest_asyncio.apply()
     results = asyncio.run(search_gene_ontology_term(term, aspect=aspect, limit=limit))
     rprint(f"Found {len(results)} GO terms, written to {output_csv.name}")
     write_go_terms_to_csv(results, output_csv)
