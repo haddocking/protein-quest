@@ -13,20 +13,25 @@ Python package to search/retrieve/filter proteins and protein structures
 It uses
 
 - [Uniprot Sparql endpoint](https://sparql.uniprot.org/) to search for proteins and their measured or predicted 3D structures.
-- [gemmi](https://project-gemmi.github.io/) to work with macromolecular models
-- [dask-distributed](https://docs.dask.org/en/latest/) to compute in parallel
+- [Uniprot taxonomy](https://www.uniprot.org/taxonomy?query=*) to search for taxonomy.
+- [QuickGO](https://www.ebi.ac.uk/QuickGO/api/index.html) to search for Gene Ontology terms.
+- [gemmi](https://project-gemmi.github.io/) to work with macromolecular models.
+- [dask-distributed](https://docs.dask.org/en/latest/) to compute in parallel.
 
 An example workflow:
 
 ```mermaid
 graph TB;
-    searchuniprot(Search UniprotKB) --> |uniprot_accessions|searchpdbe(Search PDBe)
-    searchuniprot(Search UniprotKB) --> |uniprot_accessions|searchaf(Search Alphafold)
-    searchpdbe -->|pdb_ids|fetchpdbe(Retrieve PDBe)
+    classDef dashedBorder stroke-dasharray: 5 5;
+    taxonomy[/Search taxon/]:::dashedBorder
+    taxonomy[/Search taxon/] -. taxon_ids .-> searchuniprot[/Search UniprotKB/]
+    searchuniprot --> |uniprot_accessions|searchpdbe[/Search PDBe/]
+    searchuniprot --> |uniprot_accessions|searchaf[/Search Alphafold/]
+    searchpdbe -->|pdb_ids|fetchpdbe[Retrieve PDBe]
     searchaf --> |uniprot_accessions|fetchad(Retrieve AlphaFold)
-    fetchpdbe -->|mmcif_files_with_uniprot_acc| chainfilter(Filter on chain of uniprot)
-    chainfilter --> |mmcif_files| residuefilter(Filter on chain length)
-    fetchad -->|pdb_files| confidencefilter(Filter out low confidence)
+    fetchpdbe -->|mmcif_files_with_uniprot_acc| chainfilter{Filter on chain of uniprot}
+    chainfilter --> |mmcif_files| residuefilter{Filter on chain length}
+    fetchad -->|pdb_files| confidencefilter{Filter out low confidence}
 ```
 
 ## Install
@@ -119,6 +124,15 @@ protein-quest filter residue  \
     --min-residues 100 \
     --max-residues 1000 \
     ./filtered-chains ./filtered
+```
+
+### Search Gene Ontology (GO)
+
+You might not know what the identifier of a [Gene Ontology](https://geneontology.org/) term is at `protein-quest search uniprot`.
+You can use following command to search for a Gene Ontology (GO) term.
+
+```shell
+protein-quest search go --limit 5 --aspect cellular_component apoptosome -
 ```
 
 ##  Model Context Protocol (MCP) server

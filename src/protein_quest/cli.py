@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import csv
 import logging
 import os
@@ -19,6 +20,7 @@ from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_fil
 from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_formats
 from protein_quest.alphafold.fetch import fetch_many as af_fetch
 from protein_quest.filters import filter_files_on_chain, filter_files_on_residues
+from protein_quest.go import Aspect, allowed_aspects, search_gene_ontology_term, write_go_terms_to_csv
 from protein_quest.pdbe import fetch as pdbe_fetch
 from protein_quest.pdbe.io import glob_structure_files
 from protein_quest.uniprot import PdbResult, Query, search4af, search4pdb, search4uniprot
@@ -118,6 +120,28 @@ def _add_search_alphafold_parser(subparsers: argparse._SubParsersAction):
         "--limit", type=int, default=10_000, help="Maximum number of Alphafold entry identifiers to return"
     )
     parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
+
+
+def _add_search_go_parser(subparsers: argparse._SubParsersAction):
+    """Add search go subcommand parser"""
+    parser = subparsers.add_parser(
+        "go",
+        help="Search for Gene Ontology (GO) terms",
+        description="Search for Gene Ontology (GO) terms in the EBI QuickGO API.",
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+    )
+    parser.add_argument(
+        "term",
+        type=str,
+        help="GO term to search for. For example `apoptosome`.",
+    )
+    parser.add_argument("--aspect", type=str, choices=allowed_aspects, help="Filter on aspect.")
+    parser.add_argument(
+        "output_csv",
+        type=argparse.FileType("w", encoding="UTF-8"),
+        help="Output CSV with GO term results. Use `-` for stdout.",
+    )
+    parser.add_argument("--limit", type=int, default=100, help="Maximum number of GO term results to return")
 
 
 def _add_retrieve_pdbe_parser(subparsers: argparse._SubParsersAction):
@@ -287,6 +311,7 @@ def _add_search_subcommands(subparsers: argparse._SubParsersAction):
     _add_search_uniprot_parser(subsubparsers)
     _add_search_pdbe_parser(subsubparsers)
     _add_search_alphafold_parser(subsubparsers)
+    _add_search_go_parser(subsubparsers)
 
 
 def _add_retrieve_subcommands(subparsers: argparse._SubParsersAction):
@@ -419,6 +444,21 @@ def _handle_search_alphafold(args):
     _write_alphafold_csv(output_csv, results)
 
 
+def _handle_search_go(args):
+    term = structure(args.term, str)
+    aspect: Aspect | None = args.aspect
+    limit = structure(args.limit, int)
+    output_csv: TextIOWrapper = args.output_csv
+
+    if aspect:
+        rprint(f"Searching for GO terms matching '{term}' with aspect '{aspect}'")
+    else:
+        rprint(f"Searching for GO terms matching '{term}'")
+    results = asyncio.run(search_gene_ontology_term(term, aspect=aspect, limit=limit))
+    rprint(f"Found {len(results)} GO terms, written to {output_csv.name}")
+    write_go_terms_to_csv(results, output_csv)
+
+
 def _handle_retrieve_pdbe(args):
     pdbe_csv = args.pdbe_csv
     output_dir = args.output_dir
@@ -548,6 +588,7 @@ HANDLERS: dict[tuple[str, str | None], Callable] = {
     ("search", "uniprot"): _handle_search_uniprot,
     ("search", "pdbe"): _handle_search_pdbe,
     ("search", "alphafold"): _handle_search_alphafold,
+    ("search", "go"): _handle_search_go,
     ("retrieve", "pdbe"): _handle_retrieve_pdbe,
     ("retrieve", "alphafold"): _handle_retrieve_alphafold,
     ("filter", "confidence"): _handle_filter_confidence,
