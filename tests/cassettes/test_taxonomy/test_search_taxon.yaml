@@ -929,4 +929,934 @@ interactions:
     status:
       code: 200
       message: OK
+- request:
+    body: null
+    headers: {}
+    method: GET
+    uri: https://rest.uniprot.org/taxonomy/search?query=Human&limit=100&compressed=true&format=json
+  response:
+    body:
+      string: !!binary |
+        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
+        eATiEYj7xih6AvEvX/8PM4TeLjmoAAA=
+    headers:
+      Accept-Ranges:
+      - bytes
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization
+      Access-Control-Allow-Methods:
+      - GET, PUT, POST, DELETE, PATCH, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - Link, X-Total-Results, X-UniProt-Release, X-UniProt-Release-Date, X-API-Deployment-Date
+      Access-Control-Max-Age:
+      - '1728000'
+      Cache-Control:
+      - public, max-age=43200
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Length:
+      - '4381'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 20 Aug 2025 11:24:39 GMT
+      Link:
+      - <https://rest.uniprot.org/taxonomy/search?format=json&limit=100&compressed=true&query=Human&cursor=37l4wrqb9amo8tvbcegxssucuyenbk0ypl3jrmh3ct&size=25>;
+        rel="next"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      Vary:
+      - accept,accept-encoding,x-uniprot-release,x-api-deployment-date
+      - User-Agent
+      X-API-Deployment-Date:
+      - 08-August-2025
+      X-Total-Results:
+      - '5425'
+      X-UniProt-Release:
+      - '2025_03'
+      X-UniProt-Release-Date:
+      - 18-June-2025
+      x-cache:
+      - hit cached
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers: {}
+    method: GET
+    uri: https://rest.uniprot.org/taxonomy/search?format=json&limit=100&compressed=true&query=Human&cursor=37l4wrqb9amo8tvbcegxssucuyenbk0ypl3jrmh3ct&size=25
+  response:
+    body:
+      string: !!binary |
+        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
+        A+fAucPG574+/Q8UnrtHsIMAAA==
+    headers:
+      Accept-Ranges:
+      - bytes
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization
+      Access-Control-Allow-Methods:
+      - GET, PUT, POST, DELETE, PATCH, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - Link, X-Total-Results, X-UniProt-Release, X-UniProt-Release-Date, X-API-Deployment-Date
+      Access-Control-Max-Age:
+      - '1728000'
+      Cache-Control:
+      - public, max-age=43200
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Length:
+      - '1698'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 20 Aug 2025 11:24:39 GMT
+      Link:
+      - <https://rest.uniprot.org/taxonomy/search?format=json&limit=100&compressed=true&query=Human&cursor=3eg5ia916eni5a62dbn838etjey3p0a2n6xorm7r5p&size=25>;
+        rel="next"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      Vary:
+      - accept,accept-encoding,x-uniprot-release,x-api-deployment-date
+      - User-Agent
+      X-API-Deployment-Date:
+      - 08-August-2025
+      X-Total-Results:
+      - '5425'
+      X-UniProt-Release:
+      - '2025_03'
+      X-UniProt-Release-Date:
+      - 18-June-2025
+      x-cache:
+      - hit cached
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers: {}
+    method: GET
+    uri: https://rest.uniprot.org/taxonomy/search?format=json&limit=100&compressed=true&query=Human&cursor=3eg5ia916eni5a62dbn838etjey3p0a2n6xorm7r5p&size=25
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAA/+3cy27bOBQG4FcxtPZC1F3eOYMC7SYtBoNuii5UmYmJ2pShi2eCIu9eUmnsWCRb
+        aSwYJPDvWh/5iEexP1DioX94NW26Xdt4qy8/vKZklLfsgZX3xZ56K6/eMl4dWd01i7so85ZeW/xX
+        8Q8bb0WiNEnzpbfndF9xVoqD83f3/3wUxxyKWmTxVpp8f7/JN8iWkuB56dUF/y6Oa2hdtU8HKo7Z
+        ss2Gcm/V1h1dekXZsiN9/V/VbmktU8vhe++7fcEXb4bcj1h59U7/sjydfMfXpbdjnBaPVH9JPsuj
+        xQnfjt4Pwvw0dl4t+n+dh/5Q7Br6vNRdD/ZNnp4V4uiy2osr+Rq4Xy+OL2daFHyzqGlbV0f11EEc
+        53GWnk5e02K3H3Xqj3W7rWpeiKQFvUiZhqKc5JTyO+OPm2pc0k+s6WQ9ZdUWw5yRn51yHrZPu250
+        SvH56pPSdlC8yBr755GWu6JpRiYtX2vfXeaMksjP41PKqt7QemJKtrm8oCTw43PpD8We7Z5GpXzH
+        mz4fH/yB8ihJQv/8Zem+TUra0l8fpeEgz5/hR8q7cVfy99/o8xgPVLxTTSm+bU1btKxpWdlIMmp6
+        ZPRfuvkkAKCM/1V1khJRbMf1ISL//vSBCnNK2oeqPT2/7XD5CnnWVvGWhzAdOpf5djvXj1gPmj4k
+        a4RzcA7OueNc4M/sXKIwR+xmLjEqp42IAmEcjINx7hgXkZmNiwIFudBu5PoRG25OtSFZI5yDc3DO
+        HeeyeZlbE5W56Arm1spFIXMzR8zM6UOyRjAH5sDc/2FO842+xaO5eIpzwZ+nc7FSxjXM3WA2FxuV
+        00ZEgTAOxsE4d6Zyk4gbccdKLlcfYj/3LTeOmFcf9CFZI5gDc2DOHeZmXmRdR+FFGYn4jF2z+nCD
+        O9Z+xIYHc9qQrBHMgTkw584daz4zc1mgMBfYzVxmfjCnD8kawRyYA3PuMDetl+TPD+bWUaI4Z/kC
+        RGTuJtGHZI1wDs7BOXecm703OCeKc7HdT+f6Eeud04dkjXAOzsE5d57OkZnnc3e5et+aWO6c+b5V
+        H5I1wjk4B+ccci6dez6nLkOkdjv3Ipp2wUH/qqwRzsE5OOeOc/Lh2bx7WmPFOcv37ofm1jl9SNYI
+        5+AcnHPHOTJpI8SY+9Z06Fxo+d79lyGrczlzU12O7jk4B+eccm7mvfvry59iyuIsv4a5W7SVGDnT
+        Rtb4HSYYB+NcWmude09rrhBneYNwbp6xaYnLQRyIA3EOETdtP2s4Yt++ryBneXtwP2LDZi9tSNYI
+        5+AcnHPIuUnbIEa0B5NQce6an2G6hXPm3V76kKwRzsE5OOeOc5O6g8cwFyvMWb4LgphXWfUhWSOY
+        A3Ngzh3m4rl3tQaB4tw13cE3cC4wdwfrQ7JGOAfn4Jw7zpFJvx48Yj4XqPO5zHLnzPM5fUjWCOfg
+        HJxzyLmZH8/dBYninOXdwYF5974+JGuEc3AOzrnTNTf35v0gHTCX+5Y3BwfmLmB9SNYI5sAcmHOH
+        udlXW8NhV0nuW946F5q7SvQhWSOcg3NwzqHb1qmP574+/wRbx/z5nnoAAA==
+    headers:
+      Accept-Ranges:
+      - bytes
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization
+      Access-Control-Allow-Methods:
+      - GET, PUT, POST, DELETE, PATCH, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - Link, X-Total-Results, X-UniProt-Release, X-UniProt-Release-Date, X-API-Deployment-Date
+      Access-Control-Max-Age:
+      - '1728000'
+      Cache-Control:
+      - public, max-age=43200
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Length:
+      - '1206'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 20 Aug 2025 11:24:39 GMT
+      Link:
+      - <https://rest.uniprot.org/taxonomy/search?format=json&limit=100&compressed=true&query=Human&cursor=3j3j128813lns4d97tb7etz8ar9rw1r9c4ko9zcmrh&size=25>;
+        rel="next"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      Vary:
+      - accept,accept-encoding,x-uniprot-release,x-api-deployment-date
+      - User-Agent
+      X-API-Deployment-Date:
+      - 08-August-2025
+      X-Total-Results:
+      - '5425'
+      X-UniProt-Release:
+      - '2025_03'
+      X-UniProt-Release-Date:
+      - 18-June-2025
+      x-cache:
+      - hit cached
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers: {}
+    method: GET
+    uri: https://rest.uniprot.org/taxonomy/search?format=json&limit=100&compressed=true&query=Human&cursor=3j3j128813lns4d97tb7etz8ar9rw1r9c4ko9zcmrh&size=25
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAA/+3cS2/jNhAH8K9i6OyD3g/fNsUC7SW7KIpeij1oZSYm1qYMPdwGi3z3knJjx+Zw
+        KzdEQKL/20ajjDha+wfZM8z3oGP9uB36YPXH96BvOBMDf+DNfb1jwSroNly0B96N/eJDEgXLYKj/
+        asUv62AVlVkVxstgJ9iuFbyRJ1cf73/7JM/Z153MEqyIfL++yneRLS2KKHpeBl0tvsnzeta1w9Oe
+        yXM2fL1mIlgN3ciWQd0M/MBefmqHDetUarX84OdxV4vFqyVPK9aOqryGkKrxyzLYcsHqR0bfkt/V
+        mfKCr1cfxkl1WrtoF9O/zkt/qLc9e15S94N/VZfmtTy7aXfyTr4E7j8sDscrLWqxXnRs6NqDfuk4
+        y6qsLE4X71i93c269Kdu2LSdqGXSml2kLBJZTn5K+Y2Lx3U7L+ln3o+qnqYd6uucaViecu43T9tx
+        dkr5+pqSsuGqeJk1C88rbbZ1389M2rzUvr3MmeZpWGWnlG23Zt2NKfn68oZGcZidS3+od3z7NCvl
+        R9FP+cTVf1CV5nkSnt8s49ebkg7sn5fS9SLPr+FHJsZ5d/LH7+jzGvdM/qaeUr7b+qEeeD/wpldk
+        dOzA2Z9s/VkCwLj4qR0VJbLYUdChOJUXYQ9MmtOwKdTu2PnX9pdHomeyigsDYs25xHHnYrNzZEjV
+        COfgHJzzx7npIladSzTnUsedS8zOkSFVI5yDc3DOH+dK28yVGnO548yVZubIkKoRzIE5MOcPc1Fy
+        i3PxvzuXhppzpdvOTSumnaNDqkY4B+fgnD/OxbY/tqZ6G6Jy3DlzG4IOqRrhHJyDc/44V9hmLr1m
+        LgodZy41M0eGVI1gDsyBuf8vc5nWhIgcb7Zm5iYEHVI1gjkwB+b8Yc52EyLTn+Yc77Vm5qc5OqRq
+        BHNgDsz5w9xtMyUzmhBZpjmXOe5cZnaODKka4Rycg3P+OGf9cS7XmHN8puQIWk6DRh6WR8EcmANz
+        /jAXxbadqzTnHJ8pmVZs0I8MqRrhHJyDc/44F4eWncu12bnI8ZmS45K1w/TRib8cs3NwDs755Jz1
+        57lca0PEjm/hz81tCDqkaoRzcA7O+ePcTV/PzehC5IXGnOPd1mnFBubIkKoRzIE5MOcPc7HtNkSu
+        bW2NHe+25uatrXRI1Qjn4Byc88g521u+Cm1IOHa8DVGYh4TpkKoRzsE5OOePc2rmw65z+tdzjrch
+        CvPXc3RI1Qjn4Byc88e5zDZz2pBw4vjW1sI8JEyHVI1gDsyBOX+Ys/4HNgttSjiJHHeOnAQ+OkfP
+        DheYEoZzcM4n527awj+j21po3dbE8aGSI2hkX5U+qmoEc2AOzPnDXGT5Y+tdoW2GSN7yp0rutLsS
+        W3+cM2+GoEOqRjgH5+Dcf3GOeEe/h3O2N0OU2maIxPHpudK864EOqRrhHJyDc/48z1WWH+dKbagk
+        ecse/nd4nCvNQyV0SNUI5sAcmPPncc728NxdqXch3jI89x7OmbsQdEjVCOfgHJzzx7mbP7Z+ef4b
+        Tfom/ax6AAA=
+    headers:
+      Accept-Ranges:
+      - bytes
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization
+      Access-Control-Allow-Methods:
+      - GET, PUT, POST, DELETE, PATCH, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - Link, X-Total-Results, X-UniProt-Release, X-UniProt-Release-Date, X-API-Deployment-Date
+      Access-Control-Max-Age:
+      - '1728000'
+      Cache-Control:
+      - public, max-age=43200
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Length:
+      - '1151'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 20 Aug 2025 11:24:39 GMT
+      Link:
+      - <https://rest.uniprot.org/taxonomy/search?format=json&limit=100&compressed=true&query=Human&cursor=md9gwv5i6w0oz0t5gs59x43ew0vg1zy1tn7msi5bwot&size=25>;
+        rel="next"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      Vary:
+      - accept,accept-encoding,x-uniprot-release,x-api-deployment-date
+      - User-Agent
+      X-API-Deployment-Date:
+      - 08-August-2025
+      X-Total-Results:
+      - '5425'
+      X-UniProt-Release:
+      - '2025_03'
+      X-UniProt-Release-Date:
+      - 18-June-2025
+      x-cache:
+      - hit cached
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers: {}
+    method: GET
+    uri: https://rest.uniprot.org/taxonomy/search?format=json&limit=100&compressed=true&query=Human&cursor=md9gwv5i6w0oz0t5gs59x43ew0vg1zy1tn7msi5bwot&size=25
+  response:
+    body:
+      string: !!binary |
+        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
+    headers:
+      Accept-Ranges:
+      - bytes
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization
+      Access-Control-Allow-Methods:
+      - GET, PUT, POST, DELETE, PATCH, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - Link, X-Total-Results, X-UniProt-Release, X-UniProt-Release-Date, X-API-Deployment-Date
+      Access-Control-Max-Age:
+      - '1728000'
+      Cache-Control:
+      - public, max-age=43200
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Length:
+      - '1667'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 20 Aug 2025 11:24:40 GMT
+      Link:
+      - <https://rest.uniprot.org/taxonomy/search?format=json&limit=100&compressed=true&query=Human&cursor=mde4adxhdqpn4nnc33cbva47j49lqli9nk19ne28wmr&size=25>;
+        rel="next"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      Vary:
+      - accept,accept-encoding,x-uniprot-release,x-api-deployment-date
+      - User-Agent
+      X-API-Deployment-Date:
+      - 08-August-2025
+      X-Total-Results:
+      - '5425'
+      X-UniProt-Release:
+      - '2025_03'
+      X-UniProt-Release-Date:
+      - 18-June-2025
+      x-cache:
+      - hit cached
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers: {}
+    method: GET
+    uri: https://rest.uniprot.org/taxonomy/search?format=json&limit=100&compressed=true&query=Human&cursor=mde4adxhdqpn4nnc33cbva47j49lqli9nk19ne28wmr&size=25
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAA/+2dW3OjOBaA/wrlp+6qeFcS97w56XRnpiqJN8n6Yaf6gdhKTLUBF+DMZKb6v68A
+        ByMhyaC1vfZET51GcJBknY9zE/w1SHG2WuTZ4Py3vwbZNMRxHj6H09sgwoPzwWixnAfLYBkuFkkU
+        vIbpKjOswdkgD/5I4l9mg3PTdIFlng2iGEdJHE7JNf54NP6FnLMMUiJscN5NLC3UdG3w82yQBvEP
+        cnq2xERCcco8nM1wPDh/DhYZPhsE0zx8JQLzdEX+l+RznBZ3KAYzuF5FQWwwfR8aiEjhNqHB97PB
+        Ioxx8IL5kzEpzsNUTyFApl/3M06M8i+mnz/POMJukjiZxcW9w4BcME0iMn/rtiyMXxZ4mOVE2gzP
+        jC+3I+O1fXPkmtC0UH37FAeLqNPNH+ZJnvxYEZkBZiQi4G8k/iAdmSXdZF4mWVYOZ5rkASvUgnYt
+        dDl/W6y6yRwHy+S1Eorz1uCRhWAtdboIstYK4Qr9zyqdB2Qu42L4i7ZU2zRrqUk6w2nXrtarKZzR
+        0wpt8juBWuhzEIWLt05Sv4ZpljcXahgzvxh0fNvfTG62euohvpMe1rJfcLxqTzHRmiwP8jDLw2lW
+        aHuKX0P8O56N0yTHYXyZrAoKFD/VKua3OcWE42dMeDHFZVMS4XUbuf2SOfKz61gMu4Uq65RQ5QhZ
+        5WhYaVhpWO0NVqYYViZw9kQrCFu48k8GV6YlgtWwaNO40rjSuNoTrlwxraC9L9vKYWFVjOZEYDU0
+        bFOEK9KiYaVhpWH1f7CtXM/vQyvIp9U4DaMgx8ZTMiVjSl+TtXllfCoUKYyNSu+L5veW/G2JDfiZ
+        1b/ri2RSGGXZW5zEb1EDKJuLq0sLZtTT5Xi+Beig2PXF3SWU0/CC7u6yGgVtEwIbAauBxDZoKgZu
+        J2Jj9DUJ2QnTIDw6EP5rFcZ5IgEhUgDhOJxOEyEELSUIVquoBUDgekr8qwUy2LMAhL4i9GiFozkN
+        XCJ5C/C2y5Qp8TazpuDpPMlEkfnrJEqMjBAbx1kLW4U2N2/pO4XT2sTRv29Gt4OuyJYQ27ck3jBs
+        EdvmEzudh/F6xkYQmPSKMU2PNS2vbh/v5DC9b0ikxFmuC2HDpsSkg4TgCgRtdLrqc+twOZaDMvQ+
+        fEq4AL3fANMgCDVSnKcJj6A2MSI8V4Ggd2k+T9KS322Emr6jhNBxmK2EBAWekikZZmQZCQlqA0eN
+        oO9jZxhqORZomGU9EFqLbEEUAdtTgehVnHFNR6LEjgkUKXoV5zjlIJR00lcAqFxxu0CzC9GAxGOG
+        OzBBuZ5laSnaVPoUOi50fY9m83hSntTPcTYghc3CYnecnXCu7TsLQ322DvQdn8mofefj9507pwg4
+        Sn5ChqQncf0lccq2HQkF3J3zqORRaWDkWZ6FdlGyYrhsCNRCMtdcPVo5JQgrR8FtL1rJQ4OcoOGr
+        4avhuy/4ctT9APaoty9z1GT8bNtzWDu0PKUnFP3WLO3G3a5vYzSsaVOYxtk0c58J4guH24Uan8q5
+        +ax5q3mrebs33nJIckK2ri9GOgK9oI5cPtXvidpUM/WNmioL2Y5L27f3V3eTLQHTWhgVdkGe59q7
+        yDeltXx/Eyrd3LMaAnuYe/D9GcIV9Klu/Wb801jn+yB0rg4M679bIPbLarl4D0fyg7FKuL7HhKqy
+        fFYjhtid1/dYmM1qIKQ7qR/wLEkxL59VhE6h56iAulY4esH5ECngU6a9u7JR7Z3l7c2tPKMSZi6C
+        JjpenkEeuHgHazRJG8tL7wXHW1etnjaNlaHbuGBzooafhp+G3/8AP0uyfQW6rrXXnJHHOOquzzrq
+        wJPT8ALnrVAya13bO/bT391pT+SDV2MzitCl6BRPu9jaxf5gLnZbVxkP20cqlOyGgBNysCXJJLQz
+        HAfZu4UyhK0BjbJ8MqQmEZKHNjOm0cNkS+HnTRBtbmMw8kzfdnZisDK3aB2sLdM529KwW7UZeVzF
+        TA85XizFLLaBq8DiQuiCV8tUirRVjMjRejWxEDZ9twH2HpCkdIbqo0V+ck+Bj9u18ITYKKvYNHtl
+        2gWxR/62ZDpi60KIWEO1PKVnRgmxjynT34elWiIO+f8YCBNDyBe1ra/V1qq2Vj+YtXrIhBAHBCfE
+        ZIm9CnrVPvUpfaJqFiACpgd3UfnULkNz94bk69EtQr5ke3lZHeVK0UyaNZo1mjWa94VmDhAOUBtl
+        9gKn1TfuCr3WqCBr0MItkdfedaO7LpEqOyggJxQGXqGOvGpgamAeXTHpkdiykuImB0iSYRwodyhu
+        Gv/mfG923nI94FnqFQGccqndlgQU5UzjzdvbmgVNosPFEHV0VSfpdZKeAz6F6kepNu/C9LR3l2Mi
+        /VqHnW3qseC5PmSK8v3Rl6tbOecqoUUwuyH4ko4D+P6Osv3NW9gbH7xx+NdfH4YIQMBrqzNL9oH9
+        80lAFEVgbo42/SvwN07+qPJ/KV4EudT8RABYCji8CKJnoup887NBrV65phQvCY2iUIRDoJZwesRk
+        SSwk2+eREg6T38X5Jl+Bh++/Yfv9IzZQ2jp/Q6kTK1Jlo3tXNT2AGw175csF74jju5EmlUjzgW+a
+        vV8T9y2IolbpAr2NnngUyN5LVqgaAT/d5Q4teUaouFi70dqN/lhuNEdfKWeX2Li2rUDMzhw4ADLd
+        HWRsBLxhHi6u2Qo5KuzKLO0vOpJh7afcEwr3XK6RWBR8DqF8j6VYCNSv59RE/WhEPegrRjik+HtE
+        JlGvF7ejrXFJ+kM4ZDk6x7tJ6dsmf87ZcyRtbFzaONbYW8TfrsSTeeDXQ+kQpw5xnkqIsyPeoGQX
+        JtrJu94rnZ2+5eTMl2BRBzxoal9PhsX7iNovRiYQWuJsHc2k3ooMgWkzG5cub7YA8pLuhlGahE84
+        D+gv+wAbIF9KzHKS5cict/pfhSZrjhX3bQ3vcDQrtV9kis6S1VNnUxQqAO0ar+KXlyR+4RENmg5Q
+        ItoYLxeJAGdEKFTB2TVOX4UBSiLUVIDZ9fvPzvLMtjzHU8FZ+YCoV1OrLh5YluUiFaRdNFcpa4YW
+        OugqGqGXLSRQYlVq7nup9wkZoRZAkmirWX4xscd2eVOK6mxJ/tlYMOzYHr5Opss/P81Xn7m8fk6C
+        6K1CBU1r6Dt05OHr3Wgbrh/CKGRkUiId+Qvytpu1TG8/hCk5DtJAbEm6StwdpflrgUmRHemr2ZGv
+        5PEjTg1BS4G8hJNlR1uGZOFQOyrkvcf8vUhkeZpKxH1oKiBLXBO5wHIUkVtK5uqRirffQTtPiLGy
+        jx5J8lnt6KzA0a/wmCcCrF6vHifN0TiuU3hf1HAet+DyMeG9OBtCu2HKdvzo0Ycg4ansytzLK+Zv
+        wxnPoXYdD6h8oYOsvbiSWKwcejYtv/p+zYZZfeQ+BdXYWS/dBh5qPFh6YHCtJyxaHdJLqGrNinVv
+        C1mPh4CyV5Ls8CX2RDOewkrrmNmybI/d7T6+2MK8UodpmcY8icI4pPWEPNyR3dta1Bg8IgyWAYul
+        jIO2Age/rPgf2qgiiyrFQuPGamSpRVa45yvtUOcsdCZo6XmN6p7uZlw/DTohi06yaR16kp0+3NzN
+        95//Bdb0vpvbgAAA
+    headers:
+      Accept-Ranges:
+      - bytes
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization
+      Access-Control-Allow-Methods:
+      - GET, PUT, POST, DELETE, PATCH, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - Link, X-Total-Results, X-UniProt-Release, X-UniProt-Release-Date, X-API-Deployment-Date
+      Access-Control-Max-Age:
+      - '1728000'
+      Cache-Control:
+      - public, max-age=43200
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Length:
+      - '2717'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 20 Aug 2025 11:24:40 GMT
+      Link:
+      - <https://rest.uniprot.org/taxonomy/search?format=json&limit=100&compressed=true&query=Human&cursor=mdkzazg03ntnyk357di184j8prkbkrxoatox249qc71&size=25>;
+        rel="next"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      Vary:
+      - accept,accept-encoding,x-uniprot-release,x-api-deployment-date
+      - User-Agent
+      X-API-Deployment-Date:
+      - 08-August-2025
+      X-Total-Results:
+      - '5425'
+      X-UniProt-Release:
+      - '2025_03'
+      X-UniProt-Release-Date:
+      - 18-June-2025
+      x-cache:
+      - hit cached
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers: {}
+    method: GET
+    uri: https://rest.uniprot.org/taxonomy/search?format=json&limit=100&compressed=true&query=Human&cursor=mdkzazg03ntnyk357di184j8prkbkrxoatox249qc71&size=25
+  response:
+    body:
+      string: !!binary |
+        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
+    headers:
+      Accept-Ranges:
+      - bytes
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization
+      Access-Control-Allow-Methods:
+      - GET, PUT, POST, DELETE, PATCH, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - Link, X-Total-Results, X-UniProt-Release, X-UniProt-Release-Date, X-API-Deployment-Date
+      Access-Control-Max-Age:
+      - '1728000'
+      Cache-Control:
+      - public, max-age=43200
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Length:
+      - '2581'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 20 Aug 2025 11:24:40 GMT
+      Link:
+      - <https://rest.uniprot.org/taxonomy/search?format=json&limit=100&compressed=true&query=Human&cursor=mdpmoi7zaiim46xc53a5mu1kl4639bg7dur8cwygawt&size=25>;
+        rel="next"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      Vary:
+      - accept,accept-encoding,x-uniprot-release,x-api-deployment-date
+      - User-Agent
+      X-API-Deployment-Date:
+      - 08-August-2025
+      X-Total-Results:
+      - '5425'
+      X-UniProt-Release:
+      - '2025_03'
+      X-UniProt-Release-Date:
+      - 18-June-2025
+      x-cache:
+      - hit cached
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers: {}
+    method: GET
+    uri: https://rest.uniprot.org/taxonomy/search?format=json&limit=100&compressed=true&query=Human&cursor=mdpmoi7zaiim46xc53a5mu1kl4639bg7dur8cwygawt&size=25
+  response:
+    body:
+      string: !!binary |
+        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
+        JZ220DL2++/7/wDqZqCEwHwAAA==
+    headers:
+      Accept-Ranges:
+      - bytes
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization
+      Access-Control-Allow-Methods:
+      - GET, PUT, POST, DELETE, PATCH, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - Link, X-Total-Results, X-UniProt-Release, X-UniProt-Release-Date, X-API-Deployment-Date
+      Access-Control-Max-Age:
+      - '1728000'
+      Cache-Control:
+      - public, max-age=43200
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Length:
+      - '1698'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 20 Aug 2025 11:24:40 GMT
+      Link:
+      - <https://rest.uniprot.org/taxonomy/search?format=json&limit=100&compressed=true&query=Human&cursor=mtmtskhdlmtnigiy80crvwhrcrogefb45it9jpbmaf1&size=25>;
+        rel="next"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      Vary:
+      - accept,accept-encoding,x-uniprot-release,x-api-deployment-date
+      - User-Agent
+      X-API-Deployment-Date:
+      - 08-August-2025
+      X-Total-Results:
+      - '5425'
+      X-UniProt-Release:
+      - '2025_03'
+      X-UniProt-Release-Date:
+      - 18-June-2025
+      x-cache:
+      - hit cached
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers: {}
+    method: GET
+    uri: https://rest.uniprot.org/taxonomy/search?format=json&limit=100&compressed=true&query=Human&cursor=mtmtskhdlmtnigiy80crvwhrcrogefb45it9jpbmaf1&size=25
+  response:
+    body:
+      string: !!binary |
+        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
+        NoEAAA==
+    headers:
+      Accept-Ranges:
+      - bytes
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization
+      Access-Control-Allow-Methods:
+      - GET, PUT, POST, DELETE, PATCH, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - Link, X-Total-Results, X-UniProt-Release, X-UniProt-Release-Date, X-API-Deployment-Date
+      Access-Control-Max-Age:
+      - '1728000'
+      Cache-Control:
+      - public, max-age=43200
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Length:
+      - '1911'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 20 Aug 2025 11:24:41 GMT
+      Link:
+      - <https://rest.uniprot.org/taxonomy/search?format=json&limit=100&compressed=true&query=Human&cursor=mtrh639cshilo3d5euufvbda8tnllfibfx3kjfq75fh&size=25>;
+        rel="next"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      Vary:
+      - accept,accept-encoding,x-uniprot-release,x-api-deployment-date
+      - User-Agent
+      X-API-Deployment-Date:
+      - 08-August-2025
+      X-Total-Results:
+      - '5425'
+      X-UniProt-Release:
+      - '2025_03'
+      X-UniProt-Release-Date:
+      - 18-June-2025
+      x-cache:
+      - hit cached
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers: {}
+    method: GET
+    uri: https://rest.uniprot.org/taxonomy/search?format=json&limit=100&compressed=true&query=Human&cursor=mtrh639cshilo3d5euufvbda8tnllfibfx3kjfq75fh&size=25
+  response:
+    body:
+      string: !!binary |
+        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
+        A1SX/ygifQAA
+    headers:
+      Accept-Ranges:
+      - bytes
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization
+      Access-Control-Allow-Methods:
+      - GET, PUT, POST, DELETE, PATCH, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - Link, X-Total-Results, X-UniProt-Release, X-UniProt-Release-Date, X-API-Deployment-Date
+      Access-Control-Max-Age:
+      - '1728000'
+      Cache-Control:
+      - public, max-age=43200
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Length:
+      - '1973'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 20 Aug 2025 11:24:41 GMT
+      Link:
+      - <https://rest.uniprot.org/taxonomy/search?format=json&limit=100&compressed=true&query=Human&cursor=191s4kg0gitgsvfjbkb9252umf17qovxnsdze0qxud4gkgr77h&size=25>;
+        rel="next"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains
+      Vary:
+      - accept,accept-encoding,x-uniprot-release,x-api-deployment-date
+      - User-Agent
+      X-API-Deployment-Date:
+      - 08-August-2025
+      X-Total-Results:
+      - '5425'
+      X-UniProt-Release:
+      - '2025_03'
+      X-UniProt-Release-Date:
+      - 18-June-2025
+      x-cache:
+      - hit cached
+    status:
+      code: 200
+      message: OK
 version: 1
