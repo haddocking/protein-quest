@@ -1,9 +1,11 @@
 """Module for Gene Ontology (GO) functions."""
 
+import csv
 import logging
 from collections.abc import Generator
 from dataclasses import dataclass
-from typing import Literal
+from io import TextIOWrapper
+from typing import Literal, get_args
 
 from cattrs.gen import make_dict_structure_fn, override
 from cattrs.preconf.orjson import make_converter
@@ -14,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 Aspect = Literal["cellular_component", "biological_process", "molecular_function"]
 """The aspect of the GO term."""
+allowed_aspects = set(get_args(Aspect))
+"""Allowed aspects for GO terms."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,10 +104,16 @@ async def search_gene_ontology_term(
 
     Returns:
         List of GO terms
+
+    Raises:
+        ValueError: If the aspect is invalid.
     """
     url = "https://www.ebi.ac.uk/QuickGO/services/ontology/go/search"
     page_limit = 100
     params = {"query": term, "limit": str(page_limit), "page": "1"}
+    if aspect is not None and aspect not in allowed_aspects:
+        msg = f"Invalid aspect: {aspect}. Allowed aspects are: {allowed_aspects} or None."
+        raise ValueError(msg)
     logger.debug("Fetching GO terms from %s with params %s", url, params)
     async with friendly_session() as session:
         # Fetch first page to learn how many pages there are
@@ -143,3 +153,16 @@ def _filter_go_terms(terms: list[GoTerm], aspect: Aspect | None, include_obsolet
         if aspect and oboterm.aspect != aspect:
             continue
         yield oboterm
+
+
+def write_go_terms_to_csv(terms: list[GoTerm], csv_file: TextIOWrapper) -> None:
+    """Write a list of GO terms to a CSV file.
+
+    Args:
+        terms: The list of GO terms to write.
+        csv_file: The CSV file to write to.
+    """
+    writer = csv.writer(csv_file)
+    writer.writerow(["id", "name", "aspect", "definition"])
+    for term in terms:
+        writer.writerow([term.id, term.name, term.aspect, term.definition])
