@@ -75,7 +75,7 @@ converter.register_structure_hook(
 )
 
 
-async def search_go_term(
+async def search_gene_ontology_term(
     term: str, aspect: Aspect | None = None, include_obsolete: bool = False, limit: int = 100
 ) -> list[GoTerm]:
     """Search for a Gene Ontology (GO) term by its name or ID.
