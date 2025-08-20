@@ -42,7 +42,7 @@ converter.register_structure_hook(
     ),
 )
 
-SearchField = Literal["tax_id", "scientific", "common", "parent"] | None
+SearchField = Literal["tax_id", "scientific", "common", "parent"]
 search_fields: set[SearchField | None] = set(get_args(SearchField)) | {None}
 
 
@@ -63,7 +63,7 @@ async def _fetch_page(url: URL | str, session: RetryClient) -> tuple[list[Taxon]
     return taxons, next_page
 
 
-async def search_taxon(term: str, field: SearchField = None, limit: int = 100) -> list[Taxon]:
+async def search_taxon(term: str, field: SearchField | None = None, limit: int = 100) -> list[Taxon]:
     """Search for taxon information in UniProt.
 
     Uses <https://www.uniprot.org/taxonomy?query=*>.
