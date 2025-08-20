@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Literal, get_args
 
 from aiohttp.client import ClientResponse
+from aiohttp_retry import RetryClient
 from cattrs.gen import make_dict_structure_fn, override
 from cattrs.preconf.orjson import make_converter
 from yarl import URL
@@ -52,7 +53,7 @@ def _get_next_page(response: ClientResponse) -> URL | str | None:
     return next_page.getone("url", None)
 
 
-async def _fetch_page(url, session):
+async def _fetch_page(url: URL | str, session: RetryClient) -> tuple[list[Taxon], URL | str | None]:
     async with session.get(url) as response:
         response.raise_for_status()
         gzipped_raw_data = await response.read()
@@ -62,7 +63,7 @@ async def _fetch_page(url, session):
     return taxons, next_page
 
 
-async def search_taxon(term: str, field: SearchField = None, limit: int = 10_000) -> list[Taxon]:
+async def search_taxon(term: str, field: SearchField = None, limit: int = 100) -> list[Taxon]:
     """Search for taxon information in UniProt.
 
     Uses <https://www.uniprot.org/taxonomy?query=*>.
