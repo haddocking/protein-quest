@@ -33,7 +33,7 @@ Examples:
 
 """
 
-from collections.abc import Collection, Mapping
+from collections.abc import Mapping
 from pathlib import Path
 from textwrap import dedent
 from typing import Annotated
@@ -43,10 +43,11 @@ from pydantic import Field
 
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, ConfidenceFilterResult, filter_file_on_residues
 from protein_quest.alphafold.fetch import AlphaFoldEntry, DownloadableFormat, fetch_many
-from protein_quest.go import Aspect, GoTerm, search_go_term
+from protein_quest.go import search_gene_ontology_term
 from protein_quest.pdbe.fetch import fetch as pdbe_fetch
 from protein_quest.pdbe.io import glob_structure_files, nr_residues_in_chain, write_single_chain_pdb_file
-from protein_quest.uniprot import PdbResult, Query, Taxon, search4af, search4pdb, search4taxon, search4uniprot
+from protein_quest.taxonomy import search_taxon
+from protein_quest.uniprot import PdbResult, Query, search4af, search4pdb, search4uniprot
 
 mcp = FastMCP("protein-quest")
 
@@ -115,25 +116,12 @@ def list_structure_files(path: Path) -> list[Path]:
     return list(glob_structure_files(path))
 
 
-@mcp.tool
-def count_residues_in_chain(file: Path, chain: str = "A") -> int:
-    """Count the number of residues in a specific chain of a structure file."""
-    return nr_residues_in_chain(file, chain)
-
-
-@mcp.tool
-def search_taxon_by_name(term: str) -> Collection[Taxon]:
-    """Search NCBI Taxonomy by common or scientific name."""
-    return search4taxon(term)
-
-
-@mcp.tool
-async def search_gene_ontology_term(term: str, aspect: Aspect | None = None) -> list[GoTerm]:
-    """Search Gene Ontology (GO) terms by name and aspect.
-
-    If aspect is not provided, all aspects are included.
-    """
-    return await search_go_term(term, aspect)
+# TODO replace remaining decorators with wrapper if tool does single function call
+# so we do not have to replicate docstring,
+# minor con is that it does not show up in api docs
+mcp.tool(nr_residues_in_chain)
+mcp.tool(search_taxon)
+mcp.tool(search_gene_ontology_term)
 
 
 @mcp.tool

@@ -1,6 +1,6 @@
 import pytest
 
-from protein_quest.go import GoTerm, SearchResponse, converter, search_go_term
+from protein_quest.go import GoTerm, SearchResponse, converter, search_gene_ontology_term
 
 
 def test_converter():
@@ -20,8 +20,8 @@ def test_converter():
 
 @pytest.mark.vcr
 @pytest.mark.asyncio
-async def test_search_go_term():
-    results = await search_go_term("GO:0043293", limit=1)
+async def test_search_gene_ontology_term():
+    results = await search_gene_ontology_term("GO:0043293", limit=1)
 
     expected = [
         GoTerm(

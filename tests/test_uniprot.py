@@ -5,7 +5,6 @@ import pytest
 from protein_quest.uniprot import (
     PdbResult,
     Query,
-    Taxon,
     _append_subcellular_location_filters,
     _build_sparql_query_pdb,
     _build_sparql_query_uniprot,
@@ -13,7 +12,6 @@ from protein_quest.uniprot import (
     search4af,
     search4emdb,
     search4pdb,
-    search4taxon,
     search4uniprot,
 )
 
@@ -314,12 +312,4 @@ def test_search4emdb():
     results = search4emdb({uniprot_accession}, limit=1)
 
     expected = {uniprot_accession: {"EMD-0405"}}
-    assert results == expected
-
-
-@pytest.mark.vcr
-def test_search4taxon():
-    results = search4taxon("Human", limit=1)
-
-    expected = [Taxon(taxon_id="9606", scientific_name="Homo sapiens", common_name="Human", rank="Species")]
     assert results == expected
