@@ -24,7 +24,7 @@ from protein_quest.go import Aspect, allowed_aspects, search_gene_ontology_term,
 from protein_quest.pdbe import fetch as pdbe_fetch
 from protein_quest.pdbe.io import glob_structure_files
 from protein_quest.taxonomy import SearchField, _write_taxonomy_csv, search_fields, search_taxon
-from protein_quest.uniprot import PdbResult, Query, search4af, search4pdb, search4uniprot
+from protein_quest.uniprot import PdbResult, Query, search4af, search4emdb, search4pdb, search4uniprot
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +120,31 @@ def _add_search_alphafold_parser(subparsers: argparse._SubParsersAction):
     parser.add_argument(
         "--limit", type=int, default=10_000, help="Maximum number of Alphafold entry identifiers to return"
     )
+    parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
+
+
+def _add_search_emdb_parser(subparsers: argparse._SubParsersAction):
+    """Add search emdb subcommand parser."""
+    parser = subparsers.add_parser(
+        "emdb",
+        help="Search Electron Microscopy Data Bank (EMDB) identifiers of given UniProt accessions",
+        description=dedent("""\
+            Search for Electron Microscopy Data Bank (EMDB) identifiers of given UniProt accessions
+            in the Uniprot SPARQL endpoint.
+        """),
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+    )
+    parser.add_argument(
+        "uniprot_accs",
+        type=argparse.FileType("r", encoding="UTF-8"),
+        help="Text file with UniProt accessions (one per line). Use `-` for stdin.",
+    )
+    parser.add_argument(
+        "output_csv",
+        type=argparse.FileType("w", encoding="UTF-8"),
+        help="Output CSV with EMDB IDs per UniProt accession. Use `-` for stdout.",
+    )
+    parser.add_argument("--limit", type=int, default=10_000, help="Maximum number of EMDB entry identifiers to return")
     parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
 
 
@@ -345,6 +370,7 @@ def _add_search_subcommands(subparsers: argparse._SubParsersAction):
     _add_search_uniprot_parser(subsubparsers)
     _add_search_pdbe_parser(subsubparsers)
     _add_search_alphafold_parser(subsubparsers)
+    _add_search_emdb_parser(subsubparsers)
     _add_search_go_parser(subsubparsers)
     _add_search_taxonomy_parser(subsubparsers)
 
@@ -476,7 +502,20 @@ def _handle_search_alphafold(args):
     rprint(f"Finding AlphaFold entries for {len(accs)} uniprot accessions")
     results = search4af(accs, limit=limit, timeout=timeout)
     rprint(f"Found {len(results)} AlphaFold entries, written to {output_csv.name}")
-    _write_alphafold_csv(output_csv, results)
+    _write_dict_of_sets2csv(output_csv, results, "af_id")
+
+
+def _handle_search_emdb(args):
+    uniprot_accs = args.uniprot_accs
+    limit = args.limit
+    timeout = args.timeout
+    output_csv = args.output_csv
+
+    accs = _read_lines(uniprot_accs)
+    rprint(f"Finding EMDB entries for {len(accs)} uniprot accessions")
+    results = search4emdb(accs, limit=limit, timeout=timeout)
+    rprint(f"Found {len(results)} EMDB entries, written to {output_csv.name}")
+    _write_dict_of_sets2csv(output_csv, results, "emdb_id")
 
 
 def _handle_search_go(args):
@@ -638,6 +677,7 @@ HANDLERS: dict[tuple[str, str | None], Callable] = {
     ("search", "uniprot"): _handle_search_uniprot,
     ("search", "pdbe"): _handle_search_pdbe,
     ("search", "alphafold"): _handle_search_alphafold,
+    ("search", "emdb"): _handle_search_emdb,
     ("search", "go"): _handle_search_go,
     ("search", "taxonomy"): _handle_search_taxonomy,
     ("retrieve", "pdbe"): _handle_retrieve_pdbe,
@@ -690,15 +730,15 @@ def _write_pdbe_csv(path: TextIOWrapper, data: dict[str, set[PdbResult]]):
             )
 
 
-def _write_alphafold_csv(file: TextIOWrapper, data: dict[str, set[str]]):
+def _write_dict_of_sets2csv(file: TextIOWrapper, data: dict[str, set[str]], ref_id_field: str):
     _make_sure_parent_exists(file)
-    fieldnames = ["uniprot_acc", "af_id"]
+    fieldnames = ["uniprot_acc", ref_id_field]
 
     writer = csv.DictWriter(file, fieldnames=fieldnames)
     writer.writeheader()
-    for uniprot_acc, af_ids in sorted(data.items()):
-        for af_id in sorted(af_ids):
-            writer.writerow({"uniprot_acc": uniprot_acc, "af_id": af_id})
+    for uniprot_acc, ref_ids in sorted(data.items()):
+        for ref_id in sorted(ref_ids):
+            writer.writerow({"uniprot_acc": uniprot_acc, ref_id_field: ref_id})
 
 
 def _read_alphafold_csv(file: TextIOWrapper):
