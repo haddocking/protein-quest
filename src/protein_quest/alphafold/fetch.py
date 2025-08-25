@@ -6,6 +6,7 @@ from asyncio import Semaphore
 from collections.abc import AsyncGenerator, Iterable
 from dataclasses import dataclass
 from pathlib import Path
+from textwrap import dedent
 from typing import Literal
 
 from aiohttp_retry import RetryClient
@@ -240,6 +241,11 @@ def files_to_download(what: set[DownloadableFormat], summaries: Iterable[EntrySu
     return files
 
 
+class NestedAsyncIOLoopError(RuntimeError):
+    """Custom error for nested async I/O loops."""
+    pass
+
+
 def fetch_many(
     ids: Iterable[str], save_dir: Path, what: set[DownloadableFormat], max_parallel_downloads: int = 5
 ) -> list[AlphaFoldEntry]:
@@ -254,14 +260,8 @@ def fetch_many(
     Returns:
         A list of AlphaFoldEntry dataclasses containing the summary, pdb file, and pae file.
 
-    Note:
-        If you are calling this function from an environment where the asyncio event loop is already running
-        (e.g., Jupyter notebook), you may need to apply `nest_asyncio` yourself before calling this function:
-
-            import nest_asyncio
-            nest_asyncio.apply()
-
-        This function does not apply `nest_asyncio` automatically to avoid global side effects.
+    Raises:
+        NestedAsyncIOLoopError: If called from a nested async I/O loop like in a Jupyter notebook.
     """
 
     async def gather_entries():
@@ -270,7 +270,19 @@ def fetch_many(
             async for entry in fetch_many_async(ids, save_dir, what, max_parallel_downloads=max_parallel_downloads)
         ]
 
-    return asyncio.run(gather_entries())
+    try:
+        return asyncio.run(gather_entries())
+    except RuntimeError as e:
+        msg = dedent("""\
+            Can not run async method from an environment where the asyncio event loop is already running.
+            Like a Jupyter notebook.
+
+            Please use the `fetch_many_async` function directly or before call
+
+                    import nest_asyncio
+                    nest_asyncio.apply()
+            """)
+        raise NestedAsyncIOLoopError(msg) from e
 
 
 def relative_to(entry: AlphaFoldEntry, session_dir: Path) -> AlphaFoldEntry:
