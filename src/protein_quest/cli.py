@@ -19,6 +19,7 @@ from protein_quest.__version__ import __version__
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
 from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_formats
 from protein_quest.alphafold.fetch import fetch_many as af_fetch
+from protein_quest.emdb import fetch as emdb_fetch
 from protein_quest.filters import filter_files_on_chain, filter_files_on_residues
 from protein_quest.go import Aspect, allowed_aspects, search_gene_ontology_term, write_go_terms_to_csv
 from protein_quest.pdbe import fetch as pdbe_fetch
@@ -258,6 +259,25 @@ def _add_retrieve_alphafold_parser(subparsers: argparse._SubParsersAction):
     )
 
 
+def _add_retrieve_emdb_parser(subparsers: argparse._SubParsersAction):
+    """Add retrieve emdb subcommand parser."""
+    parser = subparsers.add_parser(
+        "emdb",
+        help="Retrieve Electron Microscopy Data Bank (EMDB) gzipped 3D volume files for EMDB IDs in CSV.",
+        description=dedent("""\
+            Retrieve volume files from Electron Microscopy Data Bank (EMDB) website
+            for unique EMDB IDs listed in a CSV file.
+        """),
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+    )
+    parser.add_argument(
+        "emdb_csv",
+        type=argparse.FileType("r", encoding="UTF-8"),
+        help="CSV file with `emdb_id` column. Other columns are ignored. Use `-` for stdin.",
+    )
+    parser.add_argument("output_dir", type=Path, help="Directory to store downloaded EMDB volume files")
+
+
 def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
     """Add filter confidence subcommand parser."""
     parser = subparsers.add_parser(
@@ -387,6 +407,7 @@ def _add_retrieve_subcommands(subparsers: argparse._SubParsersAction):
 
     _add_retrieve_pdbe_parser(subsubparsers)
     _add_retrieve_alphafold_parser(subsubparsers)
+    _add_retrieve_emdb_parser(subsubparsers)
 
 
 def _add_filter_subcommands(subparsers: argparse._SubParsersAction):
@@ -553,7 +574,7 @@ def _handle_retrieve_pdbe(args):
     output_dir = args.output_dir
     max_parallel_downloads = args.max_parallel_downloads
 
-    pdb_ids = _read_pdbe_ids_from_csv(pdbe_csv)
+    pdb_ids = _read_column_from_csv(pdbe_csv, "pdb_id")
     rprint(f"Retrieving {len(pdb_ids)} PDBe entries")
     result = pdbe_fetch.fetch(pdb_ids, output_dir, max_parallel_downloads=max_parallel_downloads)
     rprint(f"Retrieved {len(result)} PDBe entries")
@@ -576,6 +597,16 @@ def _handle_retrieve_alphafold(args):
     afs = af_fetch(af_ids, download_dir, what=validated_what, max_parallel_downloads=max_parallel_downloads)
     total_nr_files = sum(af.nr_of_files() for af in afs)
     rprint(f"Retrieved {total_nr_files} AlphaFold files and {len(afs)} summaries, written to {download_dir}")
+
+
+def _handle_retrieve_emdb(args):
+    emdb_csv = args.emdb_csv
+    output_dir = args.output_dir
+
+    emdb_ids = _read_column_from_csv(emdb_csv, "emdb_id")
+    rprint(f"Retrieving {len(emdb_ids)} EMDB entries")
+    result = emdb_fetch(emdb_ids, output_dir)
+    rprint(f"Retrieved {len(result)} EMDB entries")
 
 
 def _handle_filter_confidence(args: argparse.Namespace):
@@ -624,7 +655,7 @@ def _handle_filter_chain(args):
     pdb_id2chain_mapping_file = args.chains
     scheduler_address = args.scheduler_address
 
-    rows = list(_iter_pdbe_csv(pdb_id2chain_mapping_file))
+    rows = list(_iter_csv_rows(pdb_id2chain_mapping_file))
     id2chains: dict[str, str] = {row["pdb_id"]: row["chain"] for row in rows}
 
     new_files = filter_files_on_chain(input_dir, id2chains, output_dir, scheduler_address)
@@ -682,6 +713,7 @@ HANDLERS: dict[tuple[str, str | None], Callable] = {
     ("search", "taxonomy"): _handle_search_taxonomy,
     ("retrieve", "pdbe"): _handle_retrieve_pdbe,
     ("retrieve", "alphafold"): _handle_retrieve_alphafold,
+    ("retrieve", "emdb"): _handle_retrieve_emdb,
     ("filter", "confidence"): _handle_filter_confidence,
     ("filter", "chain"): _handle_filter_chain,
     ("filter", "residue"): _handle_filter_residue,
@@ -746,11 +778,10 @@ def _read_alphafold_csv(file: TextIOWrapper):
     yield from reader
 
 
-def _iter_pdbe_csv(file: TextIOWrapper):
+def _iter_csv_rows(file: TextIOWrapper):
     reader = csv.DictReader(file)
-    # Expect columns: uniprot_acc, pdb_id, method, resolution, uniprot_chains
     yield from reader
 
 
-def _read_pdbe_ids_from_csv(file: TextIOWrapper) -> set[str]:
-    return {row["pdb_id"] for row in _iter_pdbe_csv(file)}
+def _read_column_from_csv(file: TextIOWrapper, column: str) -> set[str]:
+    return {row[column] for row in _iter_csv_rows(file)}
