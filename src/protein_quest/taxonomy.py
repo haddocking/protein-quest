@@ -1,3 +1,4 @@
+import csv
 import gzip
 import logging
 from dataclasses import dataclass
@@ -9,6 +10,7 @@ from cattrs.gen import make_dict_structure_fn, override
 from cattrs.preconf.orjson import make_converter
 from yarl import URL
 
+from protein_quest.go import TextIOWrapper
 from protein_quest.utils import friendly_session
 
 logger = logging.getLogger(__name__)
@@ -63,13 +65,13 @@ async def _fetch_page(url: URL | str, session: RetryClient) -> tuple[list[Taxon]
     return taxons, next_page
 
 
-async def search_taxon(term: str, field: SearchField | None = None, limit: int = 100) -> list[Taxon]:
+async def search_taxon(query: str, field: SearchField | None = None, limit: int = 100) -> list[Taxon]:
     """Search for taxon information in UniProt.
 
     Uses <https://www.uniprot.org/taxonomy?query=*>.
 
     Args:
-        term: Search term for the taxon.
+        query: Search query for the taxon.
         field: Field to search in.
             If None, searches in all fields.
             If "tax_id" then searches by taxon ID.
@@ -78,7 +80,7 @@ async def search_taxon(term: str, field: SearchField | None = None, limit: int =
         limit: Maximum number of results to return.
 
     Returns:
-        List of Taxon objects matching the search term.
+        List of Taxon objects matching the search query.
 
     Raises:
         ValueError: If the search field is invalid.
@@ -88,10 +90,9 @@ async def search_taxon(term: str, field: SearchField | None = None, limit: int =
     if field not in search_fields:
         msg = f"Invalid search field: {field}. Must be one of {search_fields}."
         raise ValueError(msg)
-    query = term
     if field is not None:
         # ((common:"house+mouse"))
-        query = f'(({field}:"{term}"))'
+        query = f'(({field}:"{query}"))'
     params = {"query": query, "limit": str(page_limit), "compressed": "true", "format": "json"}
     url = URL("https://rest.uniprot.org/taxonomy/search").with_query(params)
     logger.debug("Fetching uniprot taxonomy from %s with params %s", url, params)
@@ -113,3 +114,24 @@ async def search_taxon(term: str, field: SearchField | None = None, limit: int =
             if next_page is None:
                 return taxons
     return taxons
+
+
+def _write_taxonomy_csv(taxons: list[Taxon], output_csv: TextIOWrapper) -> None:
+    """Write taxon information to a CSV file.
+
+    Args:
+        taxons: List of Taxon objects to write to the CSV file.
+        output_csv: File object for the output CSV file.
+    """
+    writer = csv.writer(output_csv)
+    writer.writerow(["taxon_id", "scientific_name", "common_name", "rank", "other_names"])
+    for taxon in taxons:
+        writer.writerow(
+            [
+                taxon.taxon_id,
+                taxon.scientific_name,
+                taxon.common_name,
+                taxon.rank,
+                ";".join(taxon.other_names) if taxon.other_names else "",
+            ]
+        )

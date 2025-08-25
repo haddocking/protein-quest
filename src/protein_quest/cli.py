@@ -23,6 +23,7 @@ from protein_quest.filters import filter_files_on_chain, filter_files_on_residue
 from protein_quest.go import Aspect, allowed_aspects, search_gene_ontology_term, write_go_terms_to_csv
 from protein_quest.pdbe import fetch as pdbe_fetch
 from protein_quest.pdbe.io import glob_structure_files
+from protein_quest.taxonomy import SearchField, _write_taxonomy_csv, search_fields, search_taxon
 from protein_quest.uniprot import PdbResult, Query, search4af, search4pdb, search4uniprot
 
 logger = logging.getLogger(__name__)
@@ -142,6 +143,39 @@ def _add_search_go_parser(subparsers: argparse._SubParsersAction):
         help="Output CSV with GO term results. Use `-` for stdout.",
     )
     parser.add_argument("--limit", type=int, default=100, help="Maximum number of GO term results to return")
+
+
+def _add_search_taxonomy_parser(subparser: argparse._SubParsersAction):
+    """Add search taxonomy subcommand parser."""
+    parser = subparser.add_parser(
+        "taxonomy",
+        help="Search for taxon information in UniProt",
+        description=dedent("""\
+            Search for taxon information in UniProt.
+            Uses https://www.uniprot.org/taxonomy?query=*.
+        """),
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+    )
+    parser.add_argument(
+        "query", type=str, help="Search query for the taxon. Surround multiple words with quotes (' or \")."
+    )
+    parser.add_argument(
+        "output_csv",
+        type=argparse.FileType("w", encoding="UTF-8"),
+        help="Output CSV with taxonomy results. Use `-` for stdout.",
+    )
+    parser.add_argument(
+        "--field",
+        type=str,
+        choices=search_fields,
+        help=dedent("""\
+            Field to search in. If not given then searches all fields.
+            If "tax_id" then searches by taxon ID.
+            If "parent" then given a parent taxon ID returns all its children.
+            For example, if the parent taxon ID is 9606 (Human), it will return Neanderthal and Denisovan.
+        """),
+    )
+    parser.add_argument("--limit", type=int, default=100, help="Maximum number of results to return")
 
 
 def _add_retrieve_pdbe_parser(subparsers: argparse._SubParsersAction):
@@ -312,6 +346,7 @@ def _add_search_subcommands(subparsers: argparse._SubParsersAction):
     _add_search_pdbe_parser(subsubparsers)
     _add_search_alphafold_parser(subsubparsers)
     _add_search_go_parser(subsubparsers)
+    _add_search_taxonomy_parser(subsubparsers)
 
 
 def _add_retrieve_subcommands(subparsers: argparse._SubParsersAction):
@@ -459,6 +494,21 @@ def _handle_search_go(args):
     write_go_terms_to_csv(results, output_csv)
 
 
+def _handle_search_taxonomy(args):
+    query: str = args.query
+    field: SearchField | None = args.field
+    limit: int = args.limit
+    output_csv: TextIOWrapper = args.output_csv
+
+    if field:
+        rprint(f"Searching for taxon information matching '{query}' in field '{field}'")
+    else:
+        rprint(f"Searching for taxon information matching '{query}'")
+    results = asyncio.run(search_taxon(query=query, field=field, limit=limit))
+    rprint(f"Found {len(results)} taxons, written to {output_csv.name}")
+    _write_taxonomy_csv(results, output_csv)
+
+
 def _handle_retrieve_pdbe(args):
     pdbe_csv = args.pdbe_csv
     output_dir = args.output_dir
@@ -589,6 +639,7 @@ HANDLERS: dict[tuple[str, str | None], Callable] = {
     ("search", "pdbe"): _handle_search_pdbe,
     ("search", "alphafold"): _handle_search_alphafold,
     ("search", "go"): _handle_search_go,
+    ("search", "taxonomy"): _handle_search_taxonomy,
     ("retrieve", "pdbe"): _handle_retrieve_pdbe,
     ("retrieve", "alphafold"): _handle_retrieve_alphafold,
     ("filter", "confidence"): _handle_filter_confidence,
