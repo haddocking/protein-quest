@@ -32,7 +32,7 @@ The sections below outline the steps in each case.
 1. (**important**) wait until some kind of consensus is reached about your idea being a good idea;
 1. if needed, fork the repository to your own Github profile and create your own feature branch off of the latest main commit. While working on your feature branch, make sure to stay up to date with the main branch by pulling in changes, possibly from the 'upstream' repository (follow the instructions [here](https://help.github.com/articles/configuring-a-remote-for-a-fork/) and [here](https://help.github.com/articles/syncing-a-fork/));
 1. install [uv](https://docs.astral.sh/uv) to manage this packages development environment);
-1. Make sure `uv sync && . .venv/bin/activate && protein-quest --help` works;
+1. Make sure `uv sync --all-extras --all-groups && . .venv/bin/activate && protein-quest --help` works;
 1. make sure the existing tests still work by running `uv run pytest`;
 1. add your own tests (if necessary);
 1. format your code with `uvx ruff format` and sort imports with `uvx ruff check --select I --fix`;
@@ -48,17 +48,17 @@ In case you feel like you've made a valuable contribution, but you don't know ho
 
 To create a release you need write permission on the repository.
 
-1. Check the author list in [`CITATION.cff`](CITATION.cff)
-1. Bump the version in [pyproject.toml](pyproject.toml).
-1. Go to the [GitHub release page](https://github.com/haddocking/protein-quest/releases)
-1. Press draft a new release button
-1. Fill tag, title and description field. For tag use version from pyproject.toml and prepend with "v" character. For description use "Python package to search/retrieve/filter proteins and protein structures." line plus press "Generate release notes" button.
-1. Press the Publish Release button
-1. Wait until [Build and upload to PyPI](https://github.com/haddocking/protein-quest/actions/workflows/pypi-publish.yml) has completed
-1. Verify new release is on [PyPi](https://pypi.org/project/protein-quest-em/#history)
-1. Verify new Zenodo record has been created.
+1. Bump the version in [src/protein_quest/__version__.py](src/protein_quest/__version__.py).
+2. Check the author list in [`CITATION.cff`](CITATION.cff)
+3. Go to the [GitHub release page](https://github.com/haddocking/protein-quest/releases)
+4. Press draft a new release button
+5. Fill tag, title and description field. For tag use version from `src/protein_quest/__version__.py` and prepend with "v" character. For description use "Python package to search/retrieve/filter proteins and protein structures." line plus press "Generate release notes" button.
+6. Press the Publish Release button
+7. Wait until [Build and upload to PyPI](https://github.com/haddocking/protein-quest/actions/workflows/pypi-publish.yml) has completed
+8. Verify new release is on [PyPi](https://pypi.org/project/protein-quest/#history)
+9. Verify new Zenodo record has been created.
 
-## Contributing with documentation
+## Contributing to documentation
 
 To work on notebooks in the docs/ directory:
 
