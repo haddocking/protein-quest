@@ -23,5 +23,4 @@ repository-code: https://github.com/haddocking/protein-quest
 identifiers:
   - description: Latest version of software
     type: doi
-    # TODO update once release has been made
-    value: 10.5281/zenodo.15632658
+    value: 10.5281/zenodo.16941288
