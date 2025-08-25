@@ -81,12 +81,7 @@ def search_pdb(
     return search4pdb(uniprot_accs, limit=limit)
 
 
-@mcp.tool
-def fetch_structures_from_pdbe(
-    ids: set[str], save_dir: Path
-) -> Annotated[Mapping[str, Path], Field(description="Mapping of PDB IDs to their file paths.")]:
-    """Fetch PDB structures as mmCIF files from PDBe and save them to the specified directory."""
-    return pdbe_fetch(ids, save_dir)
+mcp.tool(pdbe_fetch, name="fetch_pdbe_structures")
 
 
 @mcp.tool

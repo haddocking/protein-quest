@@ -16,7 +16,6 @@ dependencies = [
     "distributed>=2025.5.1",
     "gemmi>=0.7.3",
     "molviewspec>=1.6.0",
-    "nest-asyncio>=1.6.0",
     "pandas>=2.3.0",
     "platformdirs>=4.3.8",
     "psutil>=7.0.0",

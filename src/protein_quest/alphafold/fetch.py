@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-import nest_asyncio
 from aiohttp_retry import RetryClient
 from aiopath import AsyncPath
 from cattrs.preconf.orjson import make_converter
@@ -254,6 +253,15 @@ def fetch_many(
 
     Returns:
         A list of AlphaFoldEntry dataclasses containing the summary, pdb file, and pae file.
+
+    Note:
+        If you are calling this function from an environment where the asyncio event loop is already running
+        (e.g., Jupyter notebook), you may need to apply `nest_asyncio` yourself before calling this function:
+
+            import nest_asyncio
+            nest_asyncio.apply()
+
+        This function does not apply `nest_asyncio` automatically to avoid global side effects.
     """
 
     async def gather_entries():
@@ -262,7 +270,6 @@ def fetch_many(
             async for entry in fetch_many_async(ids, save_dir, what, max_parallel_downloads=max_parallel_downloads)
         ]
 
-    nest_asyncio.apply()
     return asyncio.run(gather_entries())
 
 

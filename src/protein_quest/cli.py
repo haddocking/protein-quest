@@ -579,7 +579,7 @@ def _handle_retrieve_pdbe(args):
 
     pdb_ids = _read_column_from_csv(pdbe_csv, "pdb_id")
     rprint(f"Retrieving {len(pdb_ids)} PDBe entries")
-    result = pdbe_fetch.fetch(pdb_ids, output_dir, max_parallel_downloads=max_parallel_downloads)
+    result = asyncio.run(pdbe_fetch.fetch(pdb_ids, output_dir, max_parallel_downloads=max_parallel_downloads))
     rprint(f"Retrieved {len(result)} PDBe entries")
 
 
@@ -608,7 +608,7 @@ def _handle_retrieve_emdb(args):
 
     emdb_ids = _read_column_from_csv(emdb_csv, "emdb_id")
     rprint(f"Retrieving {len(emdb_ids)} EMDB entries")
-    result = emdb_fetch(emdb_ids, output_dir)
+    result = asyncio.run(emdb_fetch(emdb_ids, output_dir))
     rprint(f"Retrieved {len(result)} EMDB entries")
 
 
