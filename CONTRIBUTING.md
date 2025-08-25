@@ -52,7 +52,7 @@ To create a release you need write permission on the repository.
 2. Check the author list in [`CITATION.cff`](CITATION.cff)
 3. Go to the [GitHub release page](https://github.com/haddocking/protein-quest/releases)
 4. Press draft a new release button
-5. Fill tag, title and description field. For tag use version from pyproject.toml and prepend with "v" character. For description use "Python package to search/retrieve/filter proteins and protein structures." line plus press "Generate release notes" button.
+5. Fill tag, title and description field. For tag use version from `src/protein_quest/__version__.py` and prepend with "v" character. For description use "Python package to search/retrieve/filter proteins and protein structures." line plus press "Generate release notes" button.
 6. Press the Publish Release button
 7. Wait until [Build and upload to PyPI](https://github.com/haddocking/protein-quest/actions/workflows/pypi-publish.yml) has completed
 8. Verify new release is on [PyPi](https://pypi.org/project/protein-quest/#history)
