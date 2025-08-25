@@ -243,6 +243,7 @@ def files_to_download(what: set[DownloadableFormat], summaries: Iterable[EntrySu
 
 class NestedAsyncIOLoopError(RuntimeError):
     """Custom error for nested async I/O loops."""
+
     pass
 
 

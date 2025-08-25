@@ -33,7 +33,6 @@ Examples:
 
 """
 
-from collections.abc import Mapping
 from pathlib import Path
 from textwrap import dedent
 from typing import Annotated
