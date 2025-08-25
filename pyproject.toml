@@ -42,7 +42,7 @@ mcp = [
 
 [dependency-groups]
 dev = [
-    "pyrefly>=0.23.1",
+    "pyrefly>=0.29.0",
     "pytest>=8.3.5",
     "pytest-asyncio>=1.1.0",
     "pytest-cov>=6.2.1",
