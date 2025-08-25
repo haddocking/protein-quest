@@ -487,8 +487,8 @@ def _handle_search_uniprot(args):
             "taxon_id": taxon_id,
             "reviewed": reviewed,
             "subcellular_location_uniprot": subcellular_location_uniprot,
-            "subcellular_location_go": _as_scalar_or_list(subcellular_location_go),
-            "molecular_function_go": _as_scalar_or_list(molecular_function_go),
+            "subcellular_location_go": subcellular_location_go,
+            "molecular_function_go": molecular_function_go,
         },
         Query,
     )
@@ -535,7 +535,8 @@ def _handle_search_emdb(args):
     accs = _read_lines(uniprot_accs)
     rprint(f"Finding EMDB entries for {len(accs)} uniprot accessions")
     results = search4emdb(accs, limit=limit, timeout=timeout)
-    rprint(f"Found {len(results)} EMDB entries, written to {output_csv.name}")
+    total_emdbs = sum([len(v) for v in results.values()])
+    rprint(f"Found {total_emdbs} EMDB entries, written to {output_csv.name}")
     _write_dict_of_sets2csv(output_csv, results, "emdb_id")
 
 
@@ -719,14 +720,6 @@ HANDLERS: dict[tuple[str, str | None], Callable] = {
     ("filter", "residue"): _handle_filter_residue,
     ("mcp", None): _handle_mcp,
 }
-
-
-def _as_scalar_or_list(values: list[str] | None) -> str | list[str] | None:
-    if not values:
-        return None
-    if len(values) == 1:
-        return values[0]
-    return values
 
 
 def _read_lines(file: TextIOWrapper) -> list[str]:
