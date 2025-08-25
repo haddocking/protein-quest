@@ -1,3 +1,5 @@
+"""Module for cli parsers and handlers."""
+
 import argparse
 import asyncio
 import csv

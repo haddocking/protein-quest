@@ -1,3 +1,5 @@
+"""Module for searching taxon information from UniProt."""
+
 import csv
 import gzip
 import logging

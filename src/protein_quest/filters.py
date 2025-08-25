@@ -1,3 +1,5 @@
+"""Module for filtering structure files and their contents."""
+
 import logging
 from collections.abc import Generator
 from dataclasses import dataclass

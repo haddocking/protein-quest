@@ -1,3 +1,5 @@
+"""Module dealing with Electron Microscopy Data Bank (EMDB)."""
+
 import asyncio
 from collections.abc import Iterable, Mapping
 from pathlib import Path

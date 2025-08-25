@@ -1,3 +1,5 @@
+"""Module for functions that are used in multiple places."""
+
 import asyncio
 import logging
 from collections.abc import Iterable

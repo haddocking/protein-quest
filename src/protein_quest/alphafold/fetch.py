@@ -1,3 +1,5 @@
+"""Module for fetch Alphafold data."""
+
 import asyncio
 import logging
 from asyncio import Semaphore

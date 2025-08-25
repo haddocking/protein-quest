@@ -1,3 +1,5 @@
+"""Module for searching UniProtKB using SPARQL."""
+
 import logging
 from collections.abc import Collection, Iterable
 from dataclasses import dataclass

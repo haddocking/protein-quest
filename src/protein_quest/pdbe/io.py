@@ -1,3 +1,5 @@
+"""Module for structure file input/output."""
+
 import gzip
 import logging
 from collections.abc import Generator
