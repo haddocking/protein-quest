@@ -42,7 +42,8 @@ from fastmcp import FastMCP
 from pydantic import Field
 
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, ConfidenceFilterResult, filter_file_on_residues
-from protein_quest.alphafold.fetch import AlphaFoldEntry, DownloadableFormat, fetch_many
+from protein_quest.alphafold.fetch import AlphaFoldEntry, DownloadableFormat
+from protein_quest.alphafold.fetch import fetch_many as alphafold_fetch
 from protein_quest.emdb import fetch as emdb_fetch
 from protein_quest.go import search_gene_ontology_term
 from protein_quest.pdbe.fetch import fetch as pdbe_fetch
@@ -151,7 +152,7 @@ def fetch_alphafold_structures(uniprot_accs: set[str], save_dir: Path) -> list[A
         A list of AlphaFold entries.
     """
     what: set[DownloadableFormat] = {"cif"}
-    return fetch_many(uniprot_accs, save_dir, what)
+    return alphafold_fetch(uniprot_accs, save_dir, what)
 
 
 mcp.tool(emdb_fetch, name="fetch_emdb_volumes")
