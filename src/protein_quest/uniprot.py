@@ -1,3 +1,5 @@
+"""Module for searching UniProtKB using SPARQL."""
+
 import logging
 from collections.abc import Collection, Iterable
 from dataclasses import dataclass
@@ -19,17 +21,17 @@ class Query:
         reviewed: Whether to filter results by reviewed status (True for reviewed, False for unreviewed).
         subcellular_location_uniprot: Subcellular location in UniProt format (e.g., "nucleus").
         subcellular_location_go: Subcellular location in GO format. Can be a single GO term
-            (e.g., "GO:0005634") or a collection of GO terms (e.g., ["GO:0005634", "GO:0005737"]).
+            (e.g., ["GO:0005634"]) or a collection of GO terms (e.g., ["GO:0005634", "GO:0005737"]).
         molecular_function_go: Molecular function in GO format. Can be a single GO term
-            (e.g., "GO:0003674") or a collection of GO terms (e.g., ["GO:0003674", "GO:0008150"]).
+            (e.g., ["GO:0003674"]) or a collection of GO terms (e.g., ["GO:0003674", "GO:0008150"]).
     """
 
     # TODO make taxon_id an int
     taxon_id: str | None
     reviewed: bool | None = None
     subcellular_location_uniprot: str | None = None
-    subcellular_location_go: str | list[str] | None = None
-    molecular_function_go: str | list[str] | None = None
+    subcellular_location_go: list[str] | None = None
+    molecular_function_go: list[str] | None = None
 
 
 def _first_chain_from_uniprot_chains(uniprot_chains: str) -> str:

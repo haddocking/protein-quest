@@ -22,17 +22,25 @@ An example workflow:
 
 ```mermaid
 graph TB;
-    classDef dashedBorder stroke-dasharray: 5 5;
-    taxonomy[/Search taxon/]:::dashedBorder
     taxonomy[/Search taxon/] -. taxon_ids .-> searchuniprot[/Search UniprotKB/]
+    goterm[/Search GO term/] -. go_ids .-> searchuniprot[/Search UniprotKB/]
     searchuniprot --> |uniprot_accessions|searchpdbe[/Search PDBe/]
     searchuniprot --> |uniprot_accessions|searchaf[/Search Alphafold/]
+    searchuniprot -. uniprot_accessions .-> searchemdb[/Search EMDB/]
     searchpdbe -->|pdb_ids|fetchpdbe[Retrieve PDBe]
     searchaf --> |uniprot_accessions|fetchad(Retrieve AlphaFold)
+    searchemdb -. emdb_ids .->fetchemdb[Retrieve EMDB]
     fetchpdbe -->|mmcif_files_with_uniprot_acc| chainfilter{Filter on chain of uniprot}
     chainfilter --> |mmcif_files| residuefilter{Filter on chain length}
     fetchad -->|pdb_files| confidencefilter{Filter out low confidence}
+    classDef dashedBorder stroke-dasharray: 5 5;
+    goterm:::dashedBorder
+    taxonomy:::dashedBorder
+    searchemdb:::dashedBorder
+    fetchemdb:::dashedBorder
 ```
+
+(Dotted nodes and edges are side-quests.)
 
 ## Install
 
@@ -79,6 +87,12 @@ protein-quest search pdbe uniprot_accs.txt pdbe.csv
 protein-quest search alphafold uniprot_accs.txt alphafold.csv
 ```
 
+### Search for EMDB structures of uniprot accessions
+
+```shell
+protein-quest search emdb uniprot_accs.txt emdbs.csv
+```
+
 ### To retrieve PDB structure files
 
 ```shell
@@ -92,6 +106,12 @@ protein-quest retrieve alphafold alphafold.csv downloads-af/
 ```
 
 For each entry downloads the summary.json and cif file.
+
+### To retrieve EMDB volume files
+
+```shell
+protein-quest retrieve emdb emdbs.csv downloads-emdb/
+```
 
 ### To filter AlphaFold structures on confidence
 
@@ -124,6 +144,12 @@ protein-quest filter residue  \
     --min-residues 100 \
     --max-residues 1000 \
     ./filtered-chains ./filtered
+```
+
+### Search Taxonomy
+
+```shell
+protein-quest search taxonomy "Homo sapiens" -
 ```
 
 ### Search Gene Ontology (GO)

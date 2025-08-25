@@ -1,3 +1,5 @@
+"""Module for cli parsers and handlers."""
+
 import argparse
 import asyncio
 import csv
@@ -19,12 +21,13 @@ from protein_quest.__version__ import __version__
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
 from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_formats
 from protein_quest.alphafold.fetch import fetch_many as af_fetch
+from protein_quest.emdb import fetch as emdb_fetch
 from protein_quest.filters import filter_files_on_chain, filter_files_on_residues
 from protein_quest.go import Aspect, allowed_aspects, search_gene_ontology_term, write_go_terms_to_csv
 from protein_quest.pdbe import fetch as pdbe_fetch
 from protein_quest.pdbe.io import glob_structure_files
 from protein_quest.taxonomy import SearchField, _write_taxonomy_csv, search_fields, search_taxon
-from protein_quest.uniprot import PdbResult, Query, search4af, search4pdb, search4uniprot
+from protein_quest.uniprot import PdbResult, Query, search4af, search4emdb, search4pdb, search4uniprot
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +123,31 @@ def _add_search_alphafold_parser(subparsers: argparse._SubParsersAction):
     parser.add_argument(
         "--limit", type=int, default=10_000, help="Maximum number of Alphafold entry identifiers to return"
     )
+    parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
+
+
+def _add_search_emdb_parser(subparsers: argparse._SubParsersAction):
+    """Add search emdb subcommand parser."""
+    parser = subparsers.add_parser(
+        "emdb",
+        help="Search Electron Microscopy Data Bank (EMDB) identifiers of given UniProt accessions",
+        description=dedent("""\
+            Search for Electron Microscopy Data Bank (EMDB) identifiers of given UniProt accessions
+            in the Uniprot SPARQL endpoint.
+        """),
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+    )
+    parser.add_argument(
+        "uniprot_accs",
+        type=argparse.FileType("r", encoding="UTF-8"),
+        help="Text file with UniProt accessions (one per line). Use `-` for stdin.",
+    )
+    parser.add_argument(
+        "output_csv",
+        type=argparse.FileType("w", encoding="UTF-8"),
+        help="Output CSV with EMDB IDs per UniProt accession. Use `-` for stdout.",
+    )
+    parser.add_argument("--limit", type=int, default=10_000, help="Maximum number of EMDB entry identifiers to return")
     parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
 
 
@@ -231,6 +259,25 @@ def _add_retrieve_alphafold_parser(subparsers: argparse._SubParsersAction):
         default=5,
         help="Maximum number of parallel downloads",
     )
+
+
+def _add_retrieve_emdb_parser(subparsers: argparse._SubParsersAction):
+    """Add retrieve emdb subcommand parser."""
+    parser = subparsers.add_parser(
+        "emdb",
+        help="Retrieve Electron Microscopy Data Bank (EMDB) gzipped 3D volume files for EMDB IDs in CSV.",
+        description=dedent("""\
+            Retrieve volume files from Electron Microscopy Data Bank (EMDB) website
+            for unique EMDB IDs listed in a CSV file.
+        """),
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+    )
+    parser.add_argument(
+        "emdb_csv",
+        type=argparse.FileType("r", encoding="UTF-8"),
+        help="CSV file with `emdb_id` column. Other columns are ignored. Use `-` for stdin.",
+    )
+    parser.add_argument("output_dir", type=Path, help="Directory to store downloaded EMDB volume files")
 
 
 def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
@@ -345,6 +392,7 @@ def _add_search_subcommands(subparsers: argparse._SubParsersAction):
     _add_search_uniprot_parser(subsubparsers)
     _add_search_pdbe_parser(subsubparsers)
     _add_search_alphafold_parser(subsubparsers)
+    _add_search_emdb_parser(subsubparsers)
     _add_search_go_parser(subsubparsers)
     _add_search_taxonomy_parser(subsubparsers)
 
@@ -361,6 +409,7 @@ def _add_retrieve_subcommands(subparsers: argparse._SubParsersAction):
 
     _add_retrieve_pdbe_parser(subsubparsers)
     _add_retrieve_alphafold_parser(subsubparsers)
+    _add_retrieve_emdb_parser(subsubparsers)
 
 
 def _add_filter_subcommands(subparsers: argparse._SubParsersAction):
@@ -440,8 +489,8 @@ def _handle_search_uniprot(args):
             "taxon_id": taxon_id,
             "reviewed": reviewed,
             "subcellular_location_uniprot": subcellular_location_uniprot,
-            "subcellular_location_go": _as_scalar_or_list(subcellular_location_go),
-            "molecular_function_go": _as_scalar_or_list(molecular_function_go),
+            "subcellular_location_go": subcellular_location_go,
+            "molecular_function_go": molecular_function_go,
         },
         Query,
     )
@@ -476,7 +525,21 @@ def _handle_search_alphafold(args):
     rprint(f"Finding AlphaFold entries for {len(accs)} uniprot accessions")
     results = search4af(accs, limit=limit, timeout=timeout)
     rprint(f"Found {len(results)} AlphaFold entries, written to {output_csv.name}")
-    _write_alphafold_csv(output_csv, results)
+    _write_dict_of_sets2csv(output_csv, results, "af_id")
+
+
+def _handle_search_emdb(args):
+    uniprot_accs = args.uniprot_accs
+    limit = args.limit
+    timeout = args.timeout
+    output_csv = args.output_csv
+
+    accs = _read_lines(uniprot_accs)
+    rprint(f"Finding EMDB entries for {len(accs)} uniprot accessions")
+    results = search4emdb(accs, limit=limit, timeout=timeout)
+    total_emdbs = sum([len(v) for v in results.values()])
+    rprint(f"Found {total_emdbs} EMDB entries, written to {output_csv.name}")
+    _write_dict_of_sets2csv(output_csv, results, "emdb_id")
 
 
 def _handle_search_go(args):
@@ -514,9 +577,9 @@ def _handle_retrieve_pdbe(args):
     output_dir = args.output_dir
     max_parallel_downloads = args.max_parallel_downloads
 
-    pdb_ids = _read_pdbe_ids_from_csv(pdbe_csv)
+    pdb_ids = _read_column_from_csv(pdbe_csv, "pdb_id")
     rprint(f"Retrieving {len(pdb_ids)} PDBe entries")
-    result = pdbe_fetch.fetch(pdb_ids, output_dir, max_parallel_downloads=max_parallel_downloads)
+    result = asyncio.run(pdbe_fetch.fetch(pdb_ids, output_dir, max_parallel_downloads=max_parallel_downloads))
     rprint(f"Retrieved {len(result)} PDBe entries")
 
 
@@ -537,6 +600,16 @@ def _handle_retrieve_alphafold(args):
     afs = af_fetch(af_ids, download_dir, what=validated_what, max_parallel_downloads=max_parallel_downloads)
     total_nr_files = sum(af.nr_of_files() for af in afs)
     rprint(f"Retrieved {total_nr_files} AlphaFold files and {len(afs)} summaries, written to {download_dir}")
+
+
+def _handle_retrieve_emdb(args):
+    emdb_csv = args.emdb_csv
+    output_dir = args.output_dir
+
+    emdb_ids = _read_column_from_csv(emdb_csv, "emdb_id")
+    rprint(f"Retrieving {len(emdb_ids)} EMDB entries")
+    result = asyncio.run(emdb_fetch(emdb_ids, output_dir))
+    rprint(f"Retrieved {len(result)} EMDB entries")
 
 
 def _handle_filter_confidence(args: argparse.Namespace):
@@ -585,7 +658,7 @@ def _handle_filter_chain(args):
     pdb_id2chain_mapping_file = args.chains
     scheduler_address = args.scheduler_address
 
-    rows = list(_iter_pdbe_csv(pdb_id2chain_mapping_file))
+    rows = list(_iter_csv_rows(pdb_id2chain_mapping_file))
     id2chains: dict[str, str] = {row["pdb_id"]: row["chain"] for row in rows}
 
     new_files = filter_files_on_chain(input_dir, id2chains, output_dir, scheduler_address)
@@ -638,23 +711,17 @@ HANDLERS: dict[tuple[str, str | None], Callable] = {
     ("search", "uniprot"): _handle_search_uniprot,
     ("search", "pdbe"): _handle_search_pdbe,
     ("search", "alphafold"): _handle_search_alphafold,
+    ("search", "emdb"): _handle_search_emdb,
     ("search", "go"): _handle_search_go,
     ("search", "taxonomy"): _handle_search_taxonomy,
     ("retrieve", "pdbe"): _handle_retrieve_pdbe,
     ("retrieve", "alphafold"): _handle_retrieve_alphafold,
+    ("retrieve", "emdb"): _handle_retrieve_emdb,
     ("filter", "confidence"): _handle_filter_confidence,
     ("filter", "chain"): _handle_filter_chain,
     ("filter", "residue"): _handle_filter_residue,
     ("mcp", None): _handle_mcp,
 }
-
-
-def _as_scalar_or_list(values: list[str] | None) -> str | list[str] | None:
-    if not values:
-        return None
-    if len(values) == 1:
-        return values[0]
-    return values
 
 
 def _read_lines(file: TextIOWrapper) -> list[str]:
@@ -690,15 +757,15 @@ def _write_pdbe_csv(path: TextIOWrapper, data: dict[str, set[PdbResult]]):
             )
 
 
-def _write_alphafold_csv(file: TextIOWrapper, data: dict[str, set[str]]):
+def _write_dict_of_sets2csv(file: TextIOWrapper, data: dict[str, set[str]], ref_id_field: str):
     _make_sure_parent_exists(file)
-    fieldnames = ["uniprot_acc", "af_id"]
+    fieldnames = ["uniprot_acc", ref_id_field]
 
     writer = csv.DictWriter(file, fieldnames=fieldnames)
     writer.writeheader()
-    for uniprot_acc, af_ids in sorted(data.items()):
-        for af_id in sorted(af_ids):
-            writer.writerow({"uniprot_acc": uniprot_acc, "af_id": af_id})
+    for uniprot_acc, ref_ids in sorted(data.items()):
+        for ref_id in sorted(ref_ids):
+            writer.writerow({"uniprot_acc": uniprot_acc, ref_id_field: ref_id})
 
 
 def _read_alphafold_csv(file: TextIOWrapper):
@@ -706,11 +773,10 @@ def _read_alphafold_csv(file: TextIOWrapper):
     yield from reader
 
 
-def _iter_pdbe_csv(file: TextIOWrapper):
+def _iter_csv_rows(file: TextIOWrapper):
     reader = csv.DictReader(file)
-    # Expect columns: uniprot_acc, pdb_id, method, resolution, uniprot_chains
     yield from reader
 
 
-def _read_pdbe_ids_from_csv(file: TextIOWrapper) -> set[str]:
-    return {row["pdb_id"] for row in _iter_pdbe_csv(file)}
+def _read_column_from_csv(file: TextIOWrapper, column: str) -> set[str]:
+    return {row[column] for row in _iter_csv_rows(file)}

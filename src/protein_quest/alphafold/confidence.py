@@ -1,3 +1,5 @@
+"""Module for filtering alphafold structures on confidence."""
+
 import logging
 from collections.abc import Generator
 from dataclasses import dataclass

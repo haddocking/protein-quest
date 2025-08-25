@@ -33,7 +33,6 @@ Examples:
 
 """
 
-from collections.abc import Mapping
 from pathlib import Path
 from textwrap import dedent
 from typing import Annotated
@@ -42,12 +41,14 @@ from fastmcp import FastMCP
 from pydantic import Field
 
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, ConfidenceFilterResult, filter_file_on_residues
-from protein_quest.alphafold.fetch import AlphaFoldEntry, DownloadableFormat, fetch_many
+from protein_quest.alphafold.fetch import AlphaFoldEntry, DownloadableFormat
+from protein_quest.alphafold.fetch import fetch_many as alphafold_fetch
+from protein_quest.emdb import fetch as emdb_fetch
 from protein_quest.go import search_gene_ontology_term
 from protein_quest.pdbe.fetch import fetch as pdbe_fetch
 from protein_quest.pdbe.io import glob_structure_files, nr_residues_in_chain, write_single_chain_pdb_file
 from protein_quest.taxonomy import search_taxon
-from protein_quest.uniprot import PdbResult, Query, search4af, search4pdb, search4uniprot
+from protein_quest.uniprot import PdbResult, Query, search4af, search4emdb, search4pdb, search4uniprot
 
 mcp = FastMCP("protein-quest")
 
@@ -80,12 +81,7 @@ def search_pdb(
     return search4pdb(uniprot_accs, limit=limit)
 
 
-@mcp.tool
-def fetch_structures_from_pdbe(
-    ids: set[str], save_dir: Path
-) -> Annotated[Mapping[str, Path], Field(description="Mapping of PDB IDs to their file paths.")]:
-    """Fetch PDB structures as mmCIF files from PDBe and save them to the specified directory."""
-    return pdbe_fetch(ids, save_dir)
+mcp.tool(pdbe_fetch, name="fetch_pdbe_structures")
 
 
 @mcp.tool
@@ -140,6 +136,9 @@ def search_alphafolds(
     return {k for k, v in results.items() if v}
 
 
+mcp.tool(search4emdb, name="search_emdb")
+
+
 @mcp.tool
 def fetch_alphafold_structures(uniprot_accs: set[str], save_dir: Path) -> list[AlphaFoldEntry]:
     """Fetch the AlphaFold summary and mmcif file for given UniProt accessions.
@@ -152,7 +151,10 @@ def fetch_alphafold_structures(uniprot_accs: set[str], save_dir: Path) -> list[A
         A list of AlphaFold entries.
     """
     what: set[DownloadableFormat] = {"cif"}
-    return fetch_many(uniprot_accs, save_dir, what)
+    return alphafold_fetch(uniprot_accs, save_dir, what)
+
+
+mcp.tool(emdb_fetch, name="fetch_emdb_volumes")
 
 
 @mcp.tool
