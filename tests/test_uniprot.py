@@ -32,8 +32,8 @@ def test_build_sparql_query_uniprot():
         taxon_id="9606",
         reviewed=True,
         subcellular_location_uniprot="nucleus",
-        subcellular_location_go="GO:0005634",  # Cellular component - Nucleus
-        molecular_function_go="GO:0003677",  # Molecular function - DNA binding
+        subcellular_location_go=["GO:0005634"],  # Cellular component - Nucleus
+        molecular_function_go=["GO:0003677"],  # Molecular function - DNA binding
     )
     result = _build_sparql_query_uniprot(query, limit=10)
 
@@ -223,7 +223,7 @@ def test_append_subcellular_location_filters_invalid_go_term():
         taxon_id=None,
         reviewed=None,
         subcellular_location_uniprot=None,
-        subcellular_location_go="INVALID:0005634",  # Invalid GO term
+        subcellular_location_go=["INVALID:0005634"],  # Invalid GO term
         molecular_function_go=None,
     )
 
@@ -271,8 +271,8 @@ def test_search4uniprot():
         taxon_id="9606",
         reviewed=True,
         subcellular_location_uniprot="nucleus",
-        subcellular_location_go="GO:0005634",  # Cellular component - Nucleus
-        molecular_function_go="GO:0003677",  # Molecular function - DNA binding
+        subcellular_location_go=["GO:0005634"],  # Cellular component - Nucleus
+        molecular_function_go=["GO:0003677"],  # Molecular function - DNA binding
     )
 
     results = search4uniprot(query, limit=1)
