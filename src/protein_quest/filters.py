@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 def filter_files_on_chain(
     input_dir: Path,
+    # TODO allow to write chain A and B of same pdb
     id2chains: dict[str, str],
     output_dir: Path,
     scheduler_address: str | Cluster | None = None,
@@ -60,9 +61,11 @@ def filter_files_on_chain(
         progress(futures)
 
         results = client.gather(futures)
+        # TODO replace tuple with dataclass
         return cast("list[tuple[str,str, Path | None]]", results)
 
 
+# TODO rename to be more unique for residue filter or make generic so it can be used for chain filter as well
 @dataclass
 class FilterStat:
     """Statistics for filtering files based on residue count in a specific chain.

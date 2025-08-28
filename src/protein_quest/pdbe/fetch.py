@@ -49,3 +49,5 @@ async def fetch(ids: Iterable[str], save_dir: Path, max_parallel_downloads: int 
 
     await retrieve_files(urls, save_dir, max_parallel_downloads, desc="Downloading PDBe mmCIF files")
     return id2paths
+
+# TODO add sync version of fetch with try/catch similar to fetch_many() for alphafold
