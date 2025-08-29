@@ -65,9 +65,8 @@ def filter_files_on_chain(
         return cast("list[tuple[str,str, Path | None]]", results)
 
 
-# TODO rename to be more unique for residue filter or make generic so it can be used for chain filter as well
 @dataclass
-class FilterStat:
+class ResidueFilterStatistics:
     """Statistics for filtering files based on residue count in a specific chain.
 
     Parameters:
@@ -85,7 +84,7 @@ class FilterStat:
 
 def filter_files_on_residues(
     input_files: list[Path], output_dir: Path, min_residues: int, max_residues: int, chain: str = "A"
-) -> Generator[FilterStat]:
+) -> Generator[ResidueFilterStatistics]:
     """Filter PDB/mmCIF files by number of residues in given chain.
 
     Args:
@@ -96,7 +95,7 @@ def filter_files_on_residues(
         chain: The chain to count residues of.
 
     Yields:
-        FilterStat objects containing information about the filtering process for each input file.
+        Objects containing information about the filtering process for each input file.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     for input_file in tqdm(input_files, unit="file"):
@@ -105,6 +104,6 @@ def filter_files_on_residues(
         if passed:
             output_file = output_dir / input_file.name
             copyfile(input_file, output_file)
-            yield FilterStat(input_file, residue_count, True, output_file)
+            yield ResidueFilterStatistics(input_file, residue_count, True, output_file)
         else:
-            yield FilterStat(input_file, residue_count, False, None)
+            yield ResidueFilterStatistics(input_file, residue_count, False, None)
