@@ -17,8 +17,6 @@ from tqdm.asyncio import tqdm
 logger = logging.getLogger(__name__)
 
 
-
-
 async def retrieve_files(
     urls: Iterable[tuple[str, str]],
     save_dir: Path,
@@ -146,6 +144,7 @@ def run_async[R](coroutine: Coroutine[Any, Any, R]) -> R:
 
 # Generic type parameters used across helpers
 P = ParamSpec("P")
+
 
 def dask_map_with_progress[T, R, **P](
     client: Client,

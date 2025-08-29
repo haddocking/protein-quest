@@ -142,6 +142,7 @@ async def fetch_summary(
         response.raise_for_status()
         raw_data = await response.content.read()
         if fn is not None:
+            # TODO return fn and make it part of AlphaFoldEntry as summary_file prop
             await fn.write_bytes(raw_data)
         return converter.loads(raw_data, list[EntrySummary])
 
@@ -182,6 +183,9 @@ async def fetch_many_async(
     Yields:
         A dataclass containing the summary, pdb file, and pae file.
     """
+    # summary is always written to disk,
+    # TODO add argument to disable this and only keep summaries in memory
+    # by adding 'summary' to DownloadableFormat and include it by default but allow excluding it
     summaries = [s async for s in fetch_summaries(ids, save_dir, max_parallel_downloads=max_parallel_downloads)]
 
     files = files_to_download(what, summaries)
