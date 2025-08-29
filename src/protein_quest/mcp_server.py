@@ -150,7 +150,7 @@ def fetch_alphafold_structures(uniprot_accs: set[str], save_dir: Path) -> list[A
     Returns:
         A list of AlphaFold entries.
     """
-    what: set[DownloadableFormat] = {"cif"}
+    what: set[DownloadableFormat] = {"summary", "cif"}
     return alphafold_fetch(uniprot_accs, save_dir, what)
 
 

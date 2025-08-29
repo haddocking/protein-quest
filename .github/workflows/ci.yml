@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-    - main
+      - main
   pull_request:
 
 concurrency:
@@ -70,3 +70,4 @@ jobs:
         run: uv sync --locked --dev --extra mcp
       - name: Run type checkers
         run: uv run pyrefly check src tests
+  # TODO typecheck the notebooks

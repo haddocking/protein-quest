@@ -10,7 +10,7 @@ def test_fetch_many(tmp_path: Path):
     theid = "P05067"
     ids = [theid]
 
-    results = fetch_many(ids, tmp_path, {"pdb"})
+    results = fetch_many(ids, tmp_path, {"summary", "pdb"})
 
     assert len(results) == 1
     fresult = results[0]

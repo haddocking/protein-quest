@@ -13,12 +13,13 @@ import aiohttp
 from aiohttp_retry import ExponentialRetry, RetryClient
 from dask.distributed import Client, progress
 from tqdm.asyncio import tqdm
+from yarl import URL
 
 logger = logging.getLogger(__name__)
 
 
 async def retrieve_files(
-    urls: Iterable[tuple[str, str]],
+    urls: Iterable[tuple[URL | str, str]],
     save_dir: Path,
     max_parallel_downloads: int = 5,
     retries: int = 3,
@@ -48,7 +49,7 @@ async def retrieve_files(
 
 async def _retrieve_file(
     session: RetryClient,
-    url: str,
+    url: URL | str,
     save_path: Path,
     semaphore: asyncio.Semaphore,
     ovewrite: bool = False,

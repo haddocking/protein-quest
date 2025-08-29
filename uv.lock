@@ -2354,6 +2354,7 @@ dependencies = [
     { name = "rich-argparse" },
     { name = "sparqlwrapper" },
     { name = "tqdm" },
+    { name = "yarl" },
 ]
 
 [package.optional-dependencies]
@@ -2413,6 +2414,7 @@ requires-dist = [
     { name = "rich-argparse", specifier = ">=1.7.1" },
     { name = "sparqlwrapper", specifier = ">=2.0.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
+    { name = "yarl", specifier = ">=1.20.1" },
 ]
 provides-extras = ["mcp"]
 

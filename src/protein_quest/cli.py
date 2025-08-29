@@ -6,7 +6,7 @@ import csv
 import logging
 import os
 import sys
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Generator, Iterable
 from importlib.util import find_spec
 from io import TextIOWrapper
 from pathlib import Path
@@ -253,7 +253,7 @@ def _add_retrieve_alphafold_parser(subparsers: argparse._SubParsersAction):
         action="append",
         choices=sorted(downloadable_formats),
         help=dedent("""AlphaFold formats to retrieve. Can be specified multiple times.
-            Default is 'pdb'. Summary is always downloaded as `<entryId>.json`."""),
+            Default is 'summary' and 'pdb'."""),
     )
     parser.add_argument(
         "--max-parallel-downloads",
@@ -592,7 +592,7 @@ def _handle_retrieve_alphafold(args):
     max_parallel_downloads = args.max_parallel_downloads
 
     if what_af_formats is None:
-        what_af_formats = {"pdb"}
+        what_af_formats = {"summary", "pdb"}
 
     # TODO besides `uniprot_acc,af_id\n` csv also allow headless single column format
     #
@@ -788,12 +788,12 @@ def _write_dict_of_sets2csv(file: TextIOWrapper, data: dict[str, set[str]], ref_
             writer.writerow({"uniprot_acc": uniprot_acc, ref_id_field: ref_id})
 
 
-def _read_alphafold_csv(file: TextIOWrapper):
+def _read_alphafold_csv(file: TextIOWrapper) -> Generator[dict[str, str]]:
     reader = csv.DictReader(file)
     yield from reader
 
 
-def _iter_csv_rows(file: TextIOWrapper):
+def _iter_csv_rows(file: TextIOWrapper) -> Generator[dict[str, str]]:
     reader = csv.DictReader(file)
     yield from reader
 
