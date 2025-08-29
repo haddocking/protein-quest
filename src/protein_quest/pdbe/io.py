@@ -11,6 +11,11 @@ from protein_quest import __version__
 
 logger = logging.getLogger(__name__)
 
+# TODO remove once v0.7.4 of gemmi is released,
+# as uv pip install git+https://github.com/project-gemmi/gemmi.git installs 0.7.4.dev0 which does not print leaks
+# Swallow gemmi leaked function warnings
+gemmi.set_leak_warnings(False)
+
 
 def nr_residues_in_chain(file: Path | str, chain: str = "A") -> int:
     """Returns the number of residues in a specific chain from a mmCIF/pdb file.
