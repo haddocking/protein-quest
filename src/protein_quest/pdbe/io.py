@@ -162,7 +162,10 @@ def write_single_chain_pdb_file(
         return None
     name, extension = _split_name_and_extension(input_file.name)
     output_file = output_dir / f"{name}_{chain.name}2{out_chain}{extension}"
-    # TODO do not write if output_file exists
+
+    if output_file.exists():
+        logger.info("Output file %s already exists for input file %s. Skipping.", output_file, input_file)
+        return output_file
 
     new_structure = gemmi.Structure()
     new_structure.resolution = structure.resolution

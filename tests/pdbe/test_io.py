@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import gemmi
@@ -36,6 +37,21 @@ def test_write_single_chain_pdb_file_happypath(cif_path: Path, tmp_path: Path):
     assert chain.name == "Z"
     assert len(chain) == 6  # 6 residues in chain Z
 
+
+def test_write_single_chain_pdb_file_already_exists(cif_path: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture):
+    fake_output_file = tmp_path / "2y29_A2Z.cif"
+    fake_output_file.write_text("fake content")
+    caplog.set_level(logging.INFO)
+
+    output_file = write_single_chain_pdb_file(
+        input_file=cif_path,
+        chain2keep="A",
+        output_dir=tmp_path,
+        out_chain="Z",
+    )
+
+    assert output_file == fake_output_file
+    assert "Skipping" in caplog.text
 
 def test_write_single_chain_pdb_file_unknown_chain(cif_path: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture):
     output_file = write_single_chain_pdb_file(
