@@ -90,7 +90,7 @@ def extract_single_chain_from_structure(
     chain2keep: str,
     output_dir: Path,
     out_chain: str = "A",
-) -> Path | None:
+) -> Path:
     """
     Extract a single chain from a mmCIF/pdb file and write to a new file.
 
@@ -101,7 +101,7 @@ def extract_single_chain_from_structure(
         out_chain: The chain identifier for the output file.
 
     Returns:
-        Path to the output mmCIF/pdb file or None if not created.
+        Path to the output mmCIF/pdb file
     """
     return write_single_chain_pdb_file(input_file, chain2keep, output_dir, out_chain)
 

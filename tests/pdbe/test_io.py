@@ -5,6 +5,7 @@ import gemmi
 import pytest
 
 from protein_quest.pdbe.io import (
+    ChainNotFoundError,
     glob_structure_files,
     locate_structure_file,
     nr_residues_in_chain,
@@ -54,16 +55,24 @@ def test_write_single_chain_pdb_file_already_exists(cif_path: Path, tmp_path: Pa
     assert "Skipping" in caplog.text
 
 
-def test_write_single_chain_pdb_file_unknown_chain(cif_path: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture):
-    output_file = write_single_chain_pdb_file(
-        cif_path,
-        chain2keep="B",
-        output_dir=tmp_path,
-        out_chain="Z",
-    )
+def test_write_single_chain_pdb_file_unknown_chain(cif_path: Path, tmp_path: Path):
+    with pytest.raises(ChainNotFoundError):
+        write_single_chain_pdb_file(
+            cif_path,
+            chain2keep="B",
+            output_dir=tmp_path,
+            out_chain="Z",
+        )
 
-    assert output_file is None
-    assert "Chain B not found in" in caplog.text
+
+def test_write_single_chain_pdb_file_unknown_format(tmp_path: Path):
+    with pytest.raises(RuntimeError, match="Unknown format"):
+        write_single_chain_pdb_file(
+            tmp_path / "nonexistent_file.xyz",
+            chain2keep="B",
+            output_dir=tmp_path,
+            out_chain="Z",
+        )
 
 
 def test_nr_residues_in_chain(cif_path: Path):
