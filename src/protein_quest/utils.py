@@ -2,9 +2,11 @@
 
 import asyncio
 import logging
-from collections.abc import Iterable
+from collections.abc import Coroutine, Iterable
 from contextlib import asynccontextmanager
 from pathlib import Path
+from textwrap import dedent
+from typing import Any, TypeVar
 
 import aiofiles
 import aiohttp
@@ -103,3 +105,40 @@ async def friendly_session(retries: int = 3, total_timeout: int = 300):
     async with aiohttp.ClientSession(timeout=timeout) as session:
         client = RetryClient(client_session=session, retry_options=retry_options)
         yield client
+
+
+class NestedAsyncIOLoopError(RuntimeError):
+    """Custom error for nested async I/O loops."""
+
+    def __init__(self) -> None:
+        msg = dedent("""\
+            Can not run async method from an environment where the asyncio event loop is already running.
+            Like a Jupyter notebook.
+
+            Please use the `fetch_many_async` function directly or before call
+
+                    import nest_asyncio
+                    nest_asyncio.apply()
+            """)
+        super().__init__(msg)
+
+
+R = TypeVar("R")
+
+
+def run_async[R](coroutine: Coroutine[Any, Any, R]) -> R:
+    """Run an async coroutine with nicer error.
+
+    Args:
+        coroutine: The async coroutine to run.
+
+    Returns:
+        The result of the coroutine.
+
+    Raises:
+        NestedAsyncIOLoopError: If called from a nested async I/O loop like in a Jupyter notebook.
+    """
+    try:
+        return asyncio.run(coroutine)
+    except RuntimeError as e:
+        raise NestedAsyncIOLoopError from e

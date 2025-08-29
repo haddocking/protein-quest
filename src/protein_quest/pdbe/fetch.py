@@ -3,7 +3,7 @@
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 
-from protein_quest.utils import retrieve_files
+from protein_quest.utils import retrieve_files, run_async
 
 
 def _map_id_mmcif(pdb_id: str) -> tuple[str, str]:
@@ -50,4 +50,16 @@ async def fetch(ids: Iterable[str], save_dir: Path, max_parallel_downloads: int 
     await retrieve_files(urls, save_dir, max_parallel_downloads, desc="Downloading PDBe mmCIF files")
     return id2paths
 
-# TODO add sync version of fetch with try/catch similar to fetch_many() for alphafold
+
+def sync_fetch(ids: Iterable[str], save_dir: Path, max_parallel_downloads: int = 5) -> Mapping[str, Path]:
+    """Synchronously fetches mmCIF files from the PDBe database.
+
+    Args:
+        ids: A set of PDB IDs to fetch.
+        save_dir: The directory to save the fetched mmCIF files to.
+        max_parallel_downloads: The maximum number of parallel downloads.
+
+    Returns:
+        A dict of id and paths to the downloaded mmCIF files.
+    """
+    return run_async(fetch(ids, save_dir, max_parallel_downloads))

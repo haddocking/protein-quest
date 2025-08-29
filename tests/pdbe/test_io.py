@@ -53,6 +53,7 @@ def test_write_single_chain_pdb_file_already_exists(cif_path: Path, tmp_path: Pa
     assert output_file == fake_output_file
     assert "Skipping" in caplog.text
 
+
 def test_write_single_chain_pdb_file_unknown_chain(cif_path: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture):
     output_file = write_single_chain_pdb_file(
         cif_path,
