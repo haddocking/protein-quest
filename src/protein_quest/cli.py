@@ -5,6 +5,7 @@ import asyncio
 import csv
 import logging
 import os
+import sys
 from collections.abc import Callable, Iterable
 from importlib.util import find_spec
 from io import TextIOWrapper
@@ -14,6 +15,7 @@ from textwrap import dedent
 from cattrs import structure
 from rich import print as rprint
 from rich.logging import RichHandler
+from rich.panel import Panel
 from rich_argparse import ArgumentDefaultsRichHelpFormatter
 from tqdm.rich import tqdm
 
@@ -25,7 +27,7 @@ from protein_quest.emdb import fetch as emdb_fetch
 from protein_quest.filters import filter_files_on_chain, filter_files_on_residues
 from protein_quest.go import Aspect, allowed_aspects, search_gene_ontology_term, write_go_terms_to_csv
 from protein_quest.pdbe import fetch as pdbe_fetch
-from protein_quest.pdbe.io import glob_structure_files
+from protein_quest.pdbe.io import glob_structure_files, locate_structure_file
 from protein_quest.taxonomy import SearchField, _write_taxonomy_csv, search_fields, search_taxon
 from protein_quest.uniprot import PdbResult, Query, search4af, search4emdb, search4pdb, search4uniprot
 
@@ -659,11 +661,29 @@ def _handle_filter_chain(args):
     scheduler_address = args.scheduler_address
 
     rows = list(_iter_csv_rows(pdb_id2chain_mapping_file))
-    id2chains: dict[str, str] = {row["pdb_id"]: row["chain"] for row in rows}
+    file2chain: set[tuple[Path, str]] = set()
+    errors: list[FileNotFoundError] = []
 
-    new_files = filter_files_on_chain(input_dir, id2chains, output_dir, scheduler_address)
+    for row in rows:
+        pdb_id = row["pdb_id"]
+        chain = row["chain"]
+        try:
+            f = locate_structure_file(input_dir, pdb_id)
+            file2chain.add((f, chain))
+        except FileNotFoundError as e:
+            errors.append(e)
 
-    nr_written = len([r for r in new_files if r[2] is not None])
+    if errors:
+        msg = f"Some structure files could not be found ({len(errors)} missing), skipping them"
+        rprint(Panel(os.linesep.join(map(str, errors)), title=msg, style="red"))
+
+    if not file2chain:
+        rprint("[red]No valid structure files found. Exiting.")
+        sys.exit(1)
+
+    results = filter_files_on_chain(file2chain, output_dir, scheduler_address=scheduler_address)
+
+    nr_written = len([r for r in results if r.passed])
 
     rprint(f"Wrote {nr_written} single-chain PDB/mmCIF files to {output_dir}.")
 
