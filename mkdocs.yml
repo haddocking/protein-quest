@@ -57,6 +57,10 @@ plugins:
           options:
             docstring_style: google
             show_source: false
+  - mkdocs-jupyter:
+        remove_tag_config:
+            remove_input_tags:
+                - hide_code
 
 markdown_extensions:
   # Use to render part of README as home
@@ -73,4 +77,9 @@ markdown_extensions:
 nav:
   - Home: index.md
   - CLI Reference: cli.md
+  - Notebooks:
+    - notebooks/index.md
+    - Search uniprot: notebooks/uniprot.ipynb
+    - Alphafold: notebooks/alphafold.ipynb
+    - PDBe: notebooks/pdbe.ipynb
   - Contributing guidelines: CONTRIBUTING.md

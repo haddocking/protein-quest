@@ -56,7 +56,7 @@ pip install git+https://github.com/haddocking/protein-quest.git
 
 The main entry point is the `protein-quest` command line tool which has multiple subcommands to perform actions.
 
-To use programmaticly, see [API documentation](https://www.bonvinlab.org/protein-quest/autoapi/summary/).
+To use programmaticly, see the [Jupyter notebooks](https://www.bonvinlab.org/protein-quest/notebooks) and [API documentation](https://www.bonvinlab.org/protein-quest/autoapi/summary/).
 
 ### Search Uniprot accessions
 
