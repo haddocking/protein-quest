@@ -253,7 +253,7 @@ def _add_retrieve_alphafold_parser(subparsers: argparse._SubParsersAction):
         action="append",
         choices=sorted(downloadable_formats),
         help=dedent("""AlphaFold formats to retrieve. Can be specified multiple times.
-            Default is 'summary' and 'pdb'."""),
+            Default is 'summary' and 'cif'."""),
     )
     parser.add_argument(
         "--max-parallel-downloads",
@@ -592,11 +592,11 @@ def _handle_retrieve_alphafold(args):
     max_parallel_downloads = args.max_parallel_downloads
 
     if what_af_formats is None:
-        what_af_formats = {"summary", "pdb"}
+        what_af_formats = {"summary", "cif"}
 
     # TODO besides `uniprot_acc,af_id\n` csv also allow headless single column format
     #
-    af_ids = [r["af_id"] for r in _read_alphafold_csv(alphafold_csv)]
+    af_ids = _read_column_from_csv(alphafold_csv, "af_id")
     validated_what: set[DownloadableFormat] = structure(what_af_formats, set[DownloadableFormat])
     rprint(f"Retrieving {len(af_ids)} AlphaFold entries with formats {validated_what}")
     afs = af_fetch(af_ids, download_dir, what=validated_what, max_parallel_downloads=max_parallel_downloads)
@@ -786,11 +786,6 @@ def _write_dict_of_sets2csv(file: TextIOWrapper, data: dict[str, set[str]], ref_
     for uniprot_acc, ref_ids in sorted(data.items()):
         for ref_id in sorted(ref_ids):
             writer.writerow({"uniprot_acc": uniprot_acc, ref_id_field: ref_id})
-
-
-def _read_alphafold_csv(file: TextIOWrapper) -> Generator[dict[str, str]]:
-    reader = csv.DictReader(file)
-    yield from reader
 
 
 def _iter_csv_rows(file: TextIOWrapper) -> Generator[dict[str, str]]:
