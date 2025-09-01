@@ -82,9 +82,23 @@ uv run mkdocs build
 python3 -m http.server -d site
 ```
 
+<details>
+<summary>Type checking notebooks</summary>
+
+[Pyrefly](https://pyrefly.org/) does not support notebooks yet, so we need to convert them to python scripts and then run pyrefly on them.
+
+```shell
+find docs/ -name "*.ipynb" -exec uv run --group docs-type marimo convert {} -o {}.py \;
+uv run --group docs-type pyrefly check docs/notebooks/*.ipynb.py
+rm docs/notebooks/*.ipynb.py
+```
+
+</details>
+
+
 ## Contributing to tests
 
-The code coverage are stored at https://app.codacy.com/gh/haddocking/protein-quest/coverage .
+The code coverage is stored at [https://app.codacy.com/gh/haddocking/protein-quest/coverage](https://app.codacy.com/gh/haddocking/protein-quest/coverage) .
 
 The search functions of the protein-quest package talk to web services on the Internet.
 To have fast tests we use [pytest-recording](https://github.com/kiwicom/pytest-recording) to record and replay HTTP interactions.
