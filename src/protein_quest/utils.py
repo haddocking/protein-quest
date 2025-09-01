@@ -2,16 +2,15 @@
 
 import asyncio
 import logging
-from collections.abc import Callable, Collection, Coroutine, Iterable
+from collections.abc import Coroutine, Iterable
 from contextlib import asynccontextmanager
 from pathlib import Path
 from textwrap import dedent
-from typing import Any, Concatenate, ParamSpec, cast
+from typing import Any
 
 import aiofiles
 import aiohttp
 from aiohttp_retry import ExponentialRetry, RetryClient
-from dask.distributed import Client, progress
 from tqdm.asyncio import tqdm
 from yarl import URL
 
@@ -141,37 +140,3 @@ def run_async[R](coroutine: Coroutine[Any, Any, R]) -> R:
         return asyncio.run(coroutine)
     except RuntimeError as e:
         raise NestedAsyncIOLoopError from e
-
-
-# Generic type parameters used across helpers
-P = ParamSpec("P")
-
-
-def dask_map_with_progress[T, R, **P](
-    client: Client,
-    func: Callable[Concatenate[T, P], R],
-    iterable: Collection[T],
-    *args: P.args,
-    **kwargs: P.kwargs,
-) -> list[R]:
-    """
-    Wrapper for Dask's map, progress, and gather that returns a correctly typed list.
-
-    Args:
-        client: Dask client.
-        func: Function to map; first parameter comes from ``iterable`` and any
-            additional parameters can be provided positionally via ``*args`` or
-            as keyword arguments via ``**kwargs``.
-        iterable: Collection of arguments to map over.
-        *args: Additional positional arguments to pass to client.map().
-        **kwargs: Additional keyword arguments to pass to client.map().
-
-    Returns:
-        List of results of type R.
-
-    """
-    logger.info(f"Follow progress on dask dashboard at: {client.dashboard_link}")
-    futures = client.map(func, iterable, *args, **kwargs)
-    progress(futures)
-    results = client.gather(futures)
-    return cast("list[R]", results)

@@ -10,12 +10,11 @@ from dask.distributed import Client
 from distributed.deploy.cluster import Cluster
 from tqdm.auto import tqdm
 
-from protein_quest.parallel import configure_dask_scheduler
+from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
 from protein_quest.pdbe.io import (
     nr_residues_in_chain,
     write_single_chain_pdb_file,
 )
-from protein_quest.utils import dask_map_with_progress
 
 logger = logging.getLogger(__name__)
 
