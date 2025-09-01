@@ -248,7 +248,7 @@ def _add_retrieve_alphafold_parser(subparsers: argparse._SubParsersAction):
     )
     parser.add_argument("output_dir", type=Path, help="Directory to store downloaded AlphaFold files")
     parser.add_argument(
-        "--what-af-formats",
+        "--what-formats",
         type=str,
         action="append",
         choices=sorted(downloadable_formats),
@@ -587,17 +587,17 @@ def _handle_retrieve_pdbe(args):
 
 def _handle_retrieve_alphafold(args):
     download_dir = args.output_dir
-    what_af_formats = args.what_af_formats
+    what_formats = args.what_formats
     alphafold_csv = args.alphafold_csv
     max_parallel_downloads = args.max_parallel_downloads
 
-    if what_af_formats is None:
-        what_af_formats = {"summary", "cif"}
+    if what_formats is None:
+        what_formats = {"summary", "cif"}
 
     # TODO besides `uniprot_acc,af_id\n` csv also allow headless single column format
     #
     af_ids = _read_column_from_csv(alphafold_csv, "af_id")
-    validated_what: set[DownloadableFormat] = structure(what_af_formats, set[DownloadableFormat])
+    validated_what: set[DownloadableFormat] = structure(what_formats, set[DownloadableFormat])
     rprint(f"Retrieving {len(af_ids)} AlphaFold entries with formats {validated_what}")
     afs = af_fetch(af_ids, download_dir, what=validated_what, max_parallel_downloads=max_parallel_downloads)
     total_nr_files = sum(af.nr_of_files() for af in afs)
