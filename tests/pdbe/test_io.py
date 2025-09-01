@@ -39,6 +39,18 @@ def test_write_single_chain_pdb_file_happypath(cif_path: Path, tmp_path: Path):
     assert len(chain) == 6  # 6 residues in chain Z
 
 
+def test_write_single_chain_pdb_file_with_secondary_structure(tmp_path: Path):
+    input_file = Path(__file__).parent.parent / "fixtures" / "3JRS_A2A.cif.gz"
+    output_file = write_single_chain_pdb_file(
+        input_file=input_file,
+        chain2keep="A",
+        output_dir=tmp_path,
+    )
+    structure = gemmi.read_structure(str(output_file))
+    assert len(structure.helices) == 1
+    assert len(structure.sheets) == 1
+
+
 def test_write_single_chain_pdb_file_already_exists(cif_path: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture):
     fake_output_file = tmp_path / "2y29_A2Z.cif"
     fake_output_file.write_text("fake content")

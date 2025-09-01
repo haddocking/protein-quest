@@ -46,6 +46,7 @@ from protein_quest.emdb import fetch as emdb_fetch
 from protein_quest.go import search_gene_ontology_term
 from protein_quest.pdbe.fetch import fetch as pdbe_fetch
 from protein_quest.pdbe.io import glob_structure_files, nr_residues_in_chain, write_single_chain_pdb_file
+from protein_quest.ss import filter_file_on_secondary_structure
 from protein_quest.taxonomy import search_taxon
 from protein_quest.uniprot import PdbResult, Query, search4af, search4emdb, search4pdb, search4uniprot
 
@@ -163,6 +164,9 @@ def alphafold_confidence_filter(file: Path, query: ConfidenceFilterQuery, filter
     If passes filter writes file to filtered_dir with residues above confidence threshold.
     """
     return filter_file_on_residues(file, query, filtered_dir)
+
+
+mcp.tool(filter_file_on_secondary_structure)
 
 
 @mcp.prompt

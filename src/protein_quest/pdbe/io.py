@@ -116,9 +116,14 @@ def locate_structure_file(root: Path, pdb_id: str) -> Path:
     # have file names like pdb6t5y.ent or pdb6t5y.ent.gz for a PDB formatted file.
     # TODO support pdb6t5y.ent or pdb6t5y.ent.gz file names
     for ext in exts:
-        candidate = root / f"{pdb_id.lower()}{ext}"
-        if candidate.exists():
-            return candidate
+        candidates = (
+            root / f"{pdb_id}{ext}",
+            root / f"{pdb_id.lower()}{ext}",
+            root / f"{pdb_id.upper()}{ext}",
+        )
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
     msg = f"No structure file found for {pdb_id} in {root}"
     raise FileNotFoundError(msg)
 
@@ -143,6 +148,37 @@ class ChainNotFoundError(IndexError):
         super().__init__(f"Chain {chain} not found in {file}")
         self.chain_id = chain
         self.file = file
+
+
+def _copy_secondary_structure(new_structure: gemmi.Structure, chain2keep: str, out_chain: str) -> gemmi.Structure:
+    # Filter and rename helices
+    new_helices = []
+    for helix in new_structure.helices:
+        correct_chain = helix.end.chain_name == chain2keep and helix.start.chain_name == chain2keep
+        if correct_chain:
+            helix.start.chain_name = out_chain
+            helix.end.chain_name = out_chain
+            new_helices.append(helix)
+    new_structure.helices.clear()
+    for h in new_helices:
+        new_structure.helices.append(h)
+
+    # Filter and rename sheets.strands
+    new_sheets = []
+    for sheet in new_structure.sheets:
+        new_sheet = gemmi.Sheet(sheet.name)
+        for strand in sheet.strands:
+            correct_chain = strand.end.chain_name == chain2keep and strand.start.chain_name == chain2keep
+            if correct_chain:
+                strand.start.chain_name = out_chain
+                strand.end.chain_name = out_chain
+                new_sheet.strands.append(strand)
+        if len(new_sheet.strands) > 0:
+            new_sheets.append(new_sheet)
+    new_structure.sheets.clear()
+    for s in new_sheets:
+        new_structure.sheets.append(s)
+    return new_structure
 
 
 def write_single_chain_pdb_file(input_file: Path, chain2keep: str, output_dir: Path, out_chain: str = "A") -> Path:
@@ -178,8 +214,7 @@ def write_single_chain_pdb_file(input_file: Path, chain2keep: str, output_dir: P
         logger.info("Output file %s already exists for input file %s. Skipping.", output_file, input_file)
         return output_file
 
-    new_structure = gemmi.Structure()
-    new_structure.resolution = structure.resolution
+    new_structure = structure
     new_id = structure.name + f"{chain2keep}2{out_chain}"
     new_structure.name = new_id
     new_structure.info["_entry.id"] = new_id
@@ -188,13 +223,17 @@ def write_single_chain_pdb_file(input_file: Path, chain2keep: str, output_dir: P
     new_structure.info["_struct_keywords.pdbx_keywords"] = new_title.upper()
     new_si = gemmi.SoftwareItem()
     new_si.classification = gemmi.SoftwareItem.Classification.DataExtraction
-    new_si.name = "protein-quest"
+    new_si.name = "protein-quest filter chain"
     new_si.version = str(__version__)
     new_structure.meta.software.append(new_si)
-    new_model = gemmi.Model(1)
-    chain.name = out_chain
-    new_model.add_chain(chain)
-    new_structure.add_model(new_model)
+    for model in structure:
+        for chain2remove in model:
+            if chain.name != chain2remove.name:
+                model.remove_chain(chain2remove.name)
+    new_structure.rename_chain(chain.name, out_chain)
+
+    _copy_secondary_structure(new_structure, chain2keep, out_chain)
+
     write_structure(new_structure, output_file)
 
     return output_file

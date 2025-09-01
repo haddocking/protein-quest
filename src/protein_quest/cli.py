@@ -10,6 +10,7 @@ from collections.abc import Callable, Generator, Iterable
 from importlib.util import find_spec
 from io import TextIOWrapper
 from pathlib import Path
+from shutil import copyfile
 from textwrap import dedent
 
 from cattrs import structure
@@ -28,6 +29,7 @@ from protein_quest.filters import filter_files_on_chain, filter_files_on_residue
 from protein_quest.go import Aspect, allowed_aspects, search_gene_ontology_term, write_go_terms_to_csv
 from protein_quest.pdbe import fetch as pdbe_fetch
 from protein_quest.pdbe.io import glob_structure_files, locate_structure_file
+from protein_quest.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
 from protein_quest.taxonomy import SearchField, _write_taxonomy_csv, search_fields, search_taxon
 from protein_quest.uniprot import PdbResult, Query, search4af, search4emdb, search4pdb, search4uniprot
 
@@ -381,6 +383,42 @@ def _add_filter_residue_parser(subparsers: argparse._SubParsersAction):
     )
 
 
+def _add_filter_ss_parser(subparsers: argparse._SubParsersAction):
+    """Add filter secondary structure subcommand parser."""
+    parser = subparsers.add_parser(
+        "secondary-structure",
+        help="Filter PDB/mmCIF files by secondary structure",
+        description="Filter PDB/mmCIF files by secondary structure",
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+    )
+    parser.add_argument("input_dir", type=Path, help="Directory with PDB/mmCIF files (e.g., from 'filter chain')")
+    parser.add_argument(
+        "output_dir",
+        type=Path,
+        help=dedent("""\
+            Directory to write filtered PDB/mmCIF files. Files are copied without modification.
+        """),
+    )
+    parser.add_argument("--abs-min-helix-residues", type=int, help="Min residues in helices")
+    parser.add_argument("--abs-max-helix-residues", type=int, help="Max residues in helices")
+    parser.add_argument("--abs-min-sheet-residues", type=int, help="Min residues in sheets")
+    parser.add_argument("--abs-max-sheet-residues", type=int, help="Max residues in sheets")
+    parser.add_argument("--ratio-min-helix-residues", type=float, help="Min residues in helices (relative)")
+    parser.add_argument("--ratio-max-helix-residues", type=float, help="Max residues in helices (relative)")
+    parser.add_argument("--ratio-min-sheet-residues", type=float, help="Min residues in sheets (relative)")
+    parser.add_argument("--ratio-max-sheet-residues", type=float, help="Max residues in sheets (relative)")
+    parser.add_argument(
+        "--write-stats",
+        type=argparse.FileType("w", encoding="UTF-8"),
+        help=dedent("""
+            Write filter statistics to file. In CSV format with columns:
+            `<input_file>,<nr_residues>,<nr_helix_residues>,<nr_sheet_residues>,
+            <helix_ratio>,<sheet_ratio>,<passed>,<output_file>`.
+            Use `-` for stdout.
+        """),
+    )
+
+
 def _add_search_subcommands(subparsers: argparse._SubParsersAction):
     """Add search command and its subcommands."""
     parser = subparsers.add_parser(
@@ -422,6 +460,7 @@ def _add_filter_subcommands(subparsers: argparse._SubParsersAction):
     _add_filter_confidence_parser(subsubparsers)
     _add_filter_chain_parser(subsubparsers)
     _add_filter_residue_parser(subsubparsers)
+    _add_filter_ss_parser(subsubparsers)
 
 
 def _add_mcp_command(subparsers: argparse._SubParsersAction):
@@ -689,6 +728,10 @@ def _handle_filter_chain(args):
 
     rprint(f"Wrote {nr_written} single-chain PDB/mmCIF files to {output_dir}.")
 
+    for result in results:
+        if result.discard_reason:
+            rprint(f"[red]Discarding {result.input_file} ({result.discard_reason})[/red]")
+
 
 def _handle_filter_residue(args):
     input_dir = structure(args.input_dir, Path)
@@ -711,6 +754,68 @@ def _handle_filter_residue(args):
         if r.passed:
             nr_passed += 1
 
+    rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
+    if stats_file:
+        rprint(f"Statistics written to {stats_file.name}")
+
+
+def _handle_filter_ss(args):
+    input_dir = structure(args.input_dir, Path)
+    output_dir = structure(args.output_dir, Path)
+    stats_file: TextIOWrapper | None = args.write_stats
+
+    raw_query = {
+        "abs_min_helix_residues": args.abs_min_helix_residues,
+        "abs_max_helix_residues": args.abs_max_helix_residues,
+        "abs_min_sheet_residues": args.abs_min_sheet_residues,
+        "abs_max_sheet_residues": args.abs_max_sheet_residues,
+        "ratio_min_helix_residues": args.ratio_min_helix_residues,
+        "ratio_max_helix_residues": args.ratio_max_helix_residues,
+        "ratio_min_sheet_residues": args.ratio_min_sheet_residues,
+        "ratio_max_sheet_residues": args.ratio_max_sheet_residues,
+    }
+    # TODO add validation, like 0<=ratio<=1
+    query = structure(raw_query, SecondaryStructureFilterQuery)
+    input_files = sorted(glob_structure_files(input_dir))
+    nr_total = len(input_files)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    if stats_file:
+        writer = csv.writer(stats_file)
+        writer.writerow(
+            [
+                "input_file",
+                "nr_residues",
+                "nr_helix_residues",
+                "nr_sheet_residues",
+                "helix_ratio",
+                "sheet_ratio",
+                "passed",
+                "output_file",
+            ]
+        )
+
+    rprint(f"Filtering {nr_total} files in {input_dir} directory by secondary structure.")
+    nr_passed = 0
+    for input_file, result in filter_files_on_secondary_structure(input_files, query=query):
+        output_file: Path | None = None
+        if result.passed:
+            output_file = output_dir / input_file.name
+            copyfile(input_file, output_file)
+            nr_passed += 1
+        if stats_file:
+            writer.writerow(
+                [
+                    input_file,
+                    result.stats.nr_residues,
+                    result.stats.nr_helix_residues,
+                    result.stats.nr_sheet_residues,
+                    round(result.stats.helix_ratio, 3),
+                    round(result.stats.sheet_ratio, 3),
+                    result.passed,
+                    output_file,
+                ]
+            )
     rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
     if stats_file:
         rprint(f"Statistics written to {stats_file.name}")
@@ -742,6 +847,7 @@ HANDLERS: dict[tuple[str, str | None], Callable] = {
     ("filter", "confidence"): _handle_filter_confidence,
     ("filter", "chain"): _handle_filter_chain,
     ("filter", "residue"): _handle_filter_residue,
+    ("filter", "secondary-structure"): _handle_filter_ss,
     ("mcp", None): _handle_mcp,
 }
 

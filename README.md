@@ -32,6 +32,8 @@ graph TB;
     fetchpdbe -->|mmcif_files_with_uniprot_acc| chainfilter{Filter on chain of uniprot}
     chainfilter --> |mmcif_files| residuefilter{Filter on chain length}
     fetchad -->|pdb_files| confidencefilter{Filter out low confidence}
+    confidencefilter --> |mmcif_files| ssfilter{Filter on secondary structure}
+    residuefilter --> |mmcif_files| ssfilter
     classDef dashedBorder stroke-dasharray: 5 5;
     goterm:::dashedBorder
     taxonomy:::dashedBorder
@@ -143,6 +145,18 @@ protein-quest filter residue  \
     --min-residues 100 \
     --max-residues 1000 \
     ./filtered-chains ./filtered
+```
+
+### To filter on secondary structure
+
+To filter on structure being mostly alpha helices and have no beta sheets.
+
+```shell
+protein-quest filter secondary-structure \
+    --ratio-min-helix-residues 0.5 \
+    --ratio-max-sheet-residues 0.0 \
+    --write-stats filtered-ss/stats.csv \
+    ./filtered-chains ./filtered-ss
 ```
 
 ### Search Taxonomy
