@@ -50,13 +50,17 @@ plugins:
             - src
           inventories:
             - https://docs.python.org/3/objects.inv
-            - https://duckdb.org/docs/stable/clients/python/reference/objects.inv
-            - https://pandas.pydata.org/docs/objects.inv
-            - https://numpy.org/doc/stable/objects.inv
-            - https://atomium.bio/objects.inv
+            - https://docs.aiohttp.org/en/stable/objects.inv
+            - https://docs.dask.org/en/stable/objects.inv
+            - https://distributed.dask.org/en/latest/objects.inv
+            - https://yarl.aio-libs.org/en/latest/objects.inv
           options:
             docstring_style: google
             show_source: false
+  - mkdocs-jupyter:
+        remove_tag_config:
+            remove_input_tags:
+                - hide_code
 
 markdown_extensions:
   # Use to render part of README as home
@@ -73,4 +77,9 @@ markdown_extensions:
 nav:
   - Home: index.md
   - CLI Reference: cli.md
+  - Notebooks:
+    - notebooks/index.md
+    - Search uniprot: notebooks/uniprot.ipynb
+    - Alphafold: notebooks/alphafold.ipynb
+    - PDBe: notebooks/pdbe.ipynb
   - Contributing guidelines: CONTRIBUTING.md

@@ -1,26 +1,28 @@
 """Module for fetch Alphafold data."""
 
-import asyncio
 import logging
 from asyncio import Semaphore
 from collections.abc import AsyncGenerator, Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from textwrap import dedent
-from typing import Literal
+from typing import Literal, cast, get_args
 
 from aiohttp_retry import RetryClient
 from aiopath import AsyncPath
 from cattrs.preconf.orjson import make_converter
 from tqdm.asyncio import tqdm
+from yarl import URL
 
 from protein_quest.alphafold.entry_summary import EntrySummary
-from protein_quest.utils import friendly_session, retrieve_files
+from protein_quest.utils import friendly_session, retrieve_files, run_async
 
 logger = logging.getLogger(__name__)
 converter = make_converter()
+"""cattrs converter to read AlphaFold summary JSON document."""
+converter.register_structure_hook(URL, lambda v, _: URL(v))
 
 DownloadableFormat = Literal[
+    "summary",
     "bcif",
     "cif",
     "pdb",
@@ -32,16 +34,7 @@ DownloadableFormat = Literal[
 ]
 """Types of formats that can be downloaded from the AlphaFold web service."""
 
-downloadable_formats: set[DownloadableFormat] = {
-    "bcif",
-    "cif",
-    "pdb",
-    "paeImage",
-    "paeDoc",
-    "amAnnotations",
-    "amAnnotationsHg19",
-    "amAnnotationsHg38",
-}
+downloadable_formats: set[DownloadableFormat] = set(get_args(DownloadableFormat))
 """Set of formats that can be downloaded from the AlphaFold web service."""
 
 
@@ -59,6 +52,7 @@ class AlphaFoldEntry:
 
     uniprot_acc: str
     summary: EntrySummary | None
+    summary_file: Path | None = None
     bcif_file: Path | None = None
     cif_file: Path | None = None
     pdb_file: Path | None = None
@@ -127,10 +121,6 @@ async def fetch_summary(
 
     Returns:
         A list of EntrySummary objects representing the fetched summary.
-
-    Raises:
-        HTTPError: If the HTTP request returns an error status code.
-        Exception: If there is an error during file reading/writing or data conversion.
     """
     url = f"https://alphafold.ebi.ac.uk/api/prediction/{qualifier}"
     fn: AsyncPath | None = None
@@ -144,6 +134,7 @@ async def fetch_summary(
         response.raise_for_status()
         raw_data = await response.content.read()
         if fn is not None:
+            # TODO return fn and make it part of AlphaFoldEntry as summary_file prop
             await fn.write_bytes(raw_data)
         return converter.loads(raw_data, list[EntrySummary])
 
@@ -164,19 +155,14 @@ async def fetch_summaries(
                 yield summary
 
 
-def url2name(url: str) -> str:
-    """Given a URL, return the final path component as the name of the file."""
-    return url.split("/")[-1]
-
-
 async def fetch_many_async(
-    ids: Iterable[str], save_dir: Path, what: set[DownloadableFormat], max_parallel_downloads: int = 5
+    uniprot_accessions: Iterable[str], save_dir: Path, what: set[DownloadableFormat], max_parallel_downloads: int = 5
 ) -> AsyncGenerator[AlphaFoldEntry]:
-    """Asynchronously fetches summaries and pdb and pae (predicted alignment error) files from
+    """Asynchronously fetches summaries and files from
     [AlphaFold Protein Structure Database](https://alphafold.ebi.ac.uk/).
 
     Args:
-        ids: A set of Uniprot IDs to fetch.
+        uniprot_accessions: A set of Uniprot acessions to fetch.
         save_dir: The directory to save the fetched files to.
         what: A set of formats to download.
         max_parallel_downloads: The maximum number of parallel downloads.
@@ -184,7 +170,13 @@ async def fetch_many_async(
     Yields:
         A dataclass containing the summary, pdb file, and pae file.
     """
-    summaries = [s async for s in fetch_summaries(ids, save_dir, max_parallel_downloads=max_parallel_downloads)]
+    save_dir_for_summaries = save_dir if "summary" in what and save_dir is not None else None
+    summaries = [
+        s
+        async for s in fetch_summaries(
+            uniprot_accessions, save_dir_for_summaries, max_parallel_downloads=max_parallel_downloads
+        )
+    ]
 
     files = files_to_download(what, summaries)
 
@@ -198,30 +190,31 @@ async def fetch_many_async(
         yield AlphaFoldEntry(
             uniprot_acc=summary.uniprotAccession,
             summary=summary,
-            bcif_file=save_dir / url2name(summary.bcifUrl) if "bcif" in what else None,
-            cif_file=save_dir / url2name(summary.cifUrl) if "cif" in what else None,
-            pdb_file=save_dir / url2name(summary.pdbUrl) if "pdb" in what else None,
-            pae_image_file=save_dir / url2name(summary.paeImageUrl) if "paeImage" in what else None,
-            pae_doc_file=save_dir / url2name(summary.paeDocUrl) if "paeDoc" in what else None,
+            summary_file=save_dir / f"{summary.uniprotAccession}.json" if save_dir_for_summaries is not None else None,
+            bcif_file=save_dir / summary.bcifUrl.name if "bcif" in what else None,
+            cif_file=save_dir / summary.cifUrl.name if "cif" in what else None,
+            pdb_file=save_dir / summary.pdbUrl.name if "pdb" in what else None,
+            pae_image_file=save_dir / summary.paeImageUrl.name if "paeImage" in what else None,
+            pae_doc_file=save_dir / summary.paeDocUrl.name if "paeDoc" in what else None,
             am_annotations_file=(
-                save_dir / url2name(summary.amAnnotationsUrl)
+                save_dir / summary.amAnnotationsUrl.name
                 if "amAnnotations" in what and summary.amAnnotationsUrl
                 else None
             ),
             am_annotations_hg19_file=(
-                save_dir / url2name(summary.amAnnotationsHg19Url)
+                save_dir / summary.amAnnotationsHg19Url.name
                 if "amAnnotationsHg19" in what and summary.amAnnotationsHg19Url
                 else None
             ),
             am_annotations_hg38_file=(
-                save_dir / url2name(summary.amAnnotationsHg38Url)
+                save_dir / summary.amAnnotationsHg38Url.name
                 if "amAnnotationsHg38" in what and summary.amAnnotationsHg38Url
                 else None
             ),
         )
 
 
-def files_to_download(what: set[DownloadableFormat], summaries: Iterable[EntrySummary]) -> set[tuple[str, str]]:
+def files_to_download(what: set[DownloadableFormat], summaries: Iterable[EntrySummary]) -> set[tuple[URL, str]]:
     if not (set(what) <= downloadable_formats):
         msg = (
             f"Invalid format(s) specified: {set(what) - downloadable_formats}. "
@@ -229,22 +222,19 @@ def files_to_download(what: set[DownloadableFormat], summaries: Iterable[EntrySu
         )
         raise ValueError(msg)
 
-    files: set[tuple[str, str]] = set()
+    files: set[tuple[URL, str]] = set()
     for summary in summaries:
         for fmt in what:
-            url = getattr(summary, f"{fmt}Url", None)
+            if fmt == "summary":
+                # summary is handled already in fetch_summary
+                continue
+            url = cast("URL | None", getattr(summary, f"{fmt}Url", None))
             if url is None:
                 logger.warning(f"Summary {summary.uniprotAccession} does not have a URL for format '{fmt}'. Skipping.")
                 continue
-            file = (url, url2name(url))
+            file = (url, url.name)
             files.add(file)
     return files
-
-
-class NestedAsyncIOLoopError(RuntimeError):
-    """Custom error for nested async I/O loops."""
-
-    pass
 
 
 def fetch_many(
@@ -260,9 +250,6 @@ def fetch_many(
 
     Returns:
         A list of AlphaFoldEntry dataclasses containing the summary, pdb file, and pae file.
-
-    Raises:
-        NestedAsyncIOLoopError: If called from a nested async I/O loop like in a Jupyter notebook.
     """
 
     async def gather_entries():
@@ -271,19 +258,7 @@ def fetch_many(
             async for entry in fetch_many_async(ids, save_dir, what, max_parallel_downloads=max_parallel_downloads)
         ]
 
-    try:
-        return asyncio.run(gather_entries())
-    except RuntimeError as e:
-        msg = dedent("""\
-            Can not run async method from an environment where the asyncio event loop is already running.
-            Like a Jupyter notebook.
-
-            Please use the `fetch_many_async` function directly or before call
-
-                    import nest_asyncio
-                    nest_asyncio.apply()
-            """)
-        raise NestedAsyncIOLoopError(msg) from e
+    return run_async(gather_entries())
 
 
 def relative_to(entry: AlphaFoldEntry, session_dir: Path) -> AlphaFoldEntry:
@@ -299,6 +274,7 @@ def relative_to(entry: AlphaFoldEntry, session_dir: Path) -> AlphaFoldEntry:
     return AlphaFoldEntry(
         uniprot_acc=entry.uniprot_acc,
         summary=entry.summary,
+        summary_file=entry.summary_file.relative_to(session_dir) if entry.summary_file else None,
         bcif_file=entry.bcif_file.relative_to(session_dir) if entry.bcif_file else None,
         cif_file=entry.cif_file.relative_to(session_dir) if entry.cif_file else None,
         pdb_file=entry.pdb_file.relative_to(session_dir) if entry.pdb_file else None,

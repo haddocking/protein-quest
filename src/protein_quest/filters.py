@@ -1,19 +1,17 @@
 """Module for filtering structure files and their contents."""
 
 import logging
-from collections.abc import Generator
+from collections.abc import Collection, Generator
 from dataclasses import dataclass
 from pathlib import Path
 from shutil import copyfile
-from typing import cast
 
-from dask.distributed import Client, progress
+from dask.distributed import Client
 from distributed.deploy.cluster import Cluster
 from tqdm.auto import tqdm
 
-from protein_quest.parallel import configure_dask_scheduler
+from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
 from protein_quest.pdbe.io import (
-    locate_structure_file,
     nr_residues_in_chain,
     write_single_chain_pdb_file,
 )
@@ -21,25 +19,48 @@ from protein_quest.pdbe.io import (
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class ChainFilterStatistics:
+    input_file: Path
+    chain_id: str
+    passed: bool = False
+    output_file: Path | None = None
+    discard_reason: Exception | None = None
+
+
+def filter_file_on_chain(
+    file_and_chain: tuple[Path, str], output_dir: Path, out_chain: str = "A"
+) -> ChainFilterStatistics:
+    input_file, chain_id = file_and_chain
+    try:
+        output_file = write_single_chain_pdb_file(input_file, chain_id, output_dir, out_chain=out_chain)
+        return ChainFilterStatistics(
+            input_file=input_file,
+            chain_id=chain_id,
+            output_file=output_file,
+            passed=True,
+        )
+    except Exception as e:  # noqa: BLE001 - error is handled downstream
+        return ChainFilterStatistics(input_file=input_file, chain_id=chain_id, discard_reason=e)
+
+
 def filter_files_on_chain(
-    input_dir: Path,
-    id2chains: dict[str, str],
+    file2chains: Collection[tuple[Path, str]],
     output_dir: Path,
-    scheduler_address: str | Cluster | None = None,
     out_chain: str = "A",
-) -> list[tuple[str, str, Path | None]]:
+    scheduler_address: str | Cluster | None = None,
+) -> list[ChainFilterStatistics]:
     """Filter mmcif/PDB files by chain.
 
     Args:
-        input_dir: The directory containing the input mmcif/PDB files.
-        id2chains: Which chain to keep for each PDB ID. Key is the PDB ID, value is the chain ID.
+        file2chains: Which chain to keep for each PDB file.
+            First item is the PDB file path, second item is the chain ID.
         output_dir: The directory where the filtered files will be written.
-        scheduler_address: The address of the Dask scheduler.
         out_chain: Under what name to write the kept chain.
+        scheduler_address: The address of the Dask scheduler.
 
     Returns:
-        A list of tuples containing the PDB ID, chain ID, and path to the filtered file.
-        Last tuple item is None if something went wrong like chain not present.
+        Result of the filtering process.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     scheduler_address = configure_dask_scheduler(
@@ -47,24 +68,14 @@ def filter_files_on_chain(
         name="filter-chain",
     )
 
-    def task(id2chain: tuple[str, str]) -> tuple[str, str, Path | None]:
-        pdb_id, chain = id2chain
-        input_file = locate_structure_file(input_dir, pdb_id)
-        return pdb_id, chain, write_single_chain_pdb_file(input_file, chain, output_dir, out_chain=out_chain)
-
     with Client(scheduler_address) as client:
-        logger.info(f"Follow progress on dask dashboard at: {client.dashboard_link}")
-
-        futures = client.map(task, id2chains.items())
-
-        progress(futures)
-
-        results = client.gather(futures)
-        return cast("list[tuple[str,str, Path | None]]", results)
+        return dask_map_with_progress(
+            client, filter_file_on_chain, file2chains, output_dir=output_dir, out_chain=out_chain
+        )
 
 
 @dataclass
-class FilterStat:
+class ResidueFilterStatistics:
     """Statistics for filtering files based on residue count in a specific chain.
 
     Parameters:
@@ -82,7 +93,7 @@ class FilterStat:
 
 def filter_files_on_residues(
     input_files: list[Path], output_dir: Path, min_residues: int, max_residues: int, chain: str = "A"
-) -> Generator[FilterStat]:
+) -> Generator[ResidueFilterStatistics]:
     """Filter PDB/mmCIF files by number of residues in given chain.
 
     Args:
@@ -93,7 +104,7 @@ def filter_files_on_residues(
         chain: The chain to count residues of.
 
     Yields:
-        FilterStat objects containing information about the filtering process for each input file.
+        Objects containing information about the filtering process for each input file.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     for input_file in tqdm(input_files, unit="file"):
@@ -102,6 +113,6 @@ def filter_files_on_residues(
         if passed:
             output_file = output_dir / input_file.name
             copyfile(input_file, output_file)
-            yield FilterStat(input_file, residue_count, True, output_file)
+            yield ResidueFilterStatistics(input_file, residue_count, True, output_file)
         else:
-            yield FilterStat(input_file, residue_count, False, None)
+            yield ResidueFilterStatistics(input_file, residue_count, False, None)

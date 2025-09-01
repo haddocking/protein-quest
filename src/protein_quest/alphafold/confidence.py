@@ -98,7 +98,7 @@ class ConfidenceFilterResult:
 
 
 def filter_file_on_residues(file: Path, query: ConfidenceFilterQuery, filtered_dir: Path) -> ConfidenceFilterResult:
-    """Filter a single AlphaFoldDB structure file based on confidence.
+    """Filter a single AlphaFoldDB structure file (*.pdb[.gz], *.cif[.gz]) based on confidence.
 
     Args:
         file: The path to the PDB file to filter.
@@ -107,7 +107,7 @@ def filter_file_on_residues(file: Path, query: ConfidenceFilterQuery, filtered_d
 
     Returns:
         result with filtered_file property set to Path where filtered PDB file is saved.
-        or None if structure was filtered out.
+            or None if structure was filtered out.
     """
     structure = gemmi.read_structure(str(file))
     residues = set(find_high_confidence_residues(structure, query.confidence))

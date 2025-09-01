@@ -20,6 +20,16 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True, slots=True)
 class Taxon:
+    """Dataclass representing a taxon.
+
+    Arguments:
+        taxon_id: The unique identifier for the taxon.
+        scientific_name: The scientific name of the taxon.
+        rank: The taxonomic rank of the taxon (e.g., species, genus).
+        common_name: The common name of the taxon (if available).
+        other_names: A set of other names for the taxon (if available).
+    """
+
     taxon_id: str
     scientific_name: str
     rank: str
@@ -47,7 +57,9 @@ converter.register_structure_hook(
 )
 
 SearchField = Literal["tax_id", "scientific", "common", "parent"]
+"""Type of search field"""
 search_fields: set[SearchField | None] = set(get_args(SearchField)) | {None}
+"""Set of valid search fields"""
 
 
 def _get_next_page(response: ClientResponse) -> URL | str | None:

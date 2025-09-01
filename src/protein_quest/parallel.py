@@ -2,8 +2,10 @@
 
 import logging
 import os
+from collections.abc import Callable, Collection
+from typing import Concatenate, ParamSpec, cast
 
-from dask.distributed import LocalCluster
+from dask.distributed import Client, LocalCluster, progress
 from distributed.deploy.cluster import Cluster
 from psutil import cpu_count
 
@@ -66,3 +68,37 @@ def _configure_cpu_dask_scheduler(nproc: int, name: str) -> LocalCluster:
     n_workers = total_cpus // nproc
     # Use single thread per worker to prevent GIL slowing down the computations
     return LocalCluster(name=name, threads_per_worker=1, n_workers=n_workers)
+
+
+# Generic type parameters used across helpers
+P = ParamSpec("P")
+
+
+def dask_map_with_progress[T, R, **P](
+    client: Client,
+    func: Callable[Concatenate[T, P], R],
+    iterable: Collection[T],
+    *args: P.args,
+    **kwargs: P.kwargs,
+) -> list[R]:
+    """
+    Wrapper for map, progress, and gather of Dask that returns a correctly typed list.
+
+    Args:
+        client: Dask client.
+        func: Function to map; first parameter comes from ``iterable`` and any
+            additional parameters can be provided positionally via ``*args`` or
+            as keyword arguments via ``**kwargs``.
+        iterable: Collection of arguments to map over.
+        *args: Additional positional arguments to pass to client.map().
+        **kwargs: Additional keyword arguments to pass to client.map().
+
+    Returns:
+        List of results of type returned by `func` function.
+    """
+    if client.dashboard_link:
+        logger.info(f"Follow progress on dask dashboard at: {client.dashboard_link}")
+    futures = client.map(func, iterable, *args, **kwargs)
+    progress(futures)
+    results = client.gather(futures)
+    return cast("list[R]", results)

@@ -11,6 +11,11 @@ from protein_quest import __version__
 
 logger = logging.getLogger(__name__)
 
+# TODO remove once v0.7.4 of gemmi is released,
+# as uv pip install git+https://github.com/project-gemmi/gemmi.git installs 0.7.4.dev0 which does not print leaks
+# Swallow gemmi leaked function warnings
+gemmi.set_leak_warnings(False)
+
 
 def nr_residues_in_chain(file: Path | str, chain: str = "A") -> int:
     """Returns the number of residues in a specific chain from a mmCIF/pdb file.
@@ -131,9 +136,16 @@ def glob_structure_files(input_dir: Path) -> Generator[Path]:
         yield from input_dir.glob(f"*{ext}")
 
 
-def write_single_chain_pdb_file(
-    input_file: Path, chain2keep: str, output_dir: Path, out_chain: str = "A"
-) -> Path | None:
+class ChainNotFoundError(IndexError):
+    """Exception raised when a chain is not found in a structure."""
+
+    def __init__(self, chain: str, file: Path | str):
+        super().__init__(f"Chain {chain} not found in {file}")
+        self.chain_id = chain
+        self.file = file
+
+
+def write_single_chain_pdb_file(input_file: Path, chain2keep: str, output_dir: Path, out_chain: str = "A") -> Path:
     """Write a single chain from a mmCIF/pdb file to a new mmCIF/pdb file.
 
     Args:
@@ -143,7 +155,11 @@ def write_single_chain_pdb_file(
         out_chain: The chain identifier for the output file.
 
     Returns:
-        Path to the output mmCIF/pdb file or None if not created.
+        Path to the output mmCIF/pdb file
+
+    Raises:
+        FileNotFoundError: If the input file does not exist.
+        ChainNotFoundError: If the specified chain is not found in the input file.
     """
 
     structure = gemmi.read_structure(str(input_file))
@@ -154,14 +170,13 @@ def write_single_chain_pdb_file(
 
     chain = find_chain_in_model(model, chain2keep)
     if chain is None:
-        logger.warning(
-            "Chain %s not found in %s. Skipping.",
-            chain2keep,
-            input_file,
-        )
-        return None
+        raise ChainNotFoundError(chain2keep, input_file)
     name, extension = _split_name_and_extension(input_file.name)
     output_file = output_dir / f"{name}_{chain.name}2{out_chain}{extension}"
+
+    if output_file.exists():
+        logger.info("Output file %s already exists for input file %s. Skipping.", output_file, input_file)
+        return output_file
 
     new_structure = gemmi.Structure()
     new_structure.resolution = structure.resolution

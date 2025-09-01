@@ -24,12 +24,11 @@ npx @modelcontextprotocol/inspector
 # Choose STDIO
 # command: uv run protein-quest mcp
 # id: protein-quest
-# Prompt: What are the PDBe structures for `A8MT69` uniprot accession?
 ```
 
 Examples:
 
-    For search pdb use `A8MT69` as input.
+   - What are the PDBe structures for `A8MT69` uniprot accession?
 
 """
 
@@ -90,7 +89,7 @@ def extract_single_chain_from_structure(
     chain2keep: str,
     output_dir: Path,
     out_chain: str = "A",
-) -> Path | None:
+) -> Path:
     """
     Extract a single chain from a mmCIF/pdb file and write to a new file.
 
@@ -101,7 +100,7 @@ def extract_single_chain_from_structure(
         out_chain: The chain identifier for the output file.
 
     Returns:
-        Path to the output mmCIF/pdb file or None if not created.
+        Path to the output mmCIF/pdb file
     """
     return write_single_chain_pdb_file(input_file, chain2keep, output_dir, out_chain)
 
@@ -150,7 +149,7 @@ def fetch_alphafold_structures(uniprot_accs: set[str], save_dir: Path) -> list[A
     Returns:
         A list of AlphaFold entries.
     """
-    what: set[DownloadableFormat] = {"cif"}
+    what: set[DownloadableFormat] = {"summary", "cif"}
     return alphafold_fetch(uniprot_accs, save_dir, what)
 
 
