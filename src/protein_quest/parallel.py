@@ -96,7 +96,8 @@ def dask_map_with_progress[T, R, **P](
     Returns:
         List of results of type returned by `func` function.
     """
-    logger.info(f"Follow progress on dask dashboard at: {client.dashboard_link}")
+    if client.dashboard_link:
+        logger.info(f"Follow progress on dask dashboard at: {client.dashboard_link}")
     futures = client.map(func, iterable, *args, **kwargs)
     progress(futures)
     results = client.gather(futures)
