@@ -50,10 +50,10 @@ plugins:
             - src
           inventories:
             - https://docs.python.org/3/objects.inv
-            - https://duckdb.org/docs/stable/clients/python/reference/objects.inv
-            - https://pandas.pydata.org/docs/objects.inv
-            - https://numpy.org/doc/stable/objects.inv
-            - https://atomium.bio/objects.inv
+            - https://docs.aiohttp.org/en/stable/objects.inv
+            - https://docs.dask.org/en/stable/objects.inv
+            - https://distributed.dask.org/en/latest/objects.inv
+            - https://yarl.aio-libs.org/en/latest/objects.inv
           options:
             docstring_style: google
             show_source: false
