@@ -116,10 +116,8 @@ class NestedAsyncIOLoopError(RuntimeError):
             Can not run async method from an environment where the asyncio event loop is already running.
             Like a Jupyter notebook.
 
-            Please use the `fetch_many_async` function directly or before call
-
-                    import nest_asyncio
-                    nest_asyncio.apply()
+            Please use the async function directly or
+            call `import nest_asyncio; nest_asyncio.apply()` and try again.
             """)
         super().__init__(msg)
 
