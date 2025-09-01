@@ -104,5 +104,3 @@ The search functions of the protein-quest package talk to web services on the In
 To have fast tests we use [pytest-recording](https://github.com/kiwicom/pytest-recording) to record and replay HTTP interactions.
 See [pytest-recording documentation](https://github.com/kiwicom/pytest-recording) for more details on how to use it.
 Like overwrite previous recordings in test/cassettes/**.yaml files with `--record-mode=rewrite`.
-
-<!--TODO document how to type check notebooks with pyrefly-->
