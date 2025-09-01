@@ -24,12 +24,11 @@ npx @modelcontextprotocol/inspector
 # Choose STDIO
 # command: uv run protein-quest mcp
 # id: protein-quest
-# Prompt: What are the PDBe structures for `A8MT69` uniprot accession?
 ```
 
 Examples:
 
-    For search pdb use `A8MT69` as input.
+   - What are the PDBe structures for `A8MT69` uniprot accession?
 
 """
 

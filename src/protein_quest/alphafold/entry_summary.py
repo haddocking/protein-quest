@@ -8,7 +8,7 @@ from yarl import URL
 class EntrySummary:
     """Dataclass representing a summary of an AlphaFold entry.
 
-    Modelled after EntrySummary in https://alphafold.ebi.ac.uk/api/openapi.json
+    Modelled after EntrySummary in [https://alphafold.ebi.ac.uk/api/openapi.json](https://alphafold.ebi.ac.uk/api/openapi.json)
     """
 
     entryId: str

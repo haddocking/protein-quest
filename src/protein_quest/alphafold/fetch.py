@@ -18,6 +18,7 @@ from protein_quest.utils import friendly_session, retrieve_files, run_async
 
 logger = logging.getLogger(__name__)
 converter = make_converter()
+"""cattrs converter to read AlphaFold summary JSON document."""
 converter.register_structure_hook(URL, lambda v, _: URL(v))
 
 DownloadableFormat = Literal[
@@ -120,10 +121,6 @@ async def fetch_summary(
 
     Returns:
         A list of EntrySummary objects representing the fetched summary.
-
-    Raises:
-        HTTPError: If the HTTP request returns an error status code.
-        Exception: If there is an error during file reading/writing or data conversion.
     """
     url = f"https://alphafold.ebi.ac.uk/api/prediction/{qualifier}"
     fn: AsyncPath | None = None
