@@ -660,6 +660,8 @@ def _handle_filter_chain(args):
     pdb_id2chain_mapping_file = args.chains
     scheduler_address = args.scheduler_address
 
+    # make sure files in input dir with entries in mapping file are the same
+    # complain when files from mapping file are missing on disk
     rows = list(_iter_csv_rows(pdb_id2chain_mapping_file))
     file2chain: set[tuple[Path, str]] = set()
     errors: list[FileNotFoundError] = []
