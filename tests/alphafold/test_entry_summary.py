@@ -1,8 +1,5 @@
-from cattrs.preconf.orjson import make_converter
-
 from protein_quest.alphafold.entry_summary import EntrySummary
-
-converter = make_converter()
+from protein_quest.alphafold.fetch import converter
 
 
 def test_loads_from_json_string():

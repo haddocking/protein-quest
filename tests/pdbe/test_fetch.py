@@ -6,7 +6,7 @@ from protein_quest.pdbe.fetch import fetch, sync_fetch
 
 
 @pytest.mark.asyncio
-@pytest.mark.vcr()
+@pytest.mark.vcr
 async def test_fetch(tmp_path: Path):
     theid = "2Y29"
     ids = [theid]
@@ -18,7 +18,7 @@ async def test_fetch(tmp_path: Path):
 
 
 @pytest.mark.default_cassette("test_fetch.yaml")  # pyrefly: ignore[not-callable]
-@pytest.mark.vcr()
+@pytest.mark.vcr
 def test_sync_fetch(tmp_path: Path):
     theid = "2Y29"
     ids = [theid]
