@@ -25,7 +25,7 @@ class ChainFilterStatistics:
     chain_id: str
     passed: bool = False
     output_file: Path | None = None
-    discard_reason: BaseException | None = None
+    discard_reason: Exception | None = None
 
 
 def filter_file_on_chain(
@@ -38,9 +38,9 @@ def filter_file_on_chain(
             input_file=input_file,
             chain_id=chain_id,
             output_file=output_file,
-            passed=output_file is not None,
+            passed=True,
         )
-    except BaseException as e:  # noqa: BLE001 - error is handled downstream
+    except Exception as e:  # noqa: BLE001 - error is handled downstream
         return ChainFilterStatistics(input_file=input_file, chain_id=chain_id, discard_reason=e)
 
 
