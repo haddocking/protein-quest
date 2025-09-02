@@ -150,22 +150,23 @@ class ChainNotFoundError(IndexError):
         self.file = file
 
 
-def _copy_secondary_structure(new_structure: gemmi.Structure, chain2keep: str, out_chain: str) -> gemmi.Structure:
+def _copy_secondary_structure(
+    orig_structure: gemmi.Structure, new_structure: gemmi.Structure, chain2keep: str, out_chain: str
+) -> gemmi.Structure:
     # Filter and rename helices
     new_helices = []
-    for helix in new_structure.helices:
+    for helix in orig_structure.helices:
         correct_chain = helix.end.chain_name == chain2keep and helix.start.chain_name == chain2keep
         if correct_chain:
             helix.start.chain_name = out_chain
             helix.end.chain_name = out_chain
             new_helices.append(helix)
-    new_structure.helices.clear()
     for h in new_helices:
         new_structure.helices.append(h)
 
     # Filter and rename sheets.strands
     new_sheets = []
-    for sheet in new_structure.sheets:
+    for sheet in orig_structure.sheets:
         new_sheet = gemmi.Sheet(sheet.name)
         for strand in sheet.strands:
             correct_chain = strand.end.chain_name == chain2keep and strand.start.chain_name == chain2keep
@@ -175,7 +176,6 @@ def _copy_secondary_structure(new_structure: gemmi.Structure, chain2keep: str, o
                 new_sheet.strands.append(strand)
         if len(new_sheet.strands) > 0:
             new_sheets.append(new_sheet)
-    new_structure.sheets.clear()
     for s in new_sheets:
         new_structure.sheets.append(s)
     return new_structure
@@ -197,8 +197,13 @@ def write_single_chain_pdb_file(input_file: Path, chain2keep: str, output_dir: P
         FileNotFoundError: If the input file does not exist.
         ChainNotFoundError: If the specified chain is not found in the input file.
     """
-
+    logger.debug(f"chain2keep: {chain2keep}, out_chain: {out_chain}")
     structure = gemmi.read_structure(str(input_file))
+    # TODO remove orig file writing
+    # write input file after to easier compare with output_file
+    orig = input_file.parent / f"{input_file.stem}_orig{input_file.suffix}"
+    write_structure(structure, orig)
+
     model = structure[0]
 
     # Only count residues of polymer
@@ -207,6 +212,7 @@ def write_single_chain_pdb_file(input_file: Path, chain2keep: str, output_dir: P
     chain = find_chain_in_model(model, chain2keep)
     if chain is None:
         raise ChainNotFoundError(chain2keep, input_file)
+    chain = chain.clone()
     name, extension = _split_name_and_extension(input_file.name)
     output_file = output_dir / f"{name}_{chain.name}2{out_chain}{extension}"
 
@@ -214,7 +220,9 @@ def write_single_chain_pdb_file(input_file: Path, chain2keep: str, output_dir: P
         logger.info("Output file %s already exists for input file %s. Skipping.", output_file, input_file)
         return output_file
 
-    new_structure = structure
+    # new_structure = structure
+    new_structure = gemmi.Structure()
+    new_structure.resolution = structure.resolution
     new_id = structure.name + f"{chain2keep}2{out_chain}"
     new_structure.name = new_id
     new_structure.info["_entry.id"] = new_id
@@ -226,13 +234,22 @@ def write_single_chain_pdb_file(input_file: Path, chain2keep: str, output_dir: P
     new_si.name = "protein-quest filter chain"
     new_si.version = str(__version__)
     new_structure.meta.software.append(new_si)
-    for model in structure:
-        for chain2remove in model:
-            if chain.name != chain2remove.name:
-                model.remove_chain(chain2remove.name)
+    new_model = gemmi.Model(1)
+    new_model.add_chain(chain)
+    new_structure.add_model(new_model)
     new_structure.rename_chain(chain.name, out_chain)
+    for r in chain:
+        r.subchain = out_chain
 
-    _copy_secondary_structure(new_structure, chain2keep, out_chain)
+    # for model in structure:
+    #     for chain2remove in model:
+    #         if chain.name != chain2remove.name:
+    #             logger.debug("Removing chain %s from model", chain2remove.name)
+    #             model.remove_chain(chain2remove.name)
+    # logger.debug("Renaming chain %s to %s", chain.name, out_chain)
+    # new_structure.rename_chain(chain.name, out_chain)
+
+    _copy_secondary_structure(structure, new_structure, chain2keep, out_chain)
 
     write_structure(new_structure, output_file)
 

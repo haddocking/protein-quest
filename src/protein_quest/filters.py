@@ -62,6 +62,14 @@ def filter_files_on_chain(
     Returns:
         Result of the filtering process.
     """
+
+    # TODO scheduler_address == False then run sequentially
+    def task(file_and_chain: tuple[Path, str]) -> ChainFilterStatistics:
+        return filter_file_on_chain(file_and_chain, output_dir, out_chain=out_chain)
+
+    return list(map(task, file2chains))
+
+    # TODO make logger.debug in filter_file_on_chain show to user when --log
     output_dir.mkdir(parents=True, exist_ok=True)
     scheduler_address = configure_dask_scheduler(
         scheduler_address,
