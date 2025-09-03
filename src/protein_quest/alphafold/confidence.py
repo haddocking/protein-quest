@@ -8,6 +8,8 @@ from pathlib import Path
 import gemmi
 
 from protein_quest.pdbe.io import write_structure
+from protein_quest.ss import nr_of_residues_in_total
+from protein_quest.utils import CopyMethod, copyfile
 
 """
 Methods to filter AlphaFoldDB structures on confidence scores.
@@ -97,13 +99,16 @@ class ConfidenceFilterResult:
     filtered_file: Path | None = None
 
 
-def filter_file_on_residues(file: Path, query: ConfidenceFilterQuery, filtered_dir: Path) -> ConfidenceFilterResult:
+def filter_file_on_residues(
+    file: Path, query: ConfidenceFilterQuery, filtered_dir: Path, copy_method: CopyMethod = "copy"
+) -> ConfidenceFilterResult:
     """Filter a single AlphaFoldDB structure file (*.pdb[.gz], *.cif[.gz]) based on confidence.
 
     Args:
         file: The path to the PDB file to filter.
         query: The confidence filter query.
         filtered_dir: The directory to save the filtered PDB file.
+        copy_method: How to copy when no residues have to be removed.
 
     Returns:
         result with filtered_file property set to Path where filtered PDB file is saved.
@@ -119,12 +124,17 @@ def filter_file_on_residues(file: Path, query: ConfidenceFilterQuery, filtered_d
             input_file=file.name,
             count=count,
         )
+    total_residues = nr_of_residues_in_total(structure)
     filtered_file = filtered_dir / file.name
-    new_structure = filter_out_low_confidence_residues(
-        structure,
-        residues,
-    )
-    write_structure(new_structure, filtered_file)
+    if count == total_residues:
+        # if no residues have to be removed then copy instead of slower gemmi writing
+        copyfile(file, filtered_file, copy_method)
+    else:
+        new_structure = filter_out_low_confidence_residues(
+            structure,
+            residues,
+        )
+        write_structure(new_structure, filtered_file)
     return ConfidenceFilterResult(
         input_file=file.name,
         count=count,
@@ -133,7 +143,10 @@ def filter_file_on_residues(file: Path, query: ConfidenceFilterQuery, filtered_d
 
 
 def filter_files_on_confidence(
-    alphafold_pdb_files: list[Path], query: ConfidenceFilterQuery, filtered_dir: Path
+    alphafold_pdb_files: list[Path],
+    query: ConfidenceFilterQuery,
+    filtered_dir: Path,
+    copy_method: CopyMethod = "copy",
 ) -> Generator[ConfidenceFilterResult]:
     """Filter AlphaFoldDB structures based on confidence.
 
@@ -141,6 +154,7 @@ def filter_files_on_confidence(
         alphafold_pdb_files: List of mmcif/PDB files from AlphaFoldDB to filter.
         query: The confidence filter query containing the confidence thresholds.
         filtered_dir: Directory where the filtered mmcif/PDB files will be saved.
+        copy_method: How to copy when a direct copy is possible.
 
     Yields:
         For each mmcif/PDB files yields whether it was filtered or not,
@@ -150,4 +164,4 @@ def filter_files_on_confidence(
     # In ../filter.py:filter_files_on_residues() we filter on number of residues on a file level
     # here we filter on file level and inside file remove low confidence residues
     for pdb_file in alphafold_pdb_files:
-        yield filter_file_on_residues(pdb_file, query, filtered_dir)
+        yield filter_file_on_residues(pdb_file, query, filtered_dir, copy_method)

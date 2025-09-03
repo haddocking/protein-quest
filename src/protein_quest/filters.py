@@ -4,7 +4,6 @@ import logging
 from collections.abc import Collection, Generator
 from dataclasses import dataclass
 from pathlib import Path
-from shutil import copyfile
 from typing import Literal
 
 from dask.distributed import Client
@@ -16,6 +15,7 @@ from protein_quest.pdbe.io import (
     nr_residues_in_chain,
     write_single_chain_pdb_file,
 )
+from protein_quest.utils import CopyMethod, copyfile
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +30,17 @@ class ChainFilterStatistics:
 
 
 def filter_file_on_chain(
-    file_and_chain: tuple[Path, str], output_dir: Path, out_chain: str = "A"
+    file_and_chain: tuple[Path, str],
+    output_dir: Path,
+    out_chain: str = "A",
+    copy_method: CopyMethod = "copy",
 ) -> ChainFilterStatistics:
     input_file, chain_id = file_and_chain
     logger.debug("Filtering %s on chain %s", input_file, chain_id)
     try:
-        output_file = write_single_chain_pdb_file(input_file, chain_id, output_dir, out_chain=out_chain)
+        output_file = write_single_chain_pdb_file(
+            input_file, chain_id, output_dir, out_chain=out_chain, copy_method=copy_method
+        )
         return ChainFilterStatistics(
             input_file=input_file,
             chain_id=chain_id,
@@ -51,6 +56,7 @@ def filter_files_on_chain(
     output_dir: Path,
     out_chain: str = "A",
     scheduler_address: str | Cluster | Literal["sequential"] | None = None,
+    copy_method: CopyMethod = "copy",
 ) -> list[ChainFilterStatistics]:
     """Filter mmcif/PDB files by chain.
 
@@ -62,20 +68,21 @@ def filter_files_on_chain(
         scheduler_address: The address of the Dask scheduler.
             If not provided, will create a local cluster.
             If set to `sequential` will run tasks sequentially.
+        copy_method: How to copy when a direct copy is possible.
 
     Returns:
         Result of the filtering process.
     """
+    output_dir.mkdir(parents=True, exist_ok=True)
     if scheduler_address == "sequential":
 
         def task(file_and_chain: tuple[Path, str]) -> ChainFilterStatistics:
-            return filter_file_on_chain(file_and_chain, output_dir, out_chain=out_chain)
+            return filter_file_on_chain(file_and_chain, output_dir, out_chain=out_chain, copy_method=copy_method)
 
         return list(map(task, file2chains))
 
     # TODO make logger.debug in filter_file_on_chain show to user when --log
     # GPT-5 generated a fairly difficult setup with a WorkerPlugin, need to find a simpler approach
-    output_dir.mkdir(parents=True, exist_ok=True)
     scheduler_address = configure_dask_scheduler(
         scheduler_address,
         name="filter-chain",
@@ -84,7 +91,12 @@ def filter_files_on_chain(
     with Client(scheduler_address) as client:
         client.forward_logging()
         return dask_map_with_progress(
-            client, filter_file_on_chain, file2chains, output_dir=output_dir, out_chain=out_chain
+            client,
+            filter_file_on_chain,
+            file2chains,
+            output_dir=output_dir,
+            out_chain=out_chain,
+            copy_method=copy_method,
         )
 
 
@@ -106,7 +118,12 @@ class ResidueFilterStatistics:
 
 
 def filter_files_on_residues(
-    input_files: list[Path], output_dir: Path, min_residues: int, max_residues: int, chain: str = "A"
+    input_files: list[Path],
+    output_dir: Path,
+    min_residues: int,
+    max_residues: int,
+    chain: str = "A",
+    copy_method: CopyMethod = "copy",
 ) -> Generator[ResidueFilterStatistics]:
     """Filter PDB/mmCIF files by number of residues in given chain.
 
@@ -116,6 +133,7 @@ def filter_files_on_residues(
         min_residues: The minimum number of residues in chain.
         max_residues: The maximum number of residues in chain.
         chain: The chain to count residues of.
+        copy_method: How to copy passed files to output directory:
 
     Yields:
         Objects containing information about the filtering process for each input file.
@@ -126,7 +144,7 @@ def filter_files_on_residues(
         passed = min_residues <= residue_count <= max_residues
         if passed:
             output_file = output_dir / input_file.name
-            copyfile(input_file, output_file)
+            copyfile(input_file, output_file, copy_method)
             yield ResidueFilterStatistics(input_file, residue_count, True, output_file)
         else:
             yield ResidueFilterStatistics(input_file, residue_count, False, None)

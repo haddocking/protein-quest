@@ -5,11 +5,11 @@ import logging
 from collections.abc import Generator, Iterable
 from datetime import UTC, datetime
 from pathlib import Path
-from shutil import copyfile
 
 import gemmi
 
 from protein_quest.__version__ import __version__
+from protein_quest.utils import CopyMethod, copyfile
 
 logger = logging.getLogger(__name__)
 
@@ -201,7 +201,13 @@ def chains_in_structure(structure: gemmi.Structure) -> set[gemmi.Chain]:
     return {c for model in structure for c in model}
 
 
-def write_single_chain_pdb_file(input_file: Path, chain2keep: str, output_dir: Path, out_chain: str = "A") -> Path:
+def write_single_chain_pdb_file(
+    input_file: Path,
+    chain2keep: str,
+    output_dir: Path,
+    out_chain: str = "A",
+    copy_method: CopyMethod = "copy",
+) -> Path:
     """Write a single chain from a mmCIF/pdb file to a new mmCIF/pdb file.
 
     Also
@@ -223,6 +229,7 @@ def write_single_chain_pdb_file(input_file: Path, chain2keep: str, output_dir: P
         chain2keep: The chain to keep.
         output_dir: Directory to save the output file.
         out_chain: The chain identifier for the output file.
+        copy_method: How to copy when no changes are needed to output file.
 
     Returns:
         Path to the output mmCIF/pdb file
@@ -256,7 +263,7 @@ def write_single_chain_pdb_file(input_file: Path, chain2keep: str, output_dir: P
             out_chain,
             output_file,
         )
-        copyfile(input_file, output_file)
+        copyfile(input_file, output_file, copy_method)
         return output_file
 
     gemmi.Selection(chain_name).remove_not_selected(structure)

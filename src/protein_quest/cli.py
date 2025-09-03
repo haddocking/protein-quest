@@ -10,7 +10,6 @@ from collections.abc import Callable, Generator, Iterable
 from importlib.util import find_spec
 from io import TextIOWrapper
 from pathlib import Path
-from shutil import copyfile
 from textwrap import dedent
 
 from cattrs import structure
@@ -32,6 +31,7 @@ from protein_quest.pdbe.io import glob_structure_files, locate_structure_file
 from protein_quest.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
 from protein_quest.taxonomy import SearchField, _write_taxonomy_csv, search_fields, search_taxon
 from protein_quest.uniprot import PdbResult, Query, search4af, search4emdb, search4pdb, search4uniprot
+from protein_quest.utils import CopyMethod, copy_methods, copyfile
 
 logger = logging.getLogger(__name__)
 
@@ -284,6 +284,22 @@ def _add_retrieve_emdb_parser(subparsers: argparse._SubParsersAction):
     parser.add_argument("output_dir", type=Path, help="Directory to store downloaded EMDB volume files")
 
 
+def _add_copy_method_argument(parser: argparse.ArgumentParser):
+    """Add copy method argument to parser."""
+    default_copy_method = "symlink"
+    if os.name == "nt":
+        # On Windows you need developer mode or admin privileges to create symlinks
+        # so we default to copying files instead of symlinking
+        default_copy_method = "copy"
+    parser.add_argument(
+        "--copy-method",
+        type=str,
+        choices=copy_methods,
+        default=default_copy_method,
+        help="How to copy files when no changes are needed to output file.",
+    )
+
+
 def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
     """Add filter confidence subcommand parser."""
     parser = subparsers.add_parser(
@@ -314,6 +330,7 @@ def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
             In CSV format with `<input_file>,<residue_count>,<passed>,<output_file>` columns.
             Use `-` for stdout."""),
     )
+    _add_copy_method_argument(parser)
 
 
 def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
@@ -353,6 +370,7 @@ def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
             If not provided, will create a local cluster.
             If set to `sequential` will run tasks sequentially."""),
     )
+    _add_copy_method_argument(parser)
 
 
 def _add_filter_residue_parser(subparsers: argparse._SubParsersAction):
@@ -375,6 +393,7 @@ def _add_filter_residue_parser(subparsers: argparse._SubParsersAction):
     )
     parser.add_argument("--min-residues", type=int, default=0, help="Min residues in chain A")
     parser.add_argument("--max-residues", type=int, default=10_000_000, help="Max residues in chain A")
+    _add_copy_method_argument(parser)
     parser.add_argument(
         "--write-stats",
         type=argparse.FileType("w", encoding="UTF-8"),
@@ -409,6 +428,7 @@ def _add_filter_ss_parser(subparsers: argparse._SubParsersAction):
     parser.add_argument("--ratio-max-helix-residues", type=float, help="Max residues in helices (relative)")
     parser.add_argument("--ratio-min-sheet-residues", type=float, help="Min residues in sheets (relative)")
     parser.add_argument("--ratio-max-sheet-residues", type=float, help="Max residues in sheets (relative)")
+    _add_copy_method_argument(parser)
     parser.add_argument(
         "--write-stats",
         type=argparse.FileType("w", encoding="UTF-8"),
@@ -662,10 +682,10 @@ def _handle_filter_confidence(args: argparse.Namespace):
     input_dir = structure(args.input_dir, Path)
     output_dir = structure(args.output_dir, Path)
     confidence_threshold = structure(args.confidence_threshold, float)
-    # TODO add min/max
     min_residues = structure(args.min_residues, int)
     max_residues = structure(args.max_residues, int)
     stats_file: TextIOWrapper | None = args.write_stats
+    copy_method: CopyMethod = structure(args.copy_method, CopyMethod)  # pyright: ignore[reportArgumentType]
 
     output_dir.mkdir(parents=True, exist_ok=True)
     input_files = sorted(glob_structure_files(input_dir))
@@ -684,7 +704,11 @@ def _handle_filter_confidence(args: argparse.Namespace):
         writer.writerow(["input_file", "residue_count", "passed", "output_file"])
 
     passed_count = 0
-    for r in tqdm(filter_files_on_confidence(input_files, query, output_dir), total=len(input_files), unit="file"):
+    for r in tqdm(
+        filter_files_on_confidence(input_files, query, output_dir, copy_method=copy_method),
+        total=len(input_files),
+        unit="file",
+    ):
         if r.filtered_file:
             passed_count += 1
         if stats_file:
@@ -699,7 +723,8 @@ def _handle_filter_chain(args):
     input_dir = args.input_dir
     output_dir = structure(args.output_dir, Path)
     pdb_id2chain_mapping_file = args.chains
-    scheduler_address = structure(args.scheduler_address, str | None)
+    scheduler_address = structure(args.scheduler_address, str | None)  # pyright: ignore[reportArgumentType]
+    copy_method: CopyMethod = structure(args.copy_method, CopyMethod)  # pyright: ignore[reportArgumentType]
 
     # make sure files in input dir with entries in mapping file are the same
     # complain when files from mapping file are missing on disk
@@ -724,7 +749,9 @@ def _handle_filter_chain(args):
         rprint("[red]No valid structure files found. Exiting.")
         sys.exit(1)
 
-    results = filter_files_on_chain(file2chain, output_dir, scheduler_address=scheduler_address)
+    results = filter_files_on_chain(
+        file2chain, output_dir, scheduler_address=scheduler_address, copy_method=copy_method
+    )
 
     nr_written = len([r for r in results if r.passed])
 
@@ -740,6 +767,7 @@ def _handle_filter_residue(args):
     output_dir = structure(args.output_dir, Path)
     min_residues = structure(args.min_residues, int)
     max_residues = structure(args.max_residues, int)
+    copy_method: CopyMethod = structure(args.copy_method, CopyMethod)  # pyright: ignore[reportArgumentType]
     stats_file: TextIOWrapper | None = args.write_stats
 
     if stats_file:
@@ -750,7 +778,9 @@ def _handle_filter_residue(args):
     input_files = sorted(glob_structure_files(input_dir))
     nr_total = len(input_files)
     rprint(f"Filtering {nr_total} files in {input_dir} directory by number of residues in chain A.")
-    for r in filter_files_on_residues(input_files, output_dir, min_residues=min_residues, max_residues=max_residues):
+    for r in filter_files_on_residues(
+        input_files, output_dir, min_residues=min_residues, max_residues=max_residues, copy_method=copy_method
+    ):
         if stats_file:
             writer.writerow([r.input_file, r.residue_count, r.passed, r.output_file])
         if r.passed:
@@ -764,6 +794,7 @@ def _handle_filter_residue(args):
 def _handle_filter_ss(args):
     input_dir = structure(args.input_dir, Path)
     output_dir = structure(args.output_dir, Path)
+    copy_method: CopyMethod = structure(args.copy_method, CopyMethod)  # pyright: ignore[reportArgumentType]
     stats_file: TextIOWrapper | None = args.write_stats
 
     raw_query = {
@@ -803,7 +834,7 @@ def _handle_filter_ss(args):
         output_file: Path | None = None
         if result.passed:
             output_file = output_dir / input_file.name
-            copyfile(input_file, output_file)
+            copyfile(input_file, output_file, copy_method)
             nr_passed += 1
         if stats_file:
             writer.writerow(
