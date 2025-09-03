@@ -113,8 +113,30 @@ def test_write_structure(cif_path: Path, tmp_path: Path, extension: str):
     assert found_files[0].name == output_file.name
 
 
-def test_locate_structure_file(cif_path: Path):
-    root = cif_path.parent
-    result = locate_structure_file(root, "2y29")
+@pytest.mark.parametrize(
+    "pdb_id, file_name",
+    [
+        # extensions
+        ("2y29", "2y29.cif"),
+        ("2y29", "2y29.cif.gz"),
+        ("2y29", "2y29.pdb"),
+        ("2y29", "2y29.pdb.gz"),
+        ("2y29", "pdb2y29.ent"),
+        ("2y29", "pdb2y29.ent.gz"),
+        # cases
+        ("1KVm", "1KVm.cif"),
+        ("1KVm", "1kvm.cif"),
+        ("1KVm", "1KVM.cif"),
+    ],
+)
+def test_locate_structure_file(tmp_path: Path, pdb_id: str, file_name: str):
+    test_input_file = tmp_path / file_name
+    test_input_file.write_text("fake content")
+    result = locate_structure_file(tmp_path, pdb_id)
 
-    assert result == cif_path
+    assert result == test_input_file
+
+
+def test_locate_structure_file_notfound(tmp_path: Path):
+    with pytest.raises(FileNotFoundError, match="No structure file found for nonexistent_id in"):
+        locate_structure_file(tmp_path, "nonexistent_id")

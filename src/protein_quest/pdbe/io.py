@@ -122,15 +122,13 @@ def locate_structure_file(root: Path, pdb_id: str) -> Path:
     Raises:
         FileNotFoundError: If no structure file is found for the given PDB ID.
     """
-    exts = [".cif.gz", ".cif", ".pdb.gz", ".pdb"]
-    # files downloaded from https://www.ebi.ac.uk/pdbe/ website
-    # have file names like pdb6t5y.ent or pdb6t5y.ent.gz for a PDB formatted file.
-    # TODO support pdb6t5y.ent or pdb6t5y.ent.gz file names
+    exts = [".cif.gz", ".cif", ".pdb.gz", ".pdb", ".ent", ".ent.gz"]
     for ext in exts:
         candidates = (
             root / f"{pdb_id}{ext}",
             root / f"{pdb_id.lower()}{ext}",
             root / f"{pdb_id.upper()}{ext}",
+            root / f"pdb{pdb_id.lower()}{ext}",
         )
         for candidate in candidates:
             if candidate.exists():
