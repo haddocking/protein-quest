@@ -26,4 +26,4 @@ def test_copyfile_invalid_method(tmp_path: Path):
     src = tmp_path / "src.txt"
     dst = tmp_path / "dst.txt"
     with pytest.raises(ValueError, match="Unknown method"):
-        copyfile(src, dst, "invalid") # pyright: ignore[reportArgumentType]
+        copyfile(src, dst, "invalid") # type: ignore  # noqa: PGH003
