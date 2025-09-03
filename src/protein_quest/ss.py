@@ -14,6 +14,11 @@ logger = logging.getLogger(__name__)
 # Swallow gemmi leaked function warnings
 set_leak_warnings(False)
 
+# TODO if a structure has no secondary structure information, calculate it with `gemmi ss`.
+# https://github.com/MonomerLibrary/monomers/wiki/Installation as --monomers dir
+# gemmi executable is in https://pypi.org/project/gemmi-program/
+# `gemmi ss` only prints secondary structure to stdout with `-v` flag.
+
 
 def nr_of_residues_in_total(structure: Structure) -> int:
     """Count the total number of residues in the structure.
@@ -42,7 +47,7 @@ def nr_of_residues_in_helix(structure: Structure) -> int:
     Returns:
         The number of residues in alpha helices.
     """
-    # For cif files from AlphaFold the length is set to -1
+    # For cif files from AlphaFold the helix.length is set to -1
     # so use resid instead
     count = 0
     for helix in structure.helices:

@@ -40,14 +40,15 @@ def test_write_single_chain_pdb_file_happypath(cif_path: Path, tmp_path: Path):
 
 
 def test_write_single_chain_pdb_file_with_secondary_structure(tmp_path: Path):
-    input_file = Path(__file__).parent.parent / "fixtures" / "3JRS_A2A.cif.gz"
+    # See ../test_ss:sample_cif fixture how input_file was made
+    input_file = Path(__file__).parent.parent / "fixtures" / "3JRS_B2A.cif.gz"
     output_file = write_single_chain_pdb_file(
         input_file=input_file,
         chain2keep="A",
         output_dir=tmp_path,
     )
     structure = gemmi.read_structure(str(output_file))
-    assert len(structure.helices) == 1
+    assert len(structure.helices) == 4
     assert len(structure.sheets) == 1
 
 

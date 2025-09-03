@@ -20,9 +20,9 @@ from protein_quest.ss import (
 def sample_cif() -> Path:
     """Downloaded from https://www.rcsb.org/structure/3JRS
     and filtered with
-    `write_single_chain_pdb_file(Path('tests/fixtures/3JRS.cif.gz'), 'A', Path('tests/fixtures/'))`
+    `write_single_chain_pdb_file(Path('tests/fixtures/3JRS.cif.gz'), 'B', Path('tests/fixtures/'))`
     """
-    return Path(__file__).parent / "fixtures" / "3JRS_A2A.cif.gz"
+    return Path(__file__).parent / "fixtures" / "3JRS_B2A.cif.gz"
 
 
 @pytest.fixture
@@ -33,11 +33,11 @@ def sample_structure(sample_cif: Path) -> gemmi.Structure:
 @pytest.fixture(scope="module")
 def sample_stats() -> SecondaryStructureStats:
     return SecondaryStructureStats(
-        nr_residues=174,
+        nr_residues=173,
         nr_helix_residues=58,
         nr_sheet_residues=59,
-        helix_ratio=58 / 174,
-        sheet_ratio=59 / 174,
+        helix_ratio=58 / 173,
+        sheet_ratio=59 / 173,
     )
 
 
@@ -52,7 +52,7 @@ def test_nr_of_residues_in_sheet(sample_structure: gemmi.Structure):
 
 
 def test_nr_of_residues_in_total(sample_structure: gemmi.Structure):
-    expected_count = 174
+    expected_count = 173
     assert nr_of_residues_in_total(sample_structure) == expected_count
 
 
@@ -72,16 +72,16 @@ def test_nr_of_residues_in_total(sample_structure: gemmi.Structure):
         (SecondaryStructureFilterQuery(abs_max_sheet_residues=59), True),
         (SecondaryStructureFilterQuery(abs_max_sheet_residues=58), False),
         # ratio_min_helix_residues
-        (SecondaryStructureFilterQuery(ratio_min_helix_residues=58 / 174), True),
+        (SecondaryStructureFilterQuery(ratio_min_helix_residues=58 / 173), True),
         (SecondaryStructureFilterQuery(ratio_min_helix_residues=0.4), False),
         # ratio_max_helix_residues
-        (SecondaryStructureFilterQuery(ratio_max_helix_residues=58 / 174), True),
+        (SecondaryStructureFilterQuery(ratio_max_helix_residues=58 / 173), True),
         (SecondaryStructureFilterQuery(ratio_max_helix_residues=0.3), False),
         # ratio_min_sheet_residues
-        (SecondaryStructureFilterQuery(ratio_min_sheet_residues=59 / 174), True),
+        (SecondaryStructureFilterQuery(ratio_min_sheet_residues=59 / 173), True),
         (SecondaryStructureFilterQuery(ratio_min_sheet_residues=0.4), False),
         # ratio_max_sheet_residues
-        (SecondaryStructureFilterQuery(ratio_max_sheet_residues=59 / 174), True),
+        (SecondaryStructureFilterQuery(ratio_max_sheet_residues=59 / 173), True),
         (SecondaryStructureFilterQuery(ratio_max_sheet_residues=0.3), False),
         # multiple
         (
