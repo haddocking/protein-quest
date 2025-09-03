@@ -5,6 +5,7 @@ from collections.abc import Collection, Generator
 from dataclasses import dataclass
 from pathlib import Path
 from shutil import copyfile
+from typing import Literal
 
 from dask.distributed import Client
 from distributed.deploy.cluster import Cluster
@@ -32,6 +33,7 @@ def filter_file_on_chain(
     file_and_chain: tuple[Path, str], output_dir: Path, out_chain: str = "A"
 ) -> ChainFilterStatistics:
     input_file, chain_id = file_and_chain
+    logger.debug("Filtering %s on chain %s", input_file, chain_id)
     try:
         output_file = write_single_chain_pdb_file(input_file, chain_id, output_dir, out_chain=out_chain)
         return ChainFilterStatistics(
@@ -48,7 +50,7 @@ def filter_files_on_chain(
     file2chains: Collection[tuple[Path, str]],
     output_dir: Path,
     out_chain: str = "A",
-    scheduler_address: str | Cluster | None = None,
+    scheduler_address: str | Cluster | Literal["sequential"] | None = None,
 ) -> list[ChainFilterStatistics]:
     """Filter mmcif/PDB files by chain.
 
@@ -58,16 +60,18 @@ def filter_files_on_chain(
         output_dir: The directory where the filtered files will be written.
         out_chain: Under what name to write the kept chain.
         scheduler_address: The address of the Dask scheduler.
+            If not provided, will create a local cluster.
+            If set to `sequential` will run tasks sequentially.
 
     Returns:
         Result of the filtering process.
     """
+    if scheduler_address == "sequential":
 
-    # TODO scheduler_address == False then run sequentially
-    def task(file_and_chain: tuple[Path, str]) -> ChainFilterStatistics:
-        return filter_file_on_chain(file_and_chain, output_dir, out_chain=out_chain)
+        def task(file_and_chain: tuple[Path, str]) -> ChainFilterStatistics:
+            return filter_file_on_chain(file_and_chain, output_dir, out_chain=out_chain)
 
-    return list(map(task, file2chains))
+        return list(map(task, file2chains))
 
     # TODO make logger.debug in filter_file_on_chain show to user when --log
     output_dir.mkdir(parents=True, exist_ok=True)

@@ -349,7 +349,9 @@ def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
     )
     parser.add_argument(
         "--scheduler-address",
-        help="Address of the Dask scheduler to connect to. If not provided, will create a local cluster.",
+        help=dedent("""Address of the Dask scheduler to connect to.
+            If not provided, will create a local cluster.
+            If set to `sequential` will run tasks sequentially."""),
     )
 
 
@@ -695,9 +697,9 @@ def _handle_filter_confidence(args: argparse.Namespace):
 
 def _handle_filter_chain(args):
     input_dir = args.input_dir
-    output_dir = args.output_dir
+    output_dir = structure(args.output_dir, Path)
     pdb_id2chain_mapping_file = args.chains
-    scheduler_address = args.scheduler_address
+    scheduler_address = structure(args.scheduler_address, str | None)
 
     # make sure files in input dir with entries in mapping file are the same
     # complain when files from mapping file are missing on disk
