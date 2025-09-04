@@ -7,6 +7,7 @@ from pathlib import Path
 
 import gemmi
 
+from protein_quest.converter import Percentage, PositiveInt, converter
 from protein_quest.pdbe.io import write_structure
 from protein_quest.ss import nr_of_residues_in_total
 from protein_quest.utils import CopyMethod, copyfile
@@ -75,14 +76,20 @@ class ConfidenceFilterQuery:
     Parameters:
         confidence: The confidence threshold for filtering residues.
             Residues with a pLDDT (b-factor) above this value are considered high confidence.
-        min_threshold: The minimum number of high-confidence residues required to keep the structure.
-        max_threshold: The maximum number of high-confidence residues required to keep the structure.
+        min_residues: The minimum number of high-confidence residues required to keep the structure.
+        max_residues: The maximum number of high-confidence residues required to keep the structure.
     """
 
-    confidence: float
-    min_threshold: int
-    max_threshold: int
+    confidence: Percentage
+    min_residues: PositiveInt
+    max_residues: PositiveInt
 
+@converter.register_structure_hook
+def confidence_filter_query_hook(val, _) -> ConfidenceFilterQuery:
+    if val["min_residues"] > val["max_residues"]:
+        msg = f"min_residues {val['min_residues']} cannot be larger than max_residues {val['max_residues']}"
+        raise ValueError(msg)
+    return converter.structure_attrs_fromdict(val, ConfidenceFilterQuery)
 
 @dataclass
 class ConfidenceFilterResult:
@@ -95,7 +102,7 @@ class ConfidenceFilterResult:
     """
 
     input_file: str
-    count: int
+    count: PositiveInt
     filtered_file: Path | None = None
 
 
@@ -117,7 +124,7 @@ def filter_file_on_residues(
     structure = gemmi.read_structure(str(file))
     residues = set(find_high_confidence_residues(structure, query.confidence))
     count = len(residues)
-    if count < query.min_threshold or count > query.max_threshold:
+    if count < query.min_residues or count > query.max_residues:
         # Skip structure that is outside the min and max threshold
         # just return number of high confidence residues
         return ConfidenceFilterResult(

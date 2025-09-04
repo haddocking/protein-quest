@@ -8,8 +8,8 @@ from io import TextIOWrapper
 from typing import Literal, get_args
 
 from cattrs.gen import make_dict_structure_fn, override
-from cattrs.preconf.orjson import make_converter
 
+from protein_quest.converter import converter
 from protein_quest.utils import friendly_session
 
 logger = logging.getLogger(__name__)
@@ -50,9 +50,6 @@ class SearchResponse:
     results: list[GoTerm]
     number_of_hits: int
     page_info: PageInfo
-
-
-converter = make_converter()
 
 
 def flatten_definition(definition, _context) -> str:

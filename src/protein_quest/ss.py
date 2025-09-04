@@ -7,6 +7,8 @@ from pathlib import Path
 
 from gemmi import Structure, read_structure, set_leak_warnings
 
+from protein_quest.converter import PositiveInt, Ratio, converter
+
 logger = logging.getLogger(__name__)
 
 # TODO remove once v0.7.4 of gemmi is released,
@@ -100,23 +102,40 @@ class SecondaryStructureFilterQuery:
         ratio_max_sheet_residues: Maximum number of residues in sheets (relative).
     """
 
-    abs_min_helix_residues: int | None = None
-    abs_max_helix_residues: int | None = None
-    abs_min_sheet_residues: int | None = None
-    abs_max_sheet_residues: int | None = None
-    ratio_min_helix_residues: float | None = None
-    ratio_max_helix_residues: float | None = None
-    ratio_min_sheet_residues: float | None = None
-    ratio_max_sheet_residues: float | None = None
+    abs_min_helix_residues: PositiveInt | None = None
+    abs_max_helix_residues: PositiveInt | None = None
+    abs_min_sheet_residues: PositiveInt | None = None
+    abs_max_sheet_residues: PositiveInt | None = None
+    ratio_min_helix_residues: Ratio | None = None
+    ratio_max_helix_residues: Ratio | None = None
+    ratio_min_sheet_residues: Ratio | None = None
+    ratio_max_sheet_residues: Ratio | None = None
+
+
+def _check_range(value, min_key, max_key, label):
+    min_val = value.get(min_key)
+    max_val = value.get(max_key)
+    if min_val is not None and max_val is not None and min_val >= max_val:
+        msg = f"Invalid {label} range: min {min_val} must be smaller than max {max_val}"
+        raise ValueError(msg)
+
+
+@converter.register_structure_hook
+def secondary_structure_filter_query_hook(value, _) -> SecondaryStructureFilterQuery:
+    _check_range(value, "abs_min_helix_residues", "abs_max_helix_residues", "absolute helix residue")
+    _check_range(value, "abs_min_sheet_residues", "abs_max_sheet_residues", "absolute sheet residue")
+    _check_range(value, "ratio_min_helix_residues", "ratio_max_helix_residues", "ratio helix residue")
+    _check_range(value, "ratio_min_sheet_residues", "ratio_max_sheet_residues", "ratio sheet residue")
+    return converter.structure_attrs_fromdict(value, SecondaryStructureFilterQuery)
 
 
 @dataclass
 class SecondaryStructureStats:
-    nr_residues: int
-    nr_helix_residues: int
-    nr_sheet_residues: int
-    helix_ratio: float
-    sheet_ratio: float
+    nr_residues: PositiveInt
+    nr_helix_residues: PositiveInt
+    nr_sheet_residues: PositiveInt
+    helix_ratio: Ratio
+    sheet_ratio: Ratio
 
 
 @dataclass

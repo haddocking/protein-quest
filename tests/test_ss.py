@@ -3,6 +3,7 @@ from pathlib import Path
 import gemmi
 import pytest
 
+from protein_quest.converter import converter
 from protein_quest.ss import (
     SecondaryStructureFilterQuery,
     SecondaryStructureFilterResult,
@@ -139,3 +140,67 @@ def test_filter_files_on_secondary_structure(sample_cif: Path, sample_stats: Sec
     result = filter_files_on_secondary_structure([sample_cif], query)
     expected = {sample_cif: SecondaryStructureFilterResult(stats=sample_stats, passed=True)}
     assert dict(result) == expected
+
+def test_converter():
+    raw = {
+        "abs_min_helix_residues": 10,
+        "abs_max_helix_residues": 20,
+        "abs_min_sheet_residues": 5,
+        "abs_max_sheet_residues": 15,
+        "ratio_min_helix_residues": 0.1,
+        "ratio_max_helix_residues": 0.3,
+        "ratio_min_sheet_residues": 0.2,
+        "ratio_max_sheet_residues": 0.4,
+    }
+    result = converter.structure(raw, SecondaryStructureFilterQuery)
+    expected = SecondaryStructureFilterQuery(
+        abs_min_helix_residues=10,
+        abs_max_helix_residues=20,
+        abs_min_sheet_residues=5,
+        abs_max_sheet_residues=15,
+        ratio_min_helix_residues=0.1,
+        ratio_max_helix_residues=0.3,
+        ratio_min_sheet_residues=0.2,
+        ratio_max_sheet_residues=0.4,
+    )
+    assert result == expected
+
+@pytest.mark.parametrize("raw, match", [
+    (
+        {
+            "abs_min_helix_residues": 20,
+            "abs_max_helix_residues": 10,
+        },
+        "must be smaller than max"
+    ),
+    (
+        {
+            "abs_min_sheet_residues": 15,
+            "abs_max_sheet_residues": 5,
+        },
+        "must be smaller than max"
+    ),
+    (
+        {
+            "ratio_min_helix_residues": 0.4,
+            "ratio_max_helix_residues": 0.3,
+        },
+        "must be smaller than max"
+    ),
+    (
+        {
+            "ratio_min_sheet_residues": 0.5,
+            "ratio_max_sheet_residues": 0.4,
+        },
+        "must be smaller than max"
+    ),
+    (
+        {
+            "ratio_min_sheet_residues": 4.2,
+        },
+        "not a valid ratio"
+    ),
+])
+def test_converter_raises_on_invalid_range(raw, match):
+    with pytest.raises(ValueError, match=match):
+        converter.structure(raw, SecondaryStructureFilterQuery)

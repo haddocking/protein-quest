@@ -23,6 +23,7 @@ from protein_quest.__version__ import __version__
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
 from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_formats
 from protein_quest.alphafold.fetch import fetch_many as af_fetch
+from protein_quest.converter import converter
 from protein_quest.emdb import fetch as emdb_fetch
 from protein_quest.filters import filter_files_on_chain, filter_files_on_residues
 from protein_quest.go import Aspect, allowed_aspects, search_gene_ontology_term, write_go_terms_to_csv
@@ -681,9 +682,10 @@ def _handle_filter_confidence(args: argparse.Namespace):
     # to get rid of duplication
     input_dir = structure(args.input_dir, Path)
     output_dir = structure(args.output_dir, Path)
-    confidence_threshold = structure(args.confidence_threshold, float)
-    min_residues = structure(args.min_residues, int)
-    max_residues = structure(args.max_residues, int)
+
+    confidence_threshold = args.confidence_threshold
+    min_residues = args.min_residues
+    max_residues = args.max_residues
     stats_file: TextIOWrapper | None = args.write_stats
     copy_method: CopyMethod = structure(args.copy_method, CopyMethod)  # pyright: ignore[reportArgumentType]
 
@@ -691,11 +693,11 @@ def _handle_filter_confidence(args: argparse.Namespace):
     input_files = sorted(glob_structure_files(input_dir))
     nr_input_files = len(input_files)
     rprint(f"Starting confidence filtering of {nr_input_files} mmcif/PDB files in {input_dir} directory.")
-    query = structure(
+    query = converter.structure(
         {
             "confidence": confidence_threshold,
-            "min_threshold": min_residues,
-            "max_threshold": max_residues,
+            "min_residues": min_residues,
+            "max_residues": max_residues,
         },
         ConfidenceFilterQuery,
     )
@@ -807,8 +809,7 @@ def _handle_filter_ss(args):
         "ratio_min_sheet_residues": args.ratio_min_sheet_residues,
         "ratio_max_sheet_residues": args.ratio_max_sheet_residues,
     }
-    # TODO add validation, like 0<=ratio<=1
-    query = structure(raw_query, SecondaryStructureFilterQuery)
+    query = converter.structure(raw_query, SecondaryStructureFilterQuery)
     input_files = sorted(glob_structure_files(input_dir))
     nr_total = len(input_files)
     output_dir.mkdir(parents=True, exist_ok=True)

@@ -9,17 +9,15 @@ from typing import Literal, cast, get_args
 
 from aiohttp_retry import RetryClient
 from aiopath import AsyncPath
-from cattrs.preconf.orjson import make_converter
 from tqdm.asyncio import tqdm
 from yarl import URL
 
 from protein_quest.alphafold.entry_summary import EntrySummary
+from protein_quest.converter import converter
 from protein_quest.utils import friendly_session, retrieve_files, run_async
 
 logger = logging.getLogger(__name__)
-converter = make_converter()
-"""cattrs converter to read AlphaFold summary JSON document."""
-converter.register_structure_hook(URL, lambda v, _: URL(v))
+
 
 DownloadableFormat = Literal[
     "summary",
