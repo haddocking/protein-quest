@@ -182,10 +182,11 @@ def _dedup_sheets(structure: gemmi.Structure, chain2keep: str):
 
 
 def _add_provenance_info(structure: gemmi.Structure, chain2keep: str, out_chain: str):
+    old_id = structure.name
     new_id = structure.name + f"{chain2keep}2{out_chain}"
     structure.name = new_id
     structure.info["_entry.id"] = new_id
-    new_title = f"From {structure.info['_entry.id']} chain {chain2keep} to {out_chain}"
+    new_title = f"From {old_id} chain {chain2keep} to {out_chain}"
     structure.info["_struct.title"] = new_title
     structure.info["_struct_keywords.pdbx_keywords"] = new_title.upper()
     new_si = gemmi.SoftwareItem()

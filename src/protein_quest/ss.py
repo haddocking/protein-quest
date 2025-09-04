@@ -126,17 +126,16 @@ class SecondaryStructureFilterResult:
 
 
 def _gather_stats(structure: Structure) -> SecondaryStructureStats:
-    nr_residues = nr_of_residues_in_total(structure)
+    nr_total_residues = nr_of_residues_in_total(structure)
     nr_helix_residues = nr_of_residues_in_helix(structure)
     nr_sheet_residues = nr_of_residues_in_sheet(structure)
-    total = nr_residues
-    if total == 0:
+    if nr_total_residues == 0:
         msg = "Structure has zero residues; cannot compute secondary structure ratios."
         raise ValueError(msg)
-    helix_ratio = nr_helix_residues / total
-    sheet_ratio = nr_sheet_residues / total
+    helix_ratio = nr_helix_residues / nr_total_residues
+    sheet_ratio = nr_sheet_residues / nr_total_residues
     return SecondaryStructureStats(
-        nr_residues=nr_residues,
+        nr_residues=nr_total_residues,
         nr_helix_residues=nr_helix_residues,
         nr_sheet_residues=nr_sheet_residues,
         helix_ratio=helix_ratio,
