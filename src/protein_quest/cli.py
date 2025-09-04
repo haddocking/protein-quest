@@ -23,13 +23,16 @@ from protein_quest.__version__ import __version__
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
 from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_formats
 from protein_quest.alphafold.fetch import fetch_many as af_fetch
+from protein_quest.converter import converter
 from protein_quest.emdb import fetch as emdb_fetch
 from protein_quest.filters import filter_files_on_chain, filter_files_on_residues
 from protein_quest.go import Aspect, allowed_aspects, search_gene_ontology_term, write_go_terms_to_csv
 from protein_quest.pdbe import fetch as pdbe_fetch
 from protein_quest.pdbe.io import glob_structure_files, locate_structure_file
+from protein_quest.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
 from protein_quest.taxonomy import SearchField, _write_taxonomy_csv, search_fields, search_taxon
 from protein_quest.uniprot import PdbResult, Query, search4af, search4emdb, search4pdb, search4uniprot
+from protein_quest.utils import CopyMethod, copy_methods, copyfile
 
 logger = logging.getLogger(__name__)
 
@@ -282,6 +285,22 @@ def _add_retrieve_emdb_parser(subparsers: argparse._SubParsersAction):
     parser.add_argument("output_dir", type=Path, help="Directory to store downloaded EMDB volume files")
 
 
+def _add_copy_method_argument(parser: argparse.ArgumentParser):
+    """Add copy method argument to parser."""
+    default_copy_method = "symlink"
+    if os.name == "nt":
+        # On Windows you need developer mode or admin privileges to create symlinks
+        # so we default to copying files instead of symlinking
+        default_copy_method = "copy"
+    parser.add_argument(
+        "--copy-method",
+        type=str,
+        choices=copy_methods,
+        default=default_copy_method,
+        help="How to copy files when no changes are needed to output file.",
+    )
+
+
 def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
     """Add filter confidence subcommand parser."""
     parser = subparsers.add_parser(
@@ -312,6 +331,7 @@ def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
             In CSV format with `<input_file>,<residue_count>,<passed>,<output_file>` columns.
             Use `-` for stdout."""),
     )
+    _add_copy_method_argument(parser)
 
 
 def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
@@ -347,8 +367,11 @@ def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
     )
     parser.add_argument(
         "--scheduler-address",
-        help="Address of the Dask scheduler to connect to. If not provided, will create a local cluster.",
+        help=dedent("""Address of the Dask scheduler to connect to.
+            If not provided, will create a local cluster.
+            If set to `sequential` will run tasks sequentially."""),
     )
+    _add_copy_method_argument(parser)
 
 
 def _add_filter_residue_parser(subparsers: argparse._SubParsersAction):
@@ -371,6 +394,7 @@ def _add_filter_residue_parser(subparsers: argparse._SubParsersAction):
     )
     parser.add_argument("--min-residues", type=int, default=0, help="Min residues in chain A")
     parser.add_argument("--max-residues", type=int, default=10_000_000, help="Max residues in chain A")
+    _add_copy_method_argument(parser)
     parser.add_argument(
         "--write-stats",
         type=argparse.FileType("w", encoding="UTF-8"),
@@ -378,6 +402,43 @@ def _add_filter_residue_parser(subparsers: argparse._SubParsersAction):
             Write filter statistics to file.
             In CSV format with `<input_file>,<residue_count>,<passed>,<output_file>` columns.
             Use `-` for stdout."""),
+    )
+
+
+def _add_filter_ss_parser(subparsers: argparse._SubParsersAction):
+    """Add filter secondary structure subcommand parser."""
+    parser = subparsers.add_parser(
+        "secondary-structure",
+        help="Filter PDB/mmCIF files by secondary structure",
+        description="Filter PDB/mmCIF files by secondary structure",
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+    )
+    parser.add_argument("input_dir", type=Path, help="Directory with PDB/mmCIF files (e.g., from 'filter chain')")
+    parser.add_argument(
+        "output_dir",
+        type=Path,
+        help=dedent("""\
+            Directory to write filtered PDB/mmCIF files. Files are copied without modification.
+        """),
+    )
+    parser.add_argument("--abs-min-helix-residues", type=int, help="Min residues in helices")
+    parser.add_argument("--abs-max-helix-residues", type=int, help="Max residues in helices")
+    parser.add_argument("--abs-min-sheet-residues", type=int, help="Min residues in sheets")
+    parser.add_argument("--abs-max-sheet-residues", type=int, help="Max residues in sheets")
+    parser.add_argument("--ratio-min-helix-residues", type=float, help="Min residues in helices (relative)")
+    parser.add_argument("--ratio-max-helix-residues", type=float, help="Max residues in helices (relative)")
+    parser.add_argument("--ratio-min-sheet-residues", type=float, help="Min residues in sheets (relative)")
+    parser.add_argument("--ratio-max-sheet-residues", type=float, help="Max residues in sheets (relative)")
+    _add_copy_method_argument(parser)
+    parser.add_argument(
+        "--write-stats",
+        type=argparse.FileType("w", encoding="UTF-8"),
+        help=dedent("""
+            Write filter statistics to file. In CSV format with columns:
+            `<input_file>,<nr_residues>,<nr_helix_residues>,<nr_sheet_residues>,
+            <helix_ratio>,<sheet_ratio>,<passed>,<output_file>`.
+            Use `-` for stdout.
+        """),
     )
 
 
@@ -422,6 +483,7 @@ def _add_filter_subcommands(subparsers: argparse._SubParsersAction):
     _add_filter_confidence_parser(subsubparsers)
     _add_filter_chain_parser(subsubparsers)
     _add_filter_residue_parser(subsubparsers)
+    _add_filter_ss_parser(subsubparsers)
 
 
 def _add_mcp_command(subparsers: argparse._SubParsersAction):
@@ -620,21 +682,22 @@ def _handle_filter_confidence(args: argparse.Namespace):
     # to get rid of duplication
     input_dir = structure(args.input_dir, Path)
     output_dir = structure(args.output_dir, Path)
-    confidence_threshold = structure(args.confidence_threshold, float)
-    # TODO add min/max
-    min_residues = structure(args.min_residues, int)
-    max_residues = structure(args.max_residues, int)
+
+    confidence_threshold = args.confidence_threshold
+    min_residues = args.min_residues
+    max_residues = args.max_residues
     stats_file: TextIOWrapper | None = args.write_stats
+    copy_method: CopyMethod = structure(args.copy_method, CopyMethod)  # pyright: ignore[reportArgumentType]
 
     output_dir.mkdir(parents=True, exist_ok=True)
     input_files = sorted(glob_structure_files(input_dir))
     nr_input_files = len(input_files)
     rprint(f"Starting confidence filtering of {nr_input_files} mmcif/PDB files in {input_dir} directory.")
-    query = structure(
+    query = converter.structure(
         {
             "confidence": confidence_threshold,
-            "min_threshold": min_residues,
-            "max_threshold": max_residues,
+            "min_residues": min_residues,
+            "max_residues": max_residues,
         },
         ConfidenceFilterQuery,
     )
@@ -643,7 +706,11 @@ def _handle_filter_confidence(args: argparse.Namespace):
         writer.writerow(["input_file", "residue_count", "passed", "output_file"])
 
     passed_count = 0
-    for r in tqdm(filter_files_on_confidence(input_files, query, output_dir), total=len(input_files), unit="file"):
+    for r in tqdm(
+        filter_files_on_confidence(input_files, query, output_dir, copy_method=copy_method),
+        total=len(input_files),
+        unit="file",
+    ):
         if r.filtered_file:
             passed_count += 1
         if stats_file:
@@ -656,9 +723,10 @@ def _handle_filter_confidence(args: argparse.Namespace):
 
 def _handle_filter_chain(args):
     input_dir = args.input_dir
-    output_dir = args.output_dir
+    output_dir = structure(args.output_dir, Path)
     pdb_id2chain_mapping_file = args.chains
-    scheduler_address = args.scheduler_address
+    scheduler_address = structure(args.scheduler_address, str | None)  # pyright: ignore[reportArgumentType]
+    copy_method: CopyMethod = structure(args.copy_method, CopyMethod)  # pyright: ignore[reportArgumentType]
 
     # make sure files in input dir with entries in mapping file are the same
     # complain when files from mapping file are missing on disk
@@ -683,11 +751,17 @@ def _handle_filter_chain(args):
         rprint("[red]No valid structure files found. Exiting.")
         sys.exit(1)
 
-    results = filter_files_on_chain(file2chain, output_dir, scheduler_address=scheduler_address)
+    results = filter_files_on_chain(
+        file2chain, output_dir, scheduler_address=scheduler_address, copy_method=copy_method
+    )
 
     nr_written = len([r for r in results if r.passed])
 
     rprint(f"Wrote {nr_written} single-chain PDB/mmCIF files to {output_dir}.")
+
+    for result in results:
+        if result.discard_reason:
+            rprint(f"[red]Discarding {result.input_file} ({result.discard_reason})[/red]")
 
 
 def _handle_filter_residue(args):
@@ -695,6 +769,7 @@ def _handle_filter_residue(args):
     output_dir = structure(args.output_dir, Path)
     min_residues = structure(args.min_residues, int)
     max_residues = structure(args.max_residues, int)
+    copy_method: CopyMethod = structure(args.copy_method, CopyMethod)  # pyright: ignore[reportArgumentType]
     stats_file: TextIOWrapper | None = args.write_stats
 
     if stats_file:
@@ -705,12 +780,76 @@ def _handle_filter_residue(args):
     input_files = sorted(glob_structure_files(input_dir))
     nr_total = len(input_files)
     rprint(f"Filtering {nr_total} files in {input_dir} directory by number of residues in chain A.")
-    for r in filter_files_on_residues(input_files, output_dir, min_residues=min_residues, max_residues=max_residues):
+    for r in filter_files_on_residues(
+        input_files, output_dir, min_residues=min_residues, max_residues=max_residues, copy_method=copy_method
+    ):
         if stats_file:
             writer.writerow([r.input_file, r.residue_count, r.passed, r.output_file])
         if r.passed:
             nr_passed += 1
 
+    rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
+    if stats_file:
+        rprint(f"Statistics written to {stats_file.name}")
+
+
+def _handle_filter_ss(args):
+    input_dir = structure(args.input_dir, Path)
+    output_dir = structure(args.output_dir, Path)
+    copy_method: CopyMethod = structure(args.copy_method, CopyMethod)  # pyright: ignore[reportArgumentType]
+    stats_file: TextIOWrapper | None = args.write_stats
+
+    raw_query = {
+        "abs_min_helix_residues": args.abs_min_helix_residues,
+        "abs_max_helix_residues": args.abs_max_helix_residues,
+        "abs_min_sheet_residues": args.abs_min_sheet_residues,
+        "abs_max_sheet_residues": args.abs_max_sheet_residues,
+        "ratio_min_helix_residues": args.ratio_min_helix_residues,
+        "ratio_max_helix_residues": args.ratio_max_helix_residues,
+        "ratio_min_sheet_residues": args.ratio_min_sheet_residues,
+        "ratio_max_sheet_residues": args.ratio_max_sheet_residues,
+    }
+    query = converter.structure(raw_query, SecondaryStructureFilterQuery)
+    input_files = sorted(glob_structure_files(input_dir))
+    nr_total = len(input_files)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    if stats_file:
+        writer = csv.writer(stats_file)
+        writer.writerow(
+            [
+                "input_file",
+                "nr_residues",
+                "nr_helix_residues",
+                "nr_sheet_residues",
+                "helix_ratio",
+                "sheet_ratio",
+                "passed",
+                "output_file",
+            ]
+        )
+
+    rprint(f"Filtering {nr_total} files in {input_dir} directory by secondary structure.")
+    nr_passed = 0
+    for input_file, result in filter_files_on_secondary_structure(input_files, query=query):
+        output_file: Path | None = None
+        if result.passed:
+            output_file = output_dir / input_file.name
+            copyfile(input_file, output_file, copy_method)
+            nr_passed += 1
+        if stats_file:
+            writer.writerow(
+                [
+                    input_file,
+                    result.stats.nr_residues,
+                    result.stats.nr_helix_residues,
+                    result.stats.nr_sheet_residues,
+                    round(result.stats.helix_ratio, 3),
+                    round(result.stats.sheet_ratio, 3),
+                    result.passed,
+                    output_file,
+                ]
+            )
     rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
     if stats_file:
         rprint(f"Statistics written to {stats_file.name}")
@@ -742,6 +881,7 @@ HANDLERS: dict[tuple[str, str | None], Callable] = {
     ("filter", "confidence"): _handle_filter_confidence,
     ("filter", "chain"): _handle_filter_chain,
     ("filter", "residue"): _handle_filter_residue,
+    ("filter", "secondary-structure"): _handle_filter_ss,
     ("mcp", None): _handle_mcp,
 }
 

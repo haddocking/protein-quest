@@ -2,12 +2,14 @@
 
 import gzip
 import logging
-from collections.abc import Generator
+from collections.abc import Generator, Iterable
+from datetime import UTC, datetime
 from pathlib import Path
 
 import gemmi
 
-from protein_quest import __version__
+from protein_quest.__version__ import __version__
+from protein_quest.utils import CopyMethod, copyfile
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +30,19 @@ def nr_residues_in_chain(file: Path | str, chain: str = "A") -> int:
         The number of residues in the specified chain.
     """
     structure = gemmi.read_structure(str(file))
-    model = structure[0]
-    gchain = find_chain_in_model(model, chain)
+    gchain = find_chain_in_structure(structure, chain)
     if gchain is None:
         logger.warning("Chain %s not found in %s. Returning 0.", chain, file)
         return 0
     return len(gchain)
+
+
+def find_chain_in_structure(structure: gemmi.Structure, wanted_chain: str) -> gemmi.Chain | None:
+    for model in structure:
+        chain = find_chain_in_model(model, wanted_chain)
+        if chain is not None:
+            return chain
+    return None
 
 
 def find_chain_in_model(model: gemmi.Model, wanted_chain: str) -> gemmi.Chain | None:
@@ -68,10 +77,12 @@ def write_structure(structure: gemmi.Structure, path: Path):
         with gzip.open(path, "wt") as f:
             f.write(body)
     elif path.name.endswith(".cif"):
-        doc = structure.make_mmcif_document()
+        # do not write chem_comp so it is viewable by molstar
+        # see https://github.com/project-gemmi/gemmi/discussions/362
+        doc = structure.make_mmcif_document(gemmi.MmcifOutputGroups(True, chem_comp=False))
         doc.write_file(str(path))
     elif path.name.endswith(".cif.gz"):
-        doc = structure.make_mmcif_document()
+        doc = structure.make_mmcif_document(gemmi.MmcifOutputGroups(True, chem_comp=False))
         cif_str = doc.as_string()
         with gzip.open(path, "wt") as f:
             f.write(cif_str)
@@ -111,14 +122,17 @@ def locate_structure_file(root: Path, pdb_id: str) -> Path:
     Raises:
         FileNotFoundError: If no structure file is found for the given PDB ID.
     """
-    exts = [".cif.gz", ".cif", ".pdb.gz", ".pdb"]
-    # files downloaded from https://www.ebi.ac.uk/pdbe/ website
-    # have file names like pdb6t5y.ent or pdb6t5y.ent.gz for a PDB formatted file.
-    # TODO support pdb6t5y.ent or pdb6t5y.ent.gz file names
+    exts = [".cif.gz", ".cif", ".pdb.gz", ".pdb", ".ent", ".ent.gz"]
     for ext in exts:
-        candidate = root / f"{pdb_id.lower()}{ext}"
-        if candidate.exists():
-            return candidate
+        candidates = (
+            root / f"{pdb_id}{ext}",
+            root / f"{pdb_id.lower()}{ext}",
+            root / f"{pdb_id.upper()}{ext}",
+            root / f"pdb{pdb_id.lower()}{ext}",
+        )
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
     msg = f"No structure file found for {pdb_id} in {root}"
     raise FileNotFoundError(msg)
 
@@ -139,20 +153,84 @@ def glob_structure_files(input_dir: Path) -> Generator[Path]:
 class ChainNotFoundError(IndexError):
     """Exception raised when a chain is not found in a structure."""
 
-    def __init__(self, chain: str, file: Path | str):
-        super().__init__(f"Chain {chain} not found in {file}")
+    def __init__(self, chain: str, file: Path | str, available_chains: Iterable[str]):
+        super().__init__(f"Chain {chain} not found in {file}. Available chains are: {available_chains}")
         self.chain_id = chain
         self.file = file
 
 
-def write_single_chain_pdb_file(input_file: Path, chain2keep: str, output_dir: Path, out_chain: str = "A") -> Path:
+def _dedup_helices(structure: gemmi.Structure):
+    helix_starts: set[str] = set()
+    duplicate_helix_indexes: list[int] = []
+    for hindex, helix in enumerate(structure.helices):
+        if str(helix.start) in helix_starts:
+            logger.debug(f"Duplicate start helix found: {hindex} {helix.start}, removing")
+            duplicate_helix_indexes.append(hindex)
+        else:
+            helix_starts.add(str(helix.start))
+    for helix_index in reversed(duplicate_helix_indexes):
+        structure.helices.pop(helix_index)
+
+
+def _dedup_sheets(structure: gemmi.Structure, chain2keep: str):
+    duplicate_sheet_indexes: list[int] = []
+    for sindex, sheet in enumerate(structure.sheets):
+        if sheet.name != chain2keep:
+            duplicate_sheet_indexes.append(sindex)
+    for sheet_index in reversed(duplicate_sheet_indexes):
+        structure.sheets.pop(sheet_index)
+
+
+def _add_provenance_info(structure: gemmi.Structure, chain2keep: str, out_chain: str):
+    old_id = structure.name
+    new_id = structure.name + f"{chain2keep}2{out_chain}"
+    structure.name = new_id
+    structure.info["_entry.id"] = new_id
+    new_title = f"From {old_id} chain {chain2keep} to {out_chain}"
+    structure.info["_struct.title"] = new_title
+    structure.info["_struct_keywords.pdbx_keywords"] = new_title.upper()
+    new_si = gemmi.SoftwareItem()
+    new_si.classification = gemmi.SoftwareItem.Classification.DataExtraction
+    new_si.name = "protein-quest.pdbe.io.write_single_chain_pdb_file"
+    new_si.version = str(__version__)
+    new_si.date = str(datetime.now(tz=UTC).date())
+    structure.meta.software = [*structure.meta.software, new_si]
+
+
+def chains_in_structure(structure: gemmi.Structure) -> set[gemmi.Chain]:
+    """Get a list of chains in a structure."""
+    return {c for model in structure for c in model}
+
+
+def write_single_chain_pdb_file(
+    input_file: Path,
+    chain2keep: str,
+    output_dir: Path,
+    out_chain: str = "A",
+    copy_method: CopyMethod = "copy",
+) -> Path:
     """Write a single chain from a mmCIF/pdb file to a new mmCIF/pdb file.
+
+    Also
+
+    - removes ligands and waters
+    - renumbers atoms ids
+    - removes chem_comp section from cif files
+    - adds provenance information to the header like software and input file+chain
+
+    This function is equivalent to the following gemmi commands:
+
+    ```shell
+    gemmi convert --remove-lig-wat --select=B --to=cif chain-in/3JRS.cif - | \\
+    gemmi convert --from=cif --rename-chain=B:A - chain-out/3JRS_B2A.gemmi.cif
+    ```
 
     Args:
         input_file: Path to the input mmCIF/pdb file.
         chain2keep: The chain to keep.
         output_dir: Directory to save the output file.
         out_chain: The chain identifier for the output file.
+        copy_method: How to copy when no changes are needed to output file.
 
     Returns:
         Path to the output mmCIF/pdb file
@@ -162,39 +240,42 @@ def write_single_chain_pdb_file(input_file: Path, chain2keep: str, output_dir: P
         ChainNotFoundError: If the specified chain is not found in the input file.
     """
 
+    logger.debug(f"chain2keep: {chain2keep}, out_chain: {out_chain}")
     structure = gemmi.read_structure(str(input_file))
-    model = structure[0]
+    structure.setup_entities()
 
-    # Only count residues of polymer
-    model.remove_ligands_and_waters()
-
-    chain = find_chain_in_model(model, chain2keep)
+    chain = find_chain_in_structure(structure, chain2keep)
+    chainnames_in_structure = {c.name for c in chains_in_structure(structure)}
     if chain is None:
-        raise ChainNotFoundError(chain2keep, input_file)
+        raise ChainNotFoundError(chain2keep, input_file, chainnames_in_structure)
+    chain_name = chain.name
     name, extension = _split_name_and_extension(input_file.name)
-    output_file = output_dir / f"{name}_{chain.name}2{out_chain}{extension}"
+    output_file = output_dir / f"{name}_{chain_name}2{out_chain}{extension}"
 
     if output_file.exists():
         logger.info("Output file %s already exists for input file %s. Skipping.", output_file, input_file)
         return output_file
 
-    new_structure = gemmi.Structure()
-    new_structure.resolution = structure.resolution
-    new_id = structure.name + f"{chain2keep}2{out_chain}"
-    new_structure.name = new_id
-    new_structure.info["_entry.id"] = new_id
-    new_title = f"From {structure.info['_entry.id']} chain {chain2keep} to {out_chain}"
-    new_structure.info["_struct.title"] = new_title
-    new_structure.info["_struct_keywords.pdbx_keywords"] = new_title.upper()
-    new_si = gemmi.SoftwareItem()
-    new_si.classification = gemmi.SoftwareItem.Classification.DataExtraction
-    new_si.name = "protein-quest"
-    new_si.version = str(__version__)
-    new_structure.meta.software.append(new_si)
-    new_model = gemmi.Model(1)
-    chain.name = out_chain
-    new_model.add_chain(chain)
-    new_structure.add_model(new_model)
-    write_structure(new_structure, output_file)
+    if chain_name == out_chain and len(chainnames_in_structure) == 1:
+        logger.info(
+            "%s only has chain %s and out_chain is also %s. Copying file to %s.",
+            input_file,
+            chain_name,
+            out_chain,
+            output_file,
+        )
+        copyfile(input_file, output_file, copy_method)
+        return output_file
+
+    gemmi.Selection(chain_name).remove_not_selected(structure)
+    for m in structure:
+        m.remove_ligands_and_waters()
+    structure.setup_entities()
+    structure.rename_chain(chain_name, out_chain)
+    _dedup_helices(structure)
+    _dedup_sheets(structure, out_chain)
+    _add_provenance_info(structure, chain_name, out_chain)
+
+    write_structure(structure, output_file)
 
     return output_file

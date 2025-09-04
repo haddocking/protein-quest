@@ -39,6 +39,19 @@ def test_write_single_chain_pdb_file_happypath(cif_path: Path, tmp_path: Path):
     assert len(chain) == 6  # 6 residues in chain Z
 
 
+def test_write_single_chain_pdb_file_with_secondary_structure(tmp_path: Path):
+    # See ../test_ss:sample_cif fixture how input_file was made
+    input_file = Path(__file__).parent.parent / "fixtures" / "3JRS_B2A.cif.gz"
+    output_file = write_single_chain_pdb_file(
+        input_file=input_file,
+        chain2keep="A",
+        output_dir=tmp_path,
+    )
+    structure = gemmi.read_structure(str(output_file))
+    assert len(structure.helices) == 4
+    assert len(structure.sheets) == 1
+
+
 def test_write_single_chain_pdb_file_already_exists(cif_path: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture):
     fake_output_file = tmp_path / "2y29_A2Z.cif"
     fake_output_file.write_text("fake content")
@@ -100,8 +113,30 @@ def test_write_structure(cif_path: Path, tmp_path: Path, extension: str):
     assert found_files[0].name == output_file.name
 
 
-def test_locate_structure_file(cif_path: Path):
-    root = cif_path.parent
-    result = locate_structure_file(root, "2y29")
+@pytest.mark.parametrize(
+    "pdb_id, file_name",
+    [
+        # extensions
+        ("2y29", "2y29.cif"),
+        ("2y29", "2y29.cif.gz"),
+        ("2y29", "2y29.pdb"),
+        ("2y29", "2y29.pdb.gz"),
+        ("2y29", "pdb2y29.ent"),
+        ("2y29", "pdb2y29.ent.gz"),
+        # cases
+        ("1KVm", "1KVm.cif"),
+        ("1KVm", "1kvm.cif"),
+        ("1KVm", "1KVM.cif"),
+    ],
+)
+def test_locate_structure_file(tmp_path: Path, pdb_id: str, file_name: str):
+    test_input_file = tmp_path / file_name
+    test_input_file.write_text("fake content")
+    result = locate_structure_file(tmp_path, pdb_id)
 
-    assert result == cif_path
+    assert result == test_input_file
+
+
+def test_locate_structure_file_notfound(tmp_path: Path):
+    with pytest.raises(FileNotFoundError, match="No structure file found for nonexistent_id in"):
+        locate_structure_file(tmp_path, "nonexistent_id")

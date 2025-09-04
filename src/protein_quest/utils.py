@@ -2,11 +2,12 @@
 
 import asyncio
 import logging
+import shutil
 from collections.abc import Coroutine, Iterable
 from contextlib import asynccontextmanager
 from pathlib import Path
 from textwrap import dedent
-from typing import Any
+from typing import Any, Literal, get_args
 
 import aiofiles
 import aiohttp
@@ -138,3 +139,29 @@ def run_async[R](coroutine: Coroutine[Any, Any, R]) -> R:
         return asyncio.run(coroutine)
     except RuntimeError as e:
         raise NestedAsyncIOLoopError from e
+
+
+CopyMethod = Literal["copy", "symlink"]
+copy_methods = set(get_args(CopyMethod))
+
+
+def copyfile(source: Path, target: Path, copy_method: CopyMethod = "copy"):
+    """Make target path be same file as source by either copying or symlinking.
+
+    Args:
+        source: The source file to copy or symlink.
+        target: The target file to create.
+        copy_method: The method to use for copying.
+
+    Raises:
+        FileNotFoundError: If the source file or parent of target does not exist.
+        ValueError: If the method is not "copy" or "symlink".
+    """
+    if copy_method == "copy":
+        shutil.copyfile(source, target)
+    elif copy_method == "symlink":
+        rel_source = source.relative_to(target.parent, walk_up=True)
+        target.symlink_to(rel_source)
+    else:
+        msg = f"Unknown method: {copy_method}"
+        raise ValueError(msg)

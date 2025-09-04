@@ -9,9 +9,9 @@ from typing import Literal, get_args
 from aiohttp.client import ClientResponse
 from aiohttp_retry import RetryClient
 from cattrs.gen import make_dict_structure_fn, override
-from cattrs.preconf.orjson import make_converter
 from yarl import URL
 
+from protein_quest.converter import converter
 from protein_quest.go import TextIOWrapper
 from protein_quest.utils import friendly_session
 
@@ -41,8 +41,6 @@ class Taxon:
 class SearchTaxonResponse:
     results: list[Taxon]
 
-
-converter = make_converter()
 
 converter.register_structure_hook(
     Taxon,

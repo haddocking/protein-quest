@@ -6,6 +6,7 @@ import pytest
 from protein_quest.alphafold.confidence import (
     ConfidenceFilterQuery,
     ConfidenceFilterResult,
+    converter,
     filter_files_on_confidence,
     filter_out_low_confidence_residues,
     find_high_confidence_residues,
@@ -43,8 +44,8 @@ def test_filter_files_on_confidence(sample_pdb_file: Path, tmp_path: Path):
     input_files = [sample_pdb_file]
     query = ConfidenceFilterQuery(
         confidence=90,
-        max_threshold=40,
-        min_threshold=10,
+        max_residues=40,
+        min_residues=10,
     )
 
     results = list(filter_files_on_confidence(input_files, query, tmp_path))
@@ -61,3 +62,52 @@ def test_filter_files_on_confidence(sample_pdb_file: Path, tmp_path: Path):
     assert results[0].filtered_file is not None
     assert results[0].filtered_file.exists()
     assert nr_residues_in_chain(results[0].filtered_file) == 22
+
+
+def test_query_converter():
+    result = converter.structure(
+        {
+            "confidence": 90.0,
+            "min_residues": 10,
+            "max_residues": 100,
+        },
+        ConfidenceFilterQuery,
+    )
+    expected = ConfidenceFilterQuery(
+        confidence=90.0,
+        min_residues=10,
+        max_residues=100,
+    )
+    assert result == expected
+
+@pytest.mark.parametrize(
+    "raw,match",
+    [
+        ({
+            "confidence": 42,
+            "min_residues": -10,
+            "max_residues": 100,
+        }, "is not a valid positive integer"),
+        ({
+            "confidence": 1234,
+            "min_residues": 10,
+            "max_residues": 100,
+        }, "is not a valid percentage"),
+        ({
+            "confidence": -10,
+            "min_residues": 10,
+            "max_residues": 100,
+        }, "is not a valid percentage"),
+        ({
+            "confidence": 1,
+            "min_residues": 80,
+            "max_residues": 20,
+        }, "cannot be larger than"),
+    ],
+)
+def test_query_converter_bad_confidence(raw: dict, match: str):
+    with pytest.raises(ValueError, match=match):
+        converter.structure(
+            raw,
+            ConfidenceFilterQuery,
+        )
