@@ -29,10 +29,10 @@ graph TB;
     searchpdbe -->|pdb_ids|fetchpdbe[Retrieve PDBe]
     searchaf --> |uniprot_accessions|fetchad(Retrieve AlphaFold)
     searchemdb -. emdb_ids .->fetchemdb[Retrieve EMDB]
-    fetchpdbe -->|mmcif_files_with_uniprot_acc| chainfilter{Filter on chain of uniprot}
-    chainfilter --> |mmcif_files| residuefilter{Filter on chain length}
-    fetchad -->|pdb_files| confidencefilter{Filter out low confidence}
-    confidencefilter --> |mmcif_files| ssfilter{Filter on secondary structure}
+    fetchpdbe -->|mmcif_files_with_uniprot_acc| chainfilter{{Filter on chain of uniprot}}
+    chainfilter --> |mmcif_files| residuefilter{{Filter on chain length}}
+    fetchad -->|pdb_files| confidencefilter{{Filter out low confidence}}
+    confidencefilter --> |mmcif_files| ssfilter{{Filter on secondary structure}}
     residuefilter --> |mmcif_files| ssfilter
     classDef dashedBorder stroke-dasharray: 5 5;
     goterm:::dashedBorder
