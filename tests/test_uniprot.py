@@ -13,9 +13,9 @@ from protein_quest.uniprot import (
     search4af,
     search4emdb,
     search4interaction_partners,
+    search4macromolecular_complexes,
     search4pdb,
     search4uniprot,
-    search_in_complex_portal,
 )
 
 
@@ -319,10 +319,10 @@ def test_search4emdb():
 
 
 @pytest.mark.vcr
-def test_search_in_complex_portal():
+def test_search4macromolecular_complexes():
     uniprot_accession = "P60709"
 
-    results = search_in_complex_portal({uniprot_accession}, limit=100)
+    results = search4macromolecular_complexes({uniprot_accession}, limit=100)
 
     assert len(results) == 40
     first_expected = ComplexPortalEntry(

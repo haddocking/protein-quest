@@ -609,12 +609,12 @@ def _flatten_results_complex(raw_results) -> list[ComplexPortalEntry]:
     return results
 
 
-def search_in_complex_portal(
+def search4macromolecular_complexes(
     uniprot_accs: Iterable[str], limit: int = 10_000, timeout: int = 1_800
 ) -> list[ComplexPortalEntry]:
-    """Search for ComplexPortal entries by UniProtKB accessions.
+    """Search for macromolecular complexes by UniProtKB accessions.
 
-    See https://www.ebi.ac.uk/complexportal/ for more information about ComplexPortal.
+    Queries for references to/from https://www.ebi.ac.uk/complexportal/ database in the Uniprot SPARQL endpoint.
 
     Args:
         uniprot_accs: UniProt accessions.
@@ -625,7 +625,7 @@ def search_in_complex_portal(
         List of ComplexPortalEntry objects.
     """
     sparql_query = _build_complex_sparql_query(uniprot_accs, limit)
-    logger.info("Executing SPARQL query for ComplexPortal: %s", sparql_query)
+    logger.info("Executing SPARQL query for macromolecular complexes: %s", sparql_query)
     raw_results = _execute_sparql_search(
         sparql_query=sparql_query,
         timeout=timeout,
@@ -650,7 +650,7 @@ def search4interaction_partners(
         Dictionary with UniProt accessions of interaction partners as keys and sets of ComplexPortal entry IDs
         in which the interaction occurs as values.
     """
-    ucomplexes = search_in_complex_portal([uniprot_acc], limit=limit, timeout=timeout)
+    ucomplexes = search4macromolecular_complexes([uniprot_acc], limit=limit, timeout=timeout)
     hits: dict[str, set[str]] = {}
     if excludes is None:
         excludes = set()

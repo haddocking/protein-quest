@@ -30,7 +30,7 @@ from protein_quest.go import Aspect, allowed_aspects, search_gene_ontology_term,
 from protein_quest.pdbe import fetch as pdbe_fetch
 from protein_quest.pdbe.io import glob_structure_files, locate_structure_file
 from protein_quest.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
-from protein_quest.taxonomy import SearchField, search_fields, search_taxon, _write_taxonomy_csv
+from protein_quest.taxonomy import SearchField, _write_taxonomy_csv, search_fields, search_taxon
 from protein_quest.uniprot import (
     ComplexPortalEntry,
     PdbResult,
@@ -38,9 +38,9 @@ from protein_quest.uniprot import (
     search4af,
     search4emdb,
     search4interaction_partners,
+    search4macromolecular_complexes,
     search4pdb,
     search4uniprot,
-    search_in_complex_portal,
 )
 from protein_quest.utils import CopyMethod, copy_methods, copyfile
 
@@ -727,7 +727,7 @@ def _handle_search_complexes(args: argparse.Namespace):
 
     accs = _read_lines(uniprot_accs)
     rprint(f"Finding complexes for {len(accs)} uniprot accessions")
-    results = search_in_complex_portal(accs, limit=limit, timeout=timeout)
+    results = search4macromolecular_complexes(accs, limit=limit, timeout=timeout)
     rprint(f"Found {len(results)} complexes, written to {output_csv.name}")
     _write_complexes_csv(results, output_csv)
 
