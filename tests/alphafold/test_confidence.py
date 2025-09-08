@@ -80,32 +80,74 @@ def test_query_converter():
     )
     assert result == expected
 
+
 @pytest.mark.parametrize(
     "raw,match",
     [
-        ({
-            "confidence": 42,
-            "min_residues": -10,
-            "max_residues": 100,
-        }, "is not a valid positive integer"),
-        ({
-            "confidence": 1234,
-            "min_residues": 10,
-            "max_residues": 100,
-        }, "is not a valid percentage"),
-        ({
-            "confidence": -10,
-            "min_residues": 10,
-            "max_residues": 100,
-        }, "is not a valid percentage"),
-        ({
-            "confidence": 1,
-            "min_residues": 80,
-            "max_residues": 20,
-        }, "cannot be larger than"),
+        (
+            {
+                "confidence": 42,
+                "min_residues": -10,
+                "max_residues": 100,
+            },
+            "is not a valid positive integer",
+        ),
+        (
+            {
+                "confidence": 1234,
+                "min_residues": 10,
+                "max_residues": 100,
+            },
+            "is not a valid percentage",
+        ),
+        (
+            {
+                "confidence": -10,
+                "min_residues": 10,
+                "max_residues": 100,
+            },
+            "is not a valid percentage",
+        ),
+        (
+            {
+                "confidence": "not a number",
+                "min_residues": 10,
+                "max_residues": 100,
+            },
+            "could not convert string to float",
+        ),
+        (
+            {
+                "confidence": 42,
+                "min_residues": "not a number",
+                "max_residues": 100,
+            },
+            "invalid literal for int",
+        ),
     ],
 )
 def test_query_converter_bad_confidence(raw: dict, match: str):
+    with pytest.RaisesGroup(pytest.RaisesExc(ValueError, match=match)):
+        converter.structure(
+            raw,
+            ConfidenceFilterQuery,
+        )
+
+
+@pytest.mark.parametrize(
+    "raw,match",
+    [
+        (
+            {
+                "confidence": 1,
+                "min_residues": 80,
+                "max_residues": 20,
+            },
+            "cannot be larger than",
+        ),
+    ],
+)
+def test_query_converter_bad_residues(raw: dict, match: str):
     with pytest.raises(ValueError, match=match):
         converter.structure(
             raw,
