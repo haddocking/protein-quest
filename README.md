@@ -26,6 +26,8 @@ graph TB;
     searchuniprot --> |uniprot_accessions|searchpdbe[/Search PDBe/]
     searchuniprot --> |uniprot_accessions|searchaf[/Search Alphafold/]
     searchuniprot -. uniprot_accessions .-> searchemdb[/Search EMDB/]
+    searchintactionpartners[/Search interaction partners/] --x |uniprot_accessions|searchuniprot
+    searchcomplexes[/Search complexes/]
     searchpdbe -->|pdb_ids|fetchpdbe[Retrieve PDBe]
     searchaf --> |uniprot_accessions|fetchad(Retrieve AlphaFold)
     searchemdb -. emdb_ids .->fetchemdb[Retrieve EMDB]
@@ -39,6 +41,7 @@ graph TB;
     taxonomy:::dashedBorder
     searchemdb:::dashedBorder
     fetchemdb:::dashedBorder
+    searchcomplexes:::dashedBorder
 ```
 
 (Dotted nodes and edges are side-quests.)
@@ -172,6 +175,30 @@ You can use following command to search for a Gene Ontology (GO) term.
 
 ```shell
 protein-quest search go --limit 5 --aspect cellular_component apoptosome -
+```
+
+### Search for interaction partners
+
+Use https://www.ebi.ac.uk/complexportal to find interaction partners of given UniProt accession.
+
+```shell
+protein-quest search interaction-partners Q05471 interaction-partners-of-Q05471.txt
+```
+
+### Search for complexes
+
+Given Uniprot accessions search for macromolecular complexes at https://www.ebi.ac.uk/complexportal
+and return the complex entries and their members.
+
+```shell
+echo Q05471 | protein-quest search complexes - complexes.csv
+```
+
+The `complexes.csv` looks like
+
+```csv
+query_protein,complex_id,complex_url,complex_title,members
+Q05471,CPX-2122,https://www.ebi.ac.uk/complexportal/complex/CPX-2122,Swr1 chromatin remodelling complex,P31376;P35817;P38326;P53201;P53930;P60010;P80428;Q03388;Q03433;Q03940;Q05471;Q06707;Q12464;Q12509
 ```
 
 ##  Model Context Protocol (MCP) server
