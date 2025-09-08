@@ -133,6 +133,16 @@ def secondary_structure_filter_query_hook(value, _type) -> SecondaryStructureFil
 
 @dataclass
 class SecondaryStructureStats:
+    """Statistics about the secondary structure of a protein.
+
+    Parameters:
+        nr_residues: Total number of residues in the structure.
+        nr_helix_residues: Number of residues in helices.
+        nr_sheet_residues: Number of residues in sheets.
+        helix_ratio: Ratio of residues in helices.
+        sheet_ratio: Ratio of residues in sheets.
+    """
+
     nr_residues: PositiveInt
     nr_helix_residues: PositiveInt
     nr_sheet_residues: PositiveInt
@@ -142,6 +152,13 @@ class SecondaryStructureStats:
 
 @dataclass
 class SecondaryStructureFilterResult:
+    """Result of filtering on secondary structure.
+
+    Parameters:
+        stats: The secondary structure statistics.
+        passed: Whether the structure passed the filtering criteria.
+    """
+
     stats: SecondaryStructureStats
     passed: bool = False
 
