@@ -529,7 +529,7 @@ def _build_complex_sparql_query(uniprot_accs, limit):
     (COUNT(DISTINCT ?member) AS ?member_count)
     WHERE {
     # Input UniProt accessions
-    VALUES (?ac) { ("P05067") ("P60709") }
+    VALUES (?ac) { ("P05067") ("P60709") ("Q05471")}
     BIND (IRI(CONCAT("http://purl.uniprot.org/uniprot/", ?ac)) AS ?protein)
 
     # ComplexPortal cross-reference for each input protein
@@ -630,6 +630,7 @@ def search4macromolecular_complexes(
         sparql_query=sparql_query,
         timeout=timeout,
     )
+    limit_check("Search for complexes", limit, len(raw_results))
     return _flatten_results_complex(raw_results)
 
 
