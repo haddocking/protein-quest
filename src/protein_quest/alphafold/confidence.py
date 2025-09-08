@@ -84,12 +84,18 @@ class ConfidenceFilterQuery:
     min_residues: PositiveInt
     max_residues: PositiveInt
 
+
+base_query_hook = converter.get_structure_hook(ConfidenceFilterQuery)
+
+
 @converter.register_structure_hook
-def confidence_filter_query_hook(val, _) -> ConfidenceFilterQuery:
-    if val["min_residues"] > val["max_residues"]:
-        msg = f"min_residues {val['min_residues']} cannot be larger than max_residues {val['max_residues']}"
+def confidence_filter_query_hook(val, _type) -> ConfidenceFilterQuery:
+    result: ConfidenceFilterQuery = base_query_hook(val, _type)
+    if result.min_residues > result.max_residues:
+        msg = f"min_residues {result.min_residues} cannot be larger than max_residues {result.max_residues}"
         raise ValueError(msg)
-    return converter.structure_attrs_fromdict(val, ConfidenceFilterQuery)
+    return result
+
 
 @dataclass
 class ConfidenceFilterResult:

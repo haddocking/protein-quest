@@ -112,25 +112,37 @@ class SecondaryStructureFilterQuery:
     ratio_max_sheet_residues: Ratio | None = None
 
 
-def _check_range(value, min_key, max_key, label):
-    min_val = value.get(min_key)
-    max_val = value.get(max_key)
+def _check_range(min_val, max_val, label):
     if min_val is not None and max_val is not None and min_val >= max_val:
         msg = f"Invalid {label} range: min {min_val} must be smaller than max {max_val}"
         raise ValueError(msg)
 
 
+base_query_hook = converter.get_structure_hook(SecondaryStructureFilterQuery)
+
+
 @converter.register_structure_hook
-def secondary_structure_filter_query_hook(value, _) -> SecondaryStructureFilterQuery:
-    _check_range(value, "abs_min_helix_residues", "abs_max_helix_residues", "absolute helix residue")
-    _check_range(value, "abs_min_sheet_residues", "abs_max_sheet_residues", "absolute sheet residue")
-    _check_range(value, "ratio_min_helix_residues", "ratio_max_helix_residues", "ratio helix residue")
-    _check_range(value, "ratio_min_sheet_residues", "ratio_max_sheet_residues", "ratio sheet residue")
-    return converter.structure_attrs_fromdict(value, SecondaryStructureFilterQuery)
+def secondary_structure_filter_query_hook(value, _type) -> SecondaryStructureFilterQuery:
+    result: SecondaryStructureFilterQuery = base_query_hook(value, _type)
+    _check_range(result.abs_min_helix_residues, result.abs_max_helix_residues, "absolute helix residue")
+    _check_range(result.abs_min_sheet_residues, result.abs_max_sheet_residues, "absolute sheet residue")
+    _check_range(result.ratio_min_helix_residues, result.ratio_max_helix_residues, "ratio helix residue")
+    _check_range(result.ratio_min_sheet_residues, result.ratio_max_sheet_residues, "ratio sheet residue")
+    return result
 
 
 @dataclass
 class SecondaryStructureStats:
+    """Statistics about the secondary structure of a protein.
+
+    Parameters:
+        nr_residues: Total number of residues in the structure.
+        nr_helix_residues: Number of residues in helices.
+        nr_sheet_residues: Number of residues in sheets.
+        helix_ratio: Ratio of residues in helices.
+        sheet_ratio: Ratio of residues in sheets.
+    """
+
     nr_residues: PositiveInt
     nr_helix_residues: PositiveInt
     nr_sheet_residues: PositiveInt
@@ -140,6 +152,13 @@ class SecondaryStructureStats:
 
 @dataclass
 class SecondaryStructureFilterResult:
+    """Result of filtering on secondary structure.
+
+    Parameters:
+        stats: The secondary structure statistics.
+        passed: Whether the structure passed the filtering criteria.
+    """
+
     stats: SecondaryStructureStats
     passed: bool = False
 
