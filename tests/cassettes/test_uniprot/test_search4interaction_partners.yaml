@@ -1,0 +1,384 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/sparql-results+json,application/json,text/javascript,application/javascript
+      Connection:
+      - close
+      Host:
+      - sparql.uniprot.org
+      User-Agent:
+      - sparqlwrapper 2.0.0 (rdflib.github.io/sparqlwrapper)
+    method: GET
+    uri: https://sparql.uniprot.org/sparql?query=%0A++++++++PREFIX+up%3A+%3Chttp%3A//purl.uniprot.org/core/%3E%0A++++++++PREFIX+taxon%3A+%3Chttp%3A//purl.uniprot.org/taxonomy/%3E%0A++++++++PREFIX+rdf%3A+%3Chttp%3A//www.w3.org/1999/02/22-rdf-syntax-ns%23%3E%0A++++++++PREFIX+rdfs%3A+%3Chttp%3A//www.w3.org/2000/01/rdf-schema%23%3E%0A++++++++PREFIX+skos%3A+%3Chttp%3A//www.w3.org/2004/02/skos/core%23%3E%0A++++++++PREFIX+GO%3A%3Chttp%3A//purl.obolibrary.org/obo/GO_%3E%0A%0A++++++++SELECT+%3Fprotein+%3Fcp_db+%3Fcp_comment%0A%28GROUP_CONCAT%28DISTINCT+%3Fmember%3B+separator%3D%22%2C%22%29+AS+%3Fcomplex_members%29%0A%0A++++++++WHERE+%7B%0A%0A++++++++%23+---+Protein+Selection+---%0A++++++++VALUES+%28%3Fac%29+%7B+%28%22P60709%22%29%7D%0A++++++++BIND+%28IRI%28CONCAT%28%22http%3A//purl.uniprot.org/uniprot/%22%2C%3Fac%29%29+AS+%3Fprotein%29%0A++++++++%3Fprotein+a+up%3AProtein+.%0A%0A%0A%23+---+Complex+Info+---%0A%3Fprotein+a+up%3AProtein+%3B%0A++++++++rdfs%3AseeAlso+%3Fcp_db+.%0A%3Fcp_db+up%3Adatabase+%3Chttp%3A//purl.uniprot.org/database/ComplexPortal%3E+.%0AOPTIONAL+%7B+%3Fcp_db+rdfs%3Acomment+%3Fcp_comment+.+%7D%0A%23+All+member+proteins+of+the+same+ComplexPortal+complex%0A%3Fmember+a+up%3AProtein+%3B%0Ardfs%3AseeAlso+%3Fcp_db+.%0A%0A%0A++++++++%7D%0A+++++++++GROUP+BY+%0A%3Fprotein+%3Fcp_db+%3Fcp_comment%0A%0A++++++++LIMIT+100%0A&format=json&output=json&results=json
+  response:
+    body:
+      string: "{\n  \"head\" : {\n    \"vars\" : [\n      \"protein\",\n      \"cp_db\",\n
+        \     \"cp_comment\",\n      \"complex_members\"\n    ]\n  },\n  \"results\"
+        : {\n    \"bindings\" : [\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1203\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Brain-specific
+        SWI/SNF ATP-dependent chromatin remodeling complex, ARID1A-SMARCA2 variant\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/O94805,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/P51531,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/Q92925,http://purl.uniprot.org/uniprot/O14497\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1219\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Brain-specific
+        SWI/SNF ATP-dependent chromatin remodeling complex, ARID1A-SMARCA4 variant\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/O94805,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/O14497,http://purl.uniprot.org/uniprot/P51532,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q92925,http://purl.uniprot.org/uniprot/P60709\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1220\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Brain-specific
+        SWI/SNF ATP-dependent chromatin remodeling complex, ARID1B-SMARCA2 variant\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/P51531,http://purl.uniprot.org/uniprot/O94805,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q8NFD5,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/Q92925\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1221\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Brain-specific
+        SWI/SNF ATP-dependent chromatin remodeling complex, ARID1B-SMARCA4 variant\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/O94805,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/P51532,http://purl.uniprot.org/uniprot/Q8NFD5,http://purl.uniprot.org/uniprot/Q92925\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1195\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Embryonic
+        stem cell-specific SWI/SNF ATP-dependent chromatin remodeling complex\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/O96019,http://purl.uniprot.org/uniprot/Q9BQE9,http://purl.uniprot.org/uniprot/Q8WUZ0,http://purl.uniprot.org/uniprot/Q8WUB8,http://purl.uniprot.org/uniprot/P51532,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q92785,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q4VC05,http://purl.uniprot.org/uniprot/O14497\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-4203\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"GBAF (SWI/SNF)
+        ATP-dependent chromatin remodeling complex, ACTL6A-BICRAL-SMARCA2 variant\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/Q8WUZ0,http://purl.uniprot.org/uniprot/Q9H8M2,http://purl.uniprot.org/uniprot/P51531,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q4VC05,http://purl.uniprot.org/uniprot/Q6AI39,http://purl.uniprot.org/uniprot/Q15532,http://purl.uniprot.org/uniprot/Q9BQE9,http://purl.uniprot.org/uniprot/O96019,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q92922\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-4207\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"GBAF (SWI/SNF)
+        ATP-dependent chromatin remodeling complex, ACTL6A-BICRAL-SMARCA4 variant\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/Q6AI39,http://purl.uniprot.org/uniprot/Q4VC05,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q9BQE9,http://purl.uniprot.org/uniprot/P51532,http://purl.uniprot.org/uniprot/Q9H8M2,http://purl.uniprot.org/uniprot/O96019,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q15532,http://purl.uniprot.org/uniprot/Q8WUZ0\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-4084\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"GBAF (SWI/SNF)
+        ATP-dependent chromatin remodeling complex, ACTL6A-BICRA-SMARCA2 variant\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/Q9H8M2,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/O96019,http://purl.uniprot.org/uniprot/Q9NZM4,http://purl.uniprot.org/uniprot/Q15532,http://purl.uniprot.org/uniprot/Q4VC05,http://purl.uniprot.org/uniprot/P51531,http://purl.uniprot.org/uniprot/Q9BQE9,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q8WUZ0\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-4206\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"GBAF (SWI/SNF)
+        ATP-dependent chromatin remodeling complex, ACTL6A-BICRA-SMARCA4 variant\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/Q4VC05,http://purl.uniprot.org/uniprot/Q15532,http://purl.uniprot.org/uniprot/Q8WUZ0,http://purl.uniprot.org/uniprot/P51532,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q9BQE9,http://purl.uniprot.org/uniprot/Q9NZM4,http://purl.uniprot.org/uniprot/Q9H8M2,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/O96019\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-4224\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"GBAF (SWI/SNF)
+        ATP-dependent chromatin remodeling complex, ACTL6B-BICRAL-SMARCA2 variant\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/Q8WUZ0,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q9BQE9,http://purl.uniprot.org/uniprot/Q15532,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/P51531,http://purl.uniprot.org/uniprot/O94805,http://purl.uniprot.org/uniprot/Q9H8M2,http://purl.uniprot.org/uniprot/Q6AI39,http://purl.uniprot.org/uniprot/Q4VC05\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-4226\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"GBAF (SWI/SNF)
+        ATP-dependent chromatin remodeling complex, ACTL6B-BICRAL-SMARCA4 variant\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/Q9BQE9,http://purl.uniprot.org/uniprot/Q4VC05,http://purl.uniprot.org/uniprot/Q9H8M2,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q8WUZ0,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/P51532,http://purl.uniprot.org/uniprot/O94805,http://purl.uniprot.org/uniprot/Q15532,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q6AI39\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-4223\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"GBAF (SWI/SNF)
+        ATP-dependent chromatin remodeling complex, ACTL6B-BICRA-SMARCA2 variant\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q9BQE9,http://purl.uniprot.org/uniprot/Q8WUZ0,http://purl.uniprot.org/uniprot/Q9H8M2,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/P51531,http://purl.uniprot.org/uniprot/Q15532,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q4VC05,http://purl.uniprot.org/uniprot/O94805,http://purl.uniprot.org/uniprot/Q9NZM4\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-4225\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"GBAF (SWI/SNF)
+        ATP-dependent chromatin remodeling complex, ACTL6B-BICRA-SMARCA4 variant\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/P51532,http://purl.uniprot.org/uniprot/Q8WUZ0,http://purl.uniprot.org/uniprot/Q4VC05,http://purl.uniprot.org/uniprot/Q9BQE9,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q15532,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q9NZM4,http://purl.uniprot.org/uniprot/O94805,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q9H8M2\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1194\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Muscle cell-specific
+        SWI/SNF ATP-dependent chromatin remodeling complex, ACTL6A-ARID1A-SMARCA2
+        variant\"\n        },\n        \"complex_members\" : {\n          \"type\"
+        : \"literal\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/O96019,http://purl.uniprot.org/uniprot/Q92925,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/O14497,http://purl.uniprot.org/uniprot/P51531,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q92784\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1222\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Muscle cell-specific
+        SWI/SNF ATP-dependent chromatin remodeling complex, ACTL6A-ARID1A-SMARCA4
+        variant\"\n        },\n        \"complex_members\" : {\n          \"type\"
+        : \"literal\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/P51532,http://purl.uniprot.org/uniprot/Q92784,http://purl.uniprot.org/uniprot/O14497,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/O96019,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/Q92925\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1223\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Muscle cell-specific
+        SWI/SNF ATP-dependent chromatin remodeling complex, ACTL6A-ARID1B-SMARCA2
+        variant\"\n        },\n        \"complex_members\" : {\n          \"type\"
+        : \"literal\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q8NFD5,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/Q92784,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q92925,http://purl.uniprot.org/uniprot/O96019,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/P51531,http://purl.uniprot.org/uniprot/Q969G3\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1224\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Muscle cell-specific
+        SWI/SNF ATP-dependent chromatin remodeling complex, ACTL6A-ARID1B-SMARCA4
+        variant\"\n        },\n        \"complex_members\" : {\n          \"type\"
+        : \"literal\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/Q8NFD5,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/P51532,http://purl.uniprot.org/uniprot/Q92925,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/O96019,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q92784\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1225\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Muscle cell-specific
+        SWI/SNF ATP-dependent chromatin remodeling complex, ACTL6B-ARID1A-SMARCA2
+        variant\"\n        },\n        \"complex_members\" : {\n          \"type\"
+        : \"literal\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/O94805,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q92784,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/P51531,http://purl.uniprot.org/uniprot/Q92925,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/O14497,http://purl.uniprot.org/uniprot/Q12824\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1226\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Muscle cell-specific
+        SWI/SNF ATP-dependent chromatin remodeling complex, ACTL6B-ARID1A-SMARCA4
+        variant\"\n        },\n        \"complex_members\" : {\n          \"type\"
+        : \"literal\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/O14497,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/Q92925,http://purl.uniprot.org/uniprot/P51532,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/O94805,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q92784\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1227\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Muscle cell-specific
+        SWI/SNF ATP-dependent chromatin remodeling complex, ACTL6B-ARID1B-SMARCA2
+        variant\"\n        },\n        \"complex_members\" : {\n          \"type\"
+        : \"literal\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q92925,http://purl.uniprot.org/uniprot/P51531,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/O94805,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/Q92784,http://purl.uniprot.org/uniprot/Q8NFD5,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/Q12824\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1228\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Muscle cell-specific
+        SWI/SNF ATP-dependent chromatin remodeling complex, ACTL6B-ARID1B-SMARCA4
+        variant\"\n        },\n        \"complex_members\" : {\n          \"type\"
+        : \"literal\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/Q92784,http://purl.uniprot.org/uniprot/Q92925,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q8NFD5,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/O94805,http://purl.uniprot.org/uniprot/P51532,http://purl.uniprot.org/uniprot/Q96GM5\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1201\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Neural progenitor-specific
+        SWI/SNF ATP-dependent chromatin remodeling complex, ARID1A-SMARCA2 variant\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/Q8WUB8,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/P51531,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/O14497,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/O96019\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1212\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Neural progenitor-specific
+        SWI/SNF ATP-dependent chromatin remodeling complex, ARID1A-SMARCA4 variant\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q8WUB8,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/O14497,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/O96019,http://purl.uniprot.org/uniprot/P51532,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q12824\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1213\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Neural progenitor-specific
+        SWI/SNF ATP-dependent chromatin remodeling complex, ARID1B-SMARCA2 variant\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q8NFD5,http://purl.uniprot.org/uniprot/Q8WUB8,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/O96019,http://purl.uniprot.org/uniprot/P51531,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/Q96GM5\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1215\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Neural progenitor-specific
+        SWI/SNF ATP-dependent chromatin remodeling complex, ARID1B-SMARCA4 variant\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/O96019,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/P51532,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/Q8WUB8,http://purl.uniprot.org/uniprot/Q8NFD5,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/Q969G3\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1202\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Neuron-specific
+        SWI/SNF ATP-dependent chromatin remodeling complex, ARID1A-SMARCA2 variant\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/P51531,http://purl.uniprot.org/uniprot/Q92784,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/O94805,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q92782,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/O14497\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1216\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Neuron-specific
+        SWI/SNF ATP-dependent chromatin remodeling complex, ARID1A-SMARCA4 variant\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/P51532,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q92784,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/Q92782,http://purl.uniprot.org/uniprot/O94805,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/O14497,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/Q12824\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1217\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Neuron-specific
+        SWI/SNF ATP-dependent chromatin remodeling complex, ARID1B-SMARCA2 variant\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/Q8NFD5,http://purl.uniprot.org/uniprot/O94805,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/P51531,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/Q92782,http://purl.uniprot.org/uniprot/Q92784,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q969G3\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1218\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Neuron-specific
+        SWI/SNF ATP-dependent chromatin remodeling complex, ARID1B-SMARCA4 variant\"\n
+        \       },\n        \"complex_members\" : {\n          \"type\" : \"literal\",\n
+        \         \"value\" : \"http://purl.uniprot.org/uniprot/O94805,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q92782,http://purl.uniprot.org/uniprot/Q8NFD5,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q92784,http://purl.uniprot.org/uniprot/P51532,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q969G3\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-978\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"NuA4 histone
+        acetyltransferase complex\"\n        },\n        \"complex_members\" : {\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/Q9Y4A5,http://purl.uniprot.org/uniprot/Q92993,http://purl.uniprot.org/uniprot/Q9Y230,http://purl.uniprot.org/uniprot/Q9Y265,http://purl.uniprot.org/uniprot/Q9H2F5,http://purl.uniprot.org/uniprot/Q9UBU8,http://purl.uniprot.org/uniprot/Q9NXR8,http://purl.uniprot.org/uniprot/Q96L91,http://purl.uniprot.org/uniprot/Q9NV56,http://purl.uniprot.org/uniprot/Q9NPF5,http://purl.uniprot.org/uniprot/Q9HAF1,http://purl.uniprot.org/uniprot/Q9H0E9,http://purl.uniprot.org/uniprot/Q15014,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/O96019,http://purl.uniprot.org/uniprot/Q52LR7,http://purl.uniprot.org/uniprot/Q05BQ5,http://purl.uniprot.org/uniprot/O95619,http://purl.uniprot.org/uniprot/Q15906\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1199\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Polybromo-associated
+        SWI/SNF ATP-dependent chromatin remodeling complex, ACTL6A variant\"\n        },\n
+        \       \"complex_members\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q68CP9,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q8WUB8,http://purl.uniprot.org/uniprot/Q92925,http://purl.uniprot.org/uniprot/P51532,http://purl.uniprot.org/uniprot/Q9NPI1,http://purl.uniprot.org/uniprot/Q86U86,http://purl.uniprot.org/uniprot/O96019\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1196\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"Polybromo-associated
+        SWI/SNF ATP-dependent chromatin remodeling complex, ACTL6B variant\"\n        },\n
+        \       \"complex_members\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/O94805,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/Q9NPI1,http://purl.uniprot.org/uniprot/Q86U86,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q68CP9,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/Q92925,http://purl.uniprot.org/uniprot/Q8WUB8,http://purl.uniprot.org/uniprot/P51532\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1164\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"SWI/SNF ATP-dependent
+        chromatin remodeling complex, ACTL6A-ARID1A-SMARCA2 variant\"\n        },\n
+        \       \"complex_members\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/Q92925,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/P51531,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/O96019,http://purl.uniprot.org/uniprot/O14497\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1204\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"SWI/SNF ATP-dependent
+        chromatin remodeling complex, ACTL6A-ARID1A-SMARCA4 variant\"\n        },\n
+        \       \"complex_members\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/P51532,http://purl.uniprot.org/uniprot/O96019,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/O14497,http://purl.uniprot.org/uniprot/Q92925,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q8TAQ2\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1205\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"SWI/SNF ATP-dependent
+        chromatin remodeling complex, ACTL6A-ARID1B-SMARCA2 variant\"\n        },\n
+        \       \"complex_members\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"http://purl.uniprot.org/uniprot/Q92925,http://purl.uniprot.org/uniprot/P51531,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/O96019,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q8NFD5,http://purl.uniprot.org/uniprot/Q6STE5\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1206\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"SWI/SNF ATP-dependent
+        chromatin remodeling complex, ACTL6A-ARID1B-SMARCA4 variant\"\n        },\n
+        \       \"complex_members\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/O96019,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q92925,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/P51532,http://purl.uniprot.org/uniprot/Q8NFD5,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/Q96GM5\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1207\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"SWI/SNF ATP-dependent
+        chromatin remodeling complex, ACTL6B-ARID1A-SMARCA2 variant\"\n        },\n
+        \       \"complex_members\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"http://purl.uniprot.org/uniprot/O14497,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q92925,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/P51531,http://purl.uniprot.org/uniprot/O94805\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1209\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"SWI/SNF ATP-dependent
+        chromatin remodeling complex, ACTL6B-ARID1A-SMARCA4 variant\"\n        },\n
+        \       \"complex_members\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/P51532,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/Q92925,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/O14497,http://purl.uniprot.org/uniprot/O94805\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1210\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"SWI/SNF ATP-dependent
+        chromatin remodeling complex, ACTL6B-ARID1B-SMARCA2 variant\"\n        },\n
+        \       \"complex_members\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"http://purl.uniprot.org/uniprot/Q92925,http://purl.uniprot.org/uniprot/O94805,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/P51531,http://purl.uniprot.org/uniprot/Q92922,http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/Q8NFD5,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/Q12824\"\n
+        \       }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P60709\"\n
+        \       },\n        \"cp_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://purl.uniprot.org/complexportal/CPX-1211\"\n        },\n        \"cp_comment\"
+        : {\n          \"type\" : \"literal\",\n          \"value\" : \"SWI/SNF ATP-dependent
+        chromatin remodeling complex, ACTL6B-ARID1B-SMARCA4 variant\"\n        },\n
+        \       \"complex_members\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"http://purl.uniprot.org/uniprot/Q6STE5,http://purl.uniprot.org/uniprot/Q8NFD5,http://purl.uniprot.org/uniprot/Q8TAQ2,http://purl.uniprot.org/uniprot/O94805,http://purl.uniprot.org/uniprot/Q12824,http://purl.uniprot.org/uniprot/Q96GM5,http://purl.uniprot.org/uniprot/Q92925,http://purl.uniprot.org/uniprot/Q969G3,http://purl.uniprot.org/uniprot/P60709,http://purl.uniprot.org/uniprot/P51532,http://purl.uniprot.org/uniprot/Q92922\"\n
+        \       }\n      }\n    ]\n  }\n}"
+    headers:
+      Access-Control-Allow-Headers:
+      - origin, x-requested-with, content-type, X-Release, queryid
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - X-Total-Results, X-Release, queryid, content-type, user-agent, cache-control,
+        etag, range
+      Age:
+      - '0'
+      Cache-Control:
+      - public
+      Connection:
+      - close
+      Content-Disposition:
+      - attachment; filename="sparql-1555EF0EECC68D78B4982D0E76ED5408.srj"
+      Content-Length:
+      - '39202'
+      Content-Type:
+      - application/sparql-results+json
+      Date:
+      - Mon, 08 Sep 2025 09:49:08 GMT
+      ETag:
+      - W/"2025_03"
+      Expires:
+      - Tue, 09 Sep 2025 09:49:07 GMT
+      Server:
+      - Apache
+      Strict-Transport-Security:
+      - max-age=31536001; includeSubDomains
+      Vary:
+      - Negotiate,Accept,Accept-Encoding,Content-Type
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Powered-By:
+      - sib.swiss
+      X-Release:
+      - '2025_03'
+      queryid:
+      - '12686385093'
+    status:
+      code: 200
+      message: OK
+version: 1
