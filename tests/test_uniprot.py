@@ -3,6 +3,7 @@ from textwrap import dedent
 import pytest
 
 from protein_quest.uniprot import (
+    ComplexPortalEntry,
     PdbResult,
     Query,
     _append_subcellular_location_filters,
@@ -324,11 +325,11 @@ def test_search_in_complex_portal():
     results = search_in_complex_portal({uniprot_accession}, limit=100)
 
     assert len(results) == 40
-    first_expected = {
-        "complex_id": "CPX-1203",
-        "complex_title": "Brain-specific SWI/SNF ATP-dependent chromatin remodeling complex, ARID1A-SMARCA2 variant",
-        "complex_url": "https://www.ebi.ac.uk/complexportal/complex/CPX-1203",
-        "members": {
+    first_expected = ComplexPortalEntry(
+        complex_id="CPX-1203",
+        complex_title="Brain-specific SWI/SNF ATP-dependent chromatin remodeling complex, ARID1A-SMARCA2 variant",
+        complex_url="https://www.ebi.ac.uk/complexportal/complex/CPX-1203",
+        members={
             "O94805",
             "P60709",
             "Q969G3",
@@ -338,8 +339,8 @@ def test_search_in_complex_portal():
             "Q92925",
             "O14497",
         },
-        "query_protein": "P60709",
-    }
+        query_protein="P60709",
+    )
     first_result = results[0]
     assert first_result == first_expected
 
