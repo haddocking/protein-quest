@@ -15,6 +15,7 @@ from textwrap import dedent
 from cattrs import structure
 from rich import print as rprint
 from rich.logging import RichHandler
+from rich.markdown import Markdown
 from rich.panel import Panel
 from rich_argparse import ArgumentDefaultsRichHelpFormatter
 from tqdm.rich import tqdm
@@ -256,24 +257,33 @@ def _add_search_interaction_partners_parser(subparsers: argparse._SubParsersActi
 
 def _add_search_complexes_parser(subparsers: argparse._SubParsersAction):
     """Add search complexes subcommand parser."""
+    description = dedent("""\
+        Search for complexes in the Complex Portal.
+        https://www.ebi.ac.uk/complexportal/
+
+        The output CSV file has the following columns:
+
+        - query_protein: UniProt accession used as query
+        - complex_id: Complex Portal identifier
+        - complex_url: URL to the Complex Portal entry
+        - complex_title: Title of the complex
+        - members: Semicolon-separated list of UniProt accessions of complex members
+    """)
     parser = subparsers.add_parser(
         "complexes",
         help="Search for complexes in the Complex Portal",
-        description=dedent("""\
-            Search for complexes in the Complex Portal.
-            https://www.ebi.ac.uk/complexportal/
-        """),
+        description=Markdown(description, style="argparse.text"),  # pyright: ignore[reportArgumentType] using custom formatter makes this OK
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
     parser.add_argument(
         "uniprot_accs",
         type=argparse.FileType("r", encoding="UTF-8"),
-        help="Text file with UniProt accessions (one per line). Use `-` for stdin.",
+        help="Text file with UniProt accessions (one per line) as query for searching complexes. Use `-` for stdin.",
     )
     parser.add_argument(
         "output_csv",
         type=argparse.FileType("w", encoding="UTF-8"),
-        help="Output CSV with complex results. Use `-` for stdout.",
+        help="Output CSV file with complex results. Use `-` for stdout.",
     )
     parser.add_argument("--limit", type=int, default=100, help="Maximum number of complex results to return")
     parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
