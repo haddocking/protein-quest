@@ -272,7 +272,7 @@ def _add_search_complexes_parser(subparsers: argparse._SubParsersAction):
     parser = subparsers.add_parser(
         "complexes",
         help="Search for complexes in the Complex Portal",
-        description=Markdown(description, style="argparse.text"), # type: ignore using rich formatter makes this OK
+        description=Markdown(description, style="argparse.text"),  # type: ignore using rich formatter makes this OK
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
     parser.add_argument(

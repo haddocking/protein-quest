@@ -26,7 +26,7 @@ graph TB;
     searchuniprot --> |uniprot_accessions|searchpdbe[/Search PDBe/]
     searchuniprot --> |uniprot_accessions|searchaf[/Search Alphafold/]
     searchuniprot -. uniprot_accessions .-> searchemdb[/Search EMDB/]
-    searchintactionpartners[/Search interaction partners/] --x |uniprot_accessions|searchuniprot
+    searchintactionpartners[/Search interaction partners/] -.-x |uniprot_accessions|searchuniprot
     searchcomplexes[/Search complexes/]
     searchpdbe -->|pdb_ids|fetchpdbe[Retrieve PDBe]
     searchaf --> |uniprot_accessions|fetchad(Retrieve AlphaFold)
@@ -41,6 +41,7 @@ graph TB;
     taxonomy:::dashedBorder
     searchemdb:::dashedBorder
     fetchemdb:::dashedBorder
+    searchintactionpartners:::dashedBorder
     searchcomplexes:::dashedBorder
 ```
 
@@ -184,6 +185,8 @@ Use https://www.ebi.ac.uk/complexportal to find interaction partners of given Un
 ```shell
 protein-quest search interaction-partners Q05471 interaction-partners-of-Q05471.txt
 ```
+
+The `interaction-partners-of-Q05471.txt` file contains uniprot accessions (one per line).
 
 ### Search for complexes
 
