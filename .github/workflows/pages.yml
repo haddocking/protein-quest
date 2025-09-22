@@ -5,6 +5,7 @@ on:
     branches:
       - main
   workflow_dispatch:
+  pull_request:
 
 permissions:
   contents: read
@@ -13,7 +14,7 @@ permissions:
 
 # Only have one deployment in progress at a time
 concurrency:
-  group: "pages"
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -32,8 +33,6 @@ jobs:
       - name: Build MkDocs site
         run: |
           uv run mkdocs build
-        env:
-          FORCE_COLOR: 1
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
@@ -43,6 +42,9 @@ jobs:
   deploy:
     # Add a dependency to the build job
     needs: build
+
+    # Only deploy on pushes to main or manuall trigger of main branch
+    if: github.ref == 'refs/heads/main'
 
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
     permissions:

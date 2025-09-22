@@ -31,7 +31,7 @@ def capture_help(parser: argparse.ArgumentParser) -> str:
     ArgumentDefaultsRichHelpFormatter.styles["argparse.text"] = "green"
 
     text = Text.from_ansi(parser.format_help())
-    console = Console(file=io.StringIO(), record=True)
+    console = Console(file=io.StringIO(), record=True, color_system="truecolor", no_color=False, force_terminal=True)
     console.print(text, crop=False)
     code_format = dedent("""\
         <pre style="font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace">
