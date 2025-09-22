@@ -48,7 +48,15 @@ from protein_quest.pdbe.fetch import fetch as pdbe_fetch
 from protein_quest.pdbe.io import glob_structure_files, nr_residues_in_chain, write_single_chain_pdb_file
 from protein_quest.ss import filter_file_on_secondary_structure
 from protein_quest.taxonomy import search_taxon
-from protein_quest.uniprot import PdbResult, Query, search4af, search4emdb, search4pdb, search4uniprot
+from protein_quest.uniprot import (
+    PdbResult,
+    Query,
+    search4af,
+    search4emdb,
+    search4macromolecular_complexes,
+    search4pdb,
+    search4uniprot,
+)
 
 mcp = FastMCP("protein-quest")
 
@@ -137,6 +145,7 @@ def search_alphafolds(
 
 
 mcp.tool(search4emdb, name="search_emdb")
+mcp.tool(search4macromolecular_complexes, name="search_macromolecular_complexes")
 
 
 @mcp.tool

@@ -52,6 +52,7 @@ dev = [
 ]
 docs = [
     "ipykernel>=6.29.5", # For notebook support in VS Code
+    "ipywidgets", # For tqdm support in notebooks
     "mkdocs>=1.6.1",
     "mkdocs-autoapi>=0.4.1",
     "mkdocs-jupyter>=0.25.1",

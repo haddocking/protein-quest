@@ -15,6 +15,7 @@ from textwrap import dedent
 from cattrs import structure
 from rich import print as rprint
 from rich.logging import RichHandler
+from rich.markdown import Markdown
 from rich.panel import Panel
 from rich_argparse import ArgumentDefaultsRichHelpFormatter
 from tqdm.rich import tqdm
@@ -31,7 +32,17 @@ from protein_quest.pdbe import fetch as pdbe_fetch
 from protein_quest.pdbe.io import glob_structure_files, locate_structure_file
 from protein_quest.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
 from protein_quest.taxonomy import SearchField, _write_taxonomy_csv, search_fields, search_taxon
-from protein_quest.uniprot import PdbResult, Query, search4af, search4emdb, search4pdb, search4uniprot
+from protein_quest.uniprot import (
+    ComplexPortalEntry,
+    PdbResult,
+    Query,
+    search4af,
+    search4emdb,
+    search4interaction_partners,
+    search4macromolecular_complexes,
+    search4pdb,
+    search4uniprot,
+)
 from protein_quest.utils import CopyMethod, copy_methods, copyfile
 
 logger = logging.getLogger(__name__)
@@ -209,6 +220,73 @@ def _add_search_taxonomy_parser(subparser: argparse._SubParsersAction):
         """),
     )
     parser.add_argument("--limit", type=int, default=100, help="Maximum number of results to return")
+
+
+def _add_search_interaction_partners_parser(subparsers: argparse._SubParsersAction):
+    """Add search interaction partners subcommand parser."""
+    parser = subparsers.add_parser(
+        "interaction-partners",
+        help="Search for interaction partners of given UniProt accession",
+        description=dedent("""\
+            Search for interaction partners of given UniProt accession
+            in the Uniprot SPARQL endpoint and Complex Portal.
+        """),
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+    )
+    parser.add_argument(
+        "uniprot_acc",
+        type=str,
+        help="UniProt accession (for example P12345).",
+    )
+    parser.add_argument(
+        "--exclude",
+        type=str,
+        action="append",
+        help="UniProt accessions to exclude from the results. For example already known interaction partners.",
+    )
+    parser.add_argument(
+        "output_csv",
+        type=argparse.FileType("w", encoding="UTF-8"),
+        help="Output CSV with interaction partners per UniProt accession. Use `-` for stdout.",
+    )
+    parser.add_argument(
+        "--limit", type=int, default=10_000, help="Maximum number of interaction partner uniprot accessions to return"
+    )
+    parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
+
+
+def _add_search_complexes_parser(subparsers: argparse._SubParsersAction):
+    """Add search complexes subcommand parser."""
+    description = dedent("""\
+        Search for complexes in the Complex Portal.
+        https://www.ebi.ac.uk/complexportal/
+
+        The output CSV file has the following columns:
+
+        - query_protein: UniProt accession used as query
+        - complex_id: Complex Portal identifier
+        - complex_url: URL to the Complex Portal entry
+        - complex_title: Title of the complex
+        - members: Semicolon-separated list of UniProt accessions of complex members
+    """)
+    parser = subparsers.add_parser(
+        "complexes",
+        help="Search for complexes in the Complex Portal",
+        description=Markdown(description, style="argparse.text"),  # type: ignore using rich formatter makes this OK
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+    )
+    parser.add_argument(
+        "uniprot_accs",
+        type=argparse.FileType("r", encoding="UTF-8"),
+        help="Text file with UniProt accessions (one per line) as query for searching complexes. Use `-` for stdin.",
+    )
+    parser.add_argument(
+        "output_csv",
+        type=argparse.FileType("w", encoding="UTF-8"),
+        help="Output CSV file with complex results. Use `-` for stdout.",
+    )
+    parser.add_argument("--limit", type=int, default=100, help="Maximum number of complex results to return")
+    parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
 
 
 def _add_retrieve_pdbe_parser(subparsers: argparse._SubParsersAction):
@@ -458,6 +536,8 @@ def _add_search_subcommands(subparsers: argparse._SubParsersAction):
     _add_search_emdb_parser(subsubparsers)
     _add_search_go_parser(subsubparsers)
     _add_search_taxonomy_parser(subsubparsers)
+    _add_search_interaction_partners_parser(subsubparsers)
+    _add_search_complexes_parser(subsubparsers)
 
 
 def _add_retrieve_subcommands(subparsers: argparse._SubParsersAction):
@@ -634,6 +714,32 @@ def _handle_search_taxonomy(args):
     results = asyncio.run(search_taxon(query=query, field=field, limit=limit))
     rprint(f"Found {len(results)} taxons, written to {output_csv.name}")
     _write_taxonomy_csv(results, output_csv)
+
+
+def _handle_search_interaction_partners(args: argparse.Namespace):
+    uniprot_acc: str = args.uniprot_acc
+    excludes: set[str] = set(args.exclude) if args.exclude else set()
+    limit: int = args.limit
+    timeout: int = args.timeout
+    output_csv: TextIOWrapper = args.output_csv
+
+    rprint(f"Searching for interaction partners of '{uniprot_acc}'")
+    results = search4interaction_partners(uniprot_acc, excludes=excludes, limit=limit, timeout=timeout)
+    rprint(f"Found {len(results)} interaction partners, written to {output_csv.name}")
+    _write_lines(output_csv, results.keys())
+
+
+def _handle_search_complexes(args: argparse.Namespace):
+    uniprot_accs = args.uniprot_accs
+    limit = args.limit
+    timeout = args.timeout
+    output_csv = args.output_csv
+
+    accs = _read_lines(uniprot_accs)
+    rprint(f"Finding complexes for {len(accs)} uniprot accessions")
+    results = search4macromolecular_complexes(accs, limit=limit, timeout=timeout)
+    rprint(f"Found {len(results)} complexes, written to {output_csv.name}")
+    _write_complexes_csv(results, output_csv)
 
 
 def _handle_retrieve_pdbe(args):
@@ -875,6 +981,8 @@ HANDLERS: dict[tuple[str, str | None], Callable] = {
     ("search", "emdb"): _handle_search_emdb,
     ("search", "go"): _handle_search_go,
     ("search", "taxonomy"): _handle_search_taxonomy,
+    ("search", "interaction-partners"): _handle_search_interaction_partners,
+    ("search", "complexes"): _handle_search_complexes,
     ("retrieve", "pdbe"): _handle_retrieve_pdbe,
     ("retrieve", "alphafold"): _handle_retrieve_alphafold,
     ("retrieve", "emdb"): _handle_retrieve_emdb,
@@ -937,3 +1045,33 @@ def _iter_csv_rows(file: TextIOWrapper) -> Generator[dict[str, str]]:
 
 def _read_column_from_csv(file: TextIOWrapper, column: str) -> set[str]:
     return {row[column] for row in _iter_csv_rows(file)}
+
+
+def _write_complexes_csv(complexes: list[ComplexPortalEntry], output_csv: TextIOWrapper) -> None:
+    """Write ComplexPortal information to a CSV file.
+
+    Args:
+        complexes: List of ComplexPortalEntry objects.
+        output_csv: TextIOWrapper to write the CSV data to.
+    """
+    writer = csv.writer(output_csv)
+    writer.writerow(
+        [
+            "query_protein",
+            "complex_id",
+            "complex_url",
+            "complex_title",
+            "members",
+        ]
+    )
+    for entry in complexes:
+        members_str = ";".join(sorted(entry.members))
+        writer.writerow(
+            [
+                entry.query_protein,
+                entry.complex_id,
+                entry.complex_url,
+                entry.complex_title,
+                members_str,
+            ]
+        )

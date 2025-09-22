@@ -201,7 +201,7 @@ def _build_sparql_generic_query(select_clause: str, where_clause: str, limit: in
     """)
 
 
-def _build_sparql_generic_by_uniprot_accesions_query(
+def _build_sparql_generic_by_uniprot_accessions_query(
     uniprot_accs: Iterable[str], select_clause: str, where_clause: str, limit: int = 10_000, groupby_clause=""
 ) -> str:
     values = " ".join(f'("{ac}")' for ac in uniprot_accs)
@@ -269,7 +269,7 @@ def _build_sparql_query_pdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
     """)
 
     groupby_clause = "?protein ?pdb_db ?pdb_method ?pdb_resolution"
-    return _build_sparql_generic_by_uniprot_accesions_query(
+    return _build_sparql_generic_by_uniprot_accessions_query(
         uniprot_accs, select_clause, where_clause, limit, groupby_clause
     )
 
@@ -284,7 +284,7 @@ def _build_sparql_query_af(uniprot_accs: Iterable[str], limit=10_000) -> str:
         ?protein rdfs:seeAlso ?af_db .
         ?af_db up:database <http://purl.uniprot.org/database/AlphaFoldDB> .
     """)
-    return _build_sparql_generic_by_uniprot_accesions_query(uniprot_accs, select_clause, dedent(where_clause), limit)
+    return _build_sparql_generic_by_uniprot_accessions_query(uniprot_accs, select_clause, dedent(where_clause), limit)
 
 
 def _build_sparql_query_emdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
@@ -297,7 +297,7 @@ def _build_sparql_query_emdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
         ?protein rdfs:seeAlso ?emdb_db .
         ?emdb_db up:database <http://purl.uniprot.org/database/EMDB> .
     """)
-    return _build_sparql_generic_by_uniprot_accesions_query(uniprot_accs, select_clause, dedent(where_clause), limit)
+    return _build_sparql_generic_by_uniprot_accessions_query(uniprot_accs, select_clause, dedent(where_clause), limit)
 
 
 def _execute_sparql_search(
@@ -509,3 +509,156 @@ def search4emdb(uniprot_accs: Iterable[str], limit: int = 10_000, timeout: int =
     )
     limit_check("Search for EMDB entries on uniprot", limit, len(raw_results))
     return _flatten_results_emdb(raw_results)
+
+
+def _build_complex_sparql_query(uniprot_accs: Iterable[str], limit: int) -> str:
+    """Builds a SPARQL query to retrieve ComplexPortal information for given UniProt accessions.
+
+    Example:
+
+    ```sparql
+    PREFIX up:   <http://purl.uniprot.org/core/>
+    PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+    SELECT
+    ?protein
+    ?cp_db
+    ?cp_comment
+    (GROUP_CONCAT(DISTINCT ?member; separator=",") AS ?complex_members)
+    (COUNT(DISTINCT ?member) AS ?member_count)
+    WHERE {
+    # Input UniProt accessions
+    VALUES (?ac) { ("P05067") ("P60709") ("Q05471")}
+    BIND (IRI(CONCAT("http://purl.uniprot.org/uniprot/", ?ac)) AS ?protein)
+
+    # ComplexPortal cross-reference for each input protein
+    ?protein a up:Protein ;
+            rdfs:seeAlso ?cp_db .
+    ?cp_db up:database <http://purl.uniprot.org/database/ComplexPortal> .
+    OPTIONAL { ?cp_db rdfs:comment ?cp_comment . }
+
+    # All member proteins of the same ComplexPortal complex
+    ?member a up:Protein ;
+            rdfs:seeAlso ?cp_db .
+    }
+    GROUP BY ?protein ?cp_db ?cp_comment
+    ORDER BY ?protein ?cp_db
+    LIMIT 500
+    ```
+
+    """
+    select_clause = dedent("""\
+        ?protein ?cp_db ?cp_comment
+        (GROUP_CONCAT(DISTINCT ?member; separator=",") AS ?complex_members)
+    """)
+    where_clause = dedent("""
+        # --- Complex Info ---
+        ?protein a up:Protein ;
+                rdfs:seeAlso ?cp_db .
+        ?cp_db up:database <http://purl.uniprot.org/database/ComplexPortal> .
+        OPTIONAL { ?cp_db rdfs:comment ?cp_comment . }
+        # All member proteins of the same ComplexPortal complex
+        ?member a up:Protein ;
+        rdfs:seeAlso ?cp_db .
+    """)
+    group_by = dedent("""
+       ?protein ?cp_db ?cp_comment
+    """)
+    return _build_sparql_generic_by_uniprot_accessions_query(
+        uniprot_accs, select_clause, where_clause, limit, groupby_clause=group_by
+    )
+
+
+@dataclass(frozen=True)
+class ComplexPortalEntry:
+    """A ComplexPortal entry.
+
+    Parameters:
+        query_protein: The UniProt accession used to find entry.
+        complex_id: The ComplexPortal identifier (for example "CPX-1234").
+        complex_url: The URL to the ComplexPortal entry.
+        complex_title: The title of the complex.
+        members: UniProt accessions which are members of the complex.
+    """
+
+    query_protein: str
+    complex_id: str
+    complex_url: str
+    complex_title: str
+    members: set[str]
+
+
+def _flatten_results_complex(raw_results) -> list[ComplexPortalEntry]:
+    results = []
+    for raw_result in raw_results:
+        query_protein = raw_result["protein"]["value"].split("/")[-1]
+        complex_id = raw_result["cp_db"]["value"].split("/")[-1]
+        complex_url = f"https://www.ebi.ac.uk/complexportal/complex/{complex_id}"
+        complex_title = raw_result.get("cp_comment", {}).get("value", "")
+        members = {m.split("/")[-1] for m in raw_result["complex_members"]["value"].split(",")}
+        results.append(
+            ComplexPortalEntry(
+                query_protein=query_protein,
+                complex_id=complex_id,
+                complex_url=complex_url,
+                complex_title=complex_title,
+                members=members,
+            )
+        )
+    return results
+
+
+def search4macromolecular_complexes(
+    uniprot_accs: Iterable[str], limit: int = 10_000, timeout: int = 1_800
+) -> list[ComplexPortalEntry]:
+    """Search for macromolecular complexes by UniProtKB accessions.
+
+    Queries for references to/from https://www.ebi.ac.uk/complexportal/ database in the Uniprot SPARQL endpoint.
+
+    Args:
+        uniprot_accs: UniProt accessions.
+        limit: Maximum number of results to return.
+        timeout: Timeout for the SPARQL query in seconds.
+
+    Returns:
+        List of ComplexPortalEntry objects.
+    """
+    sparql_query = _build_complex_sparql_query(uniprot_accs, limit)
+    logger.info("Executing SPARQL query for macromolecular complexes: %s", sparql_query)
+    raw_results = _execute_sparql_search(
+        sparql_query=sparql_query,
+        timeout=timeout,
+    )
+    limit_check("Search for complexes", limit, len(raw_results))
+    return _flatten_results_complex(raw_results)
+
+
+def search4interaction_partners(
+    uniprot_acc: str, excludes: set[str] | None = None, limit: int = 10_000, timeout: int = 1_800
+) -> dict[str, set[str]]:
+    """Search for interaction partners of a given UniProt accession using ComplexPortal database references.
+
+    Args:
+        uniprot_acc: UniProt accession to search interaction partners for.
+        excludes: Set of UniProt accessions to exclude from the results.
+            For example already known interaction partners.
+            If None then no complex members are excluded.
+        limit: Maximum number of results to return.
+        timeout: Timeout for the SPARQL query in seconds.
+
+    Returns:
+        Dictionary with UniProt accessions of interaction partners as keys and sets of ComplexPortal entry IDs
+        in which the interaction occurs as values.
+    """
+    ucomplexes = search4macromolecular_complexes([uniprot_acc], limit=limit, timeout=timeout)
+    hits: dict[str, set[str]] = {}
+    if excludes is None:
+        excludes = set()
+    for ucomplex in ucomplexes:
+        for member in ucomplex.members:
+            if member != uniprot_acc and member not in excludes:
+                if member not in hits:
+                    hits[member] = set()
+                hits[member].add(ucomplex.complex_id)
+    return hits

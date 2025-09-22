@@ -3,6 +3,7 @@ from textwrap import dedent
 import pytest
 
 from protein_quest.uniprot import (
+    ComplexPortalEntry,
     PdbResult,
     Query,
     _append_subcellular_location_filters,
@@ -11,6 +12,8 @@ from protein_quest.uniprot import (
     _first_chain_from_uniprot_chains,
     search4af,
     search4emdb,
+    search4interaction_partners,
+    search4macromolecular_complexes,
     search4pdb,
     search4uniprot,
 )
@@ -313,3 +316,65 @@ def test_search4emdb():
 
     expected = {uniprot_accession: {"EMD-0405"}}
     assert results == expected
+
+
+@pytest.mark.vcr
+def test_search4macromolecular_complexes():
+    uniprot_accession = "P60709"
+
+    results = search4macromolecular_complexes({uniprot_accession}, limit=100)
+
+    assert len(results) == 40
+    first_expected = ComplexPortalEntry(
+        complex_id="CPX-1203",
+        complex_title="Brain-specific SWI/SNF ATP-dependent chromatin remodeling complex, ARID1A-SMARCA2 variant",
+        complex_url="https://www.ebi.ac.uk/complexportal/complex/CPX-1203",
+        members={
+            "O94805",
+            "P60709",
+            "Q969G3",
+            "P51531",
+            "Q12824",
+            "Q8TAQ2",
+            "Q92925",
+            "O14497",
+        },
+        query_protein="P60709",
+    )
+    first_result = results[0]
+    assert first_result == first_expected
+
+
+@pytest.mark.vcr
+def test_search4interaction_partners():
+    uniprot_accession = "P60709"
+    excludes = {"Q92925", "O14497", "Q92922", "Q8TAQ2"}
+    results = search4interaction_partners(uniprot_accession, excludes=excludes, limit=100)
+
+    assert len(results) == 40
+    expected_key = "O94805"
+    first_expected = {
+        "CPX-1203",
+        "CPX-1210",
+        "CPX-1220",
+        "CPX-1218",
+        "CPX-1221",
+        "CPX-1217",
+        "CPX-1196",
+        "CPX-1209",
+        "CPX-1207",
+        "CPX-1211",
+        "CPX-1228",
+        "CPX-4224",
+        "CPX-1227",
+        "CPX-4223",
+        "CPX-1216",
+        "CPX-1202",
+        "CPX-1219",
+        "CPX-4225",
+        "CPX-4226",
+        "CPX-1226",
+        "CPX-1225",
+    }
+    assert results[expected_key] == first_expected
+    assert not results.keys() & excludes
