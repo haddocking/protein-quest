@@ -201,7 +201,7 @@ def _build_sparql_generic_query(select_clause: str, where_clause: str, limit: in
     """)
 
 
-def _build_sparql_generic_by_uniprot_accesions_query(
+def _build_sparql_generic_by_uniprot_accessions_query(
     uniprot_accs: Iterable[str], select_clause: str, where_clause: str, limit: int = 10_000, groupby_clause=""
 ) -> str:
     values = " ".join(f'("{ac}")' for ac in uniprot_accs)
@@ -269,7 +269,7 @@ def _build_sparql_query_pdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
     """)
 
     groupby_clause = "?protein ?pdb_db ?pdb_method ?pdb_resolution"
-    return _build_sparql_generic_by_uniprot_accesions_query(
+    return _build_sparql_generic_by_uniprot_accessions_query(
         uniprot_accs, select_clause, where_clause, limit, groupby_clause
     )
 
@@ -284,7 +284,7 @@ def _build_sparql_query_af(uniprot_accs: Iterable[str], limit=10_000) -> str:
         ?protein rdfs:seeAlso ?af_db .
         ?af_db up:database <http://purl.uniprot.org/database/AlphaFoldDB> .
     """)
-    return _build_sparql_generic_by_uniprot_accesions_query(uniprot_accs, select_clause, dedent(where_clause), limit)
+    return _build_sparql_generic_by_uniprot_accessions_query(uniprot_accs, select_clause, dedent(where_clause), limit)
 
 
 def _build_sparql_query_emdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
@@ -297,7 +297,7 @@ def _build_sparql_query_emdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
         ?protein rdfs:seeAlso ?emdb_db .
         ?emdb_db up:database <http://purl.uniprot.org/database/EMDB> .
     """)
-    return _build_sparql_generic_by_uniprot_accesions_query(uniprot_accs, select_clause, dedent(where_clause), limit)
+    return _build_sparql_generic_by_uniprot_accessions_query(uniprot_accs, select_clause, dedent(where_clause), limit)
 
 
 def _execute_sparql_search(
@@ -511,7 +511,7 @@ def search4emdb(uniprot_accs: Iterable[str], limit: int = 10_000, timeout: int =
     return _flatten_results_emdb(raw_results)
 
 
-def _build_complex_sparql_query(uniprot_accs, limit):
+def _build_complex_sparql_query(uniprot_accs: Iterable[str], limit: int) -> str:
     """Builds a SPARQL query to retrieve ComplexPortal information for given UniProt accessions.
 
     Example:
@@ -565,7 +565,7 @@ def _build_complex_sparql_query(uniprot_accs, limit):
     group_by = dedent("""
        ?protein ?cp_db ?cp_comment
     """)
-    return _build_sparql_generic_by_uniprot_accesions_query(
+    return _build_sparql_generic_by_uniprot_accessions_query(
         uniprot_accs, select_clause, where_clause, limit, groupby_clause=group_by
     )
 
