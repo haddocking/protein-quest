@@ -14,7 +14,7 @@ permissions:
 
 # Only have one deployment in progress at a time
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: pages
   cancel-in-progress: true
 
 jobs:
@@ -47,7 +47,7 @@ jobs:
     # Add a dependency to the build job
     needs: build
 
-    # Only deploy on pushes to main or manuall trigger of main branch
+    # Only deploy on pushes to main or manual trigger of main branch
     if: github.ref == 'refs/heads/main'
 
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
