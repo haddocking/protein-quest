@@ -111,6 +111,25 @@ class SecondaryStructureFilterQuery:
     ratio_min_sheet_residues: Ratio | None = None
     ratio_max_sheet_residues: Ratio | None = None
 
+    def is_actionable(self) -> bool:
+        """Check if the secondary structure query has any actionable filters.
+
+        Returns:
+            True if any of the filters are set, False otherwise.
+        """
+        return any(
+            [
+                self.abs_min_helix_residues is not None,
+                self.abs_max_helix_residues is not None,
+                self.abs_min_sheet_residues is not None,
+                self.abs_max_sheet_residues is not None,
+                self.ratio_min_helix_residues is not None,
+                self.ratio_max_helix_residues is not None,
+                self.ratio_min_sheet_residues is not None,
+                self.ratio_max_sheet_residues is not None,
+            ]
+        )
+
 
 def _check_range(min_val, max_val, label):
     if min_val is not None and max_val is not None and min_val >= max_val:
