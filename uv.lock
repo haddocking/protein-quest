@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.13"
 resolution-markers = [
     "platform_python_implementation != 'PyPy'",
@@ -1365,6 +1365,33 @@ wheels = [
 ]
 
 [[package]]
+name = "mkdocs-rich-argparse"
+source = { editable = "../mkdocs-rich-argparse" }
+dependencies = [
+    { name = "mkdocs" },
+    { name = "rich" },
+    { name = "rich-argparse" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "build", marker = "extra == 'dev'" },
+    { name = "build", marker = "extra == 'publishing'" },
+    { name = "coverage", extras = ["toml"], marker = "extra == 'dev'" },
+    { name = "mkdocs", specifier = ">=1.6.1" },
+    { name = "myst-parser", marker = "extra == 'dev'" },
+    { name = "pytest", marker = "extra == 'dev'" },
+    { name = "pytest-cov", marker = "extra == 'dev'" },
+    { name = "rich", specifier = ">=14.1.0" },
+    { name = "rich-argparse", specifier = ">=1.7.1" },
+    { name = "ruff", marker = "extra == 'dev'" },
+    { name = "tox", marker = "extra == 'dev'" },
+    { name = "twine", marker = "extra == 'publishing'" },
+    { name = "wheel", marker = "extra == 'publishing'" },
+]
+provides-extras = ["dev", "publishing"]
+
+[[package]]
 name = "mkdocstrings"
 version = "0.30.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1843,6 +1870,7 @@ docs = [
     { name = "mkdocs-autoapi" },
     { name = "mkdocs-jupyter" },
     { name = "mkdocs-material" },
+    { name = "mkdocs-rich-argparse" },
     { name = "mkdocstrings", extra = ["python"] },
 ]
 docs-type = [
@@ -1897,6 +1925,7 @@ docs = [
     { name = "mkdocs-autoapi", specifier = ">=0.4.1" },
     { name = "mkdocs-jupyter", specifier = ">=0.25.1" },
     { name = "mkdocs-material", specifier = ">=9.6.14" },
+    { name = "mkdocs-rich-argparse", editable = "../mkdocs-rich-argparse" },
     { name = "mkdocstrings", extras = ["python"], specifier = ">=0.29.1" },
 ]
 docs-type = [
