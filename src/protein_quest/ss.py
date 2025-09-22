@@ -118,15 +118,16 @@ class SecondaryStructureFilterQuery:
             True if any of the filters are set, False otherwise.
         """
         return any(
-            [
-                self.abs_min_helix_residues is not None,
-                self.abs_max_helix_residues is not None,
-                self.abs_min_sheet_residues is not None,
-                self.abs_max_sheet_residues is not None,
-                self.ratio_min_helix_residues is not None,
-                self.ratio_max_helix_residues is not None,
-                self.ratio_min_sheet_residues is not None,
-                self.ratio_max_sheet_residues is not None,
+            field is not None
+            for field in [
+                self.abs_min_helix_residues,
+                self.abs_max_helix_residues,
+                self.abs_min_sheet_residues,
+                self.abs_max_sheet_residues,
+                self.ratio_min_helix_residues,
+                self.ratio_max_helix_residues,
+                self.ratio_min_sheet_residues,
+                self.ratio_max_sheet_residues,
             ]
         )
 

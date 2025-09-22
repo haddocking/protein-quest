@@ -10,10 +10,12 @@ items = [
     (42, PositiveInt, 42),
 ]
 
+
 @pytest.mark.parametrize("raw,typ,expected", items)
 def test_happy_structure(raw, typ, expected):
     res = converter.structure(raw, typ)
     assert res == expected
+
 
 @pytest.mark.parametrize("expected,typ,raw", items)
 def test_happy_unstructure(expected, typ, raw):
