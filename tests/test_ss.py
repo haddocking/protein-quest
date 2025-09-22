@@ -107,12 +107,18 @@ def test_filter_on_secondary_structure(
     query: SecondaryStructureFilterQuery,
     expected_passed: bool,
 ):
+    assert query.is_actionable()
     result = filter_on_secondary_structure(sample_structure, query)
     expected = SecondaryStructureFilterResult(
         stats=sample_stats,
         passed=expected_passed,
     )
     assert result == expected
+
+
+def test_SecondaryStructureFilterQuery_non_actionable():
+    query = SecondaryStructureFilterQuery()
+    assert not query.is_actionable()
 
 
 def test_filter_on_secondary_structure_raises_on_zero_conditions(sample_structure: gemmi.Structure):

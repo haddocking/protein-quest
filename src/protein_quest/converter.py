@@ -13,6 +13,7 @@ type PositiveInt = int
 converter = make_converter()
 """cattrs converter to read JSON document or dict to Python objects."""
 converter.register_structure_hook(URL, lambda v, _: URL(v))
+converter.register_unstructure_hook(URL, lambda u: str(u))
 
 
 @converter.register_structure_hook
