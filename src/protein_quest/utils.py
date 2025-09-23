@@ -1,6 +1,7 @@
 """Module for functions that are used in multiple places."""
 
 import asyncio
+import hashlib
 import logging
 import shutil
 from collections.abc import Coroutine, Iterable
@@ -12,11 +13,11 @@ from typing import Any, Literal, get_args
 import aiofiles
 import aiohttp
 from aiohttp_retry import ExponentialRetry, RetryClient
+from platformdirs import user_cache_dir
 from tqdm.asyncio import tqdm
 from yarl import URL
 
 logger = logging.getLogger(__name__)
-
 
 async def retrieve_files(
     urls: Iterable[tuple[URL | str, str]],
@@ -68,6 +69,14 @@ async def _retrieve_file(
     Returns:
         The path to the saved file.
     """
+    cache_root_dir = Path(user_cache_dir("protein-quest"))
+    cache_sub_dir = hashlib.sha256(save_path.name.encode("utf-8")).hexdigest()[:4]
+    cached_save_path = cache_root_dir / cache_sub_dir / save_path.name
+    if cached_save_path.exists():
+        logger.debug(f"Using cached file {cached_save_path} for {url}.")
+        cached_save_path.parent.mkdir(parents=True, exist_ok=True)
+        copyfile(cached_save_path, save_path, copy_method="symlink")
+        return save_path
     if save_path.exists():
         if ovewrite:
             save_path.unlink()
