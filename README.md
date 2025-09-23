@@ -17,6 +17,10 @@ It uses
 - [gemmi](https://project-gemmi.github.io/) to work with macromolecular models.
 - [dask-distributed](https://docs.dask.org/en/latest/) to compute in parallel.
 
+The package is used by
+
+- [protein-detective](https://github.com/haddocking/protein-detective)
+
 An example workflow:
 
 ```mermaid
