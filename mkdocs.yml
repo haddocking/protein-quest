@@ -57,7 +57,7 @@ plugins:
         remove_tag_config:
             remove_input_tags:
                 - hide_code
-  - mkdocs_rich_argparse:
+  - mkdocs-rich-argparse:
       module: protein_quest.cli
       factory: make_parser
 

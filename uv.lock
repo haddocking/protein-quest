@@ -1366,30 +1366,17 @@ wheels = [
 
 [[package]]
 name = "mkdocs-rich-argparse"
-source = { editable = "../mkdocs-rich-argparse" }
+version = "0.1.2"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "mkdocs" },
     { name = "rich" },
     { name = "rich-argparse" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "build", marker = "extra == 'dev'" },
-    { name = "build", marker = "extra == 'publishing'" },
-    { name = "coverage", extras = ["toml"], marker = "extra == 'dev'" },
-    { name = "mkdocs", specifier = ">=1.6.1" },
-    { name = "myst-parser", marker = "extra == 'dev'" },
-    { name = "pytest", marker = "extra == 'dev'" },
-    { name = "pytest-cov", marker = "extra == 'dev'" },
-    { name = "rich", specifier = ">=14.1.0" },
-    { name = "rich-argparse", specifier = ">=1.7.1" },
-    { name = "ruff", marker = "extra == 'dev'" },
-    { name = "tox", marker = "extra == 'dev'" },
-    { name = "twine", marker = "extra == 'publishing'" },
-    { name = "wheel", marker = "extra == 'publishing'" },
+sdist = { url = "https://files.pythonhosted.org/packages/81/fa/8e110b5d544150690df3e095e1cc7f5217bd6f74b8a8152ac87eebb01038/mkdocs_rich_argparse-0.1.2.tar.gz", hash = "sha256:d4c00e77ae02e7eaf167fd55820a914e0f0639b4e8e40301182b2534ad3bd11c", size = 178347, upload-time = "2025-09-23T09:46:43.523Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/62/f1/8682961a9cd2f18e6c79ee7bb1f6d9272641f67200c7bf8495ea1ca71637/mkdocs_rich_argparse-0.1.2-py3-none-any.whl", hash = "sha256:f87bffd9577638d0e0ffdc537b062d84f799b03c2336b5b60b7d0c9bc064faed", size = 13424, upload-time = "2025-09-23T09:46:40.565Z" },
 ]
-provides-extras = ["dev", "publishing"]
 
 [[package]]
 name = "mkdocstrings"
@@ -1925,7 +1912,7 @@ docs = [
     { name = "mkdocs-autoapi", specifier = ">=0.4.1" },
     { name = "mkdocs-jupyter", specifier = ">=0.25.1" },
     { name = "mkdocs-material", specifier = ">=9.6.14" },
-    { name = "mkdocs-rich-argparse", editable = "../mkdocs-rich-argparse" },
+    { name = "mkdocs-rich-argparse", specifier = ">=0.1.2" },
     { name = "mkdocstrings", extras = ["python"], specifier = ">=0.29.1" },
 ]
 docs-type = [

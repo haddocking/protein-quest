@@ -57,7 +57,7 @@ docs = [
     "mkdocs-autoapi>=0.4.1",
     "mkdocs-jupyter>=0.25.1",
     "mkdocs-material>=9.6.14",
-    "mkdocs-rich-argparse",
+    "mkdocs-rich-argparse>=0.1.2",
     "mkdocstrings[python]>=0.29.1",
 ]
 docs-type = [
@@ -172,6 +172,3 @@ addopts = [
 [tool.coverage.run]
 source = ["src/protein_quest"]
 branch = true
-
-[tool.uv.sources]
-mkdocs-rich-argparse = { path = "../mkdocs-rich-argparse", editable = true }
