@@ -3,10 +3,6 @@ site_url: https://bonvinlab.org/protein_quest
 repo_name: haddocking/protein-quest
 repo_url: https://github.com/haddocking/protein-quest
 watch: [mkdocs.yml, README.md, src/protein_quest]
-exclude_docs: |
-  cli_doc_hook.py
-hooks:
-  - docs/cli_doc_hook.py
 use_directory_urls: false
 theme: 
   name: material
@@ -61,6 +57,9 @@ plugins:
         remove_tag_config:
             remove_input_tags:
                 - hide_code
+  - mkdocs-rich-argparse:
+      module: protein_quest.cli
+      factory: make_parser
 
 markdown_extensions:
   # Use to render part of README as home
