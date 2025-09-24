@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from aiohttp.streams import AsyncStreamIterator
 
-from protein_quest.utils import DirectoryCacher, NoopCacher, async_copyfile, copyfile, user_cache_root_dir
+from protein_quest.utils import CopyMethod, DirectoryCacher, NoopCacher, async_copyfile, copyfile, user_cache_root_dir
 
 
 def test_copyfile_copy(tmp_path: Path):
@@ -92,24 +92,44 @@ def test_user_cache_root_dir():
     assert cache_dir.name == "protein-quest"
 
 
+class ByteGenerator(AsyncStreamIterator[bytes]):
+    """Mock for return of aiohttp.ClientResponse.content.iter_chunked()"""
+
+    def __init__(self, data: bytes, chunk_size: int = 5):
+        self.data = data
+        self.chunk_size = chunk_size
+
+    def __aiter__(self):
+        self.index = 0
+        return self
+
+    async def __anext__(self):
+        if self.index >= len(self.data):
+            raise StopAsyncIteration
+        chunk = self.data[self.index : self.index + self.chunk_size]
+        self.index += self.chunk_size
+        await asyncio.sleep(0)  # Yield control to the event loop
+        return chunk
+
+
+def test_DirectoryCacher_init_copy_method_invalid(tmp_path: Path):
+    with pytest.raises(ValueError, match="Unknown copy method"):
+        DirectoryCacher(tmp_path / "cache", copy_method="invalid")  # type: ignore  # noqa: PGH003
+
+
+@pytest.mark.parametrize("copy_method", ["copy", "symlink", "hardlink"])
 class TestDirectoryCacher:
-    def test_init(self, tmp_path: Path):
-        cacher = DirectoryCacher(tmp_path / "cache")
+    @pytest.fixture
+    def cacher(self, tmp_path: Path, copy_method: CopyMethod) -> DirectoryCacher:
+        return DirectoryCacher(tmp_path / "cache", copy_method=copy_method)
+
+    def test_init(self, tmp_path: Path, cacher: DirectoryCacher):
         assert cacher.cache_dir == tmp_path / "cache"
         assert cacher.cache_dir.exists()
         assert cacher.cache_dir.is_dir()
 
-    def test_copy_method_symlink(self, tmp_path: Path):
-        cacher = DirectoryCacher(tmp_path / "cache", copy_method="symlink")
-        assert cacher.copy_method == "symlink"
-
-    def test_copy_method_invalid(self, tmp_path: Path):
-        with pytest.raises(ValueError, match="Unknown copy method"):
-            DirectoryCacher(tmp_path / "cache", copy_method="invalid")  # type: ignore  # noqa: PGH003
-
     @pytest.mark.asyncio
-    async def test_write_bytes(self, tmp_path: Path):
-        cacher = DirectoryCacher(tmp_path / "cache")
+    async def test_write_bytes(self, tmp_path: Path, cacher: DirectoryCacher):
         target = tmp_path / "test.txt"
 
         cache_file = await cacher.write_bytes(target, b"Hello, World!")
@@ -117,33 +137,32 @@ class TestDirectoryCacher:
         assert cache_file.exists()
         assert cache_file.read_bytes() == b"Hello, World!"
 
-    def test_in_missing(self, tmp_path: Path):
-        cacher = DirectoryCacher(tmp_path / "cache")
+    def test_in_missing(self, cacher: DirectoryCacher):
         assert "any_file.txt" not in cacher
 
     @pytest.mark.asyncio
-    async def test_in_present(self, tmp_path: Path):
+    async def test_in_present(self, tmp_path: Path, cacher: DirectoryCacher):
         # Fill cache
-        cacher = DirectoryCacher(tmp_path / "cache")
         target = tmp_path / "test.txt"
         await cacher.write_bytes(target, b"Hello, World!")
 
         assert target in cacher
 
     @pytest.mark.asyncio
-    async def test_copy_from_cache_missing(self, tmp_path: Path):
-        cacher = DirectoryCacher(tmp_path / "cache")
+    async def test_copy_from_cache_missing(self, tmp_path: Path, cacher: DirectoryCacher):
         target = tmp_path / "test.txt"
 
         result = await cacher.copy_from_cache(target)
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_copy_from_cache_present(self, tmp_path: Path):
-        cacher = DirectoryCacher(tmp_path / "cache")
-        target = tmp_path / "test.txt"
-        await cacher.write_bytes(target, b"Hello, World!")
+    async def test_copy_from_cache_present(self, tmp_path: Path, cacher: DirectoryCacher):
+        other = tmp_path / "other"
+        other.mkdir()
+        source = other / "test.txt"
+        await cacher.write_bytes(source, b"Hello, World!")
 
+        target = tmp_path / "test.txt"
         result = await cacher.copy_from_cache(target)
 
         assert result is not None
@@ -151,26 +170,8 @@ class TestDirectoryCacher:
         assert result.read_bytes() == b"Hello, World!"
 
     @pytest.mark.asyncio
-    async def test_write_iter(self, tmp_path: Path):
-        cacher = DirectoryCacher(tmp_path / "cache")
+    async def test_write_iter(self, tmp_path: Path, cacher: DirectoryCacher):
         target = tmp_path / "test.txt"
-
-        class ByteGenerator(AsyncStreamIterator[bytes]):
-            def __init__(self, data: bytes, chunk_size: int = 5):
-                self.data = data
-                self.chunk_size = chunk_size
-
-            def __aiter__(self):
-                self.index = 0
-                return self
-
-            async def __anext__(self):
-                if self.index >= len(self.data):
-                    raise StopAsyncIteration
-                chunk = self.data[self.index : self.index + self.chunk_size]
-                self.index += self.chunk_size
-                await asyncio.sleep(0)  # Yield control to the event loop
-                return chunk
 
         cache_file = await cacher.write_iter(target, ByteGenerator(b"Hello, World!"))
 
@@ -226,23 +227,6 @@ class TestNoOpCacher:
     async def test_write_iter(self, tmp_path: Path):
         cacher = NoopCacher()
         target = tmp_path / "test.txt"
-
-        class ByteGenerator(AsyncStreamIterator[bytes]):
-            def __init__(self, data: bytes, chunk_size: int = 5):
-                self.data = data
-                self.chunk_size = chunk_size
-
-            def __aiter__(self):
-                self.index = 0
-                return self
-
-            async def __anext__(self):
-                if self.index >= len(self.data):
-                    raise StopAsyncIteration
-                chunk = self.data[self.index : self.index + self.chunk_size]
-                self.index += self.chunk_size
-                await asyncio.sleep(0)  # Yield control to the event loop
-                return chunk
 
         cache_file = await cacher.write_iter(target, ByteGenerator(b"Hello, World!"))
 

@@ -382,7 +382,7 @@ async def async_copyfile(
     Args:
         source: The source file to copy.
         target: The target file to create.
-        copy_method: Only 'copy' is supported asynchronously.
+        copy_method: The method to use for copying.
 
     Raises:
         FileNotFoundError: If the source file or parent of target does not exist.
@@ -394,7 +394,7 @@ async def async_copyfile(
         # due to fastcopy and sendfile optimizations in shutil.
         await asyncio.to_thread(shutil.copyfile, source, target)
     elif copy_method == "symlink":
-        rel_source = source.relative_to(target.parent.absolute(), walk_up=True)
+        rel_source = source.relative_to(target.parent, walk_up=True)
         await aiofiles.os.symlink(str(rel_source), str(target))
     elif copy_method == "hardlink":
         await aiofiles.os.link(str(source), str(target))
