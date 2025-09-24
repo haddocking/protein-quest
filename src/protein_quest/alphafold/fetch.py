@@ -14,7 +14,7 @@ from yarl import URL
 
 from protein_quest.alphafold.entry_summary import EntrySummary
 from protein_quest.converter import converter
-from protein_quest.utils import friendly_session, retrieve_files, run_async
+from protein_quest.utils import Cacher, NoopCacher, friendly_session, retrieve_files, run_async
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ class AlphaFoldEntry:
 
 
 async def fetch_summary(
-    qualifier: str, session: RetryClient, semaphore: Semaphore, save_dir: Path | None
+    qualifier: str, session: RetryClient, semaphore: Semaphore, save_dir: Path | None, cacher: Cacher
 ) -> list[EntrySummary]:
     """Fetches a summary from the AlphaFold database for a given qualifier.
 
@@ -116,6 +116,7 @@ async def fetch_summary(
         save_dir: An optional directory to save the fetched summary as a JSON file.
             If set and summary exists then summary will be loaded from disk instead of being fetched from the API.
             If not set then the summary will not be saved to disk and will always be fetched from the API.
+        cacher: A cacher to use for caching the fetched summary. Only used if save_dir is not None.
 
     Returns:
         A list of EntrySummary objects representing the fetched summary.
@@ -124,6 +125,11 @@ async def fetch_summary(
     fn: AsyncPath | None = None
     if save_dir is not None:
         fn = AsyncPath(save_dir / f"{qualifier}.json")
+        cached_file = await cacher.copy_from_cache(fn)
+        if cached_file is not None:
+            logger.debug(f"Using cached file {cached_file} for summary of {qualifier}.")
+            raw_data = await AsyncPath(cached_file).read_bytes()
+            return converter.loads(raw_data, list[EntrySummary])
         if await fn.exists():
             logger.debug(f"File {fn} already exists. Skipping download from {url}.")
             raw_data = await fn.read_bytes()
@@ -133,18 +139,23 @@ async def fetch_summary(
         raw_data = await response.content.read()
         if fn is not None:
             # TODO return fn and make it part of AlphaFoldEntry as summary_file prop
-            await fn.write_bytes(raw_data)
+            await cacher.write_bytes(fn._path, raw_data)
         return converter.loads(raw_data, list[EntrySummary])
 
 
 async def fetch_summaries(
-    qualifiers: Iterable[str], save_dir: Path | None = None, max_parallel_downloads: int = 5
+    qualifiers: Iterable[str],
+    save_dir: Path | None = None,
+    max_parallel_downloads: int = 5,
+    cacher: Cacher | None = None,
 ) -> AsyncGenerator[EntrySummary]:
     semaphore = Semaphore(max_parallel_downloads)
     if save_dir is not None:
         save_dir.mkdir(parents=True, exist_ok=True)
+    if cacher is None:
+        cacher = NoopCacher()
     async with friendly_session() as session:
-        tasks = [fetch_summary(qualifier, session, semaphore, save_dir) for qualifier in qualifiers]
+        tasks = [fetch_summary(qualifier, session, semaphore, save_dir, cacher) for qualifier in qualifiers]
         summaries_per_qualifier: list[list[EntrySummary]] = await tqdm.gather(
             *tasks, desc="Fetching Alphafold summaries"
         )
@@ -154,7 +165,11 @@ async def fetch_summaries(
 
 
 async def fetch_many_async(
-    uniprot_accessions: Iterable[str], save_dir: Path, what: set[DownloadableFormat], max_parallel_downloads: int = 5
+    uniprot_accessions: Iterable[str],
+    save_dir: Path,
+    what: set[DownloadableFormat],
+    max_parallel_downloads: int = 5,
+    cacher: Cacher | None = None,
 ) -> AsyncGenerator[AlphaFoldEntry]:
     """Asynchronously fetches summaries and files from
     [AlphaFold Protein Structure Database](https://alphafold.ebi.ac.uk/).
@@ -164,15 +179,17 @@ async def fetch_many_async(
         save_dir: The directory to save the fetched files to.
         what: A set of formats to download.
         max_parallel_downloads: The maximum number of parallel downloads.
+        cacher: A cacher to use for caching the fetched files. Only used if summary is in what set.
 
     Yields:
         A dataclass containing the summary, pdb file, and pae file.
     """
     save_dir_for_summaries = save_dir if "summary" in what and save_dir is not None else None
+
     summaries = [
         s
         async for s in fetch_summaries(
-            uniprot_accessions, save_dir_for_summaries, max_parallel_downloads=max_parallel_downloads
+            uniprot_accessions, save_dir_for_summaries, max_parallel_downloads=max_parallel_downloads, cacher=cacher
         )
     ]
 
@@ -236,7 +253,11 @@ def files_to_download(what: set[DownloadableFormat], summaries: Iterable[EntrySu
 
 
 def fetch_many(
-    ids: Iterable[str], save_dir: Path, what: set[DownloadableFormat], max_parallel_downloads: int = 5
+    ids: Iterable[str],
+    save_dir: Path,
+    what: set[DownloadableFormat],
+    max_parallel_downloads: int = 5,
+    cacher: Cacher | None = None,
 ) -> list[AlphaFoldEntry]:
     """Synchronously fetches summaries and pdb and pae files from AlphaFold Protein Structure Database.
 
@@ -245,6 +266,7 @@ def fetch_many(
         save_dir: The directory to save the fetched files to.
         what: A set of formats to download.
         max_parallel_downloads: The maximum number of parallel downloads.
+        cacher: A cacher to use for caching the fetched files. Only used if summary is in what set.
 
     Returns:
         A list of AlphaFoldEntry dataclasses containing the summary, pdb file, and pae file.
@@ -253,7 +275,9 @@ def fetch_many(
     async def gather_entries():
         return [
             entry
-            async for entry in fetch_many_async(ids, save_dir, what, max_parallel_downloads=max_parallel_downloads)
+            async for entry in fetch_many_async(
+                ids, save_dir, what, max_parallel_downloads=max_parallel_downloads, cacher=cacher
+            )
         ]
 
     return run_async(gather_entries())

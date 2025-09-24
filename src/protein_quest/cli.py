@@ -43,7 +43,15 @@ from protein_quest.uniprot import (
     search4pdb,
     search4uniprot,
 )
-from protein_quest.utils import CopyMethod, copy_methods, copyfile
+from protein_quest.utils import (
+    Cacher,
+    CopyMethod,
+    DirectoryCacher,
+    NoopCacher,
+    copy_methods,
+    copyfile,
+    user_cache_root_dir,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -363,22 +371,6 @@ def _add_retrieve_emdb_parser(subparsers: argparse._SubParsersAction):
     parser.add_argument("output_dir", type=Path, help="Directory to store downloaded EMDB volume files")
 
 
-def _add_copy_method_argument(parser: argparse.ArgumentParser):
-    """Add copy method argument to parser."""
-    default_copy_method = "symlink"
-    if os.name == "nt":
-        # On Windows you need developer mode or admin privileges to create symlinks
-        # so we default to copying files instead of symlinking
-        default_copy_method = "copy"
-    parser.add_argument(
-        "--copy-method",
-        type=str,
-        choices=copy_methods,
-        default=default_copy_method,
-        help="How to copy files when no changes are needed to output file.",
-    )
-
-
 def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
     """Add filter confidence subcommand parser."""
     parser = subparsers.add_parser(
@@ -409,7 +401,6 @@ def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
             In CSV format with `<input_file>,<residue_count>,<passed>,<output_file>` columns.
             Use `-` for stdout."""),
     )
-    _add_copy_method_argument(parser)
 
 
 def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
@@ -449,7 +440,6 @@ def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
             If not provided, will create a local cluster.
             If set to `sequential` will run tasks sequentially."""),
     )
-    _add_copy_method_argument(parser)
 
 
 def _add_filter_residue_parser(subparsers: argparse._SubParsersAction):
@@ -472,7 +462,6 @@ def _add_filter_residue_parser(subparsers: argparse._SubParsersAction):
     )
     parser.add_argument("--min-residues", type=int, default=0, help="Min residues in chain A")
     parser.add_argument("--max-residues", type=int, default=10_000_000, help="Max residues in chain A")
-    _add_copy_method_argument(parser)
     parser.add_argument(
         "--write-stats",
         type=argparse.FileType("w", encoding="UTF-8"),
@@ -507,7 +496,6 @@ def _add_filter_ss_parser(subparsers: argparse._SubParsersAction):
     parser.add_argument("--ratio-max-helix-residues", type=float, help="Max residues in helices (relative)")
     parser.add_argument("--ratio-min-sheet-residues", type=float, help="Min residues in sheets (relative)")
     parser.add_argument("--ratio-max-sheet-residues", type=float, help="Max residues in sheets (relative)")
-    _add_copy_method_argument(parser)
     parser.add_argument(
         "--write-stats",
         type=argparse.FileType("w", encoding="UTF-8"),
@@ -585,11 +573,40 @@ def _add_mcp_command(subparsers: argparse._SubParsersAction):
     parser.add_argument("--port", default=8000, type=int, help="Port to bind the server to")
 
 
+def _add_cacher_arguments(parser: argparse.ArgumentParser):
+    """Add cacher arguments to parser."""
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable caching of files to central location.",
+    )
+    parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=user_cache_root_dir(),
+        help="Directory to use as cache for files.",
+    )
+    parser.add_argument(
+        "--copy-method",
+        type=str,
+        choices=copy_methods,
+        default="hardlink",
+        help=dedent("""\
+            How to copy files when no changes are needed to output file.
+            By default uses hardlinks to save disk space.
+            Note that hardlinks only work within the same filesystem and are harder to track.
+            If you want to track cached files easily then use 'symlink'.
+            On Windows you need developer mode or admin privileges to create symlinks.
+        """),
+    )
+
+
 def make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Protein Quest CLI", prog="protein-quest", formatter_class=ArgumentDefaultsRichHelpFormatter
     )
     parser.add_argument("--log-level", default="WARNING", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
+    _add_cacher_arguments(parser)
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -742,14 +759,26 @@ def _handle_search_complexes(args: argparse.Namespace):
     _write_complexes_csv(results, output_csv)
 
 
-def _handle_retrieve_pdbe(args):
+def _initialize_cacher(args: argparse.Namespace) -> Cacher:
+    if args.no_cache:
+        return NoopCacher()
+    return DirectoryCacher(
+        cache_dir=args.cache_dir,
+        copy_method=args.copy_method,
+    )
+
+
+def _handle_retrieve_pdbe(args: argparse.Namespace):
     pdbe_csv = args.pdbe_csv
     output_dir = args.output_dir
     max_parallel_downloads = args.max_parallel_downloads
+    cacher = _initialize_cacher(args)
 
     pdb_ids = _read_column_from_csv(pdbe_csv, "pdb_id")
     rprint(f"Retrieving {len(pdb_ids)} PDBe entries")
-    result = asyncio.run(pdbe_fetch.fetch(pdb_ids, output_dir, max_parallel_downloads=max_parallel_downloads))
+    result = asyncio.run(
+        pdbe_fetch.fetch(pdb_ids, output_dir, max_parallel_downloads=max_parallel_downloads, cacher=cacher)
+    )
     rprint(f"Retrieved {len(result)} PDBe entries")
 
 
@@ -758,6 +787,7 @@ def _handle_retrieve_alphafold(args):
     what_formats = args.what_formats
     alphafold_csv = args.alphafold_csv
     max_parallel_downloads = args.max_parallel_downloads
+    cacher = _initialize_cacher(args)
 
     if what_formats is None:
         what_formats = {"summary", "cif"}
@@ -767,7 +797,9 @@ def _handle_retrieve_alphafold(args):
     af_ids = _read_column_from_csv(alphafold_csv, "af_id")
     validated_what: set[DownloadableFormat] = structure(what_formats, set[DownloadableFormat])
     rprint(f"Retrieving {len(af_ids)} AlphaFold entries with formats {validated_what}")
-    afs = af_fetch(af_ids, download_dir, what=validated_what, max_parallel_downloads=max_parallel_downloads)
+    afs = af_fetch(
+        af_ids, download_dir, what=validated_what, max_parallel_downloads=max_parallel_downloads, cacher=cacher
+    )
     total_nr_files = sum(af.nr_of_files() for af in afs)
     rprint(f"Retrieved {total_nr_files} AlphaFold files and {len(afs)} summaries, written to {download_dir}")
 
@@ -775,10 +807,11 @@ def _handle_retrieve_alphafold(args):
 def _handle_retrieve_emdb(args):
     emdb_csv = args.emdb_csv
     output_dir = args.output_dir
+    cacher = _initialize_cacher(args)
 
     emdb_ids = _read_column_from_csv(emdb_csv, "emdb_id")
     rprint(f"Retrieving {len(emdb_ids)} EMDB entries")
-    result = asyncio.run(emdb_fetch(emdb_ids, output_dir))
+    result = asyncio.run(emdb_fetch(emdb_ids, output_dir, cacher=cacher))
     rprint(f"Retrieved {len(result)} EMDB entries")
 
 
