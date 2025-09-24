@@ -592,7 +592,7 @@ def _add_cacher_arguments(parser: argparse.ArgumentParser):
         choices=copy_methods,
         default="hardlink",
         help=dedent("""\
-            How to copy files when no changes are needed to output file.
+            How to make target file be same file as source file.
             By default uses hardlinks to save disk space.
             Note that hardlinks only work within the same filesystem and are harder to track.
             If you want to track cached files easily then use 'symlink'.

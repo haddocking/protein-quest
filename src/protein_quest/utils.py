@@ -29,7 +29,7 @@ copy_methods = set(get_args(CopyMethod))
 
 
 @lru_cache
-def _cache_sub_dir(root_cache_dir: Path, filename: str) -> Path:
+def _cache_sub_dir(root_cache_dir: Path, filename: str, hash_length: int = 4) -> Path:
     """Get the cache sub-directory for a given path.
 
     To not have too many files in a single directory,
@@ -38,11 +38,13 @@ def _cache_sub_dir(root_cache_dir: Path, filename: str) -> Path:
     Args:
         root_cache_dir: The root directory for the cache.
         filename: The filename to be cached.
+        hash_length: The length of the hash to use for the sub-directory.
+
     Returns:
         The parent path to the cached file.
-
     """
-    cache_sub_dir = hashlib.sha256(filename.encode("utf-8")).hexdigest()[:4]
+    full_hash = hashlib.blake2b(filename.encode("utf-8")).hexdigest()
+    cache_sub_dir = full_hash[:hash_length]
     cache_sub_dir_path = root_cache_dir / cache_sub_dir
     cache_sub_dir_path.mkdir(parents=True, exist_ok=True)
     return cache_sub_dir_path
@@ -146,6 +148,8 @@ class DirectoryCacher(Cacher):
     ) -> None:
         """Initialize the cacher.
 
+        If file name of paths are the same then the files are considered the same.
+
         Args:
             cache_dir: The directory to use for caching.
                 If None, a default cache directory (~/.cache/protein-quest) is used.
@@ -161,24 +165,16 @@ class DirectoryCacher(Cacher):
         self.copy_method: CopyMethod = copy_method
 
     def __contains__(self, item: str | Path) -> bool:
-        cached_file = self._location(item)
+        cached_file = self._as_cached_path(item)
         return cached_file.exists()
 
-    def _location(self, item: str | Path) -> Path:
-        """Get the location of a cached file.
-
-        Args:
-            item: The filename or Path to get the location for.
-
-        Returns:
-            The path to the cached file.
-        """
+    def _as_cached_path(self, item: str | Path) -> Path:
         file_name = item.name if isinstance(item, Path) else item
         cache_sub_dir = _cache_sub_dir(self.cache_dir, file_name)
         return cache_sub_dir / file_name
 
     async def copy_from_cache(self, target: Path) -> Path | None:
-        cached_file = self._location(target.name)
+        cached_file = self._as_cached_path(target.name)
         exists = await aiofiles.os.path.exists(str(cached_file))
         if exists:
             await async_copyfile(cached_file, target, copy_method=self.copy_method)
@@ -186,17 +182,21 @@ class DirectoryCacher(Cacher):
         return None
 
     async def write_iter(self, target: Path, content: AsyncStreamIterator[bytes]) -> Path:
-        cached_file = self._location(target.name)
+        cached_file = self._as_cached_path(target.name)
+        # Write file to cache dir
         async with aiofiles.open(cached_file, "xb") as f:
             async for chunk in content:
                 await f.write(chunk)
+        # Copy to target location
         await async_copyfile(cached_file, target, copy_method=self.copy_method)
         return cached_file
 
     async def write_bytes(self, target: Path, content: bytes) -> Path:
-        cached_file = self._location(target.name)
+        cached_file = self._as_cached_path(target.name)
+        # Write file to cache dir
         async with aiofiles.open(cached_file, "xb") as f:
             await f.write(content)
+        # Copy to target location
         await async_copyfile(cached_file, target, copy_method=self.copy_method)
         return cached_file
 
@@ -343,7 +343,7 @@ def run_async[R](coroutine: Coroutine[Any, Any, R]) -> R:
 def copyfile(source: Path, target: Path, copy_method: CopyMethod = "copy"):
     """Make target path be same file as source by either copying or symlinking or hardlinking.
 
-    Note that hardlink copy method only work within the same filesystem and are harder to track.
+    Note that the hardlink copy method only works within the same filesystem and is harder to track.
     If you want to track cached files easily then use 'symlink'.
     On Windows you need developer mode or admin privileges to create symlinks.
 
@@ -354,6 +354,7 @@ def copyfile(source: Path, target: Path, copy_method: CopyMethod = "copy"):
 
     Raises:
         FileNotFoundError: If the source file or parent of target does not exist.
+        FileExistsError: If the target file already exists.
         ValueError: If an unknown copy method is provided.
     """
     rel_source = source.relative_to(target.parent, walk_up=True)
@@ -364,7 +365,7 @@ def copyfile(source: Path, target: Path, copy_method: CopyMethod = "copy"):
     elif copy_method == "hardlink":
         target.hardlink_to(source)
     else:
-        msg = f"Unknown method: {copy_method}"
+        msg = f"Unknown method: {copy_method}. Valid methods are: {copy_methods}"
         raise ValueError(msg)
 
 
@@ -373,9 +374,9 @@ async def async_copyfile(
     target: Path,
     copy_method: CopyMethod = "copy",
 ):
-    """Asynchronously copy a file from source to target using aiofiles.
+    """Asynchronously make target path be same file as source by either copying or symlinking or hardlinking.
 
-    Note that hardlink copy method only work within the same filesystem and are harder to track.
+    Note that the hardlink copy method only works within the same filesystem and is harder to track.
     If you want to track cached files easily then use 'symlink'.
     On Windows you need developer mode or admin privileges to create symlinks.
 
@@ -386,6 +387,7 @@ async def async_copyfile(
 
     Raises:
         FileNotFoundError: If the source file or parent of target does not exist.
+        FileExistsError: If the target file already exists.
         ValueError: If an unknown copy method is provided.
     """
     if copy_method == "copy":
@@ -399,5 +401,5 @@ async def async_copyfile(
     elif copy_method == "hardlink":
         await aiofiles.os.link(str(source), str(target))
     else:
-        msg = f"Unknown method: {copy_method}"
+        msg = f"Unknown method: {copy_method}. Valid methods are: {copy_methods}"
         raise ValueError(msg)
