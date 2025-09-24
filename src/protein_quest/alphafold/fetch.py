@@ -200,6 +200,7 @@ async def fetch_many_async(
         save_dir,
         desc="Downloading AlphaFold files",
         max_parallel_downloads=max_parallel_downloads,
+        cacher=cacher,
     )
     for summary in summaries:
         yield AlphaFoldEntry(
