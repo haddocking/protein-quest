@@ -3,7 +3,7 @@
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 
-from protein_quest.utils import retrieve_files
+from protein_quest.utils import Cacher, retrieve_files
 
 
 def _map_id2volume_url(emdb_id: str) -> tuple[str, str]:
@@ -13,13 +13,16 @@ def _map_id2volume_url(emdb_id: str) -> tuple[str, str]:
     return url, fn
 
 
-async def fetch(emdb_ids: Iterable[str], save_dir: Path, max_parallel_downloads: int = 1) -> Mapping[str, Path]:
+async def fetch(
+    emdb_ids: Iterable[str], save_dir: Path, max_parallel_downloads: int = 1, cacher: Cacher | None = None
+) -> Mapping[str, Path]:
     """Fetches volume files from the EMDB database.
 
     Args:
         emdb_ids: A list of EMDB IDs to fetch.
         save_dir: The directory to save the downloaded files.
         max_parallel_downloads: The maximum number of parallel downloads.
+        cacher: An optional cacher to use for caching downloaded files.
 
     Returns:
         A mapping of EMDB IDs to their downloaded files.
@@ -30,5 +33,5 @@ async def fetch(emdb_ids: Iterable[str], save_dir: Path, max_parallel_downloads:
 
     # TODO show progress of each item
     # TODO handle failed downloads, by skipping them instead of raising an error
-    await retrieve_files(urls, save_dir, max_parallel_downloads, desc="Downloading EMDB volume files")
+    await retrieve_files(urls, save_dir, max_parallel_downloads, desc="Downloading EMDB volume files", cacher=cacher)
     return id2paths

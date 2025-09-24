@@ -27,20 +27,11 @@ jobs:
       - name: Run tests
         run: |
           uv run pytest --cov --cov-report=xml
-          echo $? > pytest-exitcode
-        continue-on-error: true
-      # Always upload coverage, even if tests fail
       - name: Run codacy-coverage-reporter
         uses: codacy/codacy-coverage-reporter-action@v1.3.0
         with:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
           coverage-reports: coverage.xml
-      - name: Fail job if pytest failed
-        run: |
-          if [ -f pytest-exitcode ] && [ "$(cat pytest-exitcode)" -ne 0 ]; then
-            echo "Pytest failed, failing job."
-            exit 1
-          fi
   build:
     name: build
     runs-on: ubuntu-latest

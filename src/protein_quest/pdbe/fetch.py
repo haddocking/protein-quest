@@ -3,7 +3,7 @@
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 
-from protein_quest.utils import retrieve_files, run_async
+from protein_quest.utils import Cacher, retrieve_files, run_async
 
 
 def _map_id_mmcif(pdb_id: str) -> tuple[str, str]:
@@ -28,13 +28,16 @@ def _map_id_mmcif(pdb_id: str) -> tuple[str, str]:
     return url, fn
 
 
-async def fetch(ids: Iterable[str], save_dir: Path, max_parallel_downloads: int = 5) -> Mapping[str, Path]:
+async def fetch(
+    ids: Iterable[str], save_dir: Path, max_parallel_downloads: int = 5, cacher: Cacher | None = None
+) -> Mapping[str, Path]:
     """Fetches mmCIF files from the PDBe database.
 
     Args:
         ids: A set of PDB IDs to fetch.
         save_dir: The directory to save the fetched mmCIF files to.
         max_parallel_downloads: The maximum number of parallel downloads.
+        cacher: An optional cacher to use for caching downloaded files.
 
     Returns:
         A dict of id and paths to the downloaded mmCIF files.
@@ -47,7 +50,7 @@ async def fetch(ids: Iterable[str], save_dir: Path, max_parallel_downloads: int 
     urls = list(id2urls.values())
     id2paths = {pdb_id: save_dir / fn for pdb_id, (_, fn) in id2urls.items()}
 
-    await retrieve_files(urls, save_dir, max_parallel_downloads, desc="Downloading PDBe mmCIF files")
+    await retrieve_files(urls, save_dir, max_parallel_downloads, desc="Downloading PDBe mmCIF files", cacher=cacher)
     return id2paths
 
 
