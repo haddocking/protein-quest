@@ -159,6 +159,11 @@ class DirectoryCacher(Cacher):
             cache_dir = user_cache_root_dir()
         self.cache_dir = cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
+        if copy_method == "copy":
+            logger.warning(
+                "Using copy as copy_method to cache files is not recommended. "
+                "This will use more disk space and be slower than symlink or hardlink."
+            )
         if copy_method not in copy_methods:
             msg = f"Unknown copy method: {copy_method}. Must be one of {copy_methods}."
             raise ValueError(msg)
