@@ -156,6 +156,10 @@ class DirectoryCacher(Cacher):
 
     Caching logic is based on the file name only.
     If file name of paths are the same then the files are considered the same.
+
+    Attributes:
+        cache_dir: The directory to use for caching.
+        copy_method: The method to use for copying files.
     """
 
     def __init__(
@@ -174,7 +178,7 @@ class DirectoryCacher(Cacher):
         """
         if cache_dir is None:
             cache_dir = user_cache_root_dir()
-        self.cache_dir = cache_dir
+        self.cache_dir: Path = cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         if copy_method == "copy":
             logger.warning(
