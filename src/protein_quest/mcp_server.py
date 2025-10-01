@@ -32,6 +32,7 @@ Examples:
 
 """
 
+from collections.abc import Mapping
 from pathlib import Path
 from textwrap import dedent
 from typing import Annotated
@@ -89,7 +90,18 @@ def search_pdb(
     return search4pdb(uniprot_accs, limit=limit)
 
 
-mcp.tool(pdbe_fetch, name="fetch_pdbe_structures")
+@mcp.tool
+async def fetch_pdbe_structures(pdb_ids: set[str], save_dir: Path) -> Mapping[str, Path]:
+    """Fetch the PDBe structures for given PDB IDs.
+
+    Args:
+        pdb_ids: A set of PDB IDs.
+        save_dir: The directory to save the fetched files.
+
+    Returns:
+        A mapping of PDB ID to the path of the fetched structure file.
+    """
+    return await pdbe_fetch(pdb_ids, save_dir)
 
 
 @mcp.tool
@@ -163,7 +175,17 @@ def fetch_alphafold_structures(uniprot_accs: set[str], save_dir: Path) -> list[A
     return alphafold_fetch(uniprot_accs, save_dir, what)
 
 
-mcp.tool(emdb_fetch, name="fetch_emdb_volumes")
+@mcp.tool
+async def fetch_emdb_volumes(emdb_ids: set[str], save_dir: Path) -> Mapping[str, Path]:
+    """Fetch EMDB volumes for given EMDB IDs.
+
+    Args:
+        emdb_ids: A set of EMDB IDs.
+        save_dir: The directory to save the fetched files.
+    Returns:
+        A mapping of EMDB ID to the path of the fetched volume file.
+    """
+    return await emdb_fetch(emdb_ids=emdb_ids, save_dir=save_dir)
 
 
 @mcp.tool

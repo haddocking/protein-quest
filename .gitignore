@@ -74,3 +74,16 @@ venv.bak/
 /docs/density_filtered/
 /site
 /mysession/
+# Paths generated in README.md examples
+uniprot_accs.txt
+pdbe.csv
+alphafold.csv
+emdbs.csv
+interaction-partners-of-Q05471.txt
+complexes.csv
+downloads-af/
+downloads-emdb/
+downloads-pdbe/
+filtered/
+filtered-chains/
+filtered-ss/

@@ -17,6 +17,10 @@ It uses
 - [gemmi](https://project-gemmi.github.io/) to work with macromolecular models.
 - [dask-distributed](https://docs.dask.org/en/latest/) to compute in parallel.
 
+The package is used by
+
+- [protein-detective](https://github.com/haddocking/protein-detective)
+
 An example workflow:
 
 ```mermaid
@@ -63,6 +67,9 @@ pip install git+https://github.com/haddocking/protein-quest.git
 The main entry point is the `protein-quest` command line tool which has multiple subcommands to perform actions.
 
 To use programmaticly, see the [Jupyter notebooks](https://www.bonvinlab.org/protein-quest/notebooks) and [API documentation](https://www.bonvinlab.org/protein-quest/autoapi/summary/).
+
+While downloading or copying files it uses a global cache (located at `~/.cache/protein-quest`) and hardlinks to save disk space and improve speed.
+This behavior can be customized with the `--no-cache`, `--cache-dir`, and `--copy-method` command line arguments.
 
 ### Search Uniprot accessions
 
