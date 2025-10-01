@@ -525,7 +525,9 @@ def _build_complex_sparql_query(uniprot_accs: Iterable[str], limit: int) -> str:
     ?protein
     ?cp_db
     ?cp_comment
-    (GROUP_CONCAT(DISTINCT ?member; separator=",") AS ?complex_members)
+    (GROUP_CONCAT(
+        DISTINCT STRAFTER(STR(?member), "http://purl.uniprot.org/uniprot/"); separator=","
+    ) AS ?complex_members)
     (COUNT(DISTINCT ?member) AS ?member_count)
     WHERE {
     # Input UniProt accessions
@@ -550,7 +552,9 @@ def _build_complex_sparql_query(uniprot_accs: Iterable[str], limit: int) -> str:
     """
     select_clause = dedent("""\
         ?protein ?cp_db ?cp_comment
-        (GROUP_CONCAT(DISTINCT ?member; separator=",") AS ?complex_members)
+        (GROUP_CONCAT(
+            DISTINCT STRAFTER(STR(?member), "http://purl.uniprot.org/uniprot/"); separator=","
+        ) AS ?complex_members)
     """)
     where_clause = dedent("""
         # --- Complex Info ---
@@ -596,7 +600,7 @@ def _flatten_results_complex(raw_results) -> list[ComplexPortalEntry]:
         complex_id = raw_result["cp_db"]["value"].split("/")[-1]
         complex_url = f"https://www.ebi.ac.uk/complexportal/complex/{complex_id}"
         complex_title = raw_result.get("cp_comment", {}).get("value", "")
-        members = {m.split("/")[-1] for m in raw_result["complex_members"]["value"].split(",")}
+        members = set(raw_result["complex_members"]["value"].split(","))
         results.append(
             ComplexPortalEntry(
                 query_protein=query_protein,
