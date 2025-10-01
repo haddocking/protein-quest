@@ -408,10 +408,10 @@ def copyfile(source: Path, target: Path, copy_method: CopyMethod = "copy"):
         FileExistsError: If the target file already exists.
         ValueError: If an unknown copy method is provided.
     """
-    rel_source = source.relative_to(target.parent, walk_up=True)
     if copy_method == "copy":
         shutil.copyfile(source, target)
     elif copy_method == "symlink":
+        rel_source = source.absolute().relative_to(target.parent.absolute(), walk_up=True)
         target.symlink_to(rel_source)
     elif copy_method == "hardlink":
         target.hardlink_to(source)
@@ -496,8 +496,7 @@ def populate_cache_command(raw_args: Sequence[str] | None = None):
     args = root_parser.parse_args(raw_args)
     if args.command == "populate-cache":
         source_dir = args.source_dir
-        cache_dir = args.cache_dir
-        cacher = DirectoryCacher(cache_dir=cache_dir, copy_method=args.copy_method)
+        cacher = DirectoryCacher(cache_dir=args.cache_dir, copy_method=args.copy_method)
         cached_files = cacher.populate_cache(source_dir)
         rich.print(f"Cached {len(cached_files)} files from {source_dir} to {cacher.cache_dir}")
         for src, cached in cached_files.items():
