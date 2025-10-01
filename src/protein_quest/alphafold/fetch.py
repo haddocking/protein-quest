@@ -125,7 +125,7 @@ async def fetch_summary(
     fn: AsyncPath | None = None
     if save_dir is not None:
         fn = AsyncPath(save_dir / f"{qualifier}.json")
-        cached_file = await cacher.copy_from_cache(fn)
+        cached_file = await cacher.copy_from_cache(Path(fn))
         if cached_file is not None:
             logger.debug(f"Using cached file {cached_file} for summary of {qualifier}.")
             raw_data = await AsyncPath(cached_file).read_bytes()
@@ -139,7 +139,7 @@ async def fetch_summary(
         raw_data = await response.content.read()
         if fn is not None:
             # TODO return fn and make it part of AlphaFoldEntry as summary_file prop
-            await cacher.write_bytes(fn._path, raw_data)
+            await cacher.write_bytes(Path(fn), raw_data)
         return converter.loads(raw_data, list[EntrySummary])
 
 
