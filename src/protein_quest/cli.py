@@ -320,6 +320,7 @@ def _add_retrieve_pdbe_parser(subparsers: argparse._SubParsersAction):
         default=5,
         help="Maximum number of parallel downloads",
     )
+    _add_cacher_arguments(parser)
 
 
 def _add_retrieve_alphafold_parser(subparsers: argparse._SubParsersAction):
@@ -350,6 +351,7 @@ def _add_retrieve_alphafold_parser(subparsers: argparse._SubParsersAction):
         default=5,
         help="Maximum number of parallel downloads",
     )
+    _add_cacher_arguments(parser)
 
 
 def _add_retrieve_emdb_parser(subparsers: argparse._SubParsersAction):
@@ -369,6 +371,7 @@ def _add_retrieve_emdb_parser(subparsers: argparse._SubParsersAction):
         help="CSV file with `emdb_id` column. Other columns are ignored. Use `-` for stdin.",
     )
     parser.add_argument("output_dir", type=Path, help="Directory to store downloaded EMDB volume files")
+    _add_cacher_arguments(parser)
 
 
 def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
@@ -401,6 +404,7 @@ def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
             In CSV format with `<input_file>,<residue_count>,<passed>,<output_file>` columns.
             Use `-` for stdout."""),
     )
+    _add_copy_method_arguments(parser)
 
 
 def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
@@ -440,6 +444,7 @@ def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
             If not provided, will create a local cluster.
             If set to `sequential` will run tasks sequentially."""),
     )
+    _add_copy_method_arguments(parser)
 
 
 def _add_filter_residue_parser(subparsers: argparse._SubParsersAction):
@@ -470,6 +475,7 @@ def _add_filter_residue_parser(subparsers: argparse._SubParsersAction):
             In CSV format with `<input_file>,<residue_count>,<passed>,<output_file>` columns.
             Use `-` for stdout."""),
     )
+    _add_copy_method_arguments(parser)
 
 
 def _add_filter_ss_parser(subparsers: argparse._SubParsersAction):
@@ -506,6 +512,7 @@ def _add_filter_ss_parser(subparsers: argparse._SubParsersAction):
             Use `-` for stdout.
         """),
     )
+    _add_copy_method_arguments(parser)
 
 
 def _add_search_subcommands(subparsers: argparse._SubParsersAction):
@@ -573,19 +580,7 @@ def _add_mcp_command(subparsers: argparse._SubParsersAction):
     parser.add_argument("--port", default=8000, type=int, help="Port to bind the server to")
 
 
-def _add_cacher_arguments(parser: argparse.ArgumentParser):
-    """Add cacher arguments to parser."""
-    parser.add_argument(
-        "--no-cache",
-        action="store_true",
-        help="Disable caching of files to central location.",
-    )
-    parser.add_argument(
-        "--cache-dir",
-        type=Path,
-        default=user_cache_root_dir(),
-        help="Directory to use as cache for files.",
-    )
+def _add_copy_method_arguments(parser):
     parser.add_argument(
         "--copy-method",
         type=str,
@@ -601,12 +596,27 @@ def _add_cacher_arguments(parser: argparse.ArgumentParser):
     )
 
 
+def _add_cacher_arguments(parser: argparse.ArgumentParser):
+    """Add cacher arguments to parser."""
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable caching of files to central location.",
+    )
+    parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=user_cache_root_dir(),
+        help="Directory to use as cache for files.",
+    )
+    _add_copy_method_arguments(parser)
+
+
 def make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Protein Quest CLI", prog="protein-quest", formatter_class=ArgumentDefaultsRichHelpFormatter
     )
     parser.add_argument("--log-level", default="WARNING", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
-    _add_cacher_arguments(parser)
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
     subparsers = parser.add_subparsers(dest="command", required=True)
