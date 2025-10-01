@@ -4,7 +4,14 @@ from pathlib import Path
 import pytest
 from aiohttp.streams import AsyncStreamIterator
 
-from protein_quest.utils import CopyMethod, DirectoryCacher, PassthroughCacher, async_copyfile, copyfile, user_cache_root_dir
+from protein_quest.utils import (
+    CopyMethod,
+    DirectoryCacher,
+    PassthroughCacher,
+    async_copyfile,
+    copyfile,
+    user_cache_root_dir,
+)
 
 
 def test_copyfile_copy(tmp_path: Path):
@@ -178,6 +185,32 @@ class TestDirectoryCacher:
         assert cache_file.exists()
         assert cache_file.read_bytes() == b"Hello, World!"
 
+    @pytest.mark.asyncio
+    async def test_write_bytes_twice(self, tmp_path: Path, cacher: DirectoryCacher):
+        target = tmp_path / "test.txt"
+
+        # First write
+        cache_file = await cacher.write_bytes(target, b"Hello, World!")
+        assert cache_file.exists()
+        assert cache_file.read_bytes() == b"Hello, World!"
+
+        # Second write
+        with pytest.raises(FileExistsError, match=str(cache_file)):
+            await cacher.write_bytes(target, b"Goodbye, World!")
+
+    @pytest.mark.asyncio
+    async def test_write_iter_twice(self, tmp_path: Path, cacher: DirectoryCacher):
+        target = tmp_path / "test.txt"
+
+        # First write
+        cache_file = await cacher.write_iter(target, ByteGenerator(b"Hello, World!"))
+        assert cache_file.exists()
+        assert cache_file.read_bytes() == b"Hello, World!"
+
+        # Second write
+        with pytest.raises(FileExistsError, match=str(cache_file)):
+            await cacher.write_iter(target, ByteGenerator(b"Goodbye, World!"))
+
 
 class TestPassthroughCacher:
     @pytest.mark.asyncio
@@ -232,3 +265,31 @@ class TestPassthroughCacher:
 
         assert cache_file.exists()
         assert cache_file.read_bytes() == b"Hello, World!"
+
+    @pytest.mark.asyncio
+    async def test_write_bytes_twice(self, tmp_path: Path):
+        cacher = PassthroughCacher()
+        target = tmp_path / "test.txt"
+
+        # First write
+        cache_file = await cacher.write_bytes(target, b"Hello, World!")
+        assert cache_file.exists()
+        assert cache_file.read_bytes() == b"Hello, World!"
+
+        # Second write
+        with pytest.raises(FileExistsError, match=str(target)):
+            await cacher.write_bytes(target, b"Goodbye, World!")
+
+    @pytest.mark.asyncio
+    async def test_write_iter_twice(self, tmp_path: Path):
+        cacher = PassthroughCacher()
+        target = tmp_path / "test.txt"
+
+        # First write
+        cache_file = await cacher.write_iter(target, ByteGenerator(b"Hello, World!"))
+        assert cache_file.exists()
+        assert cache_file.read_bytes() == b"Hello, World!"
+
+        # Second write
+        with pytest.raises(FileExistsError, match=str(target)):
+            await cacher.write_iter(target, ByteGenerator(b"Goodbye, World!"))

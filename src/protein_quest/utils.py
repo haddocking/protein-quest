@@ -90,6 +90,9 @@ class Cacher(Protocol):
 
         Returns:
             The path to the cached file.
+
+        Raises:
+            FileExistsError: If the target file already exists.
         """
         ...
 
@@ -102,6 +105,9 @@ class Cacher(Protocol):
 
         Returns:
             The path to the cached file.
+
+        Raises:
+            FileExistsError: If the target file already exists.
         """
         ...
 
@@ -121,10 +127,14 @@ class PassthroughCacher(Cacher):
         return None
 
     async def write_iter(self, target: Path, content: AsyncStreamIterator[bytes]) -> Path:
+        if target.exists():
+            raise FileExistsError(target)
         target.write_bytes(b"".join([chunk async for chunk in content]))
         return target
 
     async def write_bytes(self, target: Path, content: bytes) -> Path:
+        if target.exists():
+            raise FileExistsError(target)
         target.write_bytes(content)
         return target
 
@@ -139,7 +149,11 @@ def user_cache_root_dir() -> Path:
 
 
 class DirectoryCacher(Cacher):
-    """Class to cache files in a directory."""
+    """Class to cache files in a directory.
+
+    Caching logic is based on the file name only.
+    If file name of paths are the same then the files are considered the same.
+    """
 
     def __init__(
         self,
