@@ -1,10 +1,11 @@
 """Module for functions that are used in multiple places."""
 
+import argparse
 import asyncio
 import hashlib
 import logging
 import shutil
-from collections.abc import Coroutine, Iterable
+from collections.abc import Coroutine, Iterable, Sequence
 from contextlib import asynccontextmanager
 from functools import lru_cache
 from pathlib import Path
@@ -14,9 +15,11 @@ from typing import Any, Literal, Protocol, get_args, runtime_checkable
 import aiofiles
 import aiofiles.os
 import aiohttp
+import rich
 from aiohttp.streams import AsyncStreamIterator
 from aiohttp_retry import ExponentialRetry, RetryClient
 from platformdirs import user_cache_dir
+from rich_argparse import ArgumentDefaultsRichHelpFormatter
 from tqdm.asyncio import tqdm
 from yarl import URL
 
@@ -218,6 +221,35 @@ class DirectoryCacher(Cacher):
         # Copy to target location
         await async_copyfile(cached_file, target, copy_method=self.copy_method)
         return cached_file
+
+    def populate_cache(self, source_dir: Path) -> dict[Path, Path]:
+        """Populate the cache from an existing directory.
+
+        This will copy all files from the source directory to the cache directory.
+        If a file with the same name already exists in the cache, it will be skipped.
+
+        Args:
+            source_dir: The directory to populate the cache from.
+
+        Returns:
+            A dictionary mapping source file paths to their cached paths.
+
+        Raises:
+            NotADirectoryError: If the source_dir is not a directory.
+        """
+        if not source_dir.is_dir():
+            raise NotADirectoryError(source_dir)
+        cached = {}
+        for file_path in source_dir.iterdir():
+            if not file_path.is_file():
+                continue
+            cached_path = self._as_cached_path(file_path.name)
+            if cached_path.exists():
+                logger.debug(f"File {file_path.name} already in cache. Skipping.")
+                continue
+            copyfile(file_path, cached_path, copy_method=self.copy_method)
+            cached[file_path] = cached_path
+        return cached
 
 
 async def retrieve_files(
@@ -422,3 +454,55 @@ async def async_copyfile(
     else:
         msg = f"Unknown method: {copy_method}. Valid methods are: {copy_methods}"
         raise ValueError(msg)
+
+
+def populate_cache_command(raw_args: Sequence[str] | None = None):
+    """Command line interface to populate the cache from an existing directory.
+
+    Can be called from the command line as:
+
+    ```bash
+    python3 -m protein_quest.utils populate-cache /path/to/source/dir
+    ```
+
+    Args:
+        raw_args: The raw command line arguments to parse. If None, uses sys.argv.
+    """
+    root_parser = argparse.ArgumentParser(formatter_class=ArgumentDefaultsRichHelpFormatter)
+    subparsers = root_parser.add_subparsers(dest="command")
+
+    desc = "Populate the cache directory with files from the source directory."
+    populate_cache_parser = subparsers.add_parser(
+        "populate-cache",
+        help=desc,
+        description=desc,
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+    )
+    populate_cache_parser.add_argument("source_dir", type=Path)
+    populate_cache_parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=user_cache_root_dir(),
+        help="Directory to use for caching. If not provided, a default cache directory is used.",
+    )
+    populate_cache_parser.add_argument(
+        "--copy-method",
+        type=str,
+        default="hardlink",
+        choices=copy_methods,
+        help="Method to use for copying files to cache.",
+    )
+
+    args = root_parser.parse_args(raw_args)
+    if args.command == "populate-cache":
+        source_dir = args.source_dir
+        cache_dir = args.cache_dir
+        cacher = DirectoryCacher(cache_dir=cache_dir, copy_method=args.copy_method)
+        cached_files = cacher.populate_cache(source_dir)
+        rich.print(f"Cached {len(cached_files)} files from {source_dir} to {cacher.cache_dir}")
+        for src, cached in cached_files.items():
+            rich.print(f"- {src.relative_to(source_dir)} -> {cached.relative_to(cacher.cache_dir)}")
+
+
+if __name__ == "__main__":
+    populate_cache_command()

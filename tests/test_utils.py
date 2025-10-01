@@ -2,6 +2,7 @@ import asyncio
 from pathlib import Path
 
 import pytest
+from _pytest.capture import CaptureFixture
 from aiohttp.streams import AsyncStreamIterator
 
 from protein_quest.utils import (
@@ -10,6 +11,7 @@ from protein_quest.utils import (
     PassthroughCacher,
     async_copyfile,
     copyfile,
+    populate_cache_command,
     user_cache_root_dir,
 )
 
@@ -293,3 +295,32 @@ class TestPassthroughCacher:
         # Second write
         with pytest.raises(FileExistsError, match=str(target)):
             await cacher.write_iter(target, ByteGenerator(b"Goodbye, World!"))
+
+
+def test_populate_cache_command_with_hardlink(tmp_path: Path, capsys: CaptureFixture[str]):
+    source_dir = tmp_path / "source"
+    source_dir.mkdir()
+    src1 = source_dir / "file1.txt"
+    src2 = source_dir / "file2.txt"
+    src1.write_text("File 1")
+    src2.write_text("File 2")
+
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+
+    populate_cache_command(
+        [
+            "populate-cache",
+            str(source_dir),
+            "--cache-dir",
+            str(cache_dir),
+            "--copy-method",
+            "hardlink",
+        ]
+    )
+
+    assert src1.stat().st_nlink == 2
+    assert src2.stat().st_nlink == 2
+
+    captured = capsys.readouterr()
+    assert "->" in captured.out
