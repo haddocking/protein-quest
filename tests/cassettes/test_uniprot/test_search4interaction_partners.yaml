@@ -11,7 +11,7 @@ interactions:
       User-Agent:
       - sparqlwrapper 2.0.0 (rdflib.github.io/sparqlwrapper)
     method: GET
-    uri: https://sparql.uniprot.org/sparql?query=%0A++++++++PREFIX+up%3A+%3Chttp%3A//purl.uniprot.org/core/%3E%0A++++++++PREFIX+taxon%3A+%3Chttp%3A//purl.uniprot.org/taxonomy/%3E%0A++++++++PREFIX+rdf%3A+%3Chttp%3A//www.w3.org/1999/02/22-rdf-syntax-ns%23%3E%0A++++++++PREFIX+rdfs%3A+%3Chttp%3A//www.w3.org/2000/01/rdf-schema%23%3E%0A++++++++PREFIX+skos%3A+%3Chttp%3A//www.w3.org/2004/02/skos/core%23%3E%0A++++++++PREFIX+GO%3A%3Chttp%3A//purl.obolibrary.org/obo/GO_%3E%0A%0A++++++++SELECT+%3Fprotein+%3Fcp_db+%3Fcp_comment%0A%28GROUP_CONCAT%28DISTINCT+STRAFTER%28STR%28%3Fmember%29%2C+%22http%3A//purl.uniprot.org/uniprot/%22%29%3B+separator%3D%22%2C%22%29+AS+%3Fcomplex_members%29%0A%0A++++++++WHERE+%7B%0A%0A++++++++%23+---+Protein+Selection+---%0A++++++++VALUES+%28%3Fac%29+%7B+%28%22P60709%22%29%7D%0A++++++++BIND+%28IRI%28CONCAT%28%22http%3A//purl.uniprot.org/uniprot/%22%2C%3Fac%29%29+AS+%3Fprotein%29%0A++++++++%3Fprotein+a+up%3AProtein+.%0A%0A%0A%23+---+Complex+Info+---%0A%3Fprotein+a+up%3AProtein+%3B%0A++++++++rdfs%3AseeAlso+%3Fcp_db+.%0A%3Fcp_db+up%3Adatabase+%3Chttp%3A//purl.uniprot.org/database/ComplexPortal%3E+.%0AOPTIONAL+%7B+%3Fcp_db+rdfs%3Acomment+%3Fcp_comment+.+%7D%0A%23+All+member+proteins+of+the+same+ComplexPortal+complex%0A%3Fmember+a+up%3AProtein+%3B%0Ardfs%3AseeAlso+%3Fcp_db+.%0A%0A%0A++++++++%7D%0A+++++++++GROUP+BY+%0A%3Fprotein+%3Fcp_db+%3Fcp_comment%0A%0A++++++++LIMIT+100%0A&format=json&output=json&results=json
+    uri: https://sparql.uniprot.org/sparql?query=%0A++++++++PREFIX+up%3A+%3Chttp%3A//purl.uniprot.org/core/%3E%0A++++++++PREFIX+taxon%3A+%3Chttp%3A//purl.uniprot.org/taxonomy/%3E%0A++++++++PREFIX+rdf%3A+%3Chttp%3A//www.w3.org/1999/02/22-rdf-syntax-ns%23%3E%0A++++++++PREFIX+rdfs%3A+%3Chttp%3A//www.w3.org/2000/01/rdf-schema%23%3E%0A++++++++PREFIX+skos%3A+%3Chttp%3A//www.w3.org/2004/02/skos/core%23%3E%0A++++++++PREFIX+GO%3A%3Chttp%3A//purl.obolibrary.org/obo/GO_%3E%0A%0A++++++++SELECT+%3Fprotein+%3Fcp_db+%3Fcp_comment%0A%28GROUP_CONCAT%28%0A++++DISTINCT+STRAFTER%28STR%28%3Fmember%29%2C+%22http%3A//purl.uniprot.org/uniprot/%22%29%3B+separator%3D%22%2C%22%0A%29+AS+%3Fcomplex_members%29%0A%0A++++++++WHERE+%7B%0A%0A++++++++%23+---+Protein+Selection+---%0A++++++++VALUES+%28%3Fac%29+%7B+%28%22P60709%22%29%7D%0A++++++++BIND+%28IRI%28CONCAT%28%22http%3A//purl.uniprot.org/uniprot/%22%2C%3Fac%29%29+AS+%3Fprotein%29%0A++++++++%3Fprotein+a+up%3AProtein+.%0A%0A%0A%23+---+Complex+Info+---%0A%3Fprotein+a+up%3AProtein+%3B%0A++++++++rdfs%3AseeAlso+%3Fcp_db+.%0A%3Fcp_db+up%3Adatabase+%3Chttp%3A//purl.uniprot.org/database/ComplexPortal%3E+.%0AOPTIONAL+%7B+%3Fcp_db+rdfs%3Acomment+%3Fcp_comment+.+%7D%0A%23+All+member+proteins+of+the+same+ComplexPortal+complex%0A%3Fmember+a+up%3AProtein+%3B%0Ardfs%3AseeAlso+%3Fcp_db+.%0A%0A%0A++++++++%7D%0A+++++++++GROUP+BY+%0A%3Fprotein+%3Fcp_db+%3Fcp_comment%0A%0A++++++++LIMIT+100%0A&format=json&output=json&results=json
   response:
     body:
       string: "{\n  \"head\" : {\n    \"vars\" : [\n      \"protein\",\n      \"cp_db\",\n
@@ -349,17 +349,17 @@ interactions:
       Connection:
       - close
       Content-Disposition:
-      - attachment; filename="sparql-2D2AAEA9601C11DE4205F214C7347329.srj"
+      - attachment; filename="sparql-6A1A994A13D1A704ACB9CC5E0DFBA83C.srj"
       Content-Length:
       - '24674'
       Content-Type:
       - application/sparql-results+json
       Date:
-      - Wed, 01 Oct 2025 11:23:14 GMT
+      - Wed, 01 Oct 2025 11:30:36 GMT
       ETag:
       - W/"2025_03"
       Expires:
-      - Thu, 02 Oct 2025 11:23:13 GMT
+      - Thu, 02 Oct 2025 11:30:35 GMT
       Server:
       - Apache
       Strict-Transport-Security:
@@ -375,7 +375,7 @@ interactions:
       X-Release:
       - '2025_03'
       queryid:
-      - '368263'
+      - '381255'
     status:
       code: 200
       message: ''
