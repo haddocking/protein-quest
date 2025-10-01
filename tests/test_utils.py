@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from aiohttp.streams import AsyncStreamIterator
 
-from protein_quest.utils import CopyMethod, DirectoryCacher, NoopCacher, async_copyfile, copyfile, user_cache_root_dir
+from protein_quest.utils import CopyMethod, DirectoryCacher, PassthroughCacher, async_copyfile, copyfile, user_cache_root_dir
 
 
 def test_copyfile_copy(tmp_path: Path):
@@ -179,10 +179,10 @@ class TestDirectoryCacher:
         assert cache_file.read_bytes() == b"Hello, World!"
 
 
-class TestNoOpCacher:
+class TestPassthroughCacher:
     @pytest.mark.asyncio
     async def test_write_bytes(self, tmp_path: Path):
-        cacher = NoopCacher()
+        cacher = PassthroughCacher()
         target = tmp_path / "test.txt"
 
         cache_file = await cacher.write_bytes(target, b"Hello, World!")
@@ -191,22 +191,22 @@ class TestNoOpCacher:
         assert cache_file.read_bytes() == b"Hello, World!"
 
     def test_in_missing(self, tmp_path: Path):
-        cacher = NoopCacher()
+        cacher = PassthroughCacher()
         assert "any_file.txt" not in cacher
 
     @pytest.mark.asyncio
     async def test_in_present(self, tmp_path: Path):
         # Fill cache
-        cacher = NoopCacher()
+        cacher = PassthroughCacher()
         target = tmp_path / "test.txt"
         await cacher.write_bytes(target, b"Hello, World!")
 
-        # NoopCacher never has anything cached
+        # PassthroughCacher never has anything cached
         assert target not in cacher
 
     @pytest.mark.asyncio
     async def test_copy_from_cache_missing(self, tmp_path: Path):
-        cacher = NoopCacher()
+        cacher = PassthroughCacher()
         target = tmp_path / "test.txt"
 
         result = await cacher.copy_from_cache(target)
@@ -214,18 +214,18 @@ class TestNoOpCacher:
 
     @pytest.mark.asyncio
     async def test_copy_from_cache_present(self, tmp_path: Path):
-        cacher = NoopCacher()
+        cacher = PassthroughCacher()
         target = tmp_path / "test.txt"
         await cacher.write_bytes(target, b"Hello, World!")
 
         result = await cacher.copy_from_cache(target)
 
-        # NoopCacher never has anything cached
+        # PassthroughCacher never has anything cached
         assert result is None
 
     @pytest.mark.asyncio
     async def test_write_iter(self, tmp_path: Path):
-        cacher = NoopCacher()
+        cacher = PassthroughCacher()
         target = tmp_path / "test.txt"
 
         cache_file = await cacher.write_iter(target, ByteGenerator(b"Hello, World!"))

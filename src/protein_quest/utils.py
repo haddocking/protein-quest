@@ -106,7 +106,7 @@ class Cacher(Protocol):
         ...
 
 
-class NoopCacher(Cacher):
+class PassthroughCacher(Cacher):
     """A cacher that caches nothing.
 
     On writes it just writes to the target path.
@@ -275,7 +275,7 @@ async def _retrieve_file(
         return save_path
 
     if cacher is None:
-        cacher = NoopCacher()
+        cacher = PassthroughCacher()
     if cached_file := await cacher.copy_from_cache(save_path):
         logger.debug(f"File {save_path} was copied from cache {cached_file}. Skipping download from {url}.")
         return save_path

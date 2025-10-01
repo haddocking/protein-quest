@@ -47,7 +47,7 @@ from protein_quest.utils import (
     Cacher,
     CopyMethod,
     DirectoryCacher,
-    NoopCacher,
+    PassthroughCacher,
     copy_methods,
     copyfile,
     user_cache_root_dir,
@@ -761,7 +761,7 @@ def _handle_search_complexes(args: argparse.Namespace):
 
 def _initialize_cacher(args: argparse.Namespace) -> Cacher:
     if args.no_cache:
-        return NoopCacher()
+        return PassthroughCacher()
     return DirectoryCacher(
         cache_dir=args.cache_dir,
         copy_method=args.copy_method,

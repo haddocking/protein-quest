@@ -14,7 +14,7 @@ from yarl import URL
 
 from protein_quest.alphafold.entry_summary import EntrySummary
 from protein_quest.converter import converter
-from protein_quest.utils import Cacher, NoopCacher, friendly_session, retrieve_files, run_async
+from protein_quest.utils import Cacher, PassthroughCacher, friendly_session, retrieve_files, run_async
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +153,7 @@ async def fetch_summaries(
     if save_dir is not None:
         save_dir.mkdir(parents=True, exist_ok=True)
     if cacher is None:
-        cacher = NoopCacher()
+        cacher = PassthroughCacher()
     async with friendly_session() as session:
         tasks = [fetch_summary(qualifier, session, semaphore, save_dir, cacher) for qualifier in qualifiers]
         summaries_per_qualifier: list[list[EntrySummary]] = await tqdm.gather(
