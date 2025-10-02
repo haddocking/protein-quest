@@ -101,7 +101,7 @@ def test_nr_residues_in_chain_wrongchain(cif_path: Path, caplog):
     assert "Chain Z not found in" in caplog.text
 
 
-@pytest.mark.parametrize("extension", [".pdb", ".pdb.gz", ".cif", ".cif.gz"])
+@pytest.mark.parametrize("extension", [".pdb", ".pdb.gz", ".cif", ".cif.gz", ".bcif"])
 def test_write_structure(cif_path: Path, tmp_path: Path, extension: str):
     structure = read_structure(cif_path)
     output_file = tmp_path / f"bla{extension}"
@@ -111,6 +111,18 @@ def test_write_structure(cif_path: Path, tmp_path: Path, extension: str):
     found_files = list(glob_structure_files(tmp_path))
     assert len(found_files) == 1
     assert found_files[0].name == output_file.name
+
+
+@pytest.mark.parametrize("extension", [".pdb", ".pdb.gz", ".cif", ".cif.gz", ".bcif"])
+def test_read_structure(cif_path: Path, tmp_path: Path, extension: str):
+    # We only have cif as fixture, so convert to other formats first
+    structure_from_cif = read_structure(cif_path)
+    thefile = tmp_path / f"foo{extension}"
+    write_structure(structure_from_cif, thefile)
+
+    structure_from_extension = read_structure(thefile)
+
+    assert structure_from_extension.make_minimal_pdb() == structure_from_cif.make_minimal_pdb()
 
 
 @pytest.mark.parametrize(
@@ -123,6 +135,7 @@ def test_write_structure(cif_path: Path, tmp_path: Path, extension: str):
         ("2y29", "2y29.pdb.gz"),
         ("2y29", "pdb2y29.ent"),
         ("2y29", "pdb2y29.ent.gz"),
+        ("2y29", "2y29.bcif"),
         # cases
         ("1KVm", "1KVm.cif"),
         ("1KVm", "1kvm.cif"),

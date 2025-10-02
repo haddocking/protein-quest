@@ -8,13 +8,14 @@ from io import StringIO
 from pathlib import Path
 
 import gemmi
+from mmcif.api.DictionaryApi import DictionaryApi
 from mmcif.io.BinaryCifReader import BinaryCifReader
 from mmcif.io.BinaryCifWriter import BinaryCifWriter
 from mmcif.io.PdbxReader import PdbxReader
 from mmcif.io.PdbxWriter import PdbxWriter
 
 from protein_quest.__version__ import __version__
-from protein_quest.utils import CopyMethod, copyfile
+from protein_quest.utils import CopyMethod, copyfile, user_cache_root_dir
 
 # TODO this modules is used outside protein_quest.pdbe, move to protein_quest.io or split?
 
@@ -71,7 +72,7 @@ def write_structure(structure: gemmi.Structure, path: Path):
         structure: The gemmi structure to write.
         path: The file path to write the structure to.
             The format depends on the file extension.
-            Supported extensions are .pdb, .pdb.gz, .cif, .cif.gz.
+            Supported extensions are .pdb, .pdb.gz, .cif, .cif.gz, .bcif.
 
     Raises:
         ValueError: If the file extension is not supported.
@@ -101,12 +102,31 @@ def write_structure(structure: gemmi.Structure, path: Path):
 
 
 def read_structure(file: Path) -> gemmi.Structure:
+    """Read a structure from a file.
+
+    Supported extensions are .pdb, .pdb.gz, .cif, .cif.gz, .bcif.
+
+    Args:
+        file: Path to the input mmCIF/pdb file.
+    Returns:
+        A gemmi Structure object representing the structure in the file.
+    Raises:
+        RuntimeError: If the file format is unknown.
+    """
     if file.name.endswith(".bcif"):
         return bcif2structure(file)
     return gemmi.read_structure(str(file))
 
 
 def bcif2structure(bcif_file: Path) -> gemmi.Structure:
+    """Read a binary CIF (bcif) file and return a gemmi Structure object.
+
+    Args:
+        bcif_file: Path to the binary CIF file.
+
+    Returns:
+        A gemmi Structure object representing the structure in the bcif file.
+    """
     reader = BinaryCifReader()
     container = reader.deserialize(str(bcif_file))
     capture = StringIO()
@@ -114,16 +134,30 @@ def bcif2structure(bcif_file: Path) -> gemmi.Structure:
     writer.write(container)
     cif_content = capture.getvalue()
     doc = gemmi.cif.read_string(cif_content)
-    return gemmi.make_structure_from_block(doc[0])
+    block = doc.sole_block()
+    return gemmi.make_structure_from_block(block)
 
 
 def structure2bcif(structure: gemmi.Structure, bcif_file: Path):
+    """Write a gemmi Structure object to a binary CIF (bcif) file.
+
+    Args:
+        structure: The gemmi Structure object to write.
+        bcif_file: Path to the output binary CIF file.
+    """
     doc = structure.make_mmcif_document(gemmi.MmcifOutputGroups(True, chem_comp=False))
-    reader = PdbxReader(doc.as_string())
-    container = []
-    reader.read(container)
-    writer = BinaryCifWriter(dictionaryApi=None)
-    writer.serialize(str(bcif_file), container)
+    containers = []
+    with StringIO(doc.as_string()) as sio:
+        reader = PdbxReader(sio)
+        reader.read(containers)
+    dict_url = "https://raw.githubusercontent.com/wwpdb-dictionaries/mmcif_pdbx/master/dist/mmcif_pdbx_v5_next.dic"
+    dict_local = user_cache_root_dir() / "mmcif_pdbx_v5_next.dic"
+    if not dict_local.exists():
+        msg = f"TODO download dictionary from {dict_url} and save to {dict_local}"
+        raise NotImplementedError(msg)
+    dict_api = DictionaryApi(containerList=containers, consolidate=True)
+    writer = BinaryCifWriter(dictionaryApi=dict_api)
+    writer.serialize(str(bcif_file), containers)
 
 
 def _split_name_and_extension(name: str) -> tuple[str, str]:
@@ -132,15 +166,17 @@ def _split_name_and_extension(name: str) -> tuple[str, str]:
     # 1234.cif -> (1234, .cif)
     # 1234.cif.gz -> (1234, .cif.gz)
     if name.endswith(".pdb.gz"):
-        return name.replace(".pdb.gz", ""), ".pdb.gz"
+        return name.removesuffix(".pdb.gz"), ".pdb.gz"
     if name.endswith(".cif.gz"):
-        return name.replace(".cif.gz", ""), ".cif.gz"
+        return name.removesuffix(".cif.gz"), ".cif.gz"
     if name.endswith(".pdb"):
-        return name.replace(".pdb", ""), ".pdb"
+        return name.removesuffix(".pdb"), ".pdb"
     if name.endswith(".cif"):
-        return name.replace(".cif", ""), ".cif"
+        return name.removesuffix(".cif"), ".cif"
+    if name.endswith(".bcif"):
+        return name.removesuffix(".bcif"), ".bcif"
 
-    msg = f"Unknown file extension in {name}. Supported extensions are .pdb, .pdb.gz, .cif, .cif.gz"
+    msg = f"Unknown file extension in {name}. Supported extensions are .pdb, .pdb.gz, .cif, .cif.gz, .bcif"
     raise ValueError(msg)
 
 
@@ -157,7 +193,7 @@ def locate_structure_file(root: Path, pdb_id: str) -> Path:
     Raises:
         FileNotFoundError: If no structure file is found for the given PDB ID.
     """
-    exts = [".cif.gz", ".cif", ".pdb.gz", ".pdb", ".ent", ".ent.gz"]
+    exts = [".cif.gz", ".cif", ".pdb.gz", ".pdb", ".ent", ".ent.gz", ".bcif"]
     for ext in exts:
         candidates = (
             root / f"{pdb_id}{ext}",
@@ -181,7 +217,7 @@ def glob_structure_files(input_dir: Path) -> Generator[Path]:
     Yields:
         Paths to the found structure files.
     """
-    for ext in [".cif.gz", ".cif", ".pdb.gz", ".pdb"]:
+    for ext in [".cif.gz", ".cif", ".pdb.gz", ".pdb", ".bcif"]:
         yield from input_dir.glob(f"*{ext}")
 
 
