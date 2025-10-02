@@ -11,7 +11,7 @@ from protein_quest.alphafold.confidence import (
     filter_out_low_confidence_residues,
     find_high_confidence_residues,
 )
-from protein_quest.pdbe.io import nr_residues_in_chain
+from protein_quest.pdbe.io import nr_residues_in_chain, read_structure
 
 
 @pytest.fixture
@@ -21,7 +21,7 @@ def sample_pdb_file() -> Path:
 
 @pytest.fixture
 def sample_pdb(sample_pdb_file: Path) -> gemmi.Structure:
-    return gemmi.read_structure(str(sample_pdb_file))
+    return read_structure(sample_pdb_file)
 
 
 def test_find_high_confidence_residues(sample_pdb: gemmi.Structure):

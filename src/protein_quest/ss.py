@@ -5,9 +5,10 @@ from collections.abc import Generator, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
-from gemmi import Structure, read_structure, set_leak_warnings
+from gemmi import Structure, set_leak_warnings
 
 from protein_quest.converter import PositiveInt, Ratio, converter
+from protein_quest.pdbe.io import read_structure
 
 logger = logging.getLogger(__name__)
 
@@ -261,7 +262,7 @@ def filter_file_on_secondary_structure(
     Returns:
         Filtering statistics and whether file passed.
     """
-    structure = read_structure(str(file_path))
+    structure = read_structure(file_path)
     return filter_on_secondary_structure(structure, query)
 
 

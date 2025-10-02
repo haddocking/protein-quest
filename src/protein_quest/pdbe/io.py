@@ -4,12 +4,19 @@ import gzip
 import logging
 from collections.abc import Generator, Iterable
 from datetime import UTC, datetime
+from io import StringIO
 from pathlib import Path
 
 import gemmi
+from mmcif.io.BinaryCifReader import BinaryCifReader
+from mmcif.io.BinaryCifWriter import BinaryCifWriter
+from mmcif.io.PdbxReader import PdbxReader
+from mmcif.io.PdbxWriter import PdbxWriter
 
 from protein_quest.__version__ import __version__
 from protein_quest.utils import CopyMethod, copyfile
+
+# TODO this modules is used outside protein_quest.pdbe, move to protein_quest.io or split?
 
 logger = logging.getLogger(__name__)
 
@@ -86,9 +93,37 @@ def write_structure(structure: gemmi.Structure, path: Path):
         cif_str = doc.as_string()
         with gzip.open(path, "wt") as f:
             f.write(cif_str)
+    elif path.name.endswith(".bcif"):
+        structure2bcif(structure, path)
     else:
         msg = f"Unsupported file extension in {path.name}. Supported extensions are .pdb, .pdb.gz, .cif, .cif.gz"
         raise ValueError(msg)
+
+
+def read_structure(file: Path) -> gemmi.Structure:
+    if file.name.endswith(".bcif"):
+        return bcif2structure(file)
+    return gemmi.read_structure(str(file))
+
+
+def bcif2structure(bcif_file: Path) -> gemmi.Structure:
+    reader = BinaryCifReader()
+    container = reader.deserialize(str(bcif_file))
+    capture = StringIO()
+    writer = PdbxWriter(capture)
+    writer.write(container)
+    cif_content = capture.getvalue()
+    doc = gemmi.cif.read_string(cif_content)
+    return gemmi.make_structure_from_block(doc[0])
+
+
+def structure2bcif(structure: gemmi.Structure, bcif_file: Path):
+    doc = structure.make_mmcif_document(gemmi.MmcifOutputGroups(True, chem_comp=False))
+    reader = PdbxReader(doc.as_string())
+    container = []
+    reader.read(container)
+    writer = BinaryCifWriter(dictionaryApi=None)
+    writer.serialize(str(bcif_file), container)
 
 
 def _split_name_and_extension(name: str) -> tuple[str, str]:
@@ -241,7 +276,7 @@ def write_single_chain_pdb_file(
     """
 
     logger.debug(f"chain2keep: {chain2keep}, out_chain: {out_chain}")
-    structure = gemmi.read_structure(str(input_file))
+    structure = read_structure(input_file)
     structure.setup_entities()
 
     chain = find_chain_in_structure(structure, chain2keep)

@@ -1,7 +1,6 @@
 import logging
 from pathlib import Path
 
-import gemmi
 import pytest
 
 from protein_quest.pdbe.io import (
@@ -9,6 +8,7 @@ from protein_quest.pdbe.io import (
     glob_structure_files,
     locate_structure_file,
     nr_residues_in_chain,
+    read_structure,
     write_single_chain_pdb_file,
     write_structure,
 )
@@ -30,7 +30,7 @@ def test_write_single_chain_pdb_file_happypath(cif_path: Path, tmp_path: Path):
     assert output_file is not None
     assert output_file.name == "2y29_A2Z.cif"
     assert output_file.exists()
-    structure = gemmi.read_structure(str(output_file))
+    structure = read_structure(output_file)
     assert len(structure) == 1  # One model
     model = structure[0]
     assert len(model) == 1  # One chain
@@ -47,7 +47,7 @@ def test_write_single_chain_pdb_file_with_secondary_structure(tmp_path: Path):
         chain2keep="A",
         output_dir=tmp_path,
     )
-    structure = gemmi.read_structure(str(output_file))
+    structure = read_structure(output_file)
     assert len(structure.helices) == 4
     assert len(structure.sheets) == 1
 
@@ -103,7 +103,7 @@ def test_nr_residues_in_chain_wrongchain(cif_path: Path, caplog):
 
 @pytest.mark.parametrize("extension", [".pdb", ".pdb.gz", ".cif", ".cif.gz"])
 def test_write_structure(cif_path: Path, tmp_path: Path, extension: str):
-    structure = gemmi.read_structure(str(cif_path))
+    structure = read_structure(cif_path)
     output_file = tmp_path / f"bla{extension}"
 
     write_structure(structure, output_file)

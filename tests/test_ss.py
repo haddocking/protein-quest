@@ -4,6 +4,7 @@ import gemmi
 import pytest
 
 from protein_quest.converter import converter
+from protein_quest.pdbe.io import read_structure
 from protein_quest.ss import (
     SecondaryStructureFilterQuery,
     SecondaryStructureFilterResult,
@@ -28,7 +29,7 @@ def sample_cif() -> Path:
 
 @pytest.fixture
 def sample_structure(sample_cif: Path) -> gemmi.Structure:
-    return gemmi.read_structure(str(sample_cif))
+    return read_structure(sample_cif)
 
 
 @pytest.fixture(scope="module")

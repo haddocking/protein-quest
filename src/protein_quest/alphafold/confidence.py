@@ -8,7 +8,7 @@ from pathlib import Path
 import gemmi
 
 from protein_quest.converter import Percentage, PositiveInt, converter
-from protein_quest.pdbe.io import write_structure
+from protein_quest.pdbe.io import read_structure, write_structure
 from protein_quest.ss import nr_of_residues_in_total
 from protein_quest.utils import CopyMethod, copyfile
 
@@ -127,7 +127,7 @@ def filter_file_on_residues(
         result with filtered_file property set to Path where filtered PDB file is saved.
             or None if structure was filtered out.
     """
-    structure = gemmi.read_structure(str(file))
+    structure = read_structure(file)
     residues = set(find_high_confidence_residues(structure, query.confidence))
     count = len(residues)
     if count < query.min_residues or count > query.max_residues:
