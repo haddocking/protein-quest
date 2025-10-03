@@ -46,7 +46,12 @@ from protein_quest.alphafold.fetch import fetch_many as alphafold_fetch
 from protein_quest.emdb import fetch as emdb_fetch
 from protein_quest.go import search_gene_ontology_term
 from protein_quest.pdbe.fetch import fetch as pdbe_fetch
-from protein_quest.pdbe.io import glob_structure_files, nr_residues_in_chain, write_single_chain_pdb_file
+from protein_quest.pdbe.io import (
+    convert_to_cif_file,
+    glob_structure_files,
+    nr_residues_in_chain,
+    write_single_chain_pdb_file,
+)
 from protein_quest.ss import filter_file_on_secondary_structure
 from protein_quest.taxonomy import search_taxon
 from protein_quest.uniprot import (
@@ -112,16 +117,16 @@ def extract_single_chain_from_structure(
     out_chain: str = "A",
 ) -> Path:
     """
-    Extract a single chain from a mmCIF/pdb file and write to a new file.
+    Extract a single chain from a structure (mmCIF or pdb) file and write to a new file.
 
     Args:
-        input_file: Path to the input mmCIF/pdb file.
+        input_file: Path to the input structure (mmCIF or pdb) file.
         chain2keep: The chain to keep.
         output_dir: Directory to save the output file.
         out_chain: The chain identifier for the output file.
 
     Returns:
-        Path to the output mmCIF/pdb file
+        Path to the output structure (mmCIF or pdb) file
     """
     return write_single_chain_pdb_file(input_file, chain2keep, output_dir, out_chain)
 
@@ -198,6 +203,8 @@ def alphafold_confidence_filter(file: Path, query: ConfidenceFilterQuery, filter
 
 
 mcp.tool(filter_file_on_secondary_structure)
+
+mcp.tool(convert_to_cif_file)
 
 
 @mcp.prompt

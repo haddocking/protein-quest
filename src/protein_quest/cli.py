@@ -29,7 +29,12 @@ from protein_quest.emdb import fetch as emdb_fetch
 from protein_quest.filters import filter_files_on_chain, filter_files_on_residues
 from protein_quest.go import Aspect, allowed_aspects, search_gene_ontology_term, write_go_terms_to_csv
 from protein_quest.pdbe import fetch as pdbe_fetch
-from protein_quest.pdbe.io import glob_structure_files, locate_structure_file
+from protein_quest.pdbe.io import (
+    convert_to_cif_files,
+    glob_structure_files,
+    locate_structure_file,
+    valid_structure_file_extensions,
+)
 from protein_quest.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
 from protein_quest.taxonomy import SearchField, _write_taxonomy_csv, search_fields, search_taxon
 from protein_quest.uniprot import (
@@ -297,6 +302,38 @@ def _add_search_complexes_parser(subparsers: argparse._SubParsersAction):
     parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
 
 
+def _add_copy_method_arguments(parser):
+    parser.add_argument(
+        "--copy-method",
+        type=str,
+        choices=copy_methods,
+        default="hardlink",
+        help=dedent("""\
+            How to make target file be same file as source file.
+            By default uses hardlinks to save disk space.
+            Note that hardlinks only work within the same filesystem and are harder to track.
+            If you want to track cached files easily then use 'symlink'.
+            On Windows you need developer mode or admin privileges to create symlinks.
+        """),
+    )
+
+
+def _add_cacher_arguments(parser: argparse.ArgumentParser):
+    """Add cacher arguments to parser."""
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable caching of files to central location.",
+    )
+    parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=user_cache_root_dir(),
+        help="Directory to use as cache for files.",
+    )
+    _add_copy_method_arguments(parser)
+
+
 def _add_retrieve_pdbe_parser(subparsers: argparse._SubParsersAction):
     """Add retrieve pdbe subcommand parser."""
     parser = subparsers.add_parser(
@@ -561,6 +598,33 @@ def _add_filter_subcommands(subparsers: argparse._SubParsersAction):
     _add_filter_ss_parser(subsubparsers)
 
 
+def _add_convert_subcommands(subparsers: argparse._SubParsersAction):
+    """Add convert command."""
+    parser = subparsers.add_parser(
+        "convert", help="Convert structure files between formats", formatter_class=ArgumentDefaultsRichHelpFormatter
+    )
+    parser.add_argument(
+        "input_dir",
+        type=Path,
+        help=f"Directory with structure files. Supported extensions are {valid_structure_file_extensions}",
+    )
+    parser.add_argument(
+        "--output_dir",
+        type=Path,
+        help=dedent("""\
+            Directory to write converted structure files. If not given, files are written to `input_dir`.
+        """),
+    )
+    parser.add_argument(
+        "--format",
+        type=str,
+        choices=("cif",),
+        default="cif",
+        help="Output format to convert to.",
+    )
+    _add_copy_method_arguments(parser)
+
+
 def _add_mcp_command(subparsers: argparse._SubParsersAction):
     """Add MCP command."""
 
@@ -580,38 +644,6 @@ def _add_mcp_command(subparsers: argparse._SubParsersAction):
     parser.add_argument("--port", default=8000, type=int, help="Port to bind the server to")
 
 
-def _add_copy_method_arguments(parser):
-    parser.add_argument(
-        "--copy-method",
-        type=str,
-        choices=copy_methods,
-        default="hardlink",
-        help=dedent("""\
-            How to make target file be same file as source file.
-            By default uses hardlinks to save disk space.
-            Note that hardlinks only work within the same filesystem and are harder to track.
-            If you want to track cached files easily then use 'symlink'.
-            On Windows you need developer mode or admin privileges to create symlinks.
-        """),
-    )
-
-
-def _add_cacher_arguments(parser: argparse.ArgumentParser):
-    """Add cacher arguments to parser."""
-    parser.add_argument(
-        "--no-cache",
-        action="store_true",
-        help="Disable caching of files to central location.",
-    )
-    parser.add_argument(
-        "--cache-dir",
-        type=Path,
-        default=user_cache_root_dir(),
-        help="Directory to use as cache for files.",
-    )
-    _add_copy_method_arguments(parser)
-
-
 def make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Protein Quest CLI", prog="protein-quest", formatter_class=ArgumentDefaultsRichHelpFormatter
@@ -624,25 +656,10 @@ def make_parser() -> argparse.ArgumentParser:
     _add_search_subcommands(subparsers)
     _add_retrieve_subcommands(subparsers)
     _add_filter_subcommands(subparsers)
+    _add_convert_subcommands(subparsers)
     _add_mcp_command(subparsers)
 
     return parser
-
-
-def main():
-    """Main entry point for the CLI."""
-    parser = make_parser()
-    args = parser.parse_args()
-    logging.basicConfig(level=args.log_level, handlers=[RichHandler(show_level=False)])
-
-    # Dispatch table to reduce complexity
-    cmd = args.command
-    sub = getattr(args, f"{cmd}_cmd", None)
-    handler = HANDLERS.get((cmd, sub))
-    if handler is None:
-        msg = f"Unknown command: {cmd} {sub}"
-        raise SystemExit(msg)
-    handler(args)
 
 
 def _handle_search_uniprot(args):
@@ -1017,24 +1034,24 @@ def _handle_mcp(args):
         mcp.run(transport=args.transport, host=args.host, port=args.port)
 
 
-HANDLERS: dict[tuple[str, str | None], Callable] = {
-    ("search", "uniprot"): _handle_search_uniprot,
-    ("search", "pdbe"): _handle_search_pdbe,
-    ("search", "alphafold"): _handle_search_alphafold,
-    ("search", "emdb"): _handle_search_emdb,
-    ("search", "go"): _handle_search_go,
-    ("search", "taxonomy"): _handle_search_taxonomy,
-    ("search", "interaction-partners"): _handle_search_interaction_partners,
-    ("search", "complexes"): _handle_search_complexes,
-    ("retrieve", "pdbe"): _handle_retrieve_pdbe,
-    ("retrieve", "alphafold"): _handle_retrieve_alphafold,
-    ("retrieve", "emdb"): _handle_retrieve_emdb,
-    ("filter", "confidence"): _handle_filter_confidence,
-    ("filter", "chain"): _handle_filter_chain,
-    ("filter", "residue"): _handle_filter_residue,
-    ("filter", "secondary-structure"): _handle_filter_ss,
-    ("mcp", None): _handle_mcp,
-}
+def _handle_convert(args):
+    input_dir = structure(args.input_dir, Path)
+    output_dir = input_dir if args.output_dir is None else structure(args.output_dir, Path)
+    copy_method: CopyMethod = structure(args.copy_method, CopyMethod)  # pyright: ignore[reportArgumentType]
+
+    input_files = sorted(glob_structure_files(input_dir))
+    rprint(f"Converting {len(input_files)} files in {input_dir} directory to cif format.")
+    for _ in tqdm(
+        convert_to_cif_files(
+            input_files,
+            output_dir,
+            copy_method=copy_method,
+        ),
+        total=len(input_files),
+        unit="file",
+    ):
+        pass
+    rprint(f"Converted {len(input_files)} files into {output_dir}.")
 
 
 def _read_lines(file: TextIOWrapper) -> list[str]:
@@ -1118,3 +1135,40 @@ def _write_complexes_csv(complexes: list[ComplexPortalEntry], output_csv: TextIO
                 members_str,
             ]
         )
+
+
+HANDLERS: dict[tuple[str, str | None], Callable] = {
+    ("search", "uniprot"): _handle_search_uniprot,
+    ("search", "pdbe"): _handle_search_pdbe,
+    ("search", "alphafold"): _handle_search_alphafold,
+    ("search", "emdb"): _handle_search_emdb,
+    ("search", "go"): _handle_search_go,
+    ("search", "taxonomy"): _handle_search_taxonomy,
+    ("search", "interaction-partners"): _handle_search_interaction_partners,
+    ("search", "complexes"): _handle_search_complexes,
+    ("retrieve", "pdbe"): _handle_retrieve_pdbe,
+    ("retrieve", "alphafold"): _handle_retrieve_alphafold,
+    ("retrieve", "emdb"): _handle_retrieve_emdb,
+    ("filter", "confidence"): _handle_filter_confidence,
+    ("filter", "chain"): _handle_filter_chain,
+    ("filter", "residue"): _handle_filter_residue,
+    ("filter", "secondary-structure"): _handle_filter_ss,
+    ("mcp", None): _handle_mcp,
+    ("convert", None): _handle_convert,
+}
+
+
+def main():
+    """Main entry point for the CLI."""
+    parser = make_parser()
+    args = parser.parse_args()
+    logging.basicConfig(level=args.log_level, handlers=[RichHandler(show_level=False)])
+
+    # Dispatch table to reduce complexity
+    cmd = args.command
+    sub = getattr(args, f"{cmd}_cmd", None)
+    handler = HANDLERS.get((cmd, sub))
+    if handler is None:
+        msg = f"Unknown command: {cmd} {sub}"
+        raise SystemExit(msg)
+    handler(args)
