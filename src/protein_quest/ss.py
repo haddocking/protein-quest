@@ -5,17 +5,12 @@ from collections.abc import Generator, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
-from gemmi import Structure, set_leak_warnings
+from gemmi import Structure
 
 from protein_quest.converter import PositiveInt, Ratio, converter
-from protein_quest.pdbe.io import read_structure
+from protein_quest.io import read_structure
 
 logger = logging.getLogger(__name__)
-
-# TODO remove once v0.7.4 of gemmi is released,
-# as uv pip install git+https://github.com/project-gemmi/gemmi.git installs 0.7.4.dev0 which does not print leaks
-# Swallow gemmi leaked function warnings
-set_leak_warnings(False)
 
 # TODO if a structure has no secondary structure information, calculate it with `gemmi ss`.
 # https://github.com/MonomerLibrary/monomers/wiki/Installation as --monomers dir

@@ -11,7 +11,8 @@ from protein_quest.alphafold.confidence import (
     filter_out_low_confidence_residues,
     find_high_confidence_residues,
 )
-from protein_quest.pdbe.io import nr_residues_in_chain, read_structure
+from protein_quest.io import read_structure
+from protein_quest.structure import nr_residues_in_chain
 
 
 @pytest.fixture

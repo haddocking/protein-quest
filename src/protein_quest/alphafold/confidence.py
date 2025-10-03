@@ -8,7 +8,7 @@ from pathlib import Path
 import gemmi
 
 from protein_quest.converter import Percentage, PositiveInt, converter
-from protein_quest.pdbe.io import read_structure, write_structure
+from protein_quest.io import read_structure, write_structure
 from protein_quest.ss import nr_of_residues_in_total
 from protein_quest.utils import CopyMethod, copyfile
 

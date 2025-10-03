@@ -28,13 +28,13 @@ from protein_quest.converter import converter
 from protein_quest.emdb import fetch as emdb_fetch
 from protein_quest.filters import filter_files_on_chain, filter_files_on_residues
 from protein_quest.go import Aspect, allowed_aspects, search_gene_ontology_term, write_go_terms_to_csv
-from protein_quest.pdbe import fetch as pdbe_fetch
-from protein_quest.pdbe.io import (
+from protein_quest.io import (
     convert_to_cif_files,
     glob_structure_files,
     locate_structure_file,
     valid_structure_file_extensions,
 )
+from protein_quest.pdbe import fetch as pdbe_fetch
 from protein_quest.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
 from protein_quest.taxonomy import SearchField, _write_taxonomy_csv, search_fields, search_taxon
 from protein_quest.uniprot import (

@@ -11,10 +11,7 @@ from distributed.deploy.cluster import Cluster
 from tqdm.auto import tqdm
 
 from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
-from protein_quest.pdbe.io import (
-    nr_residues_in_chain,
-    write_single_chain_pdb_file,
-)
+from protein_quest.structure import nr_residues_in_chain, write_single_chain_structure_file
 from protein_quest.utils import CopyMethod, copyfile
 
 logger = logging.getLogger(__name__)
@@ -38,7 +35,7 @@ def filter_file_on_chain(
     input_file, chain_id = file_and_chain
     logger.debug("Filtering %s on chain %s", input_file, chain_id)
     try:
-        output_file = write_single_chain_pdb_file(
+        output_file = write_single_chain_structure_file(
             input_file, chain_id, output_dir, out_chain=out_chain, copy_method=copy_method
         )
         return ChainFilterStatistics(
