@@ -122,6 +122,9 @@ def read_structure(file: Path) -> gemmi.Structure:
 def bcif2structure(bcif_file: Path) -> gemmi.Structure:
     """Read a binary CIF (bcif) file and return a gemmi Structure object.
 
+    This is slower than other formats because gemmi does not support reading bcif files directly.
+    So we convert it to a cif string first using mmcif package and then read the cif string using gemmi.
+
     Args:
         bcif_file: Path to the binary CIF file.
 
@@ -142,6 +145,9 @@ def bcif2structure(bcif_file: Path) -> gemmi.Structure:
 def structure2bcif(structure: gemmi.Structure, bcif_file: Path):
     """Write a gemmi Structure object to a binary CIF (bcif) file.
 
+    This is slower than other formats because gemmi does not support writing bcif files directly.
+    So we convert it to a cif string first using gemmi and then convert cif to bcif using mmcif package.
+
     Args:
         structure: The gemmi Structure object to write.
         bcif_file: Path to the output binary CIF file.
@@ -154,7 +160,6 @@ def structure2bcif(structure: gemmi.Structure, bcif_file: Path):
     dict_api = _initialize_dictionary_api(containers)
     writer = BinaryCifWriter(dictionaryApi=dict_api)
     writer.serialize(str(bcif_file), containers)
-
 
 def _initialize_dictionary_api(containers) -> DictionaryApi:
     dict_local = user_cache_root_dir() / "mmcif_pdbx_v5_next.dic"
