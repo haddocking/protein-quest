@@ -727,6 +727,15 @@ wheels = [
 ]
 
 [[package]]
+name = "future"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a7/b2/4140c69c6a66432916b26158687e821ba631a4c9273c474343badf84d3ba/future-1.0.0.tar.gz", hash = "sha256:bd2968309307861edae1458a4f8a4f3598c03be43b97521076aebf5d94c07b05", size = 1228490, upload-time = "2024-02-21T11:52:38.461Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/da/71/ae30dadffc90b9006d77af76b393cb9dfbfc9629f339fc1574a1c52e6806/future-1.0.0-py3-none-any.whl", hash = "sha256:929292d34f5872e70396626ef385ec22355a1fae8ad29e1a734c3e43f9fbc216", size = 491326, upload-time = "2024-02-21T11:52:35.956Z" },
+]
+
+[[package]]
 name = "gemmi"
 version = "0.7.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1415,6 +1424,24 @@ wheels = [
 ]
 
 [[package]]
+name = "mmcif"
+version = "0.92.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "future" },
+    { name = "msgpack" },
+    { name = "requests" },
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e5/11/c1dd3b992b8cab9bb539a6dbde9746d6c6470908d8d618810282d7b5a41c/mmcif-0.92.0.tar.gz", hash = "sha256:891879040fd63d417bd3752b26d19b3b8c2809fc5a48669346a7c60c7e319e1b", size = 1675875, upload-time = "2025-05-29T09:51:15.119Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/31/d6/09ae93505c5d0c3d3664df14bfe5ae7ba6eea66231f87631f5cc2958219f/mmcif-0.92.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:12070c1965fc08deec817b6069a14085bbd582ee97a9eec0556e99e8305f462e", size = 555364, upload-time = "2025-05-29T09:51:05.134Z" },
+    { url = "https://files.pythonhosted.org/packages/3b/84/e31a0e532916705c37c7bcc929c106eb7dd56ff168cf18e2b618cbc7b275/mmcif-0.92.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:6a278f0b0b8c8bd848f56d0b6def930fdf41621d6a7ab468d335e9657bb6ab6e", size = 504359, upload-time = "2025-05-29T09:51:06.285Z" },
+    { url = "https://files.pythonhosted.org/packages/73/57/3be6763c1dda0da6d2cf71c3e196754543ff526d69064f861bbd28bc443a/mmcif-0.92.0-cp313-cp313-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:2c1f88939803a882930fe7473b1a3c62f492403839f628ae1288cdb3dd0d58d1", size = 637459, upload-time = "2025-05-29T10:01:26.695Z" },
+    { url = "https://files.pythonhosted.org/packages/01/b0/b5427faf2b2f1690be5dec169506570ed24b0a0d89a6426faead60a51515/mmcif-0.92.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1dd815ad57fa2d595a499bda75ceb3b468f7e6a9db7c3e02aaf8b1cfe11a5a20", size = 620268, upload-time = "2025-05-29T10:01:28.148Z" },
+]
+
+[[package]]
 name = "more-itertools"
 version = "10.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1826,6 +1853,7 @@ dependencies = [
     { name = "dask" },
     { name = "distributed" },
     { name = "gemmi" },
+    { name = "mmcif" },
     { name = "platformdirs" },
     { name = "psutil" },
     { name = "rich" },
@@ -1886,6 +1914,7 @@ requires-dist = [
     { name = "distributed", specifier = ">=2025.5.1" },
     { name = "fastmcp", marker = "extra == 'mcp'", specifier = ">=2.11.3" },
     { name = "gemmi", specifier = ">=0.7.3" },
+    { name = "mmcif", specifier = ">=0.92.0" },
     { name = "platformdirs", specifier = ">=4.3.8" },
     { name = "psutil", specifier = ">=7.0.0" },
     { name = "pydantic", marker = "extra == 'mcp'", specifier = ">=2.11.7" },

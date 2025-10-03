@@ -125,14 +125,14 @@ async def fetch_summary(
     fn: AsyncPath | None = None
     if save_dir is not None:
         fn = AsyncPath(save_dir / f"{qualifier}.json")
+        if await fn.exists():
+            logger.debug(f"File {fn} already exists. Skipping download from {url}.")
+            raw_data = await fn.read_bytes()
+            return converter.loads(raw_data, list[EntrySummary])
         cached_file = await cacher.copy_from_cache(Path(fn))
         if cached_file is not None:
             logger.debug(f"Using cached file {cached_file} for summary of {qualifier}.")
             raw_data = await AsyncPath(cached_file).read_bytes()
-            return converter.loads(raw_data, list[EntrySummary])
-        if await fn.exists():
-            logger.debug(f"File {fn} already exists. Skipping download from {url}.")
-            raw_data = await fn.read_bytes()
             return converter.loads(raw_data, list[EntrySummary])
     async with semaphore, session.get(url) as response:
         response.raise_for_status()
@@ -170,6 +170,7 @@ async def fetch_many_async(
     what: set[DownloadableFormat],
     max_parallel_downloads: int = 5,
     cacher: Cacher | None = None,
+    gzip_files: bool = False,
 ) -> AsyncGenerator[AlphaFoldEntry]:
     """Asynchronously fetches summaries and files from
     [AlphaFold Protein Structure Database](https://alphafold.ebi.ac.uk/).
@@ -180,6 +181,7 @@ async def fetch_many_async(
         what: A set of formats to download.
         max_parallel_downloads: The maximum number of parallel downloads.
         cacher: A cacher to use for caching the fetched files. Only used if summary is in what set.
+        gzip_files: Whether to gzip the downloaded files.
 
     Yields:
         A dataclass containing the summary, pdb file, and pae file.
@@ -193,7 +195,7 @@ async def fetch_many_async(
         )
     ]
 
-    files = files_to_download(what, summaries)
+    files = files_to_download(what, summaries, gzip_files)
 
     await retrieve_files(
         files,
@@ -201,36 +203,40 @@ async def fetch_many_async(
         desc="Downloading AlphaFold files",
         max_parallel_downloads=max_parallel_downloads,
         cacher=cacher,
+        gzip_files=gzip_files,
     )
+    gzext = ".gz" if gzip_files else ""
     for summary in summaries:
         yield AlphaFoldEntry(
             uniprot_acc=summary.uniprotAccession,
             summary=summary,
             summary_file=save_dir / f"{summary.uniprotAccession}.json" if save_dir_for_summaries is not None else None,
-            bcif_file=save_dir / summary.bcifUrl.name if "bcif" in what else None,
-            cif_file=save_dir / summary.cifUrl.name if "cif" in what else None,
-            pdb_file=save_dir / summary.pdbUrl.name if "pdb" in what else None,
-            pae_image_file=save_dir / summary.paeImageUrl.name if "paeImage" in what else None,
-            pae_doc_file=save_dir / summary.paeDocUrl.name if "paeDoc" in what else None,
+            bcif_file=save_dir / (summary.bcifUrl.name + gzext) if "bcif" in what else None,
+            cif_file=save_dir / (summary.cifUrl.name + gzext) if "cif" in what else None,
+            pdb_file=save_dir / (summary.pdbUrl.name + gzext) if "pdb" in what else None,
+            pae_image_file=save_dir / (summary.paeImageUrl.name + gzext) if "paeImage" in what else None,
+            pae_doc_file=save_dir / (summary.paeDocUrl.name + gzext) if "paeDoc" in what else None,
             am_annotations_file=(
-                save_dir / summary.amAnnotationsUrl.name
+                save_dir / (summary.amAnnotationsUrl.name + gzext)
                 if "amAnnotations" in what and summary.amAnnotationsUrl
                 else None
             ),
             am_annotations_hg19_file=(
-                save_dir / summary.amAnnotationsHg19Url.name
+                save_dir / (summary.amAnnotationsHg19Url.name + gzext)
                 if "amAnnotationsHg19" in what and summary.amAnnotationsHg19Url
                 else None
             ),
             am_annotations_hg38_file=(
-                save_dir / summary.amAnnotationsHg38Url.name
+                save_dir / (summary.amAnnotationsHg38Url.name + gzext)
                 if "amAnnotationsHg38" in what and summary.amAnnotationsHg38Url
                 else None
             ),
         )
 
 
-def files_to_download(what: set[DownloadableFormat], summaries: Iterable[EntrySummary]) -> set[tuple[URL, str]]:
+def files_to_download(
+    what: set[DownloadableFormat], summaries: Iterable[EntrySummary], gzip_files: bool
+) -> set[tuple[URL, str]]:
     if not (set(what) <= downloadable_formats):
         msg = (
             f"Invalid format(s) specified: {set(what) - downloadable_formats}. "
@@ -238,7 +244,7 @@ def files_to_download(what: set[DownloadableFormat], summaries: Iterable[EntrySu
         )
         raise ValueError(msg)
 
-    files: set[tuple[URL, str]] = set()
+    url_filename_pairs: set[tuple[URL, str]] = set()
     for summary in summaries:
         for fmt in what:
             if fmt == "summary":
@@ -248,9 +254,10 @@ def files_to_download(what: set[DownloadableFormat], summaries: Iterable[EntrySu
             if url is None:
                 logger.warning(f"Summary {summary.uniprotAccession} does not have a URL for format '{fmt}'. Skipping.")
                 continue
-            file = (url, url.name)
-            files.add(file)
-    return files
+            fn = url.name + (".gz" if gzip_files else "")
+            url_filename_pair = (url, fn)
+            url_filename_pairs.add(url_filename_pair)
+    return url_filename_pairs
 
 
 def fetch_many(
@@ -259,6 +266,7 @@ def fetch_many(
     what: set[DownloadableFormat],
     max_parallel_downloads: int = 5,
     cacher: Cacher | None = None,
+    gzip_files: bool = False,
 ) -> list[AlphaFoldEntry]:
     """Synchronously fetches summaries and pdb and pae files from AlphaFold Protein Structure Database.
 
@@ -268,6 +276,7 @@ def fetch_many(
         what: A set of formats to download.
         max_parallel_downloads: The maximum number of parallel downloads.
         cacher: A cacher to use for caching the fetched files. Only used if summary is in what set.
+        gzip_files: Whether to gzip the downloaded files.
 
     Returns:
         A list of AlphaFoldEntry dataclasses containing the summary, pdb file, and pae file.
@@ -277,7 +286,7 @@ def fetch_many(
         return [
             entry
             async for entry in fetch_many_async(
-                ids, save_dir, what, max_parallel_downloads=max_parallel_downloads, cacher=cacher
+                ids, save_dir, what, max_parallel_downloads=max_parallel_downloads, cacher=cacher, gzip_files=gzip_files
             )
         ]
 

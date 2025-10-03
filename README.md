@@ -40,6 +40,7 @@ graph TB;
     fetchad -->|mmcif_files| confidencefilter{{Filter out low confidence}}
     confidencefilter --> |mmcif_files| ssfilter{{Filter on secondary structure}}
     residuefilter --> |mmcif_files| ssfilter
+    ssfilter -. mmcif_files .-> convert2cif([Convert to cif])
     classDef dashedBorder stroke-dasharray: 5 5;
     goterm:::dashedBorder
     taxonomy:::dashedBorder
@@ -47,6 +48,7 @@ graph TB;
     fetchemdb:::dashedBorder
     searchintactionpartners:::dashedBorder
     searchcomplexes:::dashedBorder
+    convert2cif:::dashedBorder
 ```
 
 (Dotted nodes and edges are side-quests.)
@@ -209,6 +211,14 @@ The `complexes.csv` looks like
 ```csv
 query_protein,complex_id,complex_url,complex_title,members
 Q05471,CPX-2122,https://www.ebi.ac.uk/complexportal/complex/CPX-2122,Swr1 chromatin remodelling complex,P31376;P35817;P38326;P53201;P53930;P60010;P80428;Q03388;Q03433;Q03940;Q05471;Q06707;Q12464;Q12509
+```
+
+### Convert structure files to .cif format
+
+Some tools (for example [powerfit](https://github.com/haddocking/powerfit)) only work with `.cif` files and not `*.cif.gz` or `*.bcif` files.
+
+```shell
+protein-quest convert --output-dir ./filtered-cif ./filtered-ss
 ```
 
 ##  Model Context Protocol (MCP) server
