@@ -6,6 +6,7 @@ from collections.abc import Generator, Iterable
 from datetime import UTC, datetime
 from io import StringIO
 from pathlib import Path
+from urllib.request import urlopen
 
 import gemmi
 from mmcif.api.DictionaryApi import DictionaryApi
@@ -150,14 +151,20 @@ def structure2bcif(structure: gemmi.Structure, bcif_file: Path):
     with StringIO(doc.as_string()) as sio:
         reader = PdbxReader(sio)
         reader.read(containers)
-    dict_url = "https://raw.githubusercontent.com/wwpdb-dictionaries/mmcif_pdbx/master/dist/mmcif_pdbx_v5_next.dic"
-    dict_local = user_cache_root_dir() / "mmcif_pdbx_v5_next.dic"
-    if not dict_local.exists():
-        msg = f"TODO download dictionary from {dict_url} and save to {dict_local}"
-        raise NotImplementedError(msg)
-    dict_api = DictionaryApi(containerList=containers, consolidate=True)
+    dict_api = _initialize_dictionary_api(containers)
     writer = BinaryCifWriter(dictionaryApi=dict_api)
     writer.serialize(str(bcif_file), containers)
+
+
+def _initialize_dictionary_api(containers) -> DictionaryApi:
+    dict_local = user_cache_root_dir() / "mmcif_pdbx_v5_next.dic"
+    if not dict_local.exists():
+        dict_url = "https://raw.githubusercontent.com/wwpdb-dictionaries/mmcif_pdbx/master/dist/mmcif_pdbx_v5_next.dic"
+        logger.info("Downloading mmcif dictionary from %s to %s", dict_url, dict_local)
+        dict_local.parent.mkdir(parents=True, exist_ok=True)
+        with dict_local.open("wb") as f, urlopen(dict_url) as response:  # noqa: S310 url is hardcoded and https
+            f.write(response.read())
+    return DictionaryApi(containerList=containers, consolidate=True)
 
 
 def _split_name_and_extension(name: str) -> tuple[str, str]:
