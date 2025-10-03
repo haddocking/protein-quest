@@ -39,7 +39,7 @@ def write_structure(structure: gemmi.Structure, path: Path):
         structure: The gemmi structure to write.
         path: The file path to write the structure to.
             The format depends on the file extension.
-            See [StructureFileExtensions][protein_quest.pdbe.io.StructureFileExtensions]
+            See [StructureFileExtensions][protein_quest.io.StructureFileExtensions]
             for supported extensions.
 
     Raises:
@@ -74,7 +74,7 @@ def read_structure(file: Path) -> gemmi.Structure:
 
     Args:
         file: Path to the input structure file.
-            See [StructureFileExtensions][protein_quest.pdbe.io.StructureFileExtensions]
+            See [StructureFileExtensions][protein_quest.io.StructureFileExtensions]
             for supported extensions.
 
     Returns:
@@ -199,7 +199,7 @@ def convert_to_cif_file(input_file: Path, output_dir: Path, copy_method: CopyMet
 
     Args:
         input_file: The structure file to convert.
-            See [StructureFileExtensions][protein_quest.pdbe.io.StructureFileExtensions]
+            See [StructureFileExtensions][protein_quest.io.StructureFileExtensions]
             for supported extensions.
         output_dir: Directory to save the converted .cif file.
         copy_method: How to copy when no changes are needed to output file.
@@ -265,7 +265,7 @@ def split_name_and_extension(name: str) -> tuple[str, str]:
 def locate_structure_file(root: Path, pdb_id: str) -> Path:
     """Locate a structure file for a given PDB ID in the specified directory.
 
-    Uses [StructureFileExtensions][protein_quest.pdbe.io.StructureFileExtensions] as potential extensions.
+    Uses [StructureFileExtensions][protein_quest.io.StructureFileExtensions] as potential extensions.
     Also tries different casing of the PDB ID.
 
     Args:
@@ -295,7 +295,7 @@ def locate_structure_file(root: Path, pdb_id: str) -> Path:
 def glob_structure_files(input_dir: Path) -> Generator[Path]:
     """Glob for structure files in a directory.
 
-    Uses [StructureFileExtensions][protein_quest.pdbe.io.StructureFileExtensions] as valid extensions.
+    Uses [StructureFileExtensions][protein_quest.io.StructureFileExtensions] as valid extensions.
 
     Args:
         input_dir: The input directory to search for structure files.

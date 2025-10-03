@@ -52,7 +52,7 @@ def find_chain_in_structure(structure: gemmi.Structure, wanted_chain: str) -> ge
     return None
 
 
-def nr_residues_in_chain(file: Path | str, chain: str = "A") -> int:
+def nr_residues_in_chain(file: Path, chain: str = "A") -> int:
     """Returns the number of residues in a specific chain from a structure file.
 
     Args:
@@ -62,7 +62,7 @@ def nr_residues_in_chain(file: Path | str, chain: str = "A") -> int:
     Returns:
         The number of residues in the specified chain.
     """
-    structure = gemmi.read_structure(str(file))
+    structure = read_structure(file)
     gchain = find_chain_in_structure(structure, chain)
     if gchain is None:
         logger.warning("Chain %s not found in %s. Returning 0.", chain, file)

@@ -218,7 +218,7 @@ Q05471,CPX-2122,https://www.ebi.ac.uk/complexportal/complex/CPX-2122,Swr1 chroma
 Some tools (for example [powerfit](https://github.com/haddocking/powerfit)) only work with `.cif` files and not `*.cif.gz` or `*.bcif` files.
 
 ```shell
-protein-quest convert ./filtered-ss ./filtered-cif
+protein-quest convert --output-dir ./filtered-cif ./filtered-ss
 ```
 
 ##  Model Context Protocol (MCP) server

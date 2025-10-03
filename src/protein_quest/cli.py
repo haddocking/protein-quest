@@ -614,7 +614,7 @@ def _add_convert_subcommands(subparsers: argparse._SubParsersAction):
         help=f"Directory with structure files. Supported extensions are {valid_structure_file_extensions}",
     )
     parser.add_argument(
-        "--output_dir",
+        "--output-dir",
         type=Path,
         help=dedent("""\
             Directory to write converted structure files. If not given, files are written to `input_dir`.

@@ -205,28 +205,29 @@ async def fetch_many_async(
         cacher=cacher,
         gzip_files=gzip_files,
     )
+    gzext = ".gz" if gzip_files else ""
     for summary in summaries:
         yield AlphaFoldEntry(
             uniprot_acc=summary.uniprotAccession,
             summary=summary,
             summary_file=save_dir / f"{summary.uniprotAccession}.json" if save_dir_for_summaries is not None else None,
-            bcif_file=save_dir / summary.bcifUrl.name if "bcif" in what else None,
-            cif_file=save_dir / summary.cifUrl.name if "cif" in what else None,
-            pdb_file=save_dir / summary.pdbUrl.name if "pdb" in what else None,
-            pae_image_file=save_dir / summary.paeImageUrl.name if "paeImage" in what else None,
-            pae_doc_file=save_dir / summary.paeDocUrl.name if "paeDoc" in what else None,
+            bcif_file=save_dir / (summary.bcifUrl.name + gzext) if "bcif" in what else None,
+            cif_file=save_dir / (summary.cifUrl.name + gzext) if "cif" in what else None,
+            pdb_file=save_dir / (summary.pdbUrl.name + gzext) if "pdb" in what else None,
+            pae_image_file=save_dir / (summary.paeImageUrl.name + gzext) if "paeImage" in what else None,
+            pae_doc_file=save_dir / (summary.paeDocUrl.name + gzext) if "paeDoc" in what else None,
             am_annotations_file=(
-                save_dir / summary.amAnnotationsUrl.name
+                save_dir / (summary.amAnnotationsUrl.name + gzext)
                 if "amAnnotations" in what and summary.amAnnotationsUrl
                 else None
             ),
             am_annotations_hg19_file=(
-                save_dir / summary.amAnnotationsHg19Url.name
+                save_dir / (summary.amAnnotationsHg19Url.name + gzext)
                 if "amAnnotationsHg19" in what and summary.amAnnotationsHg19Url
                 else None
             ),
             am_annotations_hg38_file=(
-                save_dir / summary.amAnnotationsHg38Url.name
+                save_dir / (summary.amAnnotationsHg38Url.name + gzext)
                 if "amAnnotationsHg38" in what and summary.amAnnotationsHg38Url
                 else None
             ),
