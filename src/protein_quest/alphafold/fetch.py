@@ -125,14 +125,14 @@ async def fetch_summary(
     fn: AsyncPath | None = None
     if save_dir is not None:
         fn = AsyncPath(save_dir / f"{qualifier}.json")
+        if await fn.exists():
+            logger.debug(f"File {fn} already exists. Skipping download from {url}.")
+            raw_data = await fn.read_bytes()
+            return converter.loads(raw_data, list[EntrySummary])
         cached_file = await cacher.copy_from_cache(Path(fn))
         if cached_file is not None:
             logger.debug(f"Using cached file {cached_file} for summary of {qualifier}.")
             raw_data = await AsyncPath(cached_file).read_bytes()
-            return converter.loads(raw_data, list[EntrySummary])
-        if await fn.exists():
-            logger.debug(f"File {fn} already exists. Skipping download from {url}.")
-            raw_data = await fn.read_bytes()
             return converter.loads(raw_data, list[EntrySummary])
     async with semaphore, session.get(url) as response:
         response.raise_for_status()
