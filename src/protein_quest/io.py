@@ -161,9 +161,13 @@ def gunzip_file(gz_file: Path, output_file: Path | None = None, keep_original: b
 
     Returns:
         Path to the unzipped file.
+
+    Raises:
+        ValueError: If output_file is None and gz_file does not end with .gz.
     """
-    if not gz_file.name.endswith(".gz"):
-        return gz_file
+    if output_file is None and not gz_file.name.endswith(".gz"):
+        msg = f"If output_file is not provided, {gz_file} must end with .gz"
+        raise ValueError(msg)
     out_file = output_file or gz_file.with_suffix("")
     with gzip.open(gz_file, "rb") as f_in, out_file.open("wb") as f_out:
         shutil.copyfileobj(f_in, f_out)

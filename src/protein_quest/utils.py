@@ -305,6 +305,7 @@ async def retrieve_files(
 class InvalidContentEncodingError(aiohttp.ClientResponseError):
     """Content encoding is invalid."""
 
+
 async def _retrieve_file(
     session: RetryClient,
     url: URL | str,
