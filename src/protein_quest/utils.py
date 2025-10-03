@@ -265,6 +265,7 @@ async def retrieve_files(
     desc: str = "Downloading files",
     cacher: Cacher | None = None,
     chunk_size: int = 524288,  # 512 KiB
+    gzip_files: bool = False,
 ) -> list[Path]:
     """Retrieve files from a list of URLs and save them to a directory.
 
@@ -277,6 +278,7 @@ async def retrieve_files(
         desc: Description for the progress bar.
         cacher: An optional cacher to use for caching files.
         chunk_size: The size of each chunk to read from the response.
+        gzip_files: Whether to gzip the downloaded files.
 
     Returns:
         A list of paths to the downloaded files.
@@ -292,12 +294,16 @@ async def retrieve_files(
                 semaphore=semaphore,
                 cacher=cacher,
                 chunk_size=chunk_size,
+                gzip_files=gzip_files,
             )
             for url, filename in urls
         ]
         files: list[Path] = await tqdm.gather(*tasks, desc=desc)
         return files
 
+
+class InvalidContentEncodingError(aiohttp.ClientResponseError):
+    """Content encoding is invalid."""
 
 async def _retrieve_file(
     session: RetryClient,
@@ -306,6 +312,7 @@ async def _retrieve_file(
     semaphore: asyncio.Semaphore,
     cacher: Cacher | None = None,
     chunk_size: int = 524288,  # 512 KiB
+    gzip_files: bool = False,
 ) -> Path:
     """Retrieve a single file from a URL and save it to a specified path.
 
@@ -316,6 +323,7 @@ async def _retrieve_file(
         semaphore: A semaphore to limit the number of concurrent downloads.
         cacher: An optional cacher to use for caching files.
         chunk_size: The size of each chunk to read from the response.
+        gzip_files: Whether to gzip the downloaded file.
 
     Returns:
         The path to the saved file.
@@ -330,12 +338,27 @@ async def _retrieve_file(
         logger.debug(f"File {save_path} was copied from cache {cached_file}. Skipping download from {url}.")
         return save_path
 
+    # Alphafold server and many other web servers can return gzipped responses,
+    # when we want to save as *.gz, we use raw stream
+    # otherwise aiohttp will decompress it automatically for us.
+    auto_decompress = not gzip_files
+    headers = {"Accept-Encoding": "gzip"}
     async with (
         semaphore,
-        session.get(url) as resp,
+        session.get(url, headers=headers, auto_decompress=auto_decompress) as resp,
     ):
         resp.raise_for_status()
-        await cacher.write_iter(save_path, resp.content.iter_chunked(chunk_size))
+        if gzip_files and resp.headers.get("Content-Encoding") != "gzip":
+            msg = f"Server did not send gzip encoded content for {url}, can not save as gzipped file."
+            raise InvalidContentEncodingError(
+                request_info=resp.request_info,
+                history=resp.history,
+                status=415,
+                message=msg,
+                headers=resp.headers,
+            )
+        iterator = resp.content.iter_chunked(chunk_size)
+        await cacher.write_iter(save_path, iterator)
     return save_path
 
 

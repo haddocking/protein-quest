@@ -383,6 +383,11 @@ def _add_retrieve_alphafold_parser(subparsers: argparse._SubParsersAction):
             Default is 'summary' and 'cif'."""),
     )
     parser.add_argument(
+        "--gzip-files",
+        action="store_true",
+        help="Whether to gzip the downloaded files. Excludes summary files, they are always uncompressed.",
+    )
+    parser.add_argument(
         "--max-parallel-downloads",
         type=int,
         default=5,
@@ -815,6 +820,7 @@ def _handle_retrieve_alphafold(args):
     alphafold_csv = args.alphafold_csv
     max_parallel_downloads = args.max_parallel_downloads
     cacher = _initialize_cacher(args)
+    gzip_files = args.gzip_files
 
     if what_formats is None:
         what_formats = {"summary", "cif"}
@@ -825,7 +831,12 @@ def _handle_retrieve_alphafold(args):
     validated_what: set[DownloadableFormat] = structure(what_formats, set[DownloadableFormat])
     rprint(f"Retrieving {len(af_ids)} AlphaFold entries with formats {validated_what}")
     afs = af_fetch(
-        af_ids, download_dir, what=validated_what, max_parallel_downloads=max_parallel_downloads, cacher=cacher
+        af_ids,
+        download_dir,
+        what=validated_what,
+        max_parallel_downloads=max_parallel_downloads,
+        cacher=cacher,
+        gzip_files=gzip_files,
     )
     total_nr_files = sum(af.nr_of_files() for af in afs)
     rprint(f"Retrieved {total_nr_files} AlphaFold files and {len(afs)} summaries, written to {download_dir}")

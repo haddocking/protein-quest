@@ -170,6 +170,7 @@ async def fetch_many_async(
     what: set[DownloadableFormat],
     max_parallel_downloads: int = 5,
     cacher: Cacher | None = None,
+    gzip_files: bool = False,
 ) -> AsyncGenerator[AlphaFoldEntry]:
     """Asynchronously fetches summaries and files from
     [AlphaFold Protein Structure Database](https://alphafold.ebi.ac.uk/).
@@ -180,6 +181,7 @@ async def fetch_many_async(
         what: A set of formats to download.
         max_parallel_downloads: The maximum number of parallel downloads.
         cacher: A cacher to use for caching the fetched files. Only used if summary is in what set.
+        gzip_files: Whether to gzip the downloaded files.
 
     Yields:
         A dataclass containing the summary, pdb file, and pae file.
@@ -193,7 +195,7 @@ async def fetch_many_async(
         )
     ]
 
-    files = files_to_download(what, summaries)
+    files = files_to_download(what, summaries, gzip_files)
 
     await retrieve_files(
         files,
@@ -201,6 +203,7 @@ async def fetch_many_async(
         desc="Downloading AlphaFold files",
         max_parallel_downloads=max_parallel_downloads,
         cacher=cacher,
+        gzip_files=gzip_files,
     )
     for summary in summaries:
         yield AlphaFoldEntry(
@@ -230,7 +233,9 @@ async def fetch_many_async(
         )
 
 
-def files_to_download(what: set[DownloadableFormat], summaries: Iterable[EntrySummary]) -> set[tuple[URL, str]]:
+def files_to_download(
+    what: set[DownloadableFormat], summaries: Iterable[EntrySummary], gzip_files: bool
+) -> set[tuple[URL, str]]:
     if not (set(what) <= downloadable_formats):
         msg = (
             f"Invalid format(s) specified: {set(what) - downloadable_formats}. "
@@ -238,7 +243,7 @@ def files_to_download(what: set[DownloadableFormat], summaries: Iterable[EntrySu
         )
         raise ValueError(msg)
 
-    files: set[tuple[URL, str]] = set()
+    url_filename_pairs: set[tuple[URL, str]] = set()
     for summary in summaries:
         for fmt in what:
             if fmt == "summary":
@@ -248,9 +253,10 @@ def files_to_download(what: set[DownloadableFormat], summaries: Iterable[EntrySu
             if url is None:
                 logger.warning(f"Summary {summary.uniprotAccession} does not have a URL for format '{fmt}'. Skipping.")
                 continue
-            file = (url, url.name)
-            files.add(file)
-    return files
+            fn = url.name + (".gz" if gzip_files else "")
+            url_filename_pair = (url, fn)
+            url_filename_pairs.add(url_filename_pair)
+    return url_filename_pairs
 
 
 def fetch_many(
@@ -259,6 +265,7 @@ def fetch_many(
     what: set[DownloadableFormat],
     max_parallel_downloads: int = 5,
     cacher: Cacher | None = None,
+    gzip_files: bool = False,
 ) -> list[AlphaFoldEntry]:
     """Synchronously fetches summaries and pdb and pae files from AlphaFold Protein Structure Database.
 
@@ -268,6 +275,7 @@ def fetch_many(
         what: A set of formats to download.
         max_parallel_downloads: The maximum number of parallel downloads.
         cacher: A cacher to use for caching the fetched files. Only used if summary is in what set.
+        gzip_files: Whether to gzip the downloaded files.
 
     Returns:
         A list of AlphaFoldEntry dataclasses containing the summary, pdb file, and pae file.
@@ -277,7 +285,7 @@ def fetch_many(
         return [
             entry
             async for entry in fetch_many_async(
-                ids, save_dir, what, max_parallel_downloads=max_parallel_downloads, cacher=cacher
+                ids, save_dir, what, max_parallel_downloads=max_parallel_downloads, cacher=cacher, gzip_files=gzip_files
             )
         ]
 
