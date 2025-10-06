@@ -11,20 +11,33 @@ from protein_quest.io import (
     read_structure,
     split_name_and_extension,
     structure2bcif,
+    valid_structure_file_extensions,
     write_structure,
 )
 
 
-@pytest.mark.parametrize("extension", [".pdb", ".pdb.gz", ".cif", ".cif.gz", ".bcif", ".bcif.gz"])
+def test_valid_structure_file_extensions():
+    assert valid_structure_file_extensions == [
+        ".cif",
+        ".cif.gz",
+        ".bcif",
+        ".bcif.gz",
+        ".pdb",
+        ".pdb.gz",
+        ".ent",
+        ".ent.gz",
+    ]
+
+
+@pytest.mark.parametrize("extension", valid_structure_file_extensions)
 def test_write_structure(sample2_cif: Path, tmp_path: Path, extension: str):
     structure = read_structure(sample2_cif)
     output_file = tmp_path / f"bla{extension}"
 
     write_structure(structure, output_file)
 
-    found_files = list(glob_structure_files(tmp_path))
-    assert len(found_files) == 1
-    assert found_files[0].name == output_file.name
+    assert output_file.exists()
+    assert output_file.stat().st_size > 0
 
 
 def test_write_structure_invalid_extension(sample2_cif: Path, tmp_path: Path):
@@ -35,7 +48,7 @@ def test_write_structure_invalid_extension(sample2_cif: Path, tmp_path: Path):
         write_structure(structure, output_file)
 
 
-@pytest.mark.parametrize("extension", [".pdb", ".pdb.gz", ".cif", ".cif.gz", ".bcif", ".bcif.gz"])
+@pytest.mark.parametrize("extension", valid_structure_file_extensions)
 def test_read_structure(sample2_cif: Path, tmp_path: Path, extension: str):
     # We only have cif as fixture, so convert to other formats first
     structure_from_cif = read_structure(sample2_cif)
@@ -44,7 +57,7 @@ def test_read_structure(sample2_cif: Path, tmp_path: Path, extension: str):
 
     structure_from_extension = read_structure(thefile)
 
-    assert structure_from_extension.make_minimal_pdb() == structure_from_cif.make_minimal_pdb()
+    assert structure_from_extension.make_pdb_string() == structure_from_cif.make_pdb_string()
 
 
 @pytest.mark.parametrize(
@@ -194,3 +207,24 @@ def test_split_name_and_extension_without_extension(tmp_path: Path):
 
     assert filename == "filename"
     assert extension == ""
+
+
+def test_glob_structure_files(tmp_path: Path):
+    written_files = set()
+    for ext in valid_structure_file_extensions:
+        file = tmp_path / f"file{ext}"
+        file.write_text("some text")
+        written_files.add(file)
+
+    non_structure_file = tmp_path / "file.txt"
+    non_structure_file.write_text("some text")
+    nested_structure_file = tmp_path / "nested" / "file.pdb"
+    nested_structure_file.parent.mkdir()
+    nested_structure_file.write_text("some text")
+
+    found_files = set(glob_structure_files(tmp_path))
+
+    assert found_files
+    assert found_files == written_files
+    assert non_structure_file not in found_files
+    assert nested_structure_file not in found_files

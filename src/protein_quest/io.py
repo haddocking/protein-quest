@@ -338,6 +338,7 @@ def glob_structure_files(input_dir: Path) -> Generator[Path]:
     """Glob for structure files in a directory.
 
     Uses [StructureFileExtensions][protein_quest.io.StructureFileExtensions] as valid extensions.
+    Does not search recursively.
 
     Args:
         input_dir: The input directory to search for structure files.
