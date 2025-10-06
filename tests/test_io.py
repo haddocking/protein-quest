@@ -15,7 +15,7 @@ from protein_quest.io import (
 )
 
 
-@pytest.mark.parametrize("extension", [".pdb", ".pdb.gz", ".cif", ".cif.gz", ".bcif"])
+@pytest.mark.parametrize("extension", [".pdb", ".pdb.gz", ".cif", ".cif.gz", ".bcif", ".bcif.gz"])
 def test_write_structure(sample2_cif: Path, tmp_path: Path, extension: str):
     structure = read_structure(sample2_cif)
     output_file = tmp_path / f"bla{extension}"
@@ -35,7 +35,7 @@ def test_write_structure_invalid_extension(sample2_cif: Path, tmp_path: Path):
         write_structure(structure, output_file)
 
 
-@pytest.mark.parametrize("extension", [".pdb", ".pdb.gz", ".cif", ".cif.gz", ".bcif"])
+@pytest.mark.parametrize("extension", [".pdb", ".pdb.gz", ".cif", ".cif.gz", ".bcif", ".bcif.gz"])
 def test_read_structure(sample2_cif: Path, tmp_path: Path, extension: str):
     # We only have cif as fixture, so convert to other formats first
     structure_from_cif = read_structure(sample2_cif)
@@ -58,6 +58,7 @@ def test_read_structure(sample2_cif: Path, tmp_path: Path, extension: str):
         ("2y29", "pdb2y29.ent"),
         ("2y29", "pdb2y29.ent.gz"),
         ("2y29", "2y29.bcif"),
+        ("2y29", "2y29.bcif.gz"),
         # cases
         ("1KVm", "1KVm.cif"),
         ("1KVm", "1kvm.cif"),

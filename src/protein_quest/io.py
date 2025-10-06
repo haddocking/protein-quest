@@ -3,6 +3,7 @@
 import gzip
 import logging
 import shutil
+import tempfile
 from collections.abc import Generator, Iterable
 from io import StringIO
 from pathlib import Path
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 gemmi.set_leak_warnings(False)
 
 
-StructureFileExtensions = Literal[".pdb", ".pdb.gz", ".ent", ".ent.gz", ".cif", ".cif.gz", ".bcif"]
+StructureFileExtensions = Literal[".pdb", ".pdb.gz", ".ent", ".ent.gz", ".cif", ".cif.gz", ".bcif", ".bcif.gz"]
 """Type of supported structure file extensions."""
 valid_structure_file_extensions: set[str] = set(get_args(StructureFileExtensions))
 """Set of valid structure file extensions."""
@@ -64,6 +65,8 @@ def write_structure(structure: gemmi.Structure, path: Path):
             f.write(cif_str)
     elif path.name.endswith(".bcif"):
         structure2bcif(structure, path)
+    elif path.name.endswith(".bcif.gz"):
+        structure2bcifgz(structure, path)
     else:
         msg = f"Unsupported file extension in {path.name}. Supported extensions are: {valid_structure_file_extensions}"
         raise ValueError(msg)
@@ -82,6 +85,8 @@ def read_structure(file: Path) -> gemmi.Structure:
     """
     if file.name.endswith(".bcif"):
         return bcif2structure(file)
+    if file.name.endswith(".bcif.gz"):
+        return bcifgz2structure(file)
     return gemmi.read_structure(str(file))
 
 
@@ -100,6 +105,25 @@ def bcif2cif(bcif_file: Path) -> str:
     writer = PdbxWriter(capture)
     writer.write(container)
     return capture.getvalue()
+
+
+def bcifgz2structure(bcif_gz_file: Path) -> gemmi.Structure:
+    """Read a binary CIF (bcif) gzipped file and return a gemmi Structure object.
+
+    This is slower than other formats because gemmi does not support reading bcif files directly.
+    So we first gunzip the file to a temporary location, convert it to a cif string using mmcif package,
+    and then read the cif string using gemmi.
+
+    Args:
+        bcif_gz_file: Path to the binary CIF gzipped file.
+
+    Returns:
+        A gemmi Structure object representing the structure in the bcif.gz file.
+    """
+    with tempfile.NamedTemporaryFile(suffix=".bcif", delete=True) as tmp_bcif:
+        tmp_path = Path(tmp_bcif.name)
+        gunzip_file(bcif_gz_file, output_file=tmp_path, keep_original=True)
+        return bcif2structure(tmp_path)
 
 
 def bcif2structure(bcif_file: Path) -> gemmi.Structure:
@@ -174,6 +198,24 @@ def gunzip_file(gz_file: Path, output_file: Path | None = None, keep_original: b
     if not keep_original:
         gz_file.unlink()
     return out_file
+
+
+def structure2bcifgz(structure: gemmi.Structure, bcif_gz_file: Path):
+    """Write a gemmi Structure object to a binary CIF gzipped (bcif.gz) file.
+
+    This is slower than other formats because gemmi does not support writing bcif files directly.
+    So we convert it to a cif string first using gemmi and then convert cif to bcif using mmcif package.
+    Finally, we gzip the bcif file.
+
+    Args:
+        structure: The gemmi Structure object to write.
+        bcif_gz_file: Path to the output binary CIF gzipped file.
+    """
+    with tempfile.NamedTemporaryFile(suffix=".bcif", delete=True) as tmp_bcif:
+        tmp_path = Path(tmp_bcif.name)
+        structure2bcif(structure, tmp_path)
+        with tmp_path.open("rb") as f_in, gzip.open(bcif_gz_file, "wb") as f_out:
+            shutil.copyfileobj(f_in, f_out)
 
 
 def convert_to_cif_files(
