@@ -17,7 +17,7 @@ from protein_quest.io import (
 
 
 def test_valid_structure_file_extensions():
-    assert valid_structure_file_extensions == [
+    assert valid_structure_file_extensions == {
         ".cif",
         ".cif.gz",
         ".bcif",
@@ -26,7 +26,7 @@ def test_valid_structure_file_extensions():
         ".pdb.gz",
         ".ent",
         ".ent.gz",
-    ]
+    }
 
 
 @pytest.mark.parametrize("extension", valid_structure_file_extensions)
