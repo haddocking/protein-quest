@@ -9,7 +9,7 @@ import gemmi
 
 from protein_quest.__version__ import __version__
 from protein_quest.io import read_structure, split_name_and_extension, write_structure
-from protein_quest.utils import CopyMethod, copyfile
+from protein_quest.utils import Cacher, PassthroughCacher, copyfile
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +134,7 @@ def write_single_chain_structure_file(
     chain2keep: str,
     output_dir: Path,
     out_chain: str = "A",
-    copy_method: CopyMethod = "copy",
+    cacher: Cacher | None = None,
 ) -> Path:
     """Write a single chain from a structure file to a new structure file.
 
@@ -157,7 +157,8 @@ def write_single_chain_structure_file(
         chain2keep: The chain to keep.
         output_dir: Directory to save the output file.
         out_chain: The chain identifier for the output file.
-        copy_method: How to copy when no changes are needed to output file.
+        cacher: An optional cacher to use for caching written files.
+            Also how to copy when no changes are needed to output file
 
     Returns:
         Path to the output structure file
@@ -166,6 +167,8 @@ def write_single_chain_structure_file(
         FileNotFoundError: If the input file does not exist.
         ChainNotFoundError: If the specified chain is not found in the input file.
     """
+    if cacher is None:
+        cacher = PassthroughCacher()
 
     logger.debug(f"chain2keep: {chain2keep}, out_chain: {out_chain}")
     structure = read_structure(input_file)
@@ -191,7 +194,7 @@ def write_single_chain_structure_file(
             out_chain,
             output_file,
         )
-        copyfile(input_file, output_file, copy_method)
+        copyfile(input_file, output_file, cacher.copy_method)
         return output_file
 
     gemmi.Selection(chain_name).remove_not_selected(structure)
@@ -203,6 +206,6 @@ def write_single_chain_structure_file(
     _dedup_sheets(structure, out_chain)
     _add_provenance_info(structure, chain_name, out_chain)
 
-    write_structure(structure, output_file)
+    write_structure(structure, output_file, cacher)
 
     return output_file

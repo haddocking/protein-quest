@@ -446,7 +446,7 @@ def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
             In CSV format with `<input_file>,<residue_count>,<passed>,<output_file>` columns.
             Use `-` for stdout."""),
     )
-    _add_copy_method_arguments(parser)
+    _add_cacher_arguments(parser)
 
 
 def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
@@ -486,7 +486,7 @@ def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
             If not provided, will create a local cluster.
             If set to `sequential` will run tasks sequentially."""),
     )
-    _add_copy_method_arguments(parser)
+    _add_cacher_arguments(parser)
 
 
 def _add_filter_residue_parser(subparsers: argparse._SubParsersAction):
@@ -864,7 +864,7 @@ def _handle_filter_confidence(args: argparse.Namespace):
     min_residues = args.min_residues
     max_residues = args.max_residues
     stats_file: TextIOWrapper | None = args.write_stats
-    copy_method: CopyMethod = structure(args.copy_method, CopyMethod)  # pyright: ignore[reportArgumentType]
+    cacher = _initialize_cacher(args)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     input_files = sorted(glob_structure_files(input_dir))
@@ -884,7 +884,7 @@ def _handle_filter_confidence(args: argparse.Namespace):
 
     passed_count = 0
     for r in tqdm(
-        filter_files_on_confidence(input_files, query, output_dir, copy_method=copy_method),
+        filter_files_on_confidence(input_files, query, output_dir, cacher=cacher),
         total=len(input_files),
         unit="file",
     ):
@@ -903,7 +903,7 @@ def _handle_filter_chain(args):
     output_dir = structure(args.output_dir, Path)
     pdb_id2chain_mapping_file = args.chains
     scheduler_address = structure(args.scheduler_address, str | None)  # pyright: ignore[reportArgumentType]
-    copy_method: CopyMethod = structure(args.copy_method, CopyMethod)  # pyright: ignore[reportArgumentType]
+    cacher = _initialize_cacher(args)
 
     # make sure files in input dir with entries in mapping file are the same
     # complain when files from mapping file are missing on disk
@@ -928,9 +928,7 @@ def _handle_filter_chain(args):
         rprint("[red]No valid structure files found. Exiting.")
         sys.exit(1)
 
-    results = filter_files_on_chain(
-        file2chain, output_dir, scheduler_address=scheduler_address, copy_method=copy_method
-    )
+    results = filter_files_on_chain(file2chain, output_dir, scheduler_address=scheduler_address, cacher=cacher)
 
     nr_written = len([r for r in results if r.passed])
 
