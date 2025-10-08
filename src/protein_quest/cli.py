@@ -1048,6 +1048,7 @@ def _handle_mcp(args):
 def _handle_convert(args):
     input_dir = structure(args.input_dir, Path)
     output_dir = input_dir if args.output_dir is None else structure(args.output_dir, Path)
+    output_dir.mkdir(parents=True, exist_ok=True)
     copy_method: CopyMethod = structure(args.copy_method, CopyMethod)  # pyright: ignore[reportArgumentType]
 
     input_files = sorted(glob_structure_files(input_dir))
