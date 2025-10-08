@@ -208,7 +208,7 @@ mcp.tool(convert_to_cif_file)
 
 
 @mcp.tool
-def uniprot_accesions_of_structure_file(file: Path) -> set[str]:
+def uniprot_accessions_of_structure_file(file: Path) -> set[str]:
     """Extract UniProt accessions from structure file."""
     structure = read_structure(file)
     return structure2uniprot_accessions(structure)

@@ -611,7 +611,7 @@ def _add_convert_uniprot_parser(subparsers: argparse._SubParsersAction):
         "uniprot",
         help="Convert structure files to list of UniProt accessions.",
         description="Convert structure files to list of UniProt accessions. "
-        "Uniprot accesions are read from database reference of each structure.",
+        "Uniprot accessions are read from database reference of each structure.",
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
     parser.add_argument(

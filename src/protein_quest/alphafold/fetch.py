@@ -179,7 +179,7 @@ async def fetch_many_async(
     [AlphaFold Protein Structure Database](https://alphafold.ebi.ac.uk/).
 
     Args:
-        uniprot_accessions: A set of Uniprot acessions to fetch.
+        uniprot_accessions: A set of Uniprot accessions to fetch.
         save_dir: The directory to save the fetched files to.
         what: A set of formats to download.
         max_parallel_downloads: The maximum number of parallel downloads.
