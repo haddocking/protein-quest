@@ -32,10 +32,12 @@ from protein_quest.io import (
     convert_to_cif_files,
     glob_structure_files,
     locate_structure_file,
+    read_structure,
     valid_structure_file_extensions,
 )
 from protein_quest.pdbe import fetch as pdbe_fetch
 from protein_quest.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
+from protein_quest.structure import structure2uniprot_accessions
 from protein_quest.taxonomy import SearchField, _write_taxonomy_csv, search_fields, search_taxon
 from protein_quest.uniprot import (
     ComplexPortalEntry,
@@ -603,10 +605,39 @@ def _add_filter_subcommands(subparsers: argparse._SubParsersAction):
     _add_filter_ss_parser(subsubparsers)
 
 
-def _add_convert_subcommands(subparsers: argparse._SubParsersAction):
-    """Add convert command."""
+def _add_convert_uniprot_parser(subparsers: argparse._SubParsersAction):
+    """Add convert uniprot subcommand parser."""
     parser = subparsers.add_parser(
-        "convert", help="Convert structure files between formats", formatter_class=ArgumentDefaultsRichHelpFormatter
+        "uniprot",
+        help="Convert structure files to list of UniProt accessions.",
+        description="Convert structure files to list of UniProt accessions. "
+        "Uniprot accessions are read from database reference of each structure.",
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+    )
+    parser.add_argument(
+        "input_dir",
+        type=Path,
+        help=f"Directory with structure files. Supported extensions are {valid_structure_file_extensions}",
+    )
+    parser.add_argument(
+        "output",
+        type=argparse.FileType("wt", encoding="UTF-8"),
+        help="Output text file with UniProt accessions (one per line). Use '-' for stdout.",
+    )
+    parser.add_argument(
+        "--grouped",
+        action="store_true",
+        help="Whether to group accessions by structure file. "
+        "If set output changes to `<structure_file1>,<acc1>\\n<structure_file1>,<acc2>` format.",
+    )
+
+
+def _add_convert_structures_parser(subparsers: argparse._SubParsersAction):
+    """Add convert structures subcommand parser."""
+    parser = subparsers.add_parser(
+        "structures",
+        help="Convert structure files between formats",
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
     parser.add_argument(
         "input_dir",
@@ -628,6 +659,19 @@ def _add_convert_subcommands(subparsers: argparse._SubParsersAction):
         help="Output format to convert to.",
     )
     _add_copy_method_arguments(parser)
+
+
+def _add_convert_subcommands(subparsers: argparse._SubParsersAction):
+    """Add convert command and its subcommands."""
+    parser = subparsers.add_parser(
+        "convert",
+        help="Convert files between formats",
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+    )
+    subsubparsers = parser.add_subparsers(dest="convert_cmd", required=True)
+
+    _add_convert_structures_parser(subsubparsers)
+    _add_convert_uniprot_parser(subsubparsers)
 
 
 def _add_mcp_command(subparsers: argparse._SubParsersAction):
@@ -891,7 +935,7 @@ def _handle_filter_confidence(args: argparse.Namespace):
         if r.filtered_file:
             passed_count += 1
         if stats_file:
-            writer.writerow([r.input_file, r.count, r.filtered_file is not None, r.filtered_file])
+            writer.writerow([r.input_file, r.count, r.filtered_file is not None, r.filtered_file])  # pyright: ignore[reportPossiblyUnboundVariable]
 
     rprint(f"Filtered {passed_count} mmcif/PDB files by confidence, written to {output_dir} directory")
     if stats_file:
@@ -961,7 +1005,7 @@ def _handle_filter_residue(args):
         input_files, output_dir, min_residues=min_residues, max_residues=max_residues, copy_method=copy_method
     ):
         if stats_file:
-            writer.writerow([r.input_file, r.residue_count, r.passed, r.output_file])
+            writer.writerow([r.input_file, r.residue_count, r.passed, r.output_file])  # pyright: ignore[reportPossiblyUnboundVariable]
         if r.passed:
             nr_passed += 1
 
@@ -1015,7 +1059,7 @@ def _handle_filter_ss(args):
             copyfile(input_file, output_file, copy_method)
             nr_passed += 1
         if stats_file:
-            writer.writerow(
+            writer.writerow(  # pyright: ignore[reportPossiblyUnboundVariable]
                 [
                     input_file,
                     result.stats.nr_residues,
@@ -1045,9 +1089,28 @@ def _handle_mcp(args):
         mcp.run(transport=args.transport, host=args.host, port=args.port)
 
 
-def _handle_convert(args):
+def _handle_convert_uniprot(args):
+    input_dir = structure(args.input_dir, Path)
+    output_file: TextIOWrapper = args.output
+    grouped: bool = args.grouped
+    input_files = sorted(glob_structure_files(input_dir))
+    if grouped:
+        for input_file in tqdm(input_files, unit="file"):
+            s = read_structure(input_file)
+            uniprot_accessions = structure2uniprot_accessions(s)
+            _write_lines(output_file, [f"{input_file},{uniprot_acc}" for uniprot_acc in sorted(uniprot_accessions)])
+    else:
+        uniprot_accessions: set[str] = set()
+        for input_file in tqdm(input_files, unit="file"):
+            s = read_structure(input_file)
+            uniprot_accessions.update(structure2uniprot_accessions(s))
+        _write_lines(output_file, sorted(uniprot_accessions))
+
+
+def _handle_convert_structures(args):
     input_dir = structure(args.input_dir, Path)
     output_dir = input_dir if args.output_dir is None else structure(args.output_dir, Path)
+    output_dir.mkdir(parents=True, exist_ok=True)
     copy_method: CopyMethod = structure(args.copy_method, CopyMethod)  # pyright: ignore[reportArgumentType]
 
     input_files = sorted(glob_structure_files(input_dir))
@@ -1165,7 +1228,8 @@ HANDLERS: dict[tuple[str, str | None], Callable] = {
     ("filter", "residue"): _handle_filter_residue,
     ("filter", "secondary-structure"): _handle_filter_ss,
     ("mcp", None): _handle_mcp,
-    ("convert", None): _handle_convert,
+    ("convert", "structures"): _handle_convert_structures,
+    ("convert", "uniprot"): _handle_convert_uniprot,
 }
 
 
