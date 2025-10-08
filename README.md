@@ -41,6 +41,7 @@ graph TB;
     confidencefilter --> |mmcif_files| ssfilter{{Filter on secondary structure}}
     residuefilter --> |mmcif_files| ssfilter
     ssfilter -. mmcif_files .-> convert2cif([Convert to cif])
+    ssfilter -. mmcif_files .-> convert2uniprot_accessions([Convert to UniProt accessions])
     classDef dashedBorder stroke-dasharray: 5 5;
     goterm:::dashedBorder
     taxonomy:::dashedBorder
@@ -49,6 +50,7 @@ graph TB;
     searchintactionpartners:::dashedBorder
     searchcomplexes:::dashedBorder
     convert2cif:::dashedBorder
+    convert2uniprot_accessions:::dashedBorder
 ```
 
 (Dotted nodes and edges are side-quests.)
@@ -218,7 +220,15 @@ Q05471,CPX-2122,https://www.ebi.ac.uk/complexportal/complex/CPX-2122,Swr1 chroma
 Some tools (for example [powerfit](https://github.com/haddocking/powerfit)) only work with `.cif` files and not `*.cif.gz` or `*.bcif` files.
 
 ```shell
-protein-quest convert --output-dir ./filtered-cif ./filtered-ss
+protein-quest convert structures --format cif --output-dir ./filtered-cif ./filtered-ss
+```
+
+### Convert structure files to UniProt accessions
+
+After running some filters you might want to know which UniProt accessions are still present in the filtered structures.
+
+```shell
+protein-quest convert uniprot ./filtered-ss uniprot_accs.filtered.txt
 ```
 
 ##  Model Context Protocol (MCP) server

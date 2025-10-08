@@ -206,3 +206,27 @@ def write_single_chain_structure_file(
     write_structure(structure, output_file)
 
     return output_file
+
+
+def structure2uniprot_accessions(structure: gemmi.Structure) -> set[str]:
+    """Extract UniProt accessions from a gemmi Structure object.
+
+    Logs a warning and returns an empty set if no accessions are found in structure.
+
+    Args:
+        structure: The gemmi Structure object to extract UniProt accessions from.
+
+    Returns:
+        A set of UniProt accessions found in the structure.
+    """
+    block = structure.make_mmcif_block(gemmi.MmcifOutputGroups(False, struct_ref=True))
+    struct_ref = block.get_mmcif_category("_struct_ref.")
+    uniprot_accessions: set[str] = set()
+    for i, db_name in enumerate(struct_ref["db_name"]):
+        if db_name != "UNP":
+            continue
+        pdbx_db_accession = struct_ref["pdbx_db_accession"][i]
+        uniprot_accessions.add(pdbx_db_accession)
+    if not uniprot_accessions:
+        logger.warning("No UniProt accessions found in structure %s", structure.name)
+    return uniprot_accessions

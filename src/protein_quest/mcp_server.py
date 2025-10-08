@@ -45,10 +45,14 @@ from protein_quest.alphafold.fetch import AlphaFoldEntry, DownloadableFormat
 from protein_quest.alphafold.fetch import fetch_many as alphafold_fetch
 from protein_quest.emdb import fetch as emdb_fetch
 from protein_quest.go import search_gene_ontology_term
-from protein_quest.io import convert_to_cif_file, glob_structure_files
+from protein_quest.io import convert_to_cif_file, glob_structure_files, read_structure
 from protein_quest.pdbe.fetch import fetch as pdbe_fetch
 from protein_quest.ss import filter_file_on_secondary_structure
-from protein_quest.structure import nr_residues_in_chain, write_single_chain_structure_file
+from protein_quest.structure import (
+    nr_residues_in_chain,
+    structure2uniprot_accessions,
+    write_single_chain_structure_file,
+)
 from protein_quest.taxonomy import search_taxon
 from protein_quest.uniprot import (
     PdbResult,
@@ -129,7 +133,7 @@ def extract_single_chain_from_structure(
 
 @mcp.tool
 def list_structure_files(path: Path) -> list[Path]:
-    """List structure files (.pdb, .pdb.gz, .cif, .cif.gz) in the specified directory."""
+    """List structure files (.pdb, .pdb.gz, .cif, .cif.gz, .bcif) in the specified directory."""
     return list(glob_structure_files(path))
 
 
@@ -201,6 +205,13 @@ def alphafold_confidence_filter(file: Path, query: ConfidenceFilterQuery, filter
 mcp.tool(filter_file_on_secondary_structure)
 
 mcp.tool(convert_to_cif_file)
+
+
+@mcp.tool
+def uniprot_accesions_of_structure_file(file: Path) -> set[str]:
+    """Extract UniProt accessions from structure file."""
+    structure = read_structure(file)
+    return structure2uniprot_accessions(structure)
 
 
 @mcp.prompt
