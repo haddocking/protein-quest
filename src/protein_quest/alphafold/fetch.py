@@ -7,8 +7,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, cast, get_args
 
+import aiofiles
+from aiofiles.ospath import exists
 from aiohttp_retry import RetryClient
-from aiopath import AsyncPath
 from tqdm.asyncio import tqdm
 from yarl import URL
 
@@ -122,17 +123,19 @@ async def fetch_summary(
         A list of EntrySummary objects representing the fetched summary.
     """
     url = f"https://alphafold.ebi.ac.uk/api/prediction/{qualifier}"
-    fn: AsyncPath | None = None
+    fn: Path | None = None
     if save_dir is not None:
-        fn = AsyncPath(save_dir / f"{qualifier}.json")
-        if await fn.exists():
+        fn = save_dir / f"{qualifier}.json"
+        if await exists(fn):
             logger.debug(f"File {fn} already exists. Skipping download from {url}.")
-            raw_data = await fn.read_bytes()
+            async with aiofiles.open(fn, "rb") as f:
+                raw_data = await f.read()
             return converter.loads(raw_data, list[EntrySummary])
         cached_file = await cacher.copy_from_cache(Path(fn))
         if cached_file is not None:
             logger.debug(f"Using cached file {cached_file} for summary of {qualifier}.")
-            raw_data = await AsyncPath(cached_file).read_bytes()
+            async with aiofiles.open(cached_file, "rb") as f:
+                raw_data = await f.read()
             return converter.loads(raw_data, list[EntrySummary])
     async with semaphore, session.get(url) as response:
         response.raise_for_status()
