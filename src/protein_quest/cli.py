@@ -24,7 +24,7 @@ from protein_quest.__version__ import __version__
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
 from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_formats
 from protein_quest.alphafold.fetch import fetch_many as af_fetch
-from protein_quest.converter import converter
+from protein_quest.converter import PositiveInt, converter
 from protein_quest.emdb import fetch as emdb_fetch
 from protein_quest.filters import filter_files_on_chain, filter_files_on_residues
 from protein_quest.go import Aspect, allowed_aspects, search_gene_ontology_term, write_go_terms_to_csv
@@ -41,8 +41,9 @@ from protein_quest.structure import structure2uniprot_accessions
 from protein_quest.taxonomy import SearchField, _write_taxonomy_csv, search_fields, search_taxon
 from protein_quest.uniprot import (
     ComplexPortalEntry,
-    PdbResult,
+    PdbResults,
     Query,
+    filter_pdb_results_on_chain_length,
     search4af,
     search4emdb,
     search4interaction_partners,
@@ -121,14 +122,26 @@ def _add_search_pdbe_parser(subparsers: argparse._SubParsersAction):
         "output_csv",
         type=argparse.FileType("w", encoding="UTF-8"),
         help=dedent("""\
-            Output CSV with `uniprot_acc`, `pdb_id`, `method`, `resolution`, `uniprot_chains`, `chain` columns.
+            Output CSV with following columns:
+            `uniprot_acc`, `pdb_id`, `method`, `resolution`, `uniprot_chains`, `chain`, `chain_length`.
             Where `uniprot_chains` is the raw UniProt chain string, for example `A=1-100`.
-            and where `chain` is the first chain from `uniprot_chains`, for example `A`.
+            and where `chain` is the first chain from `uniprot_chains`, for example `A`
+            and `chain_length` is the length of the chain, for example `100`.
             Use `-` for stdout.
         """),
     )
     parser.add_argument(
         "--limit", type=int, default=10_000, help="Maximum number of PDB uniprot accessions combinations to return"
+    )
+    parser.add_argument(
+        "--min-residues",
+        type=int,
+        help="Minimum number of residues required in the chain mapped to the UniProt accession.",
+    )
+    parser.add_argument(
+        "--max-residues",
+        type=int,
+        help="Maximum number of residues allowed in chain mapped to the UniProt accession.",
     )
     parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
 
@@ -742,14 +755,28 @@ def _handle_search_pdbe(args):
     limit = args.limit
     timeout = args.timeout
     output_csv = args.output_csv
+    min_residues = converter.structure(args.min_residues, PositiveInt | None)  # pyright: ignore[reportArgumentType]
+    max_residues = converter.structure(args.max_residues, PositiveInt | None)  # pyright: ignore[reportArgumentType]
 
     accs = set(_read_lines(uniprot_accs))
     rprint(f"Finding PDB entries for {len(accs)} uniprot accessions")
     results = search4pdb(accs, limit=limit, timeout=timeout)
-    total_pdbs = sum([len(v) for v in results.values()])
-    rprint(f"Found {total_pdbs} PDB entries for {len(results)} uniprot accessions")
-    rprint(f"Written to {output_csv.name}")
+
+    raw_nr_results = len(results)
+    raw_total_pdbs = sum([len(v) for v in results.values()])
+    if min_residues or max_residues:
+        results = filter_pdb_results_on_chain_length(results, min_residues, max_residues)
+        total_pdbs = sum([len(v) for v in results.values()])
+        rprint(f"Before filtering found {raw_total_pdbs} PDB entries for {raw_nr_results} uniprot accessions.")
+        rprint(
+            f"After filtering on chain length ({min_residues}, {max_residues}) "
+            f"remained {total_pdbs} PDB entries for {len(results)} uniprot accessions."
+        )
+    else:
+        rprint(f"Found {raw_total_pdbs} PDB entries for {raw_nr_results} uniprot accessions")
+
     _write_pdbe_csv(output_csv, results)
+    rprint(f"Written to {output_csv.name}")
 
 
 def _handle_search_alphafold(args):
@@ -1142,9 +1169,9 @@ def _write_lines(file: TextIOWrapper, lines: Iterable[str]):
     file.writelines(line + os.linesep for line in lines)
 
 
-def _write_pdbe_csv(path: TextIOWrapper, data: dict[str, set[PdbResult]]):
+def _write_pdbe_csv(path: TextIOWrapper, data: PdbResults):
     _make_sure_parent_exists(path)
-    fieldnames = ["uniprot_acc", "pdb_id", "method", "resolution", "uniprot_chains", "chain"]
+    fieldnames = ["uniprot_acc", "pdb_id", "method", "resolution", "uniprot_chains", "chain", "chain_length"]
     writer = csv.DictWriter(path, fieldnames=fieldnames)
     writer.writeheader()
     for uniprot_acc, entries in sorted(data.items()):
@@ -1157,6 +1184,7 @@ def _write_pdbe_csv(path: TextIOWrapper, data: dict[str, set[PdbResult]]):
                     "resolution": e.resolution or "",
                     "uniprot_chains": e.uniprot_chains,
                     "chain": e.chain,
+                    "chain_length": e.chain_length,
                 }
             )
 
