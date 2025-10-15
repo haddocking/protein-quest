@@ -41,7 +41,7 @@ from protein_quest.structure import structure2uniprot_accessions
 from protein_quest.taxonomy import SearchField, _write_taxonomy_csv, search_fields, search_taxon
 from protein_quest.uniprot import (
     ComplexPortalEntry,
-    PdbResult,
+    PdbResults,
     Query,
     filter_pdb_results_on_chain_length,
     search4af,
@@ -775,8 +775,8 @@ def _handle_search_pdbe(args):
     else:
         rprint(f"Found {raw_total_pdbs} PDB entries for {raw_nr_results} uniprot accessions")
 
-    rprint(f"Written to {output_csv.name}")
     _write_pdbe_csv(output_csv, results)
+    rprint(f"Written to {output_csv.name}")
 
 
 def _handle_search_alphafold(args):
@@ -1169,7 +1169,7 @@ def _write_lines(file: TextIOWrapper, lines: Iterable[str]):
     file.writelines(line + os.linesep for line in lines)
 
 
-def _write_pdbe_csv(path: TextIOWrapper, data: dict[str, set[PdbResult]]):
+def _write_pdbe_csv(path: TextIOWrapper, data: PdbResults):
     _make_sure_parent_exists(path)
     fieldnames = ["uniprot_acc", "pdb_id", "method", "resolution", "uniprot_chains", "chain", "chain_length"]
     writer = csv.DictWriter(path, fieldnames=fieldnames)

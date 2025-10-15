@@ -299,6 +299,13 @@ def test_filter_pdb_results_on_chain_length_unchanged():
     assert result is pdbs
 
 
+def test_filter_pdb_results_on_chain_length_badrange():
+    with pytest.raises(
+        ValueError, match="Maximum number of residues \\(13\\) must be > minimum number of residues \\(42\\)"
+    ):
+        filter_pdb_results_on_chain_length({}, min_residues=42, max_residues=13)
+
+
 def test_filter_pdb_results_on_chain_length_filtered():
     keeper = PdbResult(id="1AAP", method="X-Ray_Crystallography", resolution="1.5", uniprot_chains="A=1-100")
     pdbs = {

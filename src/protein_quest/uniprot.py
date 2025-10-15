@@ -44,7 +44,7 @@ def _first_chain_from_uniprot_chains(uniprot_chains: str) -> str:
 
     where:
         chain_group := chain_id(/chain_id)*
-        chain_id    := [A-Za-z]+
+        chain_id    := [A-Za-z0-9]+
         range       := start-end
         start, end  := integer
 
@@ -140,6 +140,9 @@ def filter_pdb_results_on_chain_length(
     if min_residues is None and max_residues is None:
         # No filtering needed
         return pdb_results
+    if min_residues is not None and max_residues is not None and max_residues <= min_residues:
+        msg = f"Maximum number of residues ({max_residues}) must be > minimum number of residues ({min_residues})"
+        raise ValueError(msg)
     results: PdbResults = {}
     for uniprot_acc, pdb_entries in pdb_results.items():
         filtered_pdb_entries = {
