@@ -3,6 +3,7 @@
 import logging
 from collections.abc import Collection, Iterable
 from dataclasses import dataclass
+from functools import cached_property
 from itertools import batched
 from textwrap import dedent
 
@@ -39,7 +40,7 @@ def _first_chain_from_uniprot_chains(uniprot_chains: str) -> str:
 
     The UniProt chains string is formatted (with EBNF notation) as follows:
 
-        chain_group(=range)?(,chain_group(=range)?)*
+        chain_group=range(,chain_group=range)*
 
     where:
         chain_group := chain_id(/chain_id)*
@@ -49,6 +50,7 @@ def _first_chain_from_uniprot_chains(uniprot_chains: str) -> str:
 
     Args:
         uniprot_chains: A string representing UniProt chains, For example "B/D=1-81".
+
     Returns:
         The first chain identifier from the UniProt chain string. For example "B".
     """
@@ -64,6 +66,27 @@ def _first_chain_from_uniprot_chains(uniprot_chains: str) -> str:
         # A letter
         pass
     return chain
+
+
+def _chain_length_from_uniprot_chains(uniprot_chains: str) -> int:
+    """Calculates the total length of chain from a UniProt chains string.
+
+    See `_first_chain_from_uniprot_chains` for the format of the UniProt chains string.
+
+    Args:
+        uniprot_chains: A string representing UniProt chains, For example "B/D=1-81".
+
+    Returns:
+        The length of the chain in the UniProt chain string. For example 81 for "B/D=1-81".
+    """
+    total_length = 0
+    chains = uniprot_chains.split(",")
+    for chain in chains:
+        _, rangestr = chain.split("=")
+        start, stop = rangestr.split("-")
+        # Residue positions are 1-based so + 1
+        total_length += int(stop) - int(start) + 1
+    return total_length
 
 
 @dataclass(frozen=True)
@@ -82,10 +105,53 @@ class PdbResult:
     uniprot_chains: str
     resolution: str | None = None
 
-    @property
+    @cached_property
     def chain(self) -> str:
         """The first chain from the UniProt chains aka self.uniprot_chains."""
         return _first_chain_from_uniprot_chains(self.uniprot_chains)
+
+    @cached_property
+    def chain_length(self) -> int:
+        """The length of the chain from the UniProt chains aka self.uniprot_chains."""
+        return _chain_length_from_uniprot_chains(self.uniprot_chains)
+
+
+type PdbResults = dict[str, set[PdbResult]]
+"""Dictionary with protein IDs as keys and sets of PDB results as values."""
+
+
+def filter_pdb_results_on_chain_length(
+    pdb_results: PdbResults,
+    min_residues: int | None,
+    max_residues: int | None,
+) -> PdbResults:
+    """Filter PDB results based on chain length.
+
+    Args:
+        pdb_results: Dictionary with protein IDs as keys and sets of PDB results as values.
+        min_residues: Minimum number of residues in the chain to keep the uniprot/PDB entry.
+            If None, no minimum is applied.
+        max_residues: Maximum number of residues in the chain to keep the uniprot/PDB entry.
+            If None, no maximum is applied.
+
+    Returns:
+        Filtered dictionary with protein IDs as keys and sets of PDB results as values.
+    """
+    if min_residues is None and max_residues is None:
+        # No filtering needed
+        return pdb_results
+    results: PdbResults = {}
+    for uniprot_acc, pdb_entries in pdb_results.items():
+        filtered_pdb_entries = {
+            pdb_entry
+            for pdb_entry in pdb_entries
+            if (min_residues is None or pdb_entry.chain_length >= min_residues)
+            and (max_residues is None or pdb_entry.chain_length <= max_residues)
+        }
+        if filtered_pdb_entries:
+            # Only include uniprot_acc if there are any pdb entries left after filtering
+            results[uniprot_acc] = filtered_pdb_entries
+    return results
 
 
 def _query2dynamic_sparql_triples(query: Query):
@@ -337,8 +403,8 @@ def _execute_sparql_search(
     return bindings
 
 
-def _flatten_results_pdb(rawresults: Iterable) -> dict[str, set[PdbResult]]:
-    pdb_entries: dict[str, set[PdbResult]] = {}
+def _flatten_results_pdb(rawresults: Iterable) -> PdbResults:
+    pdb_entries: PdbResults = {}
     for result in rawresults:
         protein = result["protein"]["value"].split("/")[-1]
         if "pdb_db" not in result:  # Should not happen with build_sparql_query_pdb
@@ -424,7 +490,7 @@ def search4uniprot(query: Query, limit: int = 10_000, timeout: int = 1_800) -> s
 
 def search4pdb(
     uniprot_accs: Collection[str], limit: int = 10_000, timeout: int = 1_800, batch_size: int = 10_000
-) -> dict[str, set[PdbResult]]:
+) -> PdbResults:
     """
     Search for PDB entries in UniProtKB accessions.
 

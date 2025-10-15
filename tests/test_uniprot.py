@@ -9,7 +9,7 @@ from protein_quest.uniprot import (
     _append_subcellular_location_filters,
     _build_sparql_query_pdb,
     _build_sparql_query_uniprot,
-    _first_chain_from_uniprot_chains,
+    filter_pdb_results_on_chain_length,
     search4af,
     search4emdb,
     search4interaction_partners,
@@ -262,9 +262,59 @@ def test_append_subcellular_location_filters_invalid_go_term_in_list():
         ("A=398-459,A=74-386,A=520-584,A=1-53", "A"),  # uniprot/O00255 pdb/7O9T
     ],
 )
-def test_first_chain_from_uniprot_chains(query, expected):
-    result = _first_chain_from_uniprot_chains(query)
+def test_pdbresult_chain(query, expected):
+    pdb_result = PdbResult(id="DUMMY", method="DUMMY", uniprot_chains=query)
+    result = pdb_result.chain
 
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "query,expected",
+    [
+        ("O=1-300", 300),  #  uniprot:A8MT69 pdb:7R5S
+        ("B/D=1-81", 81),  # uniprot:A8MT69 pdb:4E44
+        (
+            "B/D/H/L/M/N/U/V/W/X/Z/b/d/h/i/j/o/p/q/r=8-81",  # uniprot:A8MT69 pdb:4NE1
+            74,
+        ),
+        ("A/B=2-459,A/B=520-610", 549),  # uniprot/O00255 pdb/3U84
+        ("DD/Dd=1-1085", 1085),  # uniprot/O00268 pdb/7ENA
+        ("A=398-459,A=74-386,A=520-584,A=1-53", 493),  # uniprot/O00255 pdb/7O9T
+    ],
+)
+def test_pdb_result_chain_length(query, expected):
+    pdb_result = PdbResult(id="DUMMY", method="DUMMY", uniprot_chains=query)
+    result = pdb_result.chain_length
+
+    assert result == expected
+
+
+def test_filter_pdb_results_on_chain_length_unchanged():
+    pdbs = {
+        "P05067": {PdbResult(id="1AAP", method="X-Ray_Crystallography", resolution="1.5", uniprot_chains="A=287-344")},
+    }
+    result = filter_pdb_results_on_chain_length(pdbs, min_residues=None, max_residues=None)
+
+    assert result is pdbs
+
+
+def test_filter_pdb_results_on_chain_length_filtered():
+    keeper = PdbResult(id="1AAP", method="X-Ray_Crystallography", resolution="1.5", uniprot_chains="A=1-100")
+    pdbs = {
+        "P05067": {
+            keeper,
+            PdbResult(id="2AAP", method="X-Ray_Crystallography", resolution="2.0", uniprot_chains="A=1-2000"),
+        },
+        "P12345": {
+            PdbResult(id="3BBB", method="X-Ray_Crystallography", resolution="4.0", uniprot_chains="A=1-50"),
+        },
+    }
+    result = filter_pdb_results_on_chain_length(pdbs, min_residues=75, max_residues=125)
+
+    expected = {
+        "P05067": {keeper},
+    }
     assert result == expected
 
 
