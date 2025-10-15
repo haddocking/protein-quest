@@ -81,7 +81,7 @@ This behavior can be customized with the `--no-cache`, `--cache-dir`, and `--cop
 protein-quest search uniprot \
     --taxon-id 9606 \
     --reviewed \
-    --subcellular-location-uniprot nucleus \
+    --subcellular-location-uniprot "nucleus" \
     --subcellular-location-go GO:0005634 \
     --molecular-function-go GO:0003677 \
     --limit 100 \
