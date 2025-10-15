@@ -129,9 +129,9 @@ def filter_pdb_results_on_chain_length(
 
     Args:
         pdb_results: Dictionary with protein IDs as keys and sets of PDB results as values.
-        min_residues: Minimum number of residues in the chain to keep the uniprot/PDB entry.
+        min_residues: Minimum number of residues required in the chain mapped to the UniProt accession.
             If None, no minimum is applied.
-        max_residues: Maximum number of residues in the chain to keep the uniprot/PDB entry.
+        max_residues: Maximum number of residues allowed in chain mapped to the UniProt accession.
             If None, no maximum is applied.
 
     Returns:
