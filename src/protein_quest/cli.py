@@ -101,6 +101,8 @@ def _add_search_uniprot_parser(subparsers: argparse._SubParsersAction):
         action="append",
         help="GO term(s) for molecular function (e.g. GO:0003677). Can be given multiple times.",
     )
+    parser.add_argument("--min-sequence-length", type=int, help="Minimum sequence length of the major isoform.")
+    parser.add_argument("--max-sequence-length", type=int, help="Maximum sequence length of the major isoform.")
     parser.add_argument("--limit", type=int, default=10_000, help="Maximum number of uniprot accessions to return")
     parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
 
@@ -730,6 +732,8 @@ def _handle_search_uniprot(args):
     subcellular_location_uniprot = args.subcellular_location_uniprot
     subcellular_location_go = args.subcellular_location_go
     molecular_function_go = args.molecular_function_go
+    min_sequence_length = args.min_sequence_length
+    max_sequence_length = args.max_sequence_length
     limit = args.limit
     timeout = args.timeout
     output_file = args.output
@@ -741,6 +745,8 @@ def _handle_search_uniprot(args):
             "subcellular_location_uniprot": subcellular_location_uniprot,
             "subcellular_location_go": subcellular_location_go,
             "molecular_function_go": molecular_function_go,
+            "min_sequence_length": min_sequence_length,
+            "max_sequence_length": max_sequence_length,
         },
         Query,
     )

@@ -25,6 +25,8 @@ class Query:
             (e.g., ["GO:0005634"]) or a collection of GO terms (e.g., ["GO:0005634", "GO:0005737"]).
         molecular_function_go: Molecular function in GO format. Can be a single GO term
             (e.g., ["GO:0003674"]) or a collection of GO terms (e.g., ["GO:0003674", "GO:0008150"]).
+        min_sequence_length: Minimum sequence length of the major isoform.
+        max_sequence_length: Maximum sequence length of the major isoform.
     """
 
     # TODO make taxon_id an int
@@ -33,6 +35,8 @@ class Query:
     subcellular_location_uniprot: str | None = None
     subcellular_location_go: list[str] | None = None
     molecular_function_go: list[str] | None = None
+    min_sequence_length: int | None = None
+    max_sequence_length: int | None = None
 
 
 def _first_chain_from_uniprot_chains(uniprot_chains: str) -> str:
@@ -179,6 +183,13 @@ def _query2dynamic_sparql_triples(query: Query):
         molecular_function_filter = _create_go_filter(go_terms, "Molecular function")
         parts.append(molecular_function_filter)
 
+    if query.min_sequence_length is not None or query.max_sequence_length is not None:
+        length_filter = _build_sparql_query_sequence_length_filter(
+            min_length=query.min_sequence_length,
+            max_length=query.max_sequence_length,
+        )
+        parts.append(length_filter)
+
     return "\n".join(parts)
 
 
@@ -306,6 +317,46 @@ def _build_sparql_query_uniprot(query: Query, limit=10_000) -> str:
     return _build_sparql_generic_query(select_clause, dedent(where_clause), limit)
 
 
+def _build_sparql_query_sequence_length_filter(min_length: int | None = None, max_length: int | None = None) -> str:
+    """Builds a SPARQL filter for sequence length.
+
+    See 107_uniprot_sequences_and_mark_which_is_cannonical_for_human
+    on https://sparql.uniprot.org/.well-known/sparql-examples/ for similar query.
+
+    Args:
+        min_length: Minimum sequence length. If None, no minimum is applied.
+        max_length: Maximum sequence length. If None, no maximum is applied.
+    """
+    if min_length is None and max_length is None:
+        return ""
+    header = dedent("""\
+        ?protein up:sequence ?isoform .
+        # take sequence from major isoform
+        FILTER NOT EXISTS { ?isoform up:basedOn ?parent_isoform }
+        ?isoform rdf:value ?sequence .
+        BIND (STRLEN(?sequence) AS ?seq_length)
+    """)
+    if min_length is not None and max_length is not None:
+        if max_length <= min_length:
+            msg = f"Maximum number of residues ({max_length}) must be > minimum number of residues ({min_length})"
+            raise ValueError(msg)
+        return dedent(f"""\
+            {header}
+            FILTER (?seq_length >= {min_length} && ?seq_length <= {max_length})
+        """)
+    if min_length is not None:
+        return dedent(f"""\
+            {header}
+            FILTER (?seq_length >= {min_length})
+        """)
+    if max_length is not None:
+        return dedent(f"""\
+            {header}
+            FILTER (?seq_length <= {max_length})
+        """)
+    return ""
+
+
 def _build_sparql_query_pdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
     # For http://purl.uniprot.org/uniprot/O00268 + http://rdf.wwpdb.org/pdb/1H3O
     # the chainSequenceMapping are
@@ -317,7 +368,7 @@ def _build_sparql_query_pdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
     # http://purl.uniprot.org/isoforms/O00255-2#PDB_3U84_tt2tt459
     # To get the the chain belonging to the uniprot/pdb pair we need to
     # do some string filtering.
-    # Also there can be multiple cnhins for the same uniprot/pdb pair, so we need to
+    # Also there can be multiple chains for the same uniprot/pdb pair, so we need to
     # do a group by and concat
 
     select_clause = dedent("""\
