@@ -57,6 +57,11 @@ def _cache_sub_dir(root_cache_dir: Path, filename: str, hash_length: int = 4) ->
 class Cacher(Protocol):
     """Protocol for a cacher."""
 
+    @property
+    def copy_method(self) -> CopyMethod:
+        """The copy method used by the cacher."""
+        ...
+
     def __contains__(self, item: str | Path) -> bool:
         """Check if a file is in the cache.
 
@@ -120,6 +125,11 @@ class PassthroughCacher(Cacher):
 
     On writes it just writes to the target path.
     """
+
+    @property
+    def copy_method(self) -> CopyMethod:
+        """The copy method used by the cacher."""
+        return "copy"
 
     def __contains__(self, item: str | Path) -> bool:
         # We don't have anything cached ever

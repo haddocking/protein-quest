@@ -1,5 +1,6 @@
 """Module for structure file input/output."""
 
+import asyncio
 import gzip
 import logging
 import shutil
@@ -17,7 +18,7 @@ from mmcif.io.BinaryCifWriter import BinaryCifWriter
 from mmcif.io.PdbxReader import PdbxReader
 from mmcif.io.PdbxWriter import PdbxWriter
 
-from protein_quest.utils import CopyMethod, copyfile, user_cache_root_dir
+from protein_quest.utils import Cacher, CopyMethod, PassthroughCacher, copyfile, user_cache_root_dir
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ valid_structure_file_extensions: set[str] = set(get_args(StructureFileExtensions
 """Set of valid structure file extensions."""
 
 
-def write_structure(structure: gemmi.Structure, path: Path):
+def write_structure(structure: gemmi.Structure, path: Path, cacher: Cacher | None = None):
     """Write a gemmi structure to a file.
 
     Args:
@@ -42,31 +43,37 @@ def write_structure(structure: gemmi.Structure, path: Path):
             The format depends on the file extension.
             See [StructureFileExtensions][protein_quest.io.StructureFileExtensions]
             for supported extensions.
+        cacher: An optional cacher to use for caching written files.
 
     Raises:
         ValueError: If the file extension is not supported.
     """
+    if cacher is None:
+        cacher = PassthroughCacher()
     if path.name.endswith(".pdb") or path.name.endswith(".ent"):
         body: str = structure.make_pdb_string()
-        path.write_text(body)
+        asyncio.run(cacher.write_bytes(path, body.encode("utf-8")))
     elif path.name.endswith(".pdb.gz") or path.name.endswith(".ent.gz"):
         body: str = structure.make_pdb_string()
-        with gzip.open(path, "wt") as f:
-            f.write(body)
+        gzbody: bytes = gzip.compress(body.encode("utf-8"))
+        asyncio.run(cacher.write_bytes(path, gzbody))
     elif path.name.endswith(".cif"):
         # do not write chem_comp so it is viewable by molstar
         # see https://github.com/project-gemmi/gemmi/discussions/362
         doc = structure.make_mmcif_document(gemmi.MmcifOutputGroups(True, chem_comp=False))
-        doc.write_file(str(path))
+        body = doc.as_string()
+        asyncio.run(cacher.write_bytes(path, body.encode("utf-8")))
     elif path.name.endswith(".cif.gz"):
         doc = structure.make_mmcif_document(gemmi.MmcifOutputGroups(True, chem_comp=False))
         cif_str = doc.as_string()
-        with gzip.open(path, "wt") as f:
-            f.write(cif_str)
+        gzbody: bytes = gzip.compress(cif_str.encode("utf-8"))
+        asyncio.run(cacher.write_bytes(path, gzbody))
     elif path.name.endswith(".bcif"):
         structure2bcif(structure, path)
+        # TODO write to cacher
     elif path.name.endswith(".bcif.gz"):
         structure2bcifgz(structure, path)
+        # TODO write to cacher
     else:
         msg = f"Unsupported file extension in {path.name}. Supported extensions are: {valid_structure_file_extensions}"
         raise ValueError(msg)

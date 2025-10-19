@@ -12,7 +12,7 @@ from tqdm.auto import tqdm
 
 from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
 from protein_quest.structure import nr_residues_in_chain, write_single_chain_structure_file
-from protein_quest.utils import CopyMethod, copyfile
+from protein_quest.utils import Cacher, CopyMethod, copyfile
 
 logger = logging.getLogger(__name__)
 
@@ -30,13 +30,13 @@ def filter_file_on_chain(
     file_and_chain: tuple[Path, str],
     output_dir: Path,
     out_chain: str = "A",
-    copy_method: CopyMethod = "copy",
+    cacher: Cacher | None = None,
 ) -> ChainFilterStatistics:
     input_file, chain_id = file_and_chain
     logger.debug("Filtering %s on chain %s", input_file, chain_id)
     try:
         output_file = write_single_chain_structure_file(
-            input_file, chain_id, output_dir, out_chain=out_chain, copy_method=copy_method
+            input_file, chain_id, output_dir, out_chain=out_chain, cacher=cacher
         )
         return ChainFilterStatistics(
             input_file=input_file,
@@ -53,7 +53,7 @@ def filter_files_on_chain(
     output_dir: Path,
     out_chain: str = "A",
     scheduler_address: str | Cluster | Literal["sequential"] | None = None,
-    copy_method: CopyMethod = "copy",
+    cacher: Cacher | None = None,
 ) -> list[ChainFilterStatistics]:
     """Filter mmcif/PDB files by chain.
 
@@ -65,7 +65,8 @@ def filter_files_on_chain(
         scheduler_address: The address of the Dask scheduler.
             If not provided, will create a local cluster.
             If set to `sequential` will run tasks sequentially.
-        copy_method: How to copy when a direct copy is possible.
+        cacher: An optional cacher to use for caching written files.
+            And copy method when file is copied without changes.
 
     Returns:
         Result of the filtering process.
@@ -74,7 +75,7 @@ def filter_files_on_chain(
     if scheduler_address == "sequential":
 
         def task(file_and_chain: tuple[Path, str]) -> ChainFilterStatistics:
-            return filter_file_on_chain(file_and_chain, output_dir, out_chain=out_chain, copy_method=copy_method)
+            return filter_file_on_chain(file_and_chain, output_dir, out_chain=out_chain, cacher=cacher)
 
         return list(map(task, file2chains))
 
@@ -93,7 +94,7 @@ def filter_files_on_chain(
             file2chains,
             output_dir=output_dir,
             out_chain=out_chain,
-            copy_method=copy_method,
+            cacher=cacher,
         )
 
 
