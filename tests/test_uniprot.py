@@ -366,6 +366,64 @@ def test_search4af():
     assert results == expected
 
 
+# P05067 has a sequence length of 770 residues
+@pytest.mark.vcr
+def test_search4af_ok_sequence_length():
+    uniprot_accession = "P05067"
+
+    results = search4af({uniprot_accession}, limit=1, min_sequence_length=600, max_sequence_length=800)
+
+    expected = {uniprot_accession: {uniprot_accession}}
+    assert results == expected
+
+
+@pytest.mark.vcr
+def test_search4af_too_small_sequence_length():
+    results = search4af({"P05067"}, limit=1, min_sequence_length=800)
+
+    expected = {}
+    assert results == expected
+
+
+@pytest.mark.vcr
+def test_search4af_too_big_sequence_length():
+    results = search4af({"P05067"}, limit=1, max_sequence_length=600)
+
+    expected = {}
+    assert results == expected
+
+
+def test_search4af_invalid_sequence_length():
+    with pytest.raises(
+        ValueError,
+        match="Maximum sequence length \\(500\\) must be greater than minimum sequence length \\(600\\)",
+    ):
+        search4af({"P05067"}, limit=1, min_sequence_length=600, max_sequence_length=500)
+
+
+class TestSearch4AfExternalIsoforms:
+    # P42284 has P42284-2 as canonical isoform with 549 length
+    # and several other isoforms based on external entries,
+    # which should not be used for length filtering
+    # one of them is Q7KQZ4-2 with length 787
+
+    @pytest.mark.vcr
+    def test_match_canonical_isoform(self):
+        results = search4af({"P42284"}, min_sequence_length=540, max_sequence_length=560, limit=10)
+
+        expected = {"P42284": {"P42284"}}
+        assert results == expected
+
+    @pytest.mark.vcr
+    def test_do_not_match_external_isoform(self):
+        # so setting min_sequence_length to 600 should exclude P42284
+        # as only non-canonical isoforms are longer than that
+        results = search4af({"P42284"}, min_sequence_length=600, limit=10)
+
+        expected = {}
+        assert results == expected
+
+
 @pytest.mark.vcr
 def test_search4emdb():
     uniprot_accession = "P05067"

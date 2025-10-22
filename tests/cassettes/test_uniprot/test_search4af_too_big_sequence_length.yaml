@@ -1,0 +1,62 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/sparql-results+json,application/json,text/javascript,application/javascript
+      Connection:
+      - close
+      Host:
+      - sparql.uniprot.org
+      User-Agent:
+      - sparqlwrapper 2.0.0 (rdflib.github.io/sparqlwrapper)
+    method: GET
+    uri: https://sparql.uniprot.org/sparql?query=%0A++++++++PREFIX+up%3A+%3Chttp%3A//purl.uniprot.org/core/%3E%0A++++++++PREFIX+taxon%3A+%3Chttp%3A//purl.uniprot.org/taxonomy/%3E%0A++++++++PREFIX+rdf%3A+%3Chttp%3A//www.w3.org/1999/02/22-rdf-syntax-ns%23%3E%0A++++++++PREFIX+rdfs%3A+%3Chttp%3A//www.w3.org/2000/01/rdf-schema%23%3E%0A++++++++PREFIX+skos%3A+%3Chttp%3A//www.w3.org/2004/02/skos/core%23%3E%0A++++++++PREFIX+GO%3A%3Chttp%3A//purl.obolibrary.org/obo/GO_%3E%0A%0A++++++++SELECT+%3Fprotein+%3Faf_db%0A++++++++WHERE+%7B%0A%0A++++++++%23+---+Protein+Selection+---%0A++++++++VALUES+%28%3Fac%29+%7B+%28%22P05067%22%29%7D%0A++++++++BIND+%28IRI%28CONCAT%28%22http%3A//purl.uniprot.org/uniprot/%22%2C%3Fac%29%29+AS+%3Fprotein%29%0A++++++++%3Fprotein+a+up%3AProtein+.%0A%0A%0A%23+---+Protein+Selection+---%0A%3Fprotein+a+up%3AProtein+.%0A%0A%23+---+AlphaFoldDB+Info+---%0A%3Fprotein+rdfs%3AseeAlso+%3Faf_db+.%0A%3Faf_db+up%3Adatabase+%3Chttp%3A//purl.uniprot.org/database/AlphaFoldDB%3E+.%0A%0A++++++++++++%3Fprotein+up%3Asequence+%3Fisoform+.%0AFILTER+NOT+EXISTS+%7B+%3Fisoform+up%3AbasedOn+%3Fparent_isoform+%7D%0AFILTER%28%0A++++STRAFTER%28STR%28%3Fprotein%29%2C+%22http%3A//purl.uniprot.org/uniprot/%22%29+%3D%0A++++STRBEFORE%28STRAFTER%28STR%28%3Fisoform%29%2C+%22http%3A//purl.uniprot.org/isoforms/%22%29%2C+%22-%22%29%29%0A%3Fisoform+rdf%3Avalue+%3Fsequence+.%0ABIND+%28STRLEN%28%3Fsequence%29+AS+%3Fseq_length%29%0A%0A++++++++++++FILTER+%28%3Fseq_length+%3C%3D+600%29%0A%0A%0A++++++++%7D%0A%0A++++++++LIMIT+1%0A&format=json&output=json&results=json
+  response:
+    body:
+      string: "{\n  \"head\" : {\n    \"vars\" : [\n      \"protein\",\n      \"af_db\"\n
+        \   ]\n  },\n  \"results\" : {\n    \"bindings\" : [ ]\n  }\n}"
+    headers:
+      Access-Control-Allow-Headers:
+      - origin, x-requested-with, content-type, X-Release, queryid
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - X-Total-Results, X-Release, queryid, content-type, user-agent, cache-control,
+        etag, range
+      Cache-Control:
+      - public
+      Connection:
+      - close
+      Content-Disposition:
+      - attachment; filename="sparql-DA2E7283216BABA2FC25C2ADC13FEE49.srj"
+      Content-Length:
+      - '114'
+      Content-Type:
+      - application/sparql-results+json
+      Date:
+      - Wed, 22 Oct 2025 11:40:45 GMT
+      ETag:
+      - W/"2025_04"
+      Expires:
+      - Thu, 23 Oct 2025 11:40:13 GMT
+      Server:
+      - Apache
+      Strict-Transport-Security:
+      - max-age=31536001; includeSubDomains
+      Vary:
+      - Negotiate,Accept,Accept-Encoding,Content-Type
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Powered-By:
+      - sib.swiss
+      X-Release:
+      - '2025_04'
+      queryid:
+      - '684522'
+    status:
+      code: 200
+      message: ''
+version: 1

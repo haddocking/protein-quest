@@ -25,6 +25,8 @@ class Query:
             (e.g., ["GO:0005634"]) or a collection of GO terms (e.g., ["GO:0005634", "GO:0005737"]).
         molecular_function_go: Molecular function in GO format. Can be a single GO term
             (e.g., ["GO:0003674"]) or a collection of GO terms (e.g., ["GO:0003674", "GO:0008150"]).
+        min_sequence_length: Minimum length of the canonical sequence.
+        max_sequence_length: Maximum length of the canonical sequence.
     """
 
     # TODO make taxon_id an int
@@ -33,6 +35,8 @@ class Query:
     subcellular_location_uniprot: str | None = None
     subcellular_location_go: list[str] | None = None
     molecular_function_go: list[str] | None = None
+    min_sequence_length: int | None = None
+    max_sequence_length: int | None = None
 
 
 def _first_chain_from_uniprot_chains(uniprot_chains: str) -> str:
@@ -179,6 +183,13 @@ def _query2dynamic_sparql_triples(query: Query):
         molecular_function_filter = _create_go_filter(go_terms, "Molecular function")
         parts.append(molecular_function_filter)
 
+    if query.min_sequence_length is not None or query.max_sequence_length is not None:
+        length_filter = _build_sparql_query_sequence_length_filter(
+            min_length=query.min_sequence_length,
+            max_length=query.max_sequence_length,
+        )
+        parts.append(length_filter)
+
     return "\n".join(parts)
 
 
@@ -306,6 +317,56 @@ def _build_sparql_query_uniprot(query: Query, limit=10_000) -> str:
     return _build_sparql_generic_query(select_clause, dedent(where_clause), limit)
 
 
+def _build_sparql_query_sequence_length_filter(min_length: int | None = None, max_length: int | None = None) -> str:
+    """Builds a SPARQL filter for sequence length.
+
+    See 107_uniprot_sequences_and_mark_which_is_cannonical_for_human
+    on https://sparql.uniprot.org/.well-known/sparql-examples/ for similar query.
+
+    Args:
+        min_length: Minimum sequence length. If None, no minimum is applied.
+        max_length: Maximum sequence length. If None, no maximum is applied.
+    """
+    if min_length is None and max_length is None:
+        return ""
+    # An uniprot entry can have multiple isoforms,
+    # we want to check the length of the canonical isoform
+    # We do this by selecting the isoform that is not based on another isoform
+    # and excluding isoforms from other uniprot entries.
+    # For example for http://purl.uniprot.org/uniprot/P42284:
+    # - http://purl.uniprot.org/isoforms/P42284-2 is ok
+    # - http://purl.uniprot.org/isoforms/P42284-1 is not ok, because it is based on P42284-2
+    # - http://purl.uniprot.org/isoforms/Q7KQZ4-1 is not ok, because it is from another uniprot entry
+    header = dedent("""\
+        ?protein up:sequence ?isoform .
+        FILTER NOT EXISTS { ?isoform up:basedOn ?parent_isoform }
+        FILTER(
+            STRAFTER(STR(?protein), "http://purl.uniprot.org/uniprot/") =
+            STRBEFORE(STRAFTER(STR(?isoform), "http://purl.uniprot.org/isoforms/"), "-"))
+        ?isoform rdf:value ?sequence .
+        BIND (STRLEN(?sequence) AS ?seq_length)
+    """)
+    if min_length is not None and max_length is not None:
+        if max_length <= min_length:
+            msg = f"Maximum sequence length ({max_length}) must be greater than minimum sequence length ({min_length})"
+            raise ValueError(msg)
+        return dedent(f"""\
+            {header}
+            FILTER (?seq_length >= {min_length} && ?seq_length <= {max_length})
+        """)
+    if min_length is not None:
+        return dedent(f"""\
+            {header}
+            FILTER (?seq_length >= {min_length})
+        """)
+    if max_length is not None:
+        return dedent(f"""\
+            {header}
+            FILTER (?seq_length <= {max_length})
+        """)
+    return ""
+
+
 def _build_sparql_query_pdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
     # For http://purl.uniprot.org/uniprot/O00268 + http://rdf.wwpdb.org/pdb/1H3O
     # the chainSequenceMapping are
@@ -317,7 +378,7 @@ def _build_sparql_query_pdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
     # http://purl.uniprot.org/isoforms/O00255-2#PDB_3U84_tt2tt459
     # To get the the chain belonging to the uniprot/pdb pair we need to
     # do some string filtering.
-    # Also there can be multiple cnhins for the same uniprot/pdb pair, so we need to
+    # Also there can be multiple chains for the same uniprot/pdb pair, so we need to
     # do a group by and concat
 
     select_clause = dedent("""\
@@ -343,7 +404,12 @@ def _build_sparql_query_pdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
     )
 
 
-def _build_sparql_query_af(uniprot_accs: Iterable[str], limit=10_000) -> str:
+def _build_sparql_query_af(
+    uniprot_accs: Iterable[str],
+    min_sequence_length: int | None = None,
+    max_sequence_length: int | None = None,
+    limit=10_000,
+) -> str:
     select_clause = "?protein ?af_db"
     where_clause = dedent("""
         # --- Protein Selection ---
@@ -353,6 +419,12 @@ def _build_sparql_query_af(uniprot_accs: Iterable[str], limit=10_000) -> str:
         ?protein rdfs:seeAlso ?af_db .
         ?af_db up:database <http://purl.uniprot.org/database/AlphaFoldDB> .
     """)
+    if min_sequence_length is not None or max_sequence_length is not None:
+        length_filter = _build_sparql_query_sequence_length_filter(
+            min_length=min_sequence_length,
+            max_length=max_sequence_length,
+        )
+        where_clause += "\n" + length_filter
     return _build_sparql_generic_by_uniprot_accessions_query(uniprot_accs, select_clause, dedent(where_clause), limit)
 
 
@@ -525,13 +597,20 @@ def search4pdb(
 
 
 def search4af(
-    uniprot_accs: Collection[str], limit: int = 10_000, timeout: int = 1_800, batch_size: int = 10_000
+    uniprot_accs: Collection[str],
+    min_sequence_length: int | None = None,
+    max_sequence_length: int | None = None,
+    limit: int = 10_000,
+    timeout: int = 1_800,
+    batch_size: int = 10_000,
 ) -> dict[str, set[str]]:
     """
     Search for AlphaFold entries in UniProtKB accessions.
 
     Args:
         uniprot_accs: UniProt accessions.
+        min_sequence_length: Minimum length of the canonical sequence.
+        max_sequence_length: Maximum length of the canonical sequence.
         limit: Maximum number of results to return.
         timeout: Timeout for the SPARQL query in seconds.
         batch_size: Size of batches to process the UniProt accessions.
@@ -543,7 +622,7 @@ def search4af(
     total = len(uniprot_accs)
     with tqdm(total=total, desc="Searching for AlphaFolds of uniprots", disable=total < batch_size, unit="acc") as pbar:
         for batch in batched(uniprot_accs, batch_size, strict=False):
-            sparql_query = _build_sparql_query_af(batch, limit)
+            sparql_query = _build_sparql_query_af(batch, min_sequence_length, max_sequence_length, limit)
             logger.info("Executing SPARQL query for AlphaFold: %s", sparql_query)
 
             raw_results = _execute_sparql_search(
