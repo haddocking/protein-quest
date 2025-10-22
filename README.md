@@ -164,7 +164,7 @@ protein-quest filter residue  \
 
 ### To filter on secondary structure
 
-To filter on structure being mostly alpha helices and have no beta sheets.
+To filter on structure being mostly alpha helices and have no beta sheets. See the following [notebook](https://www.bonvinlab.org/protein-detective/SSE_elements.html) to determine the ratio of secondary structure elements.
 
 ```shell
 protein-quest filter secondary-structure \
