@@ -329,10 +329,20 @@ def _build_sparql_query_sequence_length_filter(min_length: int | None = None, ma
     """
     if min_length is None and max_length is None:
         return ""
+    # An uniprot entry can have multiple isoforms,
+    # we want to check the length of the canonical isoform
+    # We do this by selecting the isoform that is not based on another isoform
+    # and excluding isoforms from other uniprot entries.
+    # For example for http://purl.uniprot.org/uniprot/P42284:
+    # - http://purl.uniprot.org/isoforms/P42284-2 is ok
+    # - http://purl.uniprot.org/isoforms/P42283-1 is not ok, because it is based on P42284-2
+    # - http://purl.uniprot.org/isoforms/Q7KQZ4-1 is not ok, because it is from another uniprot entry
     header = dedent("""\
         ?protein up:sequence ?isoform .
-        # take sequence from major isoform
         FILTER NOT EXISTS { ?isoform up:basedOn ?parent_isoform }
+        FILTER(
+            STRAFTER(STR(?protein), "http://purl.uniprot.org/uniprot/") =
+            STRBEFORE(STRAFTER(STR(?isoform), "http://purl.uniprot.org/isoforms/"), "-"))
         ?isoform rdf:value ?sequence .
         BIND (STRLEN(?sequence) AS ?seq_length)
     """)
@@ -613,6 +623,7 @@ def search4af(
     with tqdm(total=total, desc="Searching for AlphaFolds of uniprots", disable=total < batch_size, unit="acc") as pbar:
         for batch in batched(uniprot_accs, batch_size, strict=False):
             sparql_query = _build_sparql_query_af(batch, min_sequence_length, max_sequence_length, limit)
+            print(sparql_query)
             logger.info("Executing SPARQL query for AlphaFold: %s", sparql_query)
 
             raw_results = _execute_sparql_search(
