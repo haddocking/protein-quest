@@ -335,7 +335,7 @@ def _build_sparql_query_sequence_length_filter(min_length: int | None = None, ma
     # and excluding isoforms from other uniprot entries.
     # For example for http://purl.uniprot.org/uniprot/P42284:
     # - http://purl.uniprot.org/isoforms/P42284-2 is ok
-    # - http://purl.uniprot.org/isoforms/P42283-1 is not ok, because it is based on P42284-2
+    # - http://purl.uniprot.org/isoforms/P42284-1 is not ok, because it is based on P42284-2
     # - http://purl.uniprot.org/isoforms/Q7KQZ4-1 is not ok, because it is from another uniprot entry
     header = dedent("""\
         ?protein up:sequence ?isoform .
