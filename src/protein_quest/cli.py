@@ -101,8 +101,8 @@ def _add_search_uniprot_parser(subparsers: argparse._SubParsersAction):
         action="append",
         help="GO term(s) for molecular function (e.g. GO:0003677). Can be given multiple times.",
     )
-    parser.add_argument("--min-sequence-length", type=int, help="Minimum sequence length of the major isoform.")
-    parser.add_argument("--max-sequence-length", type=int, help="Maximum sequence length of the major isoform.")
+    parser.add_argument("--min-sequence-length", type=int, help="Minimum length of the canonical sequence.")
+    parser.add_argument("--max-sequence-length", type=int, help="Maximum length of the canonical sequence.")
     parser.add_argument("--limit", type=int, default=10_000, help="Maximum number of uniprot accessions to return")
     parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
 
@@ -166,8 +166,8 @@ def _add_search_alphafold_parser(subparsers: argparse._SubParsersAction):
         type=argparse.FileType("w", encoding="UTF-8"),
         help="Output CSV with AlphaFold IDs per UniProt accession. Use `-` for stdout.",
     )
-    parser.add_argument("--min-sequence-length", type=int, help="Minimum sequence length of the major isoform.")
-    parser.add_argument("--max-sequence-length", type=int, help="Maximum sequence length of the major isoform.")
+    parser.add_argument("--min-sequence-length", type=int, help="Minimum length of the canonical sequence.")
+    parser.add_argument("--max-sequence-length", type=int, help="Maximum length of the canonical sequence.")
     parser.add_argument(
         "--limit", type=int, default=10_000, help="Maximum number of Alphafold entry identifiers to return"
     )

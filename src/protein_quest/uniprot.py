@@ -25,8 +25,8 @@ class Query:
             (e.g., ["GO:0005634"]) or a collection of GO terms (e.g., ["GO:0005634", "GO:0005737"]).
         molecular_function_go: Molecular function in GO format. Can be a single GO term
             (e.g., ["GO:0003674"]) or a collection of GO terms (e.g., ["GO:0003674", "GO:0008150"]).
-        min_sequence_length: Minimum sequence length of the major isoform.
-        max_sequence_length: Maximum sequence length of the major isoform.
+        min_sequence_length: Minimum length of the canonical sequence.
+        max_sequence_length: Maximum length of the canonical sequence.
     """
 
     # TODO make taxon_id an int
@@ -599,8 +599,8 @@ def search4af(
 
     Args:
         uniprot_accs: UniProt accessions.
-        min_sequence_length: Minimum sequence length of the major isoform.
-        max_sequence_length: Maximum sequence length of the major isoform.
+        min_sequence_length: Minimum length of the canonical sequence.
+        max_sequence_length: Maximum length of the canonical sequence.
         limit: Maximum number of results to return.
         timeout: Timeout for the SPARQL query in seconds.
         batch_size: Size of batches to process the UniProt accessions.
