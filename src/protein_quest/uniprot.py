@@ -623,7 +623,6 @@ def search4af(
     with tqdm(total=total, desc="Searching for AlphaFolds of uniprots", disable=total < batch_size, unit="acc") as pbar:
         for batch in batched(uniprot_accs, batch_size, strict=False):
             sparql_query = _build_sparql_query_af(batch, min_sequence_length, max_sequence_length, limit)
-            print(sparql_query)
             logger.info("Executing SPARQL query for AlphaFold: %s", sparql_query)
 
             raw_results = _execute_sparql_search(
