@@ -25,11 +25,12 @@ DownloadableFormat = Literal[
     "bcif",
     "cif",
     "pdb",
-    "paeImage",
     "paeDoc",
     "amAnnotations",
     "amAnnotationsHg19",
     "amAnnotationsHg38",
+    "msaUrl",
+    "plddtDocUrl",
 ]
 """Types of formats that can be downloaded from the AlphaFold web service."""
 
@@ -49,17 +50,18 @@ class AlphaFoldEntry:
     See https://alphafold.ebi.ac.uk/api-docs for more details on the API and data structure.
     """
 
-    uniprot_acc: str
+    uniprot_acc: str | None
     summary: EntrySummary | None
     summary_file: Path | None = None
     bcif_file: Path | None = None
     cif_file: Path | None = None
     pdb_file: Path | None = None
-    pae_image_file: Path | None = None
     pae_doc_file: Path | None = None
     am_annotations_file: Path | None = None
     am_annotations_hg19_file: Path | None = None
     am_annotations_hg38_file: Path | None = None
+    msa_file: Path | None = None
+    plddt_doc_file: Path | None = None
 
     @classmethod
     def format2attr(cls, dl_format: DownloadableFormat) -> str:
@@ -217,7 +219,6 @@ async def fetch_many_async(
             bcif_file=save_dir / (summary.bcifUrl.name + gzext) if "bcif" in what else None,
             cif_file=save_dir / (summary.cifUrl.name + gzext) if "cif" in what else None,
             pdb_file=save_dir / (summary.pdbUrl.name + gzext) if "pdb" in what else None,
-            pae_image_file=save_dir / (summary.paeImageUrl.name + gzext) if "paeImage" in what else None,
             pae_doc_file=save_dir / (summary.paeDocUrl.name + gzext) if "paeDoc" in what else None,
             am_annotations_file=(
                 save_dir / (summary.amAnnotationsUrl.name + gzext)
@@ -233,6 +234,12 @@ async def fetch_many_async(
                 save_dir / (summary.amAnnotationsHg38Url.name + gzext)
                 if "amAnnotationsHg38" in what and summary.amAnnotationsHg38Url
                 else None
+            ),
+            msa_file=(
+                save_dir / (summary.msaUrl.name + gzext) if "msaUrl" in what and summary.msaUrl else None
+            ),
+            plddt_doc_file=(
+                save_dir / (summary.plddtDocUrl.name + gzext) if "plddtDocUrl" in what and summary.plddtDocUrl else None
             ),
         )
 
@@ -313,7 +320,6 @@ def relative_to(entry: AlphaFoldEntry, session_dir: Path) -> AlphaFoldEntry:
         bcif_file=entry.bcif_file.relative_to(session_dir) if entry.bcif_file else None,
         cif_file=entry.cif_file.relative_to(session_dir) if entry.cif_file else None,
         pdb_file=entry.pdb_file.relative_to(session_dir) if entry.pdb_file else None,
-        pae_image_file=entry.pae_image_file.relative_to(session_dir) if entry.pae_image_file else None,
         pae_doc_file=entry.pae_doc_file.relative_to(session_dir) if entry.pae_doc_file else None,
         am_annotations_file=entry.am_annotations_file.relative_to(session_dir) if entry.am_annotations_file else None,
         am_annotations_hg19_file=(
@@ -322,4 +328,6 @@ def relative_to(entry: AlphaFoldEntry, session_dir: Path) -> AlphaFoldEntry:
         am_annotations_hg38_file=(
             entry.am_annotations_hg38_file.relative_to(session_dir) if entry.am_annotations_hg38_file else None
         ),
+        msa_file=entry.msa_file.relative_to(session_dir) if entry.msa_file else None,
+        plddt_doc_file=entry.plddt_doc_file.relative_to(session_dir) if entry.plddt_doc_file else None,
     )
