@@ -166,6 +166,8 @@ def _add_search_alphafold_parser(subparsers: argparse._SubParsersAction):
         type=argparse.FileType("w", encoding="UTF-8"),
         help="Output CSV with AlphaFold IDs per UniProt accession. Use `-` for stdout.",
     )
+    parser.add_argument("--min-sequence-length", type=int, help="Minimum sequence length of the major isoform.")
+    parser.add_argument("--max-sequence-length", type=int, help="Maximum sequence length of the major isoform.")
     parser.add_argument(
         "--limit", type=int, default=10_000, help="Maximum number of Alphafold entry identifiers to return"
     )
@@ -787,13 +789,21 @@ def _handle_search_pdbe(args):
 
 def _handle_search_alphafold(args):
     uniprot_accs = args.uniprot_accs
+    min_sequence_length = converter.structure(args.min_sequence_length, PositiveInt | None)  # pyright: ignore[reportArgumentType]
+    max_sequence_length = converter.structure(args.max_sequence_length, PositiveInt | None)  # pyright: ignore[reportArgumentType]
     limit = args.limit
     timeout = args.timeout
     output_csv = args.output_csv
 
     accs = _read_lines(uniprot_accs)
     rprint(f"Finding AlphaFold entries for {len(accs)} uniprot accessions")
-    results = search4af(accs, limit=limit, timeout=timeout)
+    results = search4af(
+        accs,
+        min_sequence_length=min_sequence_length,
+        max_sequence_length=max_sequence_length,
+        limit=limit,
+        timeout=timeout,
+    )
     rprint(f"Found {len(results)} AlphaFold entries, written to {output_csv.name}")
     _write_dict_of_sets2csv(output_csv, results, "af_id")
 

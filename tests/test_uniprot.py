@@ -366,6 +366,41 @@ def test_search4af():
     assert results == expected
 
 
+# P05067 has a sequence length of 770 residues
+@pytest.mark.vcr
+def test_search4af_ok_sequence_length():
+    uniprot_accession = "P05067"
+
+    results = search4af({uniprot_accession}, limit=1, min_sequence_length=600, max_sequence_length=800)
+
+    expected = {uniprot_accession: {uniprot_accession}}
+    assert results == expected
+
+
+@pytest.mark.vcr
+def test_search4af_too_small_sequence_length():
+    results = search4af({"P05067"}, limit=1, min_sequence_length=800)
+
+    expected = {}
+    assert results == expected
+
+
+@pytest.mark.vcr
+def test_search4af_too_big_sequence_length():
+    results = search4af({"P05067"}, limit=1, max_sequence_length=600)
+
+    expected = {}
+    assert results == expected
+
+
+def test_search4af_invalid_sequence_length():
+    with pytest.raises(
+        ValueError,
+        match="Maximum sequence length \\(500\\) must be greater than minimum sequence length \\(600\\)",
+    ):
+        search4af({"P05067"}, limit=1, min_sequence_length=600, max_sequence_length=500)
+
+
 @pytest.mark.vcr
 def test_search4emdb():
     uniprot_accession = "P05067"

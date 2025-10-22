@@ -338,7 +338,7 @@ def _build_sparql_query_sequence_length_filter(min_length: int | None = None, ma
     """)
     if min_length is not None and max_length is not None:
         if max_length <= min_length:
-            msg = f"Maximum number of residues ({max_length}) must be > minimum number of residues ({min_length})"
+            msg = f"Maximum sequence length ({max_length}) must be greater than minimum sequence length ({min_length})"
             raise ValueError(msg)
         return dedent(f"""\
             {header}
@@ -394,7 +394,12 @@ def _build_sparql_query_pdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
     )
 
 
-def _build_sparql_query_af(uniprot_accs: Iterable[str], limit=10_000) -> str:
+def _build_sparql_query_af(
+    uniprot_accs: Iterable[str],
+    min_sequence_length: int | None = None,
+    max_sequence_length: int | None = None,
+    limit=10_000,
+) -> str:
     select_clause = "?protein ?af_db"
     where_clause = dedent("""
         # --- Protein Selection ---
@@ -404,6 +409,12 @@ def _build_sparql_query_af(uniprot_accs: Iterable[str], limit=10_000) -> str:
         ?protein rdfs:seeAlso ?af_db .
         ?af_db up:database <http://purl.uniprot.org/database/AlphaFoldDB> .
     """)
+    if min_sequence_length is not None or max_sequence_length is not None:
+        length_filter = _build_sparql_query_sequence_length_filter(
+            min_length=min_sequence_length,
+            max_length=max_sequence_length,
+        )
+        where_clause += "\n" + length_filter
     return _build_sparql_generic_by_uniprot_accessions_query(uniprot_accs, select_clause, dedent(where_clause), limit)
 
 
@@ -576,13 +587,20 @@ def search4pdb(
 
 
 def search4af(
-    uniprot_accs: Collection[str], limit: int = 10_000, timeout: int = 1_800, batch_size: int = 10_000
+    uniprot_accs: Collection[str],
+    min_sequence_length: int | None = None,
+    max_sequence_length: int | None = None,
+    limit: int = 10_000,
+    timeout: int = 1_800,
+    batch_size: int = 10_000,
 ) -> dict[str, set[str]]:
     """
     Search for AlphaFold entries in UniProtKB accessions.
 
     Args:
         uniprot_accs: UniProt accessions.
+        min_sequence_length: Minimum sequence length of the major isoform.
+        max_sequence_length: Maximum sequence length of the major isoform.
         limit: Maximum number of results to return.
         timeout: Timeout for the SPARQL query in seconds.
         batch_size: Size of batches to process the UniProt accessions.
@@ -594,7 +612,7 @@ def search4af(
     total = len(uniprot_accs)
     with tqdm(total=total, desc="Searching for AlphaFolds of uniprots", disable=total < batch_size, unit="acc") as pbar:
         for batch in batched(uniprot_accs, batch_size, strict=False):
-            sparql_query = _build_sparql_query_af(batch, limit)
+            sparql_query = _build_sparql_query_af(batch, min_sequence_length, max_sequence_length, limit)
             logger.info("Executing SPARQL query for AlphaFold: %s", sparql_query)
 
             raw_results = _execute_sparql_search(
