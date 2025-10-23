@@ -176,6 +176,7 @@ async def fetch_many_async(
     max_parallel_downloads: int = 5,
     cacher: Cacher | None = None,
     gzip_files: bool = False,
+    canonical_only: bool = True,
 ) -> AsyncGenerator[AlphaFoldEntry]:
     """Asynchronously fetches summaries and files from
     [AlphaFold Protein Structure Database](https://alphafold.ebi.ac.uk/).
@@ -187,6 +188,8 @@ async def fetch_many_async(
         max_parallel_downloads: The maximum number of parallel downloads.
         cacher: A cacher to use for caching the fetched files. Only used if summary is in what set.
         gzip_files: Whether to gzip the downloaded files.
+        canonical_only: Whether just yield the canonical sequence of each uniprot entry.
+            When False then yields all isoforms of uniprot entry, not just the canonical one.
 
     Yields:
         A dataclass containing the summary, pdb file, and pae file.
@@ -212,6 +215,12 @@ async def fetch_many_async(
     )
     gzext = ".gz" if gzip_files else ""
     for summary in summaries:
+        if canonical_only and summary.uniprotAccession is not None and "-" in summary.uniprotAccession:
+            # TODO fetching summaries should return the original uniprot_accession so
+            # TODO we can do orig_acc == summary.uniprotAccession is canonical
+            # TODO instead of relying on naming convention
+            # O60481-2 is isoform, O60481 is canonical
+            continue
         yield AlphaFoldEntry(
             uniprot_acc=summary.uniprotAccession,
             summary=summary,
