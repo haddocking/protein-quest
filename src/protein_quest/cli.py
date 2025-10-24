@@ -916,7 +916,7 @@ def _handle_retrieve_alphafold(args):
     max_parallel_downloads = args.max_parallel_downloads
     cacher = _initialize_cacher(args)
     gzip_files = args.gzip_files
-    all_isoforms = not args.all_isoforms
+    all_isoforms = args.all_isoforms
 
     if what_formats is None:
         what_formats = {"summary", "cif"}
