@@ -8,7 +8,8 @@ from yarl import URL
 class EntrySummary:
     """Dataclass representing a summary of an AlphaFold entry.
 
-    Modelled after EntrySummary in [https://alphafold.ebi.ac.uk/api/openapi.json](https://alphafold.ebi.ac.uk/api/openapi.json)
+    Modelled after NewEntrySummary in [https://alphafold.ebi.ac.uk/api/openapi.json](https://alphafold.ebi.ac.uk/api/openapi.json)
+    with URL types and without deprecated fields.
     """
 
     allVersions: list[int]
@@ -57,7 +58,7 @@ class EntrySummary:
     stoichiometry: int | None = None
     taxId: int | None = None
     taxonomyLineage: list[str] | None = None
-    # uniprotAccession is isoform id (<uniprot_accesion>-<isoform number>) when entry has multiple isoforms.
+    # uniprotAccession is isoform id (<uniprot_accession>-<isoform number>) when entry has multiple isoforms.
     uniprotAccession: str | None = None
     uniprotDescription: str | None = None
     uniprotId: str | None = None
