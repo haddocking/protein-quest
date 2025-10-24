@@ -154,7 +154,7 @@ def search_alphafolds(
     Field(description="Set of uniprot accessions which have an AlphaFold entry"),
 ]:
     """Search for AlphaFold entries in UniProtKB accessions."""
-    # each uniprot accesion can have one or more AlphaFold IDs
+    # each uniprot accession can have one or more AlphaFold IDs
     # an AlphaFold ID is the same as the uniprot accession
     # so we return a subset of uniprot_accs
     results = search4af(uniprot_accs, limit)

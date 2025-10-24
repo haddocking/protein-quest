@@ -121,7 +121,7 @@ class PdbResult:
 
 
 type PdbResults = dict[str, set[PdbResult]]
-"""Dictionary with protein IDs as keys and sets of PDB results as values."""
+"""Dictionary with uniprot accessions as keys and sets of PDB results as values."""
 
 
 def filter_pdb_results_on_chain_length(
@@ -148,7 +148,7 @@ def filter_pdb_results_on_chain_length(
         msg = f"Maximum number of residues ({max_residues}) must be > minimum number of residues ({min_residues})"
         raise ValueError(msg)
     results: PdbResults = {}
-    for uniprot_acc, pdb_entries in pdb_results.items():
+    for uniprot_accession, pdb_entries in pdb_results.items():
         filtered_pdb_entries = {
             pdb_entry
             for pdb_entry in pdb_entries
@@ -156,8 +156,8 @@ def filter_pdb_results_on_chain_length(
             and (max_residues is None or pdb_entry.chain_length <= max_residues)
         }
         if filtered_pdb_entries:
-            # Only include uniprot_acc if there are any pdb entries left after filtering
-            results[uniprot_acc] = filtered_pdb_entries
+            # Only include uniprot_accession if there are any pdb entries left after filtering
+            results[uniprot_accession] = filtered_pdb_entries
     return results
 
 
@@ -787,12 +787,12 @@ def search4macromolecular_complexes(
 
 
 def search4interaction_partners(
-    uniprot_acc: str, excludes: set[str] | None = None, limit: int = 10_000, timeout: int = 1_800
+    uniprot_accession: str, excludes: set[str] | None = None, limit: int = 10_000, timeout: int = 1_800
 ) -> dict[str, set[str]]:
     """Search for interaction partners of a given UniProt accession using ComplexPortal database references.
 
     Args:
-        uniprot_acc: UniProt accession to search interaction partners for.
+        uniprot_accession: UniProt accession to search interaction partners for.
         excludes: Set of UniProt accessions to exclude from the results.
             For example already known interaction partners.
             If None then no complex members are excluded.
@@ -803,13 +803,13 @@ def search4interaction_partners(
         Dictionary with UniProt accessions of interaction partners as keys and sets of ComplexPortal entry IDs
         in which the interaction occurs as values.
     """
-    ucomplexes = search4macromolecular_complexes([uniprot_acc], limit=limit, timeout=timeout)
+    ucomplexes = search4macromolecular_complexes([uniprot_accession], limit=limit, timeout=timeout)
     hits: dict[str, set[str]] = {}
     if excludes is None:
         excludes = set()
     for ucomplex in ucomplexes:
         for member in ucomplex.members:
-            if member != uniprot_acc and member not in excludes:
+            if member != uniprot_accession and member not in excludes:
                 if member not in hits:
                     hits[member] = set()
                 hits[member].add(ucomplex.complex_id)

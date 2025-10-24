@@ -116,7 +116,7 @@ def _add_search_pdbe_parser(subparsers: argparse._SubParsersAction):
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
     parser.add_argument(
-        "uniprot_accs",
+        "uniprot_accessions",
         type=argparse.FileType("r", encoding="UTF-8"),
         help="Text file with UniProt accessions (one per line). Use `-` for stdin.",
     )
@@ -125,7 +125,7 @@ def _add_search_pdbe_parser(subparsers: argparse._SubParsersAction):
         type=argparse.FileType("w", encoding="UTF-8"),
         help=dedent("""\
             Output CSV with following columns:
-            `uniprot_acc`, `pdb_id`, `method`, `resolution`, `uniprot_chains`, `chain`, `chain_length`.
+            `uniprot_accession`, `pdb_id`, `method`, `resolution`, `uniprot_chains`, `chain`, `chain_length`.
             Where `uniprot_chains` is the raw UniProt chain string, for example `A=1-100`.
             and where `chain` is the first chain from `uniprot_chains`, for example `A`
             and `chain_length` is the length of the chain, for example `100`.
@@ -157,7 +157,7 @@ def _add_search_alphafold_parser(subparsers: argparse._SubParsersAction):
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
     parser.add_argument(
-        "uniprot_accs",
+        "uniprot_accessions",
         type=argparse.FileType("r", encoding="UTF-8"),
         help="Text file with UniProt accessions (one per line). Use `-` for stdin.",
     )
@@ -266,7 +266,7 @@ def _add_search_interaction_partners_parser(subparsers: argparse._SubParsersActi
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
     parser.add_argument(
-        "uniprot_acc",
+        "uniprot_accession",
         type=str,
         help="UniProt accession (for example P12345).",
     )
@@ -308,7 +308,7 @@ def _add_search_complexes_parser(subparsers: argparse._SubParsersAction):
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
     parser.add_argument(
-        "uniprot_accs",
+        "uniprot_accessions",
         type=argparse.FileType("r", encoding="UTF-8"),
         help="Text file with UniProt accessions (one per line) as query for searching complexes. Use `-` for stdin.",
     )
@@ -405,6 +405,14 @@ def _add_retrieve_alphafold_parser(subparsers: argparse._SubParsersAction):
         "--gzip-files",
         action="store_true",
         help="Whether to gzip the downloaded files. Excludes summary files, they are always uncompressed.",
+    )
+    parser.add_argument(
+        "--all-isoforms",
+        action="store_true",
+        help=(
+            "Whether to return all isoforms of each uniprot entry. "
+            "If not given then only the Alphafold entry for the canonical sequence is returned."
+        ),
     )
     parser.add_argument(
         "--max-parallel-downloads",
@@ -759,14 +767,14 @@ def _handle_search_uniprot(args):
 
 
 def _handle_search_pdbe(args):
-    uniprot_accs = args.uniprot_accs
+    uniprot_accessions = args.uniprot_accessions
     limit = args.limit
     timeout = args.timeout
     output_csv = args.output_csv
     min_residues = converter.structure(args.min_residues, PositiveInt | None)  # pyright: ignore[reportArgumentType]
     max_residues = converter.structure(args.max_residues, PositiveInt | None)  # pyright: ignore[reportArgumentType]
 
-    accs = set(_read_lines(uniprot_accs))
+    accs = set(_read_lines(uniprot_accessions))
     rprint(f"Finding PDB entries for {len(accs)} uniprot accessions")
     results = search4pdb(accs, limit=limit, timeout=timeout)
 
@@ -788,14 +796,14 @@ def _handle_search_pdbe(args):
 
 
 def _handle_search_alphafold(args):
-    uniprot_accs = args.uniprot_accs
+    uniprot_accessions = args.uniprot_accessions
     min_sequence_length = converter.structure(args.min_sequence_length, PositiveInt | None)  # pyright: ignore[reportArgumentType]
     max_sequence_length = converter.structure(args.max_sequence_length, PositiveInt | None)  # pyright: ignore[reportArgumentType]
     limit = args.limit
     timeout = args.timeout
     output_csv = args.output_csv
 
-    accs = _read_lines(uniprot_accs)
+    accs = _read_lines(uniprot_accessions)
     rprint(f"Finding AlphaFold entries for {len(accs)} uniprot accessions")
     results = search4af(
         accs,
@@ -809,12 +817,12 @@ def _handle_search_alphafold(args):
 
 
 def _handle_search_emdb(args):
-    uniprot_accs = args.uniprot_accs
+    uniprot_accessions = args.uniprot_accessions
     limit = args.limit
     timeout = args.timeout
     output_csv = args.output_csv
 
-    accs = _read_lines(uniprot_accs)
+    accs = _read_lines(uniprot_accessions)
     rprint(f"Finding EMDB entries for {len(accs)} uniprot accessions")
     results = search4emdb(accs, limit=limit, timeout=timeout)
     total_emdbs = sum([len(v) for v in results.values()])
@@ -853,25 +861,25 @@ def _handle_search_taxonomy(args):
 
 
 def _handle_search_interaction_partners(args: argparse.Namespace):
-    uniprot_acc: str = args.uniprot_acc
+    uniprot_accession: str = args.uniprot_accession
     excludes: set[str] = set(args.exclude) if args.exclude else set()
     limit: int = args.limit
     timeout: int = args.timeout
     output_csv: TextIOWrapper = args.output_csv
 
-    rprint(f"Searching for interaction partners of '{uniprot_acc}'")
-    results = search4interaction_partners(uniprot_acc, excludes=excludes, limit=limit, timeout=timeout)
+    rprint(f"Searching for interaction partners of '{uniprot_accession}'")
+    results = search4interaction_partners(uniprot_accession, excludes=excludes, limit=limit, timeout=timeout)
     rprint(f"Found {len(results)} interaction partners, written to {output_csv.name}")
     _write_lines(output_csv, results.keys())
 
 
 def _handle_search_complexes(args: argparse.Namespace):
-    uniprot_accs = args.uniprot_accs
+    uniprot_accessions = args.uniprot_accessions
     limit = args.limit
     timeout = args.timeout
     output_csv = args.output_csv
 
-    accs = _read_lines(uniprot_accs)
+    accs = _read_lines(uniprot_accessions)
     rprint(f"Finding complexes for {len(accs)} uniprot accessions")
     results = search4macromolecular_complexes(accs, limit=limit, timeout=timeout)
     rprint(f"Found {len(results)} complexes, written to {output_csv.name}")
@@ -908,11 +916,12 @@ def _handle_retrieve_alphafold(args):
     max_parallel_downloads = args.max_parallel_downloads
     cacher = _initialize_cacher(args)
     gzip_files = args.gzip_files
+    all_isoforms = args.all_isoforms
 
     if what_formats is None:
         what_formats = {"summary", "cif"}
 
-    # TODO besides `uniprot_acc,af_id\n` csv also allow headless single column format
+    # TODO besides `uniprot_accession,af_id\n` csv also allow headless single column format
     #
     af_ids = _read_column_from_csv(alphafold_csv, "af_id")
     validated_what: set[DownloadableFormat] = structure(what_formats, set[DownloadableFormat])
@@ -924,6 +933,7 @@ def _handle_retrieve_alphafold(args):
         max_parallel_downloads=max_parallel_downloads,
         cacher=cacher,
         gzip_files=gzip_files,
+        all_isoforms=all_isoforms,
     )
     total_nr_files = sum(af.nr_of_files() for af in afs)
     rprint(f"Retrieved {total_nr_files} AlphaFold files and {len(afs)} summaries, written to {download_dir}")
@@ -1141,7 +1151,9 @@ def _handle_convert_uniprot(args):
         for input_file in tqdm(input_files, unit="file"):
             s = read_structure(input_file)
             uniprot_accessions = structure2uniprot_accessions(s)
-            _write_lines(output_file, [f"{input_file},{uniprot_acc}" for uniprot_acc in sorted(uniprot_accessions)])
+            _write_lines(
+                output_file, [f"{input_file},{uniprot_accession}" for uniprot_accession in sorted(uniprot_accessions)]
+            )
     else:
         uniprot_accessions: set[str] = set()
         for input_file in tqdm(input_files, unit="file"):
@@ -1187,14 +1199,14 @@ def _write_lines(file: TextIOWrapper, lines: Iterable[str]):
 
 def _write_pdbe_csv(path: TextIOWrapper, data: PdbResults):
     _make_sure_parent_exists(path)
-    fieldnames = ["uniprot_acc", "pdb_id", "method", "resolution", "uniprot_chains", "chain", "chain_length"]
+    fieldnames = ["uniprot_accession", "pdb_id", "method", "resolution", "uniprot_chains", "chain", "chain_length"]
     writer = csv.DictWriter(path, fieldnames=fieldnames)
     writer.writeheader()
-    for uniprot_acc, entries in sorted(data.items()):
+    for uniprot_accession, entries in sorted(data.items()):
         for e in sorted(entries, key=lambda x: (x.id, x.method)):
             writer.writerow(
                 {
-                    "uniprot_acc": uniprot_acc,
+                    "uniprot_accession": uniprot_accession,
                     "pdb_id": e.id,
                     "method": e.method,
                     "resolution": e.resolution or "",
@@ -1207,13 +1219,13 @@ def _write_pdbe_csv(path: TextIOWrapper, data: PdbResults):
 
 def _write_dict_of_sets2csv(file: TextIOWrapper, data: dict[str, set[str]], ref_id_field: str):
     _make_sure_parent_exists(file)
-    fieldnames = ["uniprot_acc", ref_id_field]
+    fieldnames = ["uniprot_accession", ref_id_field]
 
     writer = csv.DictWriter(file, fieldnames=fieldnames)
     writer.writeheader()
-    for uniprot_acc, ref_ids in sorted(data.items()):
+    for uniprot_accession, ref_ids in sorted(data.items()):
         for ref_id in sorted(ref_ids):
-            writer.writerow({"uniprot_acc": uniprot_acc, ref_id_field: ref_id})
+            writer.writerow({"uniprot_accession": uniprot_accession, ref_id_field: ref_id})
 
 
 def _iter_csv_rows(file: TextIOWrapper) -> Generator[dict[str, str]]:

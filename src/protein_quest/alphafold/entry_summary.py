@@ -8,33 +8,57 @@ from yarl import URL
 class EntrySummary:
     """Dataclass representing a summary of an AlphaFold entry.
 
-    Modelled after EntrySummary in [https://alphafold.ebi.ac.uk/api/openapi.json](https://alphafold.ebi.ac.uk/api/openapi.json)
+    Modelled after NewEntrySummary in [https://alphafold.ebi.ac.uk/api/openapi.json](https://alphafold.ebi.ac.uk/api/openapi.json)
+    with URL types and without deprecated fields.
     """
 
-    entryId: str
-    uniprotAccession: str
-    uniprotId: str
-    uniprotDescription: str
-    taxId: int
-    organismScientificName: str
-    uniprotStart: int
-    uniprotEnd: int
-    uniprotSequence: str
-    modelCreatedDate: str
-    latestVersion: int
     allVersions: list[int]
     bcifUrl: URL
     cifUrl: URL
-    pdbUrl: URL
-    paeImageUrl: URL
+    entityType: str
+    fractionPlddtConfident: float
+    fractionPlddtLow: float
+    fractionPlddtVeryHigh: float
+    fractionPlddtVeryLow: float
+    globalMetricValue: float
+    isUniProt: bool
+    latestVersion: int
+    modelCreatedDate: str
+    modelEntityId: str
     paeDocUrl: URL
-    gene: str | None = None
-    sequenceChecksum: str | None = None
-    sequenceVersionDate: str | None = None
-    amAnnotationsUrl: URL | None = None
+    pdbUrl: URL
+    providerId: str
+    sequence: str
+    sequenceChecksum: str
+    sequenceEnd: int
+    sequenceStart: int
+    sequenceVersionDate: str
+    toolUsed: str
+    alternativeNames: list[str] | None = None
     amAnnotationsHg19Url: URL | None = None
     amAnnotationsHg38Url: URL | None = None
-    isReviewed: bool | None = None
-    isReferenceProteome: bool | None = None
-    # TODO add new fields from https://alphafold.ebi.ac.uk/#/public-api/get_uniprot_summary_api_uniprot_summary__qualifier__json_get
-    # TODO like fractionPlddt* fields which can be used in filter_files_on_confidence()
+    amAnnotationsUrl: URL | None = None
+    catalyticActivities: list[str] | None = None
+    complexName: str | None = None
+    functions: list[str] | None = None
+    gene: str | None = None
+    geneSynonyms: list[str] | None = None
+    ipSAE: float | None = None
+    ipTM: float | None = None
+    isUniProtReferenceProteome: bool | None = None
+    isUniProtReviewed: bool | None = None
+    keywords: list[str] | None = None
+    msaUrl: URL | None = None
+    organismCommonNames: list[str] | None = None
+    organismScientificName: str | None = None
+    organismSynonyms: list[str] | None = None
+    plddtDocUrl: URL | None = None
+    proteinFullNames: list[str] | None = None
+    proteinShortNames: list[str] | None = None
+    stoichiometry: int | None = None
+    taxId: int | None = None
+    taxonomyLineage: list[str] | None = None
+    # uniprotAccession is isoform id (<uniprot_accession>-<isoform number>) when entry has multiple isoforms.
+    uniprotAccession: str | None = None
+    uniprotDescription: str | None = None
+    uniprotId: str | None = None
