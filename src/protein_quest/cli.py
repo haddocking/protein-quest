@@ -6,14 +6,15 @@ import csv
 import logging
 import os
 import sys
-from collections.abc import Callable, Generator, Iterable
+from collections.abc import Callable, Generator, Iterable, Sequence
+from contextlib import suppress
 from importlib.util import find_spec
-from io import TextIOWrapper
+from io import BytesIO, TextIOWrapper
 from pathlib import Path
 from textwrap import dedent
 
 from cattrs import structure
-from rich import print as rprint
+from rich.console import Console
 from rich.logging import RichHandler
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -43,7 +44,9 @@ from protein_quest.uniprot import (
     ComplexPortalEntry,
     PdbResults,
     Query,
+    UniprotDetails,
     filter_pdb_results_on_chain_length,
+    map_uniprot_accessions2uniprot_details,
     search4af,
     search4emdb,
     search4interaction_partners,
@@ -61,6 +64,8 @@ from protein_quest.utils import (
     user_cache_root_dir,
 )
 
+console = Console(stderr=True)
+rprint = console.print
 logger = logging.getLogger(__name__)
 
 
@@ -319,6 +324,44 @@ def _add_search_complexes_parser(subparsers: argparse._SubParsersAction):
     )
     parser.add_argument("--limit", type=int, default=100, help="Maximum number of complex results to return")
     parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
+
+
+def _add_search_uniprot_details_parser(subparsers: argparse._SubParsersAction):
+    """Add search uniprot details subcommand parser."""
+    description = dedent("""\
+        Retrieve UniProt details for given UniProt accessions
+        from the Uniprot SPARQL endpoint.
+
+        The output CSV file has the following columns:
+
+        - uniprot_accession: UniProt accession.
+        - uniprot_id: UniProt ID (mnemonic).
+        - sequence_length: Length of the canonical sequence.
+        - reviewed: Whether the entry is reviewed (Swiss-Prot) or unreviewed (TrEMBL).
+        - protein_name: Recommended protein name.
+        - taxon_id: NCBI Taxonomy ID of the organism.
+        - taxon_name: Scientific name of the organism.
+
+        The order of the output CSV can be different from the input order.
+    """)
+    parser = subparsers.add_parser(
+        "uniprot-details",
+        help="Retrieve UniProt details for given UniProt accessions",
+        description=Markdown(description, style="argparse.text"),  # type: ignore using rich formatter makes this OK
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+    )
+    parser.add_argument(
+        "uniprot_accessions",
+        type=argparse.FileType("r", encoding="UTF-8"),
+        help="Text file with UniProt accessions (one per line). Use `-` for stdin.",
+    )
+    parser.add_argument(
+        "output_csv",
+        type=argparse.FileType("w", encoding="UTF-8"),
+        help="Output CSV with UniProt details. Use `-` for stdout.",
+    )
+    parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
+    parser.add_argument("--batch-size", type=int, default=1_000, help="Number of accessions to query per batch")
 
 
 def _add_copy_method_arguments(parser):
@@ -602,6 +645,7 @@ def _add_search_subcommands(subparsers: argparse._SubParsersAction):
     _add_search_taxonomy_parser(subsubparsers)
     _add_search_interaction_partners_parser(subsubparsers)
     _add_search_complexes_parser(subsubparsers)
+    _add_search_uniprot_details_parser(subsubparsers)
 
 
 def _add_retrieve_subcommands(subparsers: argparse._SubParsersAction):
@@ -736,6 +780,14 @@ def make_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _name_of(file: TextIOWrapper | BytesIO) -> str:
+    try:
+        return file.name
+    except AttributeError:
+        # In pytest BytesIO is used stdout which has no 'name' attribute
+        return "<stdout>"
+
+
 def _handle_search_uniprot(args):
     taxon_id = args.taxon_id
     reviewed = args.reviewed
@@ -762,7 +814,7 @@ def _handle_search_uniprot(args):
     )
     rprint("Searching for UniProt accessions")
     accs = search4uniprot(query=query, limit=limit, timeout=timeout)
-    rprint(f"Found {len(accs)} UniProt accessions, written to {output_file.name}")
+    rprint(f"Found {len(accs)} UniProt accessions, written to {_name_of(output_file)}")
     _write_lines(output_file, sorted(accs))
 
 
@@ -792,7 +844,7 @@ def _handle_search_pdbe(args):
         rprint(f"Found {raw_total_pdbs} PDB entries for {raw_nr_results} uniprot accessions")
 
     _write_pdbe_csv(output_csv, results)
-    rprint(f"Written to {output_csv.name}")
+    rprint(f"Written to {_name_of(output_csv)}")
 
 
 def _handle_search_alphafold(args):
@@ -812,7 +864,7 @@ def _handle_search_alphafold(args):
         limit=limit,
         timeout=timeout,
     )
-    rprint(f"Found {len(results)} AlphaFold entries, written to {output_csv.name}")
+    rprint(f"Found {len(results)} AlphaFold entries, written to {_name_of(output_csv)}")
     _write_dict_of_sets2csv(output_csv, results, "af_id")
 
 
@@ -826,7 +878,7 @@ def _handle_search_emdb(args):
     rprint(f"Finding EMDB entries for {len(accs)} uniprot accessions")
     results = search4emdb(accs, limit=limit, timeout=timeout)
     total_emdbs = sum([len(v) for v in results.values()])
-    rprint(f"Found {total_emdbs} EMDB entries, written to {output_csv.name}")
+    rprint(f"Found {total_emdbs} EMDB entries, written to {_name_of(output_csv)}")
     _write_dict_of_sets2csv(output_csv, results, "emdb_id")
 
 
@@ -841,7 +893,7 @@ def _handle_search_go(args):
     else:
         rprint(f"Searching for GO terms matching '{term}'")
     results = asyncio.run(search_gene_ontology_term(term, aspect=aspect, limit=limit))
-    rprint(f"Found {len(results)} GO terms, written to {output_csv.name}")
+    rprint(f"Found {len(results)} GO terms, written to {_name_of(output_csv)}")
     write_go_terms_to_csv(results, output_csv)
 
 
@@ -856,7 +908,7 @@ def _handle_search_taxonomy(args):
     else:
         rprint(f"Searching for taxon information matching '{query}'")
     results = asyncio.run(search_taxon(query=query, field=field, limit=limit))
-    rprint(f"Found {len(results)} taxons, written to {output_csv.name}")
+    rprint(f"Found {len(results)} taxons, written to {_name_of(output_csv)}")
     _write_taxonomy_csv(results, output_csv)
 
 
@@ -869,7 +921,7 @@ def _handle_search_interaction_partners(args: argparse.Namespace):
 
     rprint(f"Searching for interaction partners of '{uniprot_accession}'")
     results = search4interaction_partners(uniprot_accession, excludes=excludes, limit=limit, timeout=timeout)
-    rprint(f"Found {len(results)} interaction partners, written to {output_csv.name}")
+    rprint(f"Found {len(results)} interaction partners, written to {_name_of(output_csv)}")
     _write_lines(output_csv, results.keys())
 
 
@@ -882,8 +934,21 @@ def _handle_search_complexes(args: argparse.Namespace):
     accs = _read_lines(uniprot_accessions)
     rprint(f"Finding complexes for {len(accs)} uniprot accessions")
     results = search4macromolecular_complexes(accs, limit=limit, timeout=timeout)
-    rprint(f"Found {len(results)} complexes, written to {output_csv.name}")
+    rprint(f"Found {len(results)} complexes, written to {_name_of(output_csv)}")
     _write_complexes_csv(results, output_csv)
+
+
+def _handle_search_uniprot_details(args: argparse.Namespace):
+    uniprot_accessions = args.uniprot_accessions
+    timeout = args.timeout
+    batch_size = args.batch_size
+    output_csv: TextIOWrapper = args.output_csv
+
+    accs = _read_lines(uniprot_accessions)
+    rprint(f"Retrieving UniProt entry details for {len(accs)} uniprot accessions")
+    results = list(map_uniprot_accessions2uniprot_details(accs, timeout=timeout, batch_size=batch_size))
+    _write_uniprot_details_csv(output_csv, results)
+    rprint(f"Retrieved details for {len(results)} UniProt entries, written to {_name_of(output_csv)}")
 
 
 def _initialize_cacher(args: argparse.Namespace) -> Cacher:
@@ -992,7 +1057,7 @@ def _handle_filter_confidence(args: argparse.Namespace):
 
     rprint(f"Filtered {passed_count} mmcif/PDB files by confidence, written to {output_dir} directory")
     if stats_file:
-        rprint(f"Statistics written to {stats_file.name}")
+        rprint(f"Statistics written to {_name_of(stats_file)}")
 
 
 def _handle_filter_chain(args):
@@ -1064,7 +1129,7 @@ def _handle_filter_residue(args):
 
     rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
     if stats_file:
-        rprint(f"Statistics written to {stats_file.name}")
+        rprint(f"Statistics written to {_name_of(stats_file)}")
 
 
 def _handle_filter_ss(args):
@@ -1126,7 +1191,7 @@ def _handle_filter_ss(args):
             )
     rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
     if stats_file:
-        rprint(f"Statistics written to {stats_file.name}")
+        rprint(f"Statistics written to {_name_of(stats_file)}")
 
 
 def _handle_mcp(args):
@@ -1188,7 +1253,8 @@ def _read_lines(file: TextIOWrapper) -> list[str]:
 
 
 def _make_sure_parent_exists(file: TextIOWrapper):
-    if file.name != "<stdout>":
+    # Can not create dir for stdout
+    with suppress(AttributeError):
         Path(file.name).parent.mkdir(parents=True, exist_ok=True)
 
 
@@ -1267,6 +1333,21 @@ def _write_complexes_csv(complexes: list[ComplexPortalEntry], output_csv: TextIO
         )
 
 
+def _write_uniprot_details_csv(
+    output_csv: TextIOWrapper,
+    uniprot_details_list: Iterable[UniprotDetails],
+) -> None:
+    if not uniprot_details_list:
+        msg = "No UniProt entries found for given accessions"
+        raise ValueError(msg)
+    # As all props of UniprotDetails are scalar, we can directly unstructure to dicts
+    rows = converter.unstructure(uniprot_details_list)
+    fieldnames = rows[0].keys()
+    writer = csv.DictWriter(output_csv, fieldnames=fieldnames)
+    writer.writeheader()
+    writer.writerows(rows)
+
+
 HANDLERS: dict[tuple[str, str | None], Callable] = {
     ("search", "uniprot"): _handle_search_uniprot,
     ("search", "pdbe"): _handle_search_pdbe,
@@ -1276,6 +1357,7 @@ HANDLERS: dict[tuple[str, str | None], Callable] = {
     ("search", "taxonomy"): _handle_search_taxonomy,
     ("search", "interaction-partners"): _handle_search_interaction_partners,
     ("search", "complexes"): _handle_search_complexes,
+    ("search", "uniprot-details"): _handle_search_uniprot_details,
     ("retrieve", "pdbe"): _handle_retrieve_pdbe,
     ("retrieve", "alphafold"): _handle_retrieve_alphafold,
     ("retrieve", "emdb"): _handle_retrieve_emdb,
@@ -1289,11 +1371,15 @@ HANDLERS: dict[tuple[str, str | None], Callable] = {
 }
 
 
-def main():
-    """Main entry point for the CLI."""
+def main(argv: Sequence[str] | None = None):
+    """Main entry point for the CLI.
+
+    Args:
+        argv: List of command line arguments. If None, uses sys.argv.
+    """
     parser = make_parser()
-    args = parser.parse_args()
-    logging.basicConfig(level=args.log_level, handlers=[RichHandler(show_level=False)])
+    args = parser.parse_args(argv)
+    logging.basicConfig(level=args.log_level, handlers=[RichHandler(show_level=False, console=console)])
 
     # Dispatch table to reduce complexity
     cmd = args.command

@@ -6,10 +6,12 @@ from protein_quest.uniprot import (
     ComplexPortalEntry,
     PdbResult,
     Query,
+    UniprotDetails,
     _append_subcellular_location_filters,
     _build_sparql_query_pdb,
     _build_sparql_query_uniprot,
     filter_pdb_results_on_chain_length,
+    map_uniprot_accessions2uniprot_details,
     search4af,
     search4emdb,
     search4interaction_partners,
@@ -493,3 +495,76 @@ def test_search4interaction_partners():
     }
     assert results[expected_key] == first_expected
     assert not results.keys() & excludes
+
+
+@pytest.mark.vcr
+def test_map_uniprot_accessions2uniprot_details():
+    uniprot_accessions = ["P05067", "A6NGD5", "O14627", "P00697", "P42284", "A0A0B5AC95", "A0A0S2Z4R0"]
+    results = set(map_uniprot_accessions2uniprot_details(uniprot_accessions))
+
+    expected = {
+        UniprotDetails(
+            uniprot_accession="A0A0B5AC95",
+            uniprot_id="INS1A_CONGE",
+            sequence_length=115,
+            reviewed=True,
+            protein_name="Con-Ins G1a",
+            taxon_id=6491,
+            taxon_name="Conus geographus",
+        ),
+        UniprotDetails(
+            uniprot_accession="A0A0S2Z4R0",
+            uniprot_id="A0A0S2Z4R0_HUMAN",
+            sequence_length=862,
+            reviewed=False,
+            protein_name="Axin-1",
+            taxon_id=9606,
+            taxon_name="Homo sapiens",
+        ),
+        UniprotDetails(
+            uniprot_accession="A6NGD5",
+            uniprot_id="ZSA5C_HUMAN",
+            sequence_length=496,
+            reviewed=True,
+            protein_name="Zinc finger and SCAN domain-containing protein 5C",
+            taxon_id=9606,
+            taxon_name="Homo sapiens",
+        ),
+        UniprotDetails(
+            uniprot_accession="O14627",
+            uniprot_id="CDX4_HUMAN",
+            sequence_length=284,
+            reviewed=True,
+            protein_name="Homeobox protein CDX-4",
+            taxon_id=9606,
+            taxon_name="Homo sapiens",
+        ),
+        UniprotDetails(
+            uniprot_accession="P00697",
+            uniprot_id="LYSC1_RAT",
+            sequence_length=148,
+            reviewed=True,
+            protein_name="Lysozyme C-1",
+            taxon_id=10116,
+            taxon_name="Rattus norvegicus",
+        ),
+        UniprotDetails(
+            uniprot_accession="P05067",
+            uniprot_id="A4_HUMAN",
+            sequence_length=770,
+            reviewed=True,
+            protein_name="Amyloid-beta precursor protein",
+            taxon_id=9606,
+            taxon_name="Homo sapiens",
+        ),
+        UniprotDetails(
+            uniprot_accession="P42284",
+            uniprot_id="LOLA2_DROME",
+            sequence_length=549,
+            reviewed=True,
+            protein_name="Longitudinals lacking protein, isoforms H/M/V",
+            taxon_id=7227,
+            taxon_name="Drosophila melanogaster",
+        ),
+    }
+    assert results == expected

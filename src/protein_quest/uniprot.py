@@ -1,7 +1,7 @@
 """Module for searching UniProtKB using SPARQL."""
 
 import logging
-from collections.abc import Collection, Iterable
+from collections.abc import Collection, Generator, Iterable
 from dataclasses import dataclass
 from functools import cached_property
 from itertools import batched
@@ -337,6 +337,7 @@ def _build_sparql_query_sequence_length_filter(min_length: int | None = None, ma
     # - http://purl.uniprot.org/isoforms/P42284-2 is ok
     # - http://purl.uniprot.org/isoforms/P42284-1 is not ok, because it is based on P42284-2
     # - http://purl.uniprot.org/isoforms/Q7KQZ4-1 is not ok, because it is from another uniprot entry
+    # TODO use same approach as in retrieve_uniprot_details function
     header = dedent("""\
         ?protein up:sequence ?isoform .
         FILTER NOT EXISTS { ?isoform up:basedOn ?parent_isoform }
@@ -814,3 +815,126 @@ def search4interaction_partners(
                     hits[member] = set()
                 hits[member].add(ucomplex.complex_id)
     return hits
+
+
+@dataclass(frozen=True)
+class UniprotDetails:
+    """Details of an UniProt entry.
+
+    Parameters:
+        uniprot_accession: UniProt accession.
+        uniprot_id: UniProt ID (mnemonic).
+        sequence_length: Length of the canonical sequence.
+        reviewed: Whether the entry is reviewed (Swiss-Prot) or unreviewed (TrEMBL).
+        protein_name: Recommended protein name.
+        taxon_id: NCBI Taxonomy ID of the organism.
+        taxon_name: Scientific name of the organism.
+    """
+
+    uniprot_accession: str
+    uniprot_id: str
+    sequence_length: int
+    reviewed: bool
+    protein_name: str
+    taxon_id: int
+    taxon_name: str
+
+
+def map_uniprot_accessions2uniprot_details(
+    uniprot_accessions: Collection[str], timeout: int = 1_800, batch_size: int = 1000
+) -> Generator[UniprotDetails]:
+    """Map UniProt accessions to UniProt details by querying the UniProt SPARQL endpoint.
+
+    Example:
+
+    SPARQL query to get details for 7 UniProt entries, run on [https://sparql.uniprot.org/sparql](https://sparql.uniprot.org/sparql).
+
+    ```sparql
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    PREFIX up:   <http://purl.uniprot.org/core/>
+    PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+    SELECT
+    (?ac AS ?uniprot_accession)
+    ?uniprot_id
+    (STRAFTER(STR(?organism), "taxonomy/") AS ?taxon_id)
+    ?taxon_name
+    ?reviewed
+    ?protein_name
+    (STRLEN(?sequence) AS ?seq_length)
+    WHERE {
+    # Input UniProt accessions
+    VALUES (?ac) { ("P05067") ("A6NGD5") ("O14627") ("P00697") ("P42284") ("A0A0B5AC95") ("A0A0S2Z4R0")}
+    BIND (IRI(CONCAT("http://purl.uniprot.org/uniprot/", ?ac)) AS ?protein)
+    ?protein a up:Protein .
+    ?protein up:mnemonic ?uniprot_id .
+    ?protein up:organism ?organism .
+    ?organism up:scientificName ?taxon_name .
+    ?protein up:reviewed ?reviewed .
+    ?protein up:recommendedName/up:fullName ?protein_name .
+    ?protein up:sequence ?isoform .
+    ?isoform a up:Simple_Sequence .
+    ?isoform rdf:value ?sequence .
+    BIND (STRBEFORE(STRAFTER(STR(?isoform), "http://purl.uniprot.org/isoforms/"), "-") AS ?ac_of_isoform)
+    FILTER(?ac_of_isoform = ?ac)
+    }
+    ```
+
+    Args:
+        uniprot_accessions: Iterable of UniProt accessions.
+        timeout: Timeout for the SPARQL query in seconds.
+        batch_size: Size of batches to process the UniProt accessions.
+
+    Yields:
+        UniprotDetails objects in random order.
+    """
+    select_clause = dedent("""\
+        (?ac AS ?uniprot_accession)
+        ?uniprot_id
+        (STRAFTER(STR(?organism), "taxonomy/") AS ?taxon_id)
+        ?taxon_name
+        ?reviewed
+        ?protein_name
+        (STRLEN(?sequence) AS ?seq_length)
+    """)
+    where_clause = dedent("""
+        ?protein a up:Protein .
+        ?protein up:mnemonic ?uniprot_id .
+        ?protein up:organism ?organism .
+        ?organism up:scientificName ?taxon_name .
+        ?protein up:reviewed ?reviewed .
+        ?protein up:recommendedName/up:fullName ?protein_name .
+        ?protein up:sequence ?isoform .
+        ?isoform a up:Simple_Sequence .
+        ?isoform rdf:value ?sequence .
+        BIND (STRBEFORE(STRAFTER(STR(?isoform), "http://purl.uniprot.org/isoforms/"), "-") AS ?ac_of_isoform)
+        FILTER(?ac_of_isoform = ?ac)
+    """)
+    total = len(uniprot_accessions)
+    with tqdm(
+        total=total,
+        desc="Retrieving UniProt details",
+        disable=total < batch_size,
+        unit="acc",
+    ) as pbar:
+        for batch in batched(uniprot_accessions, batch_size, strict=False):
+            sparql_query = _build_sparql_generic_by_uniprot_accessions_query(
+                batch, select_clause, where_clause, limit=batch_size
+            )
+            logger.info("Executing SPARQL query for UniProt details: %s", sparql_query)
+            raw_results = _execute_sparql_search(
+                sparql_query=sparql_query,
+                timeout=timeout,
+            )
+            for raw_result in raw_results:
+                result = UniprotDetails(
+                    uniprot_accession=raw_result["uniprot_accession"]["value"],
+                    uniprot_id=raw_result["uniprot_id"]["value"],
+                    sequence_length=int(raw_result["seq_length"]["value"]),
+                    reviewed=raw_result["reviewed"]["value"] == "true",
+                    protein_name=raw_result["protein_name"]["value"],
+                    taxon_id=int(raw_result["taxon_id"]["value"]),
+                    taxon_name=raw_result["taxon_name"]["value"],
+                )
+                yield result
+            pbar.update(len(batch))
