@@ -407,6 +407,14 @@ def _add_retrieve_alphafold_parser(subparsers: argparse._SubParsersAction):
         help="Whether to gzip the downloaded files. Excludes summary files, they are always uncompressed.",
     )
     parser.add_argument(
+        "--all-isoforms",
+        action="store_true",
+        help=(
+            "Whether to return all isoforms of each uniprot entry. "
+            "If not given then only the Alphafold entry for the canonical sequence is returned."
+        ),
+    )
+    parser.add_argument(
         "--max-parallel-downloads",
         type=int,
         default=5,
@@ -908,6 +916,7 @@ def _handle_retrieve_alphafold(args):
     max_parallel_downloads = args.max_parallel_downloads
     cacher = _initialize_cacher(args)
     gzip_files = args.gzip_files
+    all_isoforms = not args.all_isoforms
 
     if what_formats is None:
         what_formats = {"summary", "cif"}
@@ -924,6 +933,7 @@ def _handle_retrieve_alphafold(args):
         max_parallel_downloads=max_parallel_downloads,
         cacher=cacher,
         gzip_files=gzip_files,
+        all_isoforms=all_isoforms,
     )
     total_nr_files = sum(af.nr_of_files() for af in afs)
     rprint(f"Retrieved {total_nr_files} AlphaFold files and {len(afs)} summaries, written to {download_dir}")

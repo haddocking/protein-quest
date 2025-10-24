@@ -45,13 +45,13 @@ def _camel_to_snake_case(name: str) -> str:
 
 @dataclass
 class AlphaFoldEntry:
-    """AlphaFoldEntry represents a minimal single entry in the AlphaFold database.
+    """A single AlphaFold entry with optionally local files.
 
     See https://alphafold.ebi.ac.uk/api-docs for more details on the API and data structure.
     """
 
-    uniprot_acc: str | None
-    summary: EntrySummary | None
+    uniprot_acc: str
+    summary: EntrySummary
     summary_file: Path | None = None
     bcif_file: Path | None = None
     cif_file: Path | None = None
@@ -123,6 +123,8 @@ async def fetch_summary(
 
     Returns:
         A list of EntrySummary objects representing the fetched summary.
+        When qualifier has multiple isoforms then multiple summaries are returned,
+        otherwise a list of a single summary is returned.
     """
     url = f"https://alphafold.ebi.ac.uk/api/prediction/{qualifier}"
     fn: Path | None = None
@@ -143,7 +145,6 @@ async def fetch_summary(
         response.raise_for_status()
         raw_data = await response.content.read()
         if fn is not None:
-            # TODO return fn and make it part of AlphaFoldEntry as summary_file prop
             await cacher.write_bytes(Path(fn), raw_data)
         return converter.loads(raw_data, list[EntrySummary])
 
@@ -153,7 +154,7 @@ async def fetch_summaries(
     save_dir: Path | None = None,
     max_parallel_downloads: int = 5,
     cacher: Cacher | None = None,
-) -> AsyncGenerator[EntrySummary]:
+) -> AsyncGenerator[tuple[str, EntrySummary]]:
     semaphore = Semaphore(max_parallel_downloads)
     if save_dir is not None:
         save_dir.mkdir(parents=True, exist_ok=True)
@@ -164,9 +165,9 @@ async def fetch_summaries(
         summaries_per_qualifier: list[list[EntrySummary]] = await tqdm.gather(
             *tasks, desc="Fetching Alphafold summaries"
         )
-        for summaries in summaries_per_qualifier:
+        for qualifier, summaries in zip(qualifiers, summaries_per_qualifier, strict=True):
             for summary in summaries:
-                yield summary
+                yield qualifier, summary
 
 
 async def fetch_many_async(
@@ -176,7 +177,7 @@ async def fetch_many_async(
     max_parallel_downloads: int = 5,
     cacher: Cacher | None = None,
     gzip_files: bool = False,
-    canonical_only: bool = True,
+    all_isoforms: bool = False,
 ) -> AsyncGenerator[AlphaFoldEntry]:
     """Asynchronously fetches summaries and files from
     [AlphaFold Protein Structure Database](https://alphafold.ebi.ac.uk/).
@@ -188,8 +189,8 @@ async def fetch_many_async(
         max_parallel_downloads: The maximum number of parallel downloads.
         cacher: A cacher to use for caching the fetched files. Only used if summary is in what set.
         gzip_files: Whether to gzip the downloaded files.
-        canonical_only: Whether just yield the canonical sequence of each uniprot entry.
-            When False then yields all isoforms of uniprot entry, not just the canonical one.
+        all_isoforms: Whether to yield all isoforms of each uniprot entry.
+            When False then yields only the canonical sequence of uniprot entry.
 
     Yields:
         A dataclass containing the summary, pdb file, and pae file.
@@ -213,18 +214,17 @@ async def fetch_many_async(
         cacher=cacher,
         gzip_files=gzip_files,
     )
+
     gzext = ".gz" if gzip_files else ""
-    for summary in summaries:
-        if canonical_only and summary.uniprotAccession is not None and "-" in summary.uniprotAccession:
-            # TODO fetching summaries should return the original uniprot_accession so
-            # TODO we can do orig_acc == summary.uniprotAccession is canonical
-            # TODO instead of relying on naming convention
-            # O60481-2 is isoform, O60481 is canonical
+    for uniprot_accession, summary in summaries:
+        is_canonical = summary.uniprotAccession == uniprot_accession
+        if not all_isoforms and not is_canonical:
+            # O60481 is canonical and O60481-2 is isoform, so we skip the isoform
             continue
         yield AlphaFoldEntry(
-            uniprot_acc=summary.uniprotAccession,
+            uniprot_acc=uniprot_accession,
             summary=summary,
-            summary_file=save_dir / f"{summary.uniprotAccession}.json" if save_dir_for_summaries is not None else None,
+            summary_file=save_dir / f"{uniprot_accession}.json" if save_dir_for_summaries is not None else None,
             bcif_file=save_dir / (summary.bcifUrl.name + gzext) if "bcif" in what else None,
             cif_file=save_dir / (summary.cifUrl.name + gzext) if "cif" in what else None,
             pdb_file=save_dir / (summary.pdbUrl.name + gzext) if "pdb" in what else None,
@@ -244,9 +244,7 @@ async def fetch_many_async(
                 if "amAnnotationsHg38" in what and summary.amAnnotationsHg38Url
                 else None
             ),
-            msa_file=(
-                save_dir / (summary.msaUrl.name + gzext) if "msaUrl" in what and summary.msaUrl else None
-            ),
+            msa_file=(save_dir / (summary.msaUrl.name + gzext) if "msaUrl" in what and summary.msaUrl else None),
             plddt_doc_file=(
                 save_dir / (summary.plddtDocUrl.name + gzext) if "plddtDocUrl" in what and summary.plddtDocUrl else None
             ),
@@ -254,7 +252,7 @@ async def fetch_many_async(
 
 
 def files_to_download(
-    what: set[DownloadableFormat], summaries: Iterable[EntrySummary], gzip_files: bool
+    what: set[DownloadableFormat], summaries: Iterable[tuple[str, EntrySummary]], gzip_files: bool
 ) -> set[tuple[URL, str]]:
     if not (set(what) <= downloadable_formats):
         msg = (
@@ -264,14 +262,14 @@ def files_to_download(
         raise ValueError(msg)
 
     url_filename_pairs: set[tuple[URL, str]] = set()
-    for summary in summaries:
+    for _, summary in summaries:
         for fmt in what:
             if fmt == "summary":
                 # summary is handled already in fetch_summary
                 continue
             url = cast("URL | None", getattr(summary, f"{fmt}Url", None))
             if url is None:
-                logger.warning(f"Summary {summary.uniprotAccession} does not have a URL for format '{fmt}'. Skipping.")
+                logger.warning(f"Summary {summary.modelEntityId} does not have a URL for format '{fmt}'. Skipping.")
                 continue
             fn = url.name + (".gz" if gzip_files else "")
             url_filename_pair = (url, fn)
@@ -286,6 +284,7 @@ def fetch_many(
     max_parallel_downloads: int = 5,
     cacher: Cacher | None = None,
     gzip_files: bool = False,
+    all_isoforms: bool = False,
 ) -> list[AlphaFoldEntry]:
     """Synchronously fetches summaries and pdb and pae files from AlphaFold Protein Structure Database.
 
@@ -296,6 +295,8 @@ def fetch_many(
         max_parallel_downloads: The maximum number of parallel downloads.
         cacher: A cacher to use for caching the fetched files. Only used if summary is in what set.
         gzip_files: Whether to gzip the downloaded files.
+        all_isoforms: Whether to return all isoforms of each uniprot entry.
+            When False then returns only the canonical sequence of uniprot entry.
 
     Returns:
         A list of AlphaFoldEntry dataclasses containing the summary, pdb file, and pae file.
@@ -305,7 +306,13 @@ def fetch_many(
         return [
             entry
             async for entry in fetch_many_async(
-                ids, save_dir, what, max_parallel_downloads=max_parallel_downloads, cacher=cacher, gzip_files=gzip_files
+                ids,
+                save_dir,
+                what,
+                max_parallel_downloads=max_parallel_downloads,
+                cacher=cacher,
+                gzip_files=gzip_files,
+                all_isoforms=all_isoforms,
             )
         ]
 

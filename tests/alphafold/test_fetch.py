@@ -21,6 +21,23 @@ def test_fetch_many(tmp_path: Path):
 
 
 @pytest.mark.vcr
+def test_fetch_many_all_isoforms(tmp_path: Path):
+    theid = "P05067"
+    ids = [theid]
+
+    results = fetch_many(ids, tmp_path, {"summary"}, all_isoforms=True)
+
+    # On https://www.uniprot.org/uniprotkb/P05067/entry#sequences
+    # there are 11 isoforms.
+    # Its P05067-3 isoform is on https://alphafold.ebi.ac.uk/entry/AF-P05067-3-F1
+    # , but is not returned by the prediction API endpoint, so we expect 10 results here
+    assert len(results) == 10
+    assert all(result.uniprot_acc and result.uniprot_acc.startswith(theid) for result in results)
+    canonical_results = [r for r in results if r.summary.uniprotAccession == theid]
+    assert len(canonical_results) == 1
+
+
+@pytest.mark.vcr
 def test_fetch_many_gzipped(tmp_path: Path):
     theid = "P05067"
     ids = [theid]

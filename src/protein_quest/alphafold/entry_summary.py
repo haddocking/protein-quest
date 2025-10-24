@@ -57,7 +57,7 @@ class EntrySummary:
     stoichiometry: int | None = None
     taxId: int | None = None
     taxonomyLineage: list[str] | None = None
+    # uniprotAccession is isoform id (<uniprot_accesion>-<isoform number>) when entry has multiple isoforms.
     uniprotAccession: str | None = None
     uniprotDescription: str | None = None
     uniprotId: str | None = None
-
