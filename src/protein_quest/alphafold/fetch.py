@@ -202,8 +202,10 @@ async def fetch_many_async(
         async for s in fetch_summaries(
             uniprot_accessions, save_dir_for_summaries, max_parallel_downloads=max_parallel_downloads, cacher=cacher
         )
+        # Filter out isoforms if all_isoforms is False
+        # O60481 is canonical and O60481-2 is isoform, so we skip the isoform
+        if all_isoforms or s[0] == s[1].uniprotAccession
     ]
-
     files = files_to_download(what, summaries, gzip_files)
 
     await retrieve_files(
@@ -217,10 +219,6 @@ async def fetch_many_async(
 
     gzext = ".gz" if gzip_files else ""
     for uniprot_accession, summary in summaries:
-        is_canonical = summary.uniprotAccession == uniprot_accession
-        if not all_isoforms and not is_canonical:
-            # O60481 is canonical and O60481-2 is isoform, so we skip the isoform
-            continue
         yield AlphaFoldEntry(
             uniprot_acc=uniprot_accession,
             summary=summary,
