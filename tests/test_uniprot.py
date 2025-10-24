@@ -11,7 +11,7 @@ from protein_quest.uniprot import (
     _build_sparql_query_pdb,
     _build_sparql_query_uniprot,
     filter_pdb_results_on_chain_length,
-    retrieve_uniprot_details,
+    map_uniprot_accessions2uniprot_details,
     search4af,
     search4emdb,
     search4interaction_partners,
@@ -498,9 +498,9 @@ def test_search4interaction_partners():
 
 
 @pytest.mark.vcr
-def test_retrieve_uniprot_details():
+def test_map_uniprot_accessions2uniprot_details():
     uniprot_accessions = ["P05067", "A6NGD5", "O14627", "P00697", "P42284", "A0A0B5AC95", "A0A0S2Z4R0"]
-    results = set(retrieve_uniprot_details(uniprot_accessions))
+    results = set(map_uniprot_accessions2uniprot_details(uniprot_accessions))
 
     expected = {
         UniprotDetails(

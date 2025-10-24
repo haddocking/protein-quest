@@ -819,7 +819,7 @@ def search4interaction_partners(
 
 @dataclass(frozen=True)
 class UniprotDetails:
-    """Details of a UniProt entry.
+    """Details of an UniProt entry.
 
     Parameters:
         uniprot_accession: UniProt accession.
@@ -840,10 +840,10 @@ class UniprotDetails:
     taxon_name: str
 
 
-def retrieve_uniprot_details(
+def map_uniprot_accessions2uniprot_details(
     uniprot_accessions: Collection[str], timeout: int = 1_800, batch_size: int = 1000
 ) -> Generator[UniprotDetails]:
-    """Retrieve details of UniProt entries by their accessions.
+    """Map UniProt accessions to UniProt details by querying the UniProt SPARQL endpoint.
 
     Example:
 
@@ -882,7 +882,6 @@ def retrieve_uniprot_details(
 
     Args:
         uniprot_accessions: Iterable of UniProt accessions.
-        limit: Maximum number of results to return.
         timeout: Timeout for the SPARQL query in seconds.
         batch_size: Size of batches to process the UniProt accessions.
 
