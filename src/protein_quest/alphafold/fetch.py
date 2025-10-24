@@ -45,12 +45,12 @@ def _camel_to_snake_case(name: str) -> str:
 
 @dataclass
 class AlphaFoldEntry:
-    """A single AlphaFold entry with optionally local files.
+    """AlphaFold entry with summary object and optionally local files.
 
-    See https://alphafold.ebi.ac.uk/api-docs for more details on the API and data structure.
+    See https://alphafold.ebi.ac.uk/api-docs for more details on the summary data structure.
     """
 
-    uniprot_acc: str
+    uniprot_accession: str
     summary: EntrySummary
     summary_file: Path | None = None
     bcif_file: Path | None = None
@@ -220,7 +220,7 @@ async def fetch_many_async(
     gzext = ".gz" if gzip_files else ""
     for uniprot_accession, summary in summaries:
         yield AlphaFoldEntry(
-            uniprot_acc=uniprot_accession,
+            uniprot_accession=uniprot_accession,
             summary=summary,
             summary_file=save_dir / f"{uniprot_accession}.json" if save_dir_for_summaries is not None else None,
             bcif_file=save_dir / (summary.bcifUrl.name + gzext) if "bcif" in what else None,
@@ -328,7 +328,7 @@ def relative_to(entry: AlphaFoldEntry, session_dir: Path) -> AlphaFoldEntry:
         An AlphaFoldEntry instance with paths relative to the session directory.
     """
     return AlphaFoldEntry(
-        uniprot_acc=entry.uniprot_acc,
+        uniprot_accession=entry.uniprot_accession,
         summary=entry.summary,
         summary_file=entry.summary_file.relative_to(session_dir) if entry.summary_file else None,
         bcif_file=entry.bcif_file.relative_to(session_dir) if entry.bcif_file else None,
