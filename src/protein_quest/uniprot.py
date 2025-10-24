@@ -847,7 +847,7 @@ def map_uniprot_accessions2uniprot_details(
 
     Example:
 
-    Graphql query to get details for 7 Uniprot entries, run on [https://sparql.uniprot.org/sparql](https://sparql.uniprot.org/sparql).
+    SPARQL query to get details for 7 UniProt entries, run on [https://sparql.uniprot.org/sparql](https://sparql.uniprot.org/sparql).
 
     ```sparql
     PREFIX skos: <http://www.w3.org/2004/02/skos/core#>

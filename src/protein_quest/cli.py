@@ -337,7 +337,7 @@ def _add_search_uniprot_details_parser(subparsers: argparse._SubParsersAction):
         - uniprot_accession: UniProt accession.
         - uniprot_id: UniProt ID (mnemonic).
         - sequence_length: Length of the canonical sequence.
-        - reviewed: Whether the is reviewed (Swiss-Prot) or unreviewed (TrEMBL).
+        - reviewed: Whether the entry is reviewed (Swiss-Prot) or unreviewed (TrEMBL).
         - protein_name: Recommended protein name.
         - taxon_id: NCBI Taxonomy ID of the organism.
         - taxon_name: Scientific name of the organism.
@@ -947,8 +947,8 @@ def _handle_search_uniprot_details(args: argparse.Namespace):
     accs = _read_lines(uniprot_accessions)
     rprint(f"Retrieving UniProt entry details for {len(accs)} uniprot accessions")
     results = list(map_uniprot_accessions2uniprot_details(accs, timeout=timeout, batch_size=batch_size))
-    rprint(f"Retrieved details for {len(results)} UniProt entries, written to {_name_of(output_csv)}")
     _write_uniprot_details_csv(output_csv, results)
+    rprint(f"Retrieved details for {len(results)} UniProt entries, written to {_name_of(output_csv)}")
 
 
 def _initialize_cacher(args: argparse.Namespace) -> Cacher:
@@ -1337,6 +1337,9 @@ def _write_uniprot_details_csv(
     output_csv: TextIOWrapper,
     uniprot_details_list: Iterable[UniprotDetails],
 ) -> None:
+    if not uniprot_details_list:
+        msg = "No UniProt entries found for given accessions"
+        raise ValueError(msg)
     # As all props of UniprotDetails are scalar, we can directly unstructure to dicts
     rows = converter.unstructure(uniprot_details_list)
     fieldnames = rows[0].keys()
