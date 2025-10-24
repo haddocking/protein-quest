@@ -1,0 +1,64 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/sparql-results+json,application/json,text/javascript,application/javascript
+      Connection:
+      - close
+      Host:
+      - sparql.uniprot.org
+      User-Agent:
+      - sparqlwrapper 2.0.0 (rdflib.github.io/sparqlwrapper)
+    method: GET
+    uri: https://sparql.uniprot.org/sparql?query=%0A++++++++PREFIX+up%3A+%3Chttp%3A//purl.uniprot.org/core/%3E%0A++++++++PREFIX+taxon%3A+%3Chttp%3A//purl.uniprot.org/taxonomy/%3E%0A++++++++PREFIX+rdf%3A+%3Chttp%3A//www.w3.org/1999/02/22-rdf-syntax-ns%23%3E%0A++++++++PREFIX+rdfs%3A+%3Chttp%3A//www.w3.org/2000/01/rdf-schema%23%3E%0A++++++++PREFIX+skos%3A+%3Chttp%3A//www.w3.org/2004/02/skos/core%23%3E%0A++++++++PREFIX+GO%3A%3Chttp%3A//purl.obolibrary.org/obo/GO_%3E%0A%0A++++++++SELECT+DISTINCT+%3Fprotein%0A++++++++WHERE+%7B%0A%0A++++++++%23+---+Protein+Selection+---%0A++++++++%3Fprotein+a+up%3AProtein+.%0A++++++++%3Fprotein+up%3Aorganism+taxon%3A9606+.%0A%3Fprotein+up%3Areviewed+true+.%0A%0A%0A++++++++%7D%0A%0A++++++++LIMIT+1%0A&format=json&output=json&results=json
+  response:
+    body:
+      string: "{\n  \"head\" : {\n    \"vars\" : [\n      \"protein\"\n    ]\n  },\n
+        \ \"results\" : {\n    \"bindings\" : [\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/A0A024R1R8\"\n
+        \       }\n      }\n    ]\n  }\n}"
+    headers:
+      Access-Control-Allow-Headers:
+      - origin, x-requested-with, content-type, X-Release, queryid
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - X-Total-Results, X-Release, queryid, content-type, user-agent, cache-control,
+        etag, range
+      Cache-Control:
+      - public
+      Connection:
+      - close
+      Content-Disposition:
+      - attachment; filename="sparql-51F07E410E08E7C5905DF6DF33927C1A.srj"
+      Content-Length:
+      - '242'
+      Content-Type:
+      - application/sparql-results+json
+      Date:
+      - Fri, 24 Oct 2025 12:15:18 GMT
+      ETag:
+      - W/"2025_04"
+      Expires:
+      - Sat, 25 Oct 2025 12:15:17 GMT
+      Server:
+      - Apache
+      Strict-Transport-Security:
+      - max-age=31536001; includeSubDomains
+      Vary:
+      - Negotiate,Accept,Accept-Encoding,Content-Type
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Powered-By:
+      - sib.swiss
+      X-Release:
+      - '2025_04'
+      queryid:
+      - '773171'
+    status:
+      code: 200
+      message: ''
+version: 1

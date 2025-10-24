@@ -1,0 +1,1023 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/sparql-results+json,application/json,text/javascript,application/javascript
+      Connection:
+      - close
+      Host:
+      - sparql.uniprot.org
+      User-Agent:
+      - sparqlwrapper 2.0.0 (rdflib.github.io/sparqlwrapper)
+    method: GET
+    uri: https://sparql.uniprot.org/sparql?query=%0A++++++++PREFIX+up%3A+%3Chttp%3A//purl.uniprot.org/core/%3E%0A++++++++PREFIX+taxon%3A+%3Chttp%3A//purl.uniprot.org/taxonomy/%3E%0A++++++++PREFIX+rdf%3A+%3Chttp%3A//www.w3.org/1999/02/22-rdf-syntax-ns%23%3E%0A++++++++PREFIX+rdfs%3A+%3Chttp%3A//www.w3.org/2000/01/rdf-schema%23%3E%0A++++++++PREFIX+skos%3A+%3Chttp%3A//www.w3.org/2004/02/skos/core%23%3E%0A++++++++PREFIX+GO%3A%3Chttp%3A//purl.obolibrary.org/obo/GO_%3E%0A%0A++++++++SELECT+%3Fprotein+%3Fpdb_db+%3Fpdb_method+%3Fpdb_resolution%0A+%28GROUP_CONCAT%28DISTINCT+%3Fpdb_chain%3B+separator%3D%22%2C%22%29+AS+%3Fpdb_chains%29%0A%0A++++++++WHERE+%7B%0A%0A++++++++%23+---+Protein+Selection+---%0A++++++++VALUES+%28%3Fac%29+%7B+%28%22P00811%22%29%7D%0A++++++++BIND+%28IRI%28CONCAT%28%22http%3A//purl.uniprot.org/uniprot/%22%2C%3Fac%29%29+AS+%3Fprotein%29%0A++++++++%3Fprotein+a+up%3AProtein+.%0A%0A%0A%23+---+PDB+Info+---%0A%3Fprotein+rdfs%3AseeAlso+%3Fpdb_db+.%0A%3Fpdb_db+up%3Adatabase+%3Chttp%3A//purl.uniprot.org/database/PDB%3E+.%0A%3Fpdb_db+up%3Amethod+%3Fpdb_method+.%0A%3Fpdb_db+up%3AchainSequenceMapping+%3FchainSequenceMapping+.%0ABIND%28STRAFTER%28STR%28%3FchainSequenceMapping%29%2C+%22isoforms/%22%29+AS+%3FisoformPart%29%0AFILTER%28STRSTARTS%28%3FisoformPart%2C+CONCAT%28%3Fac%2C+%22-%22%29%29%29%0A%3FchainSequenceMapping+up%3Achain+%3Fpdb_chain+.%0AOPTIONAL+%7B+%3Fpdb_db+up%3Aresolution+%3Fpdb_resolution+.+%7D%0A%0A%0A++++++++%7D%0A+++++++++GROUP+BY+%3Fprotein+%3Fpdb_db+%3Fpdb_method+%3Fpdb_resolution%0A++++++++LIMIT+150%0A&format=json&output=json&results=json
+  response:
+    body:
+      string: "{\n  \"head\" : {\n    \"vars\" : [\n      \"protein\",\n      \"pdb_db\",\n
+        \     \"pdb_method\",\n      \"pdb_resolution\",\n      \"pdb_chains\"\n    ]\n
+        \ },\n  \"results\" : {\n    \"bindings\" : [\n      {\n        \"protein\"
+        : {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1C3B\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.25\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1FCM\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.46\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1FCN\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.35\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1FCO\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.2\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1FSW\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.9\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-376\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1FSY\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.75\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-376\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1GA9\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.1\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1I5Q\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.83\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1IEL\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.0\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1IEM\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.3\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1KDS\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.15\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1KDW\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.28\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1KE0\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.3\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1KE3\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.15\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1KE4\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.72\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1KVL\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.53\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1KVM\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.06\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1L0D\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.53\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1L0E\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.9\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1L0F\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.66\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1L0G\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.5\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1L2S\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.94\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1LL5\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.8\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1LL9\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.87\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1LLB\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.72\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1MXO\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.83\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1MY8\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.72\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1O07\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.71\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1PI4\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.39\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1PI5\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.49\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1XGI\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.96\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/1XGJ\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.97\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/2BLS\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.0\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/2FFY\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.07\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/2HDQ\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.1\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/2HDR\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.2\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/2HDS\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.16\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/2HDU\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.49\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/2I72\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.2\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/2P9V\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.8\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/2PU2\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.86\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/2PU4\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.0\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/2R9W\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.8\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/2R9X\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.9\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/2RCX\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.0\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3BLS\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.3\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3BM6\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.1\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3FKV\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.85\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3FKW\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.5\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3GQZ\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.8\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3GR2\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.8\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3GRJ\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.49\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3GSG\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.1\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3GTC\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.9\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3GV9\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.8\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3GVB\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.8\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3IWI\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.64\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3IWO\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.9\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3IWQ\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.84\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3IXB\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.63\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3IXD\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.64\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3IXG\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.14\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3IXH\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.3\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3O86\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.6\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3O87\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.78\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/3O88\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.64\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4E3I\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.6\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4E3J\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.8\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4E3K\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.43\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4E3L\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.43\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4E3M\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.44\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4E3N\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.49\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4E3O\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.6\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4JXG\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.65\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4JXS\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.9\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4JXV\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.76\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4JXW\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.3\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4KEN\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.89\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4KG2\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.89\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4KG5\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.11\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B/C/D=20-377\"\n        }\n      },\n      {\n        \"protein\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4KG6\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.75\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B/C/D=20-377\"\n        }\n      },\n      {\n        \"protein\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4KZ3\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.67\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4KZ4\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.42\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4KZ5\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.35\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4KZ6\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.68\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4KZ7\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.43\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4KZ8\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.28\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4KZ9\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.72\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4KZA\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.6\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4KZB\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.37\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4LV0\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.65\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4LV1\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.74\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4LV2\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.65\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4LV3\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.42\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4OKP\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.37\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4OLD\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.48\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/4OLG\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.71\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/5JOC\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.75\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=21-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/6DPT\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.79\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/6DPX\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.9\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/6DPY\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.91\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/6DPZ\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.5\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/6T35\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.75\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/6T3D\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.5\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/6T5Y\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.3\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/6T7L\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.47\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/6TBW\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.51\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/6TPM\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.72\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/6WHF\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.4\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=19-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/6X9Y\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.9\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/6XFS\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.7\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B/C/D=19-377\"\n        }\n      },\n      {\n        \"protein\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/6XG1\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.22\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=19-377\"\n        }\n      },\n      {\n        \"protein\" : {\n
+        \         \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/6YEN\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.42\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/6YEO\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.04\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B/C/D=20-377\"\n        }\n      },\n      {\n        \"protein\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/6YPD\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.6\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A=20-377\"\n        }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/9C6P\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.66\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=1-377\"\n        }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/9C81\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.7\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=1-377\"\n        }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/9C83\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"2.9\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=1-377\"\n        }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/9C84\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.7\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=1-377\"\n        }\n      },\n      {\n        \"protein\" : {\n          \"type\"
+        : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/uniprot/P00811\"\n
+        \       },\n        \"pdb_db\" : {\n          \"type\" : \"uri\",\n          \"value\"
+        : \"http://rdf.wwpdb.org/pdb/9DHL\"\n        },\n        \"pdb_method\" :
+        {\n          \"type\" : \"uri\",\n          \"value\" : \"http://purl.uniprot.org/core/X-Ray_Crystallography\"\n
+        \       },\n        \"pdb_resolution\" : {\n          \"datatype\" : \"http://www.w3.org/2001/XMLSchema#decimal\",\n
+        \         \"type\" : \"literal\",\n          \"value\" : \"1.88\"\n        },\n
+        \       \"pdb_chains\" : {\n          \"type\" : \"literal\",\n          \"value\"
+        : \"A/B=1-377\"\n        }\n      }\n    ]\n  }\n}"
+    headers:
+      Access-Control-Allow-Headers:
+      - origin, x-requested-with, content-type, X-Release, queryid
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Expose-Headers:
+      - X-Total-Results, X-Release, queryid, content-type, user-agent, cache-control,
+        etag, range
+      Cache-Control:
+      - public
+      Connection:
+      - close
+      Content-Disposition:
+      - attachment; filename="sparql-FDA7A3C1B89295A751B4AB29F2AB058B.srj"
+      Content-Type:
+      - application/sparql-results+json
+      Date:
+      - Fri, 24 Oct 2025 12:49:44 GMT
+      ETag:
+      - W/"2025_04"
+      Expires:
+      - Sat, 25 Oct 2025 12:49:43 GMT
+      Server:
+      - Apache
+      Strict-Transport-Security:
+      - max-age=31536001; includeSubDomains
+      Transfer-Encoding:
+      - chunked
+      Vary:
+      - Negotiate,Accept,Accept-Encoding,Content-Type
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Powered-By:
+      - sib.swiss
+      X-Release:
+      - '2025_04'
+      queryid:
+      - '777724'
+    status:
+      code: 200
+      message: ''
+version: 1
