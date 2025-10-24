@@ -30,6 +30,7 @@ graph TB;
     searchuniprot --> |uniprot_accessions|searchpdbe[/Search PDBe/]
     searchuniprot --> |uniprot_accessions|searchaf[/Search Alphafold/]
     searchuniprot -. uniprot_accessions .-> searchemdb[/Search EMDB/]
+    searchuniprot -. uniprot_accessions .-> searchuniprotdetails[/Search UniProt details/]
     searchintactionpartners[/Search interaction partners/] -.-x |uniprot_accessions|searchuniprot
     searchcomplexes[/Search complexes/]
     searchpdbe -->|pdb_ids|fetchpdbe[Retrieve PDBe]
@@ -49,6 +50,7 @@ graph TB;
     fetchemdb:::dashedBorder
     searchintactionpartners:::dashedBorder
     searchcomplexes:::dashedBorder
+    searchuniprotdetails:::dashedBorder
     convert2cif:::dashedBorder
     convert2uniprot_accessions:::dashedBorder
 ```
@@ -213,6 +215,21 @@ The `complexes.csv` looks like
 ```csv
 query_protein,complex_id,complex_url,complex_title,members
 Q05471,CPX-2122,https://www.ebi.ac.uk/complexportal/complex/CPX-2122,Swr1 chromatin remodelling complex,P31376;P35817;P38326;P53201;P53930;P60010;P80428;Q03388;Q03433;Q03940;Q05471;Q06707;Q12464;Q12509
+```
+
+### Search for UniProt details
+
+To get details (like protein name, sequence length, organism) for a list of UniProt accessions.
+
+```shell
+protein-quest search uniprot-details uniprot_accs.txt uniprot_details.csv
+```
+
+The `uniprot_details.csv` looks like:
+
+```csv
+uniprot_accession,uniprot_id,sequence_length,reviewed,protein_name,taxon_id,taxon_name
+A0A087WUV0,ZN892_HUMAN,522,True,Zinc finger protein 892,9606,Homo sapiens
 ```
 
 ### Convert structure files to .cif format

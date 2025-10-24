@@ -43,7 +43,9 @@ from protein_quest.uniprot import (
     ComplexPortalEntry,
     PdbResults,
     Query,
+    UniprotDetails,
     filter_pdb_results_on_chain_length,
+    map_uniprot_accessions2uniprot_details,
     search4af,
     search4emdb,
     search4interaction_partners,
@@ -319,6 +321,44 @@ def _add_search_complexes_parser(subparsers: argparse._SubParsersAction):
     )
     parser.add_argument("--limit", type=int, default=100, help="Maximum number of complex results to return")
     parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
+
+
+def _add_search_uniprot_details_parser(subparsers: argparse._SubParsersAction):
+    """Add search uniprot details subcommand parser."""
+    description = dedent("""\
+        Retrieve UniProt details for given UniProt accessions
+        from the Uniprot SPARQL endpoint.
+
+        The output CSV file has the following columns:
+
+        - uniprot_accession: UniProt accession.
+        - uniprot_id: UniProt ID (mnemonic).
+        - sequence_length: Length of the canonical sequence.
+        - reviewed: Whether the is reviewed (Swiss-Prot) or unreviewed (TrEMBL).
+        - protein_name: Recommended protein name.
+        - taxon_id: NCBI Taxonomy ID of the organism.
+        - taxon_name: Scientific name of the organism.
+
+        The order of the output CSV can be different from the input order.
+    """)
+    parser = subparsers.add_parser(
+        "uniprot-details",
+        help="Retrieve UniProt details for given UniProt accessions",
+        description=Markdown(description, style="argparse.text"),  # type: ignore using rich formatter makes this OK
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+    )
+    parser.add_argument(
+        "uniprot_accessions",
+        type=argparse.FileType("r", encoding="UTF-8"),
+        help="Text file with UniProt accessions (one per line). Use `-` for stdin.",
+    )
+    parser.add_argument(
+        "output_csv",
+        type=argparse.FileType("w", encoding="UTF-8"),
+        help="Output CSV with UniProt details. Use `-` for stdout.",
+    )
+    parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
+    parser.add_argument("--batch-size", type=int, default=1_000, help="Number of accessions to query per batch")
 
 
 def _add_copy_method_arguments(parser):
@@ -602,6 +642,7 @@ def _add_search_subcommands(subparsers: argparse._SubParsersAction):
     _add_search_taxonomy_parser(subsubparsers)
     _add_search_interaction_partners_parser(subsubparsers)
     _add_search_complexes_parser(subsubparsers)
+    _add_search_uniprot_details_parser(subsubparsers)
 
 
 def _add_retrieve_subcommands(subparsers: argparse._SubParsersAction):
@@ -884,6 +925,19 @@ def _handle_search_complexes(args: argparse.Namespace):
     results = search4macromolecular_complexes(accs, limit=limit, timeout=timeout)
     rprint(f"Found {len(results)} complexes, written to {output_csv.name}")
     _write_complexes_csv(results, output_csv)
+
+
+def _handle_search_uniprot_details(args: argparse.Namespace):
+    uniprot_accessions = args.uniprot_accessions
+    timeout = args.timeout
+    batch_size = args.batch_size
+    output_csv: TextIOWrapper = args.output_csv
+
+    accs = _read_lines(uniprot_accessions)
+    rprint(f"Retrieving UniProt entry details for {len(accs)} uniprot accessions")
+    results = list(map_uniprot_accessions2uniprot_details(accs, timeout=timeout, batch_size=batch_size))
+    rprint(f"Retrieved details for {len(results)} UniProt entries, written to {output_csv.name}")
+    _write_uniprot_details_csv(output_csv, results)
 
 
 def _initialize_cacher(args: argparse.Namespace) -> Cacher:
@@ -1267,6 +1321,18 @@ def _write_complexes_csv(complexes: list[ComplexPortalEntry], output_csv: TextIO
         )
 
 
+def _write_uniprot_details_csv(
+    output_csv: TextIOWrapper,
+    uniprot_details_list: Iterable[UniprotDetails],
+) -> None:
+    # As all props of UniprotDetails are scalar, we can directly unstructure to dicts
+    rows = converter.unstructure(uniprot_details_list)
+    fieldnames = rows[0].keys()
+    writer = csv.DictWriter(output_csv, fieldnames=fieldnames)
+    writer.writeheader()
+    writer.writerows(rows)
+
+
 HANDLERS: dict[tuple[str, str | None], Callable] = {
     ("search", "uniprot"): _handle_search_uniprot,
     ("search", "pdbe"): _handle_search_pdbe,
@@ -1276,6 +1342,7 @@ HANDLERS: dict[tuple[str, str | None], Callable] = {
     ("search", "taxonomy"): _handle_search_taxonomy,
     ("search", "interaction-partners"): _handle_search_interaction_partners,
     ("search", "complexes"): _handle_search_complexes,
+    ("search", "uniprot-details"): _handle_search_uniprot_details,
     ("retrieve", "pdbe"): _handle_retrieve_pdbe,
     ("retrieve", "alphafold"): _handle_retrieve_alphafold,
     ("retrieve", "emdb"): _handle_retrieve_emdb,
