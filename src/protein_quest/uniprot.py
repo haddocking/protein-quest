@@ -928,12 +928,13 @@ def map_uniprot_accessions2uniprot_details(
         (STRLEN(?sequence) AS ?seq_length)
     """)
     where_clause = dedent("""
-        ?protein a up:Protein .
         ?protein up:mnemonic ?uniprot_id .
         ?protein up:organism ?organism .
         ?organism up:scientificName ?taxon_name .
         ?protein up:reviewed ?reviewed .
+        OPTIONAL {
         ?protein up:recommendedName/up:fullName ?protein_name .
+        }
         ?protein up:sequence ?isoform .
         ?isoform a up:Simple_Sequence .
         ?isoform rdf:value ?sequence .
@@ -957,12 +958,13 @@ def map_uniprot_accessions2uniprot_details(
                 timeout=timeout,
             )
             for raw_result in raw_results:
+                protein_name = raw_result.get("protein_name", {}).get("value", "")
                 result = UniprotDetails(
                     uniprot_accession=raw_result["uniprot_accession"]["value"],
                     uniprot_id=raw_result["uniprot_id"]["value"],
                     sequence_length=int(raw_result["seq_length"]["value"]),
                     reviewed=raw_result["reviewed"]["value"] == "true",
-                    protein_name=raw_result["protein_name"]["value"],
+                    protein_name=protein_name,
                     taxon_id=int(raw_result["taxon_id"]["value"]),
                     taxon_name=raw_result["taxon_name"]["value"],
                 )

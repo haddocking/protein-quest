@@ -11,7 +11,7 @@ interactions:
       User-Agent:
       - sparqlwrapper 2.0.0 (rdflib.github.io/sparqlwrapper)
     method: GET
-    uri: https://sparql.uniprot.org/sparql?query=%0A++++++++PREFIX+up%3A+%3Chttp%3A//purl.uniprot.org/core/%3E%0A++++++++PREFIX+taxon%3A+%3Chttp%3A//purl.uniprot.org/taxonomy/%3E%0A++++++++PREFIX+rdf%3A+%3Chttp%3A//www.w3.org/1999/02/22-rdf-syntax-ns%23%3E%0A++++++++PREFIX+rdfs%3A+%3Chttp%3A//www.w3.org/2000/01/rdf-schema%23%3E%0A++++++++PREFIX+skos%3A+%3Chttp%3A//www.w3.org/2004/02/skos/core%23%3E%0A++++++++PREFIX+GO%3A%3Chttp%3A//purl.obolibrary.org/obo/GO_%3E%0A%0A++++++++SELECT+%28%3Fac+AS+%3Funiprot_accession%29%0A%3Funiprot_id%0A%28STRAFTER%28STR%28%3Forganism%29%2C+%22taxonomy/%22%29+AS+%3Ftaxon_id%29%0A%3Ftaxon_name%0A%3Freviewed%0A%3Fprotein_name%0A%28STRLEN%28%3Fsequence%29+AS+%3Fseq_length%29%0A%0A++++++++WHERE+%7B%0A%0A++++++++%23+---+Protein+Selection+---%0A++++++++VALUES+%28%3Fac%29+%7B+%28%22P05067%22%29+%28%22A6NGD5%22%29+%28%22O14627%22%29+%28%22P00697%22%29+%28%22P42284%22%29+%28%22A0A0B5AC95%22%29+%28%22A0A0S2Z4R0%22%29%7D%0A++++++++BIND+%28IRI%28CONCAT%28%22http%3A//purl.uniprot.org/uniprot/%22%2C%3Fac%29%29+AS+%3Fprotein%29%0A++++++++%3Fprotein+a+up%3AProtein+.%0A%0A%0A%3Fprotein+a+up%3AProtein+.%0A%3Fprotein+up%3Amnemonic+%3Funiprot_id+.%0A%3Fprotein+up%3Aorganism+%3Forganism+.%0A%3Forganism+up%3AscientificName+%3Ftaxon_name+.%0A%3Fprotein+up%3Areviewed+%3Freviewed+.%0A%3Fprotein+up%3ArecommendedName/up%3AfullName+%3Fprotein_name+.%0A%3Fprotein+up%3Asequence+%3Fisoform+.%0A%3Fisoform+a+up%3ASimple_Sequence+.%0A%3Fisoform+rdf%3Avalue+%3Fsequence+.%0ABIND+%28IRI%28STRBEFORE%28REPLACE%28STR%28%3Fisoform%29%2C+%22http%3A//purl.uniprot.org/isoforms/%22%2C+%22http%3A//purl.uniprot.org/uniprot/%22%29%2C+%22-%22%29%29+AS+%3Fac_of_isoform%29%0AFILTER%28%3Fac_of_isoform+%3D+%3Fprotein%29%0A%0A%0A++++++++%7D%0A%0A++++++++LIMIT+1000%0A&format=json&output=json&results=json
+    uri: https://sparql.uniprot.org/sparql?query=%0A++++++++PREFIX+up%3A+%3Chttp%3A//purl.uniprot.org/core/%3E%0A++++++++PREFIX+taxon%3A+%3Chttp%3A//purl.uniprot.org/taxonomy/%3E%0A++++++++PREFIX+rdf%3A+%3Chttp%3A//www.w3.org/1999/02/22-rdf-syntax-ns%23%3E%0A++++++++PREFIX+rdfs%3A+%3Chttp%3A//www.w3.org/2000/01/rdf-schema%23%3E%0A++++++++PREFIX+skos%3A+%3Chttp%3A//www.w3.org/2004/02/skos/core%23%3E%0A++++++++PREFIX+GO%3A%3Chttp%3A//purl.obolibrary.org/obo/GO_%3E%0A%0A++++++++SELECT+%28%3Fac+AS+%3Funiprot_accession%29%0A%3Funiprot_id%0A%28STRAFTER%28STR%28%3Forganism%29%2C+%22taxonomy/%22%29+AS+%3Ftaxon_id%29%0A%3Ftaxon_name%0A%3Freviewed%0A%3Fprotein_name%0A%28STRLEN%28%3Fsequence%29+AS+%3Fseq_length%29%0A%0A++++++++WHERE+%7B%0A%0A++++++++%23+---+Protein+Selection+---%0A++++++++VALUES+%28%3Fac%29+%7B+%28%22P05067%22%29+%28%22A6NGD5%22%29+%28%22O14627%22%29+%28%22P00697%22%29+%28%22P42284%22%29+%28%22A0A0B5AC95%22%29+%28%22A0A0S2Z4R0%22%29%7D%0A++++++++BIND+%28IRI%28CONCAT%28%22http%3A//purl.uniprot.org/uniprot/%22%2C%3Fac%29%29+AS+%3Fprotein%29%0A++++++++%3Fprotein+a+up%3AProtein+.%0A%0A%0A%3Fprotein+up%3Amnemonic+%3Funiprot_id+.%0A%3Fprotein+up%3Aorganism+%3Forganism+.%0A%3Forganism+up%3AscientificName+%3Ftaxon_name+.%0A%3Fprotein+up%3Areviewed+%3Freviewed+.%0AOPTIONAL+%7B%0A%3Fprotein+up%3ArecommendedName/up%3AfullName+%3Fprotein_name+.%0A%7D%0A%3Fprotein+up%3Asequence+%3Fisoform+.%0A%3Fisoform+a+up%3ASimple_Sequence+.%0A%3Fisoform+rdf%3Avalue+%3Fsequence+.%0ABIND+%28IRI%28STRBEFORE%28REPLACE%28STR%28%3Fisoform%29%2C+%22http%3A//purl.uniprot.org/isoforms/%22%2C+%22http%3A//purl.uniprot.org/uniprot/%22%29%2C+%22-%22%29%29+AS+%3Fac_of_isoform%29%0AFILTER%28%3Fac_of_isoform+%3D+%3Fprotein%29%0A%0A%0A++++++++%7D%0A%0A++++++++LIMIT+1000%0A&format=json&output=json&results=json
   response:
     body:
       string: "{\n  \"head\" : {\n    \"vars\" : [\n      \"uniprot_accession\",\n
@@ -112,17 +112,17 @@ interactions:
       Connection:
       - close
       Content-Disposition:
-      - attachment; filename="sparql-76ED0B57B030AC03442B0F57826C1DB2.srj"
+      - attachment; filename="sparql-F29309CCA062048C2EA18E11E6F18F4D.srj"
       Content-Length:
       - '6132'
       Content-Type:
       - application/sparql-results+json
       Date:
-      - Wed, 29 Oct 2025 11:40:52 GMT
+      - Wed, 29 Oct 2025 12:52:41 GMT
       ETag:
       - W/"2025_04"
       Expires:
-      - Thu, 30 Oct 2025 11:40:51 GMT
+      - Thu, 30 Oct 2025 12:52:36 GMT
       Server:
       - Apache
       Strict-Transport-Security:
@@ -138,7 +138,7 @@ interactions:
       X-Release:
       - '2025_04'
       queryid:
-      - '570180809'
+      - '570182707'
     status:
       code: 200
       message: ''
