@@ -337,13 +337,11 @@ def _build_sparql_query_sequence_length_filter(min_length: int | None = None, ma
     # - http://purl.uniprot.org/isoforms/P42284-2 is ok
     # - http://purl.uniprot.org/isoforms/P42284-1 is not ok, because it is based on P42284-2
     # - http://purl.uniprot.org/isoforms/Q7KQZ4-1 is not ok, because it is from another uniprot entry
-    # TODO use same approach as in retrieve_uniprot_details function
     header = dedent("""\
         ?protein up:sequence ?isoform .
-        FILTER NOT EXISTS { ?isoform up:basedOn ?parent_isoform }
-        FILTER(
-            STRAFTER(STR(?protein), "http://purl.uniprot.org/uniprot/") =
-            STRBEFORE(STRAFTER(STR(?isoform), "http://purl.uniprot.org/isoforms/"), "-"))
+        ?isoform a up:Simple_Sequence .
+        BIND (IRI(STRBEFORE(REPLACE(STR(?isoform), "http://purl.uniprot.org/isoforms/", "http://purl.uniprot.org/uniprot/"), "-")) AS ?ac_of_isoform)
+        FILTER (?protein = ?ac_of_isoform)
         ?isoform rdf:value ?sequence .
         BIND (STRLEN(?sequence) AS ?seq_length)
     """)
@@ -875,8 +873,8 @@ def map_uniprot_accessions2uniprot_details(
     ?protein up:sequence ?isoform .
     ?isoform a up:Simple_Sequence .
     ?isoform rdf:value ?sequence .
-    BIND (STRBEFORE(STRAFTER(STR(?isoform), "http://purl.uniprot.org/isoforms/"), "-") AS ?ac_of_isoform)
-    FILTER(?ac_of_isoform = ?ac)
+    BIND (IRI(STRBEFORE(REPLACE(STR(?isoform), "http://purl.uniprot.org/isoforms/", "http://purl.uniprot.org/uniprot/"), "-")) AS ?ac_of_isoform)
+    FILTER(?ac_of_isoform = ?protein)
     }
     ```
 
@@ -907,8 +905,8 @@ def map_uniprot_accessions2uniprot_details(
         ?protein up:sequence ?isoform .
         ?isoform a up:Simple_Sequence .
         ?isoform rdf:value ?sequence .
-        BIND (STRBEFORE(STRAFTER(STR(?isoform), "http://purl.uniprot.org/isoforms/"), "-") AS ?ac_of_isoform)
-        FILTER(?ac_of_isoform = ?ac)
+        BIND (IRI(STRBEFORE(REPLACE(STR(?isoform), "http://purl.uniprot.org/isoforms/", "http://purl.uniprot.org/uniprot/"), "-")) AS ?ac_of_isoform)
+        FILTER(?ac_of_isoform = ?protein)
     """)
     total = len(uniprot_accessions)
     with tqdm(
