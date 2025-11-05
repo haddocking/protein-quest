@@ -174,19 +174,15 @@ def filter_pdb_results_on_chain_length(
             except PdbChainLengthError:
                 if keep_invalid:
                     logger.warning(
-                        (
-                            f"Could not determine chain length of '{pdb_entry.id}' from '{pdb_entry.uniprot_chains}' ",
-                            f" belonging to uniprot accession '{uniprot_accession}', ",
-                            "for completeness not filtering it out",
-                        )
+                        f"Could not determine chain length of '{pdb_entry.id}' from '{pdb_entry.uniprot_chains}' "
+                        f"belonging to uniprot accession '{uniprot_accession}', "
+                        "for completeness not filtering it out"
                     )
                     filtered_pdb_entries.add(pdb_entry)
                 else:
                     logger.warning(
-                        (
-                            f"Filtering out PDB entry '{pdb_entry.id}' belonging to uniprot accession ",
-                            f"'{uniprot_accession}' due to invalid chain length from '{pdb_entry.uniprot_chains}'",
-                        )
+                        f"Filtering out PDB entry '{pdb_entry.id}' belonging to uniprot accession "
+                        f"'{uniprot_accession}' due to invalid chain length from '{pdb_entry.uniprot_chains}'"
                     )
         if filtered_pdb_entries:
             # Only include uniprot_accession if there are any pdb entries left after filtering
