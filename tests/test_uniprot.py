@@ -4,6 +4,7 @@ import pytest
 
 from protein_quest.uniprot import (
     ComplexPortalEntry,
+    PdbChainLengthError,
     PdbResult,
     Query,
     UniprotDetails,
@@ -262,6 +263,7 @@ def test_append_subcellular_location_filters_invalid_go_term_in_list():
         ("A/B=2-459,A/B=520-610", "A"),  # uniprot/O00255 pdb/3U84
         ("DD/Dd=1-1085", "DD"),  # uniprot/O00268 pdb/7ENA
         ("A=398-459,A=74-386,A=520-584,A=1-53", "A"),  # uniprot/O00255 pdb/7O9T
+        ("A=-", "A"),  # uniprot/Q08499 pdb/1E9K
     ],
 )
 def test_pdbresult_chain(query, expected):
@@ -290,6 +292,13 @@ def test_pdb_result_chain_length(query, expected):
     result = pdb_result.chain_length
 
     assert result == expected
+
+
+def test_pdb_result_chain_length_invalid():
+    pdb_result = PdbResult(id="DUMMY", method="DUMMY", uniprot_chains="A=-")
+
+    with pytest.raises(PdbChainLengthError, match="Could not determine chain length of 'DUMMY' from 'A=-'"):
+        _ = pdb_result.chain_length
 
 
 def test_filter_pdb_results_on_chain_length_unchanged():

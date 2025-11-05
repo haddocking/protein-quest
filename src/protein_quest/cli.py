@@ -150,6 +150,15 @@ def _add_search_pdbe_parser(subparsers: argparse._SubParsersAction):
         type=int,
         help="Maximum number of residues allowed in chain mapped to the UniProt accession.",
     )
+    parser.add_argument(
+        "--keep-invalid",
+        action="store_true",
+        help=dedent("""\
+            Keep PDB results when chain length could not be determined.
+            If not given, such results are dropped.
+            Only applies if min/max residues arguments are set.
+        """),
+    )
     parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
 
 
@@ -825,6 +834,7 @@ def _handle_search_pdbe(args):
     output_csv = args.output_csv
     min_residues = converter.structure(args.min_residues, PositiveInt | None)  # pyright: ignore[reportArgumentType]
     max_residues = converter.structure(args.max_residues, PositiveInt | None)  # pyright: ignore[reportArgumentType]
+    keep_invalid = args.keep_invalid
 
     accs = set(_read_lines(uniprot_accessions))
     rprint(f"Finding PDB entries for {len(accs)} uniprot accessions")
@@ -833,7 +843,7 @@ def _handle_search_pdbe(args):
     raw_nr_results = len(results)
     raw_total_pdbs = sum([len(v) for v in results.values()])
     if min_residues or max_residues:
-        results = filter_pdb_results_on_chain_length(results, min_residues, max_residues)
+        results = filter_pdb_results_on_chain_length(results, min_residues, max_residues, keep_invalid=keep_invalid)
         total_pdbs = sum([len(v) for v in results.values()])
         rprint(f"Before filtering found {raw_total_pdbs} PDB entries for {raw_nr_results} uniprot accessions.")
         rprint(

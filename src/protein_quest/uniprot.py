@@ -93,6 +93,14 @@ def _chain_length_from_uniprot_chains(uniprot_chains: str) -> int:
     return total_length
 
 
+class PdbChainLengthError(ValueError):
+    """Raised when a UniProt chain description does not yield a chain length."""
+
+    def __init__(self, pdb_id: str, uniprot_chains: str):
+        msg = f"Could not determine chain length of '{pdb_id}' from '{uniprot_chains}'"
+        super().__init__(msg)
+
+
 @dataclass(frozen=True)
 class PdbResult:
     """Result of a PDB search in UniProtKB.
@@ -117,7 +125,10 @@ class PdbResult:
     @cached_property
     def chain_length(self) -> int:
         """The length of the chain from the UniProt chains aka self.uniprot_chains."""
-        return _chain_length_from_uniprot_chains(self.uniprot_chains)
+        try:
+            return _chain_length_from_uniprot_chains(self.uniprot_chains)
+        except ValueError as e:
+            raise PdbChainLengthError(self.id, self.uniprot_chains) from e
 
 
 type PdbResults = dict[str, set[PdbResult]]
@@ -128,6 +139,7 @@ def filter_pdb_results_on_chain_length(
     pdb_results: PdbResults,
     min_residues: int | None,
     max_residues: int | None,
+    keep_invalid: bool = False,
 ) -> PdbResults:
     """Filter PDB results based on chain length.
 
@@ -137,6 +149,9 @@ def filter_pdb_results_on_chain_length(
             If None, no minimum is applied.
         max_residues: Maximum number of residues allowed in chain mapped to the UniProt accession.
             If None, no maximum is applied.
+        keep_invalid: If True, PDB results with invalid chain length (could not be determined) are kept.
+            If False, PDB results with invalid chain length are filtered out.
+            Warnings are logged when length can not be determined.
 
     Returns:
         Filtered dictionary with protein IDs as keys and sets of PDB results as values.
@@ -149,12 +164,26 @@ def filter_pdb_results_on_chain_length(
         raise ValueError(msg)
     results: PdbResults = {}
     for uniprot_accession, pdb_entries in pdb_results.items():
-        filtered_pdb_entries = {
-            pdb_entry
-            for pdb_entry in pdb_entries
-            if (min_residues is None or pdb_entry.chain_length >= min_residues)
-            and (max_residues is None or pdb_entry.chain_length <= max_residues)
-        }
+        filtered_pdb_entries = set()
+        for pdb_entry in pdb_entries:
+            try:
+                if (min_residues is None or pdb_entry.chain_length >= min_residues) and (
+                    max_residues is None or pdb_entry.chain_length <= max_residues
+                ):
+                    filtered_pdb_entries.add(pdb_entry)
+            except PdbChainLengthError:
+                if keep_invalid:
+                    logger.warning(
+                        f"Could not determine chain length of '{pdb_entry.id}' from '{pdb_entry.uniprot_chains}' "
+                        f"belonging to uniprot accession '{uniprot_accession}', "
+                        "for completeness not filtering it out"
+                    )
+                    filtered_pdb_entries.add(pdb_entry)
+                else:
+                    logger.warning(
+                        f"Filtering out PDB entry '{pdb_entry.id}' belonging to uniprot accession "
+                        f"'{uniprot_accession}' due to invalid chain length from '{pdb_entry.uniprot_chains}'"
+                    )
         if filtered_pdb_entries:
             # Only include uniprot_accession if there are any pdb entries left after filtering
             results[uniprot_accession] = filtered_pdb_entries
@@ -337,13 +366,13 @@ def _build_sparql_query_sequence_length_filter(min_length: int | None = None, ma
     # - http://purl.uniprot.org/isoforms/P42284-2 is ok
     # - http://purl.uniprot.org/isoforms/P42284-1 is not ok, because it is based on P42284-2
     # - http://purl.uniprot.org/isoforms/Q7KQZ4-1 is not ok, because it is from another uniprot entry
-    # TODO use same approach as in retrieve_uniprot_details function
     header = dedent("""\
         ?protein up:sequence ?isoform .
-        FILTER NOT EXISTS { ?isoform up:basedOn ?parent_isoform }
-        FILTER(
-            STRAFTER(STR(?protein), "http://purl.uniprot.org/uniprot/") =
-            STRBEFORE(STRAFTER(STR(?isoform), "http://purl.uniprot.org/isoforms/"), "-"))
+        ?isoform a up:Simple_Sequence .
+        BIND (IRI(STRBEFORE(REPLACE(
+            STR(?isoform), "http://purl.uniprot.org/isoforms/", "http://purl.uniprot.org/uniprot/"
+        ), "-")) AS ?ac_of_isoform)
+        FILTER (?protein = ?ac_of_isoform)
         ?isoform rdf:value ?sequence .
         BIND (STRLEN(?sequence) AS ?seq_length)
     """)
@@ -875,8 +904,10 @@ def map_uniprot_accessions2uniprot_details(
     ?protein up:sequence ?isoform .
     ?isoform a up:Simple_Sequence .
     ?isoform rdf:value ?sequence .
-    BIND (STRBEFORE(STRAFTER(STR(?isoform), "http://purl.uniprot.org/isoforms/"), "-") AS ?ac_of_isoform)
-    FILTER(?ac_of_isoform = ?ac)
+    BIND (IRI(STRBEFORE(REPLACE(
+        STR(?isoform), "http://purl.uniprot.org/isoforms/", "http://purl.uniprot.org/uniprot/"
+    ), "-")) AS ?ac_of_isoform)
+    FILTER(?ac_of_isoform = ?protein)
     }
     ```
 
@@ -898,17 +929,20 @@ def map_uniprot_accessions2uniprot_details(
         (STRLEN(?sequence) AS ?seq_length)
     """)
     where_clause = dedent("""
-        ?protein a up:Protein .
         ?protein up:mnemonic ?uniprot_id .
         ?protein up:organism ?organism .
         ?organism up:scientificName ?taxon_name .
         ?protein up:reviewed ?reviewed .
+        OPTIONAL {
         ?protein up:recommendedName/up:fullName ?protein_name .
+        }
         ?protein up:sequence ?isoform .
         ?isoform a up:Simple_Sequence .
         ?isoform rdf:value ?sequence .
-        BIND (STRBEFORE(STRAFTER(STR(?isoform), "http://purl.uniprot.org/isoforms/"), "-") AS ?ac_of_isoform)
-        FILTER(?ac_of_isoform = ?ac)
+        BIND (IRI(STRBEFORE(REPLACE(
+            STR(?isoform), "http://purl.uniprot.org/isoforms/", "http://purl.uniprot.org/uniprot/"
+        ), "-")) AS ?ac_of_isoform)
+        FILTER(?ac_of_isoform = ?protein)
     """)
     total = len(uniprot_accessions)
     with tqdm(
@@ -927,12 +961,13 @@ def map_uniprot_accessions2uniprot_details(
                 timeout=timeout,
             )
             for raw_result in raw_results:
+                protein_name = raw_result.get("protein_name", {}).get("value", "")
                 result = UniprotDetails(
                     uniprot_accession=raw_result["uniprot_accession"]["value"],
                     uniprot_id=raw_result["uniprot_id"]["value"],
                     sequence_length=int(raw_result["seq_length"]["value"]),
                     reviewed=raw_result["reviewed"]["value"] == "true",
-                    protein_name=raw_result["protein_name"]["value"],
+                    protein_name=protein_name,
                     taxon_id=int(raw_result["taxon_id"]["value"]),
                     taxon_name=raw_result["taxon_name"]["value"],
                 )
