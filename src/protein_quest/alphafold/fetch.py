@@ -213,7 +213,7 @@ async def _fetch_many_async_with_summary(
     gzip_files: bool = False,
     all_isoforms: bool = False,
 ) -> AsyncGenerator[AlphaFoldEntry]:
-    save_dir_for_summaries = save_dir if "summary" in formats and save_dir is not None else None
+    save_dir_for_summaries = save_dir if "summary" in formats else None
 
     summaries = [
         s

@@ -497,7 +497,7 @@ async def test_retrieve_files_gzipped(
     (host_dir / "file1.txt").write_text("This is file 1.")
     app = Application()
     app.router.add_static("/", str(host_dir))
-    app.middlewares.append(compress_middleware)  # pyright: ignore[reportArgumentType]
+    app.middlewares.append(compress_middleware)  # type: ignore  # noqa: PGH003
     server = await aiohttp_server(app)
 
     urls = [
