@@ -167,7 +167,7 @@ mcp.tool(search4macromolecular_complexes, name="search_macromolecular_complexes"
 
 @mcp.tool
 def fetch_alphafold_structures(uniprot_accs: set[str], save_dir: Path) -> list[AlphaFoldEntry]:
-    """Fetch the AlphaFold summary and mmcif file for given UniProt accessions.
+    """Fetch the AlphaFold mmCIF file for given UniProt accessions.
 
     Args:
         uniprot_accs: A set of UniProt accessions.
@@ -176,8 +176,8 @@ def fetch_alphafold_structures(uniprot_accs: set[str], save_dir: Path) -> list[A
     Returns:
         A list of AlphaFold entries.
     """
-    what: set[DownloadableFormat] = {"summary", "cif"}
-    return alphafold_fetch(uniprot_accs, save_dir, what)
+    formats: set[DownloadableFormat] = {"cif"}
+    return alphafold_fetch(uniprot_accs, save_dir, formats)
 
 
 @mcp.tool

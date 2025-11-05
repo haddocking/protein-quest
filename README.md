@@ -123,7 +123,7 @@ protein-quest retrieve pdbe pdbe.csv downloads-pdbe/
 protein-quest retrieve alphafold alphafold.csv downloads-af/
 ```
 
-For each entry downloads the summary.json and cif file.
+For each entry downloads the cif file.
 
 ### To retrieve EMDB volume files
 

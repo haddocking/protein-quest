@@ -45,7 +45,9 @@ type = [
     "types-tqdm>=4.67.0.20250513",
 ]
 dev = [
+    "aiohttp-compress>=0.2.1",
     "pytest>=8.3.5",
+    "pytest-aiohttp>=1.1.0",
     "pytest-asyncio>=1.1.0",
     "pytest-cov>=6.2.1",
     "pytest-recording>=0.13.4",
