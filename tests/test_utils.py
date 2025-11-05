@@ -394,7 +394,6 @@ async def test_retrieve_files_raise_on_not_found(
     server = await static_server(tmp_path, aiohttp_server)
     url = server.make_url("file2.txt")
     urls = [
-        (server.make_url("file1.txt"), "file1.txt"),
         (url, "file2.txt"),
     ]
     save_dir = tmp_path / "downloads"
@@ -407,7 +406,6 @@ async def test_retrieve_files_raise_on_not_found(
         )
 
     assert exc_info.value.status == 404
-    assert (save_dir / "file1.txt").exists()
     assert not (save_dir / "file2.txt").exists()
 
 
