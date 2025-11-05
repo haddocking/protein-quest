@@ -130,7 +130,7 @@ def test_fetch_many_all_isoforms(tmp_path: Path):
     # , but is not returned by the prediction API endpoint, so we expect 10 results here
     assert len(results) == 10
     assert all(result.uniprot_accession and result.uniprot_accession.startswith(theid) for result in results)
-    canonical_results = [r for r in results if r.summary and r.summary.uniprotAccession == theid]
+    canonical_results = [r for r in results if r.summary is not None and r.summary.uniprotAccession == theid]
     assert len(canonical_results) == 1
 
 

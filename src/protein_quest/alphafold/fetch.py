@@ -360,7 +360,7 @@ def files_for_alphafold_entries(
         uniprot_accessions: A set of Uniprot accessions.
         formats: A set of formats to download.
         db_version: The version of the AlphaFold database to use.
-        gzip_files: Whether to downloaded gzipped files.
+        gzip_files: Whether to download gzipped files. Otherwise downloads uncompressed files.
 
     Returns:
         A mapping of Uniprot accession to a mapping of DownloadableFormat to UrlFileNamePair.

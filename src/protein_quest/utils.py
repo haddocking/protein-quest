@@ -280,6 +280,7 @@ async def retrieve_files(
         cacher: An optional cacher to use for caching files.
         chunk_size: The size of each chunk to read from the response.
         gzip_files: Whether to gzip the downloaded files.
+            This requires the server can send gzip encoded content.
         raise_for_not_found: Whether to raise an error for HTTP 404 errors.
             If false then function does not returns Path for which url gave HTTP 404 error and logs as debug message.
 
@@ -330,6 +331,7 @@ async def _retrieve_file(
         cacher: An optional cacher to use for caching files.
         chunk_size: The size of each chunk to read from the response.
         gzip_files: Whether to gzip the downloaded file.
+            This requires the server can send gzip encoded content.
         raise_for_not_found: Whether to raise an error for HTTP 404 errors.
             If false then function returns None on HTTP 404 errors and logs as debug message.
 
