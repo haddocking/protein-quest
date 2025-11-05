@@ -446,12 +446,17 @@ def _add_retrieve_alphafold_parser(subparsers: argparse._SubParsersAction):
     )
     parser.add_argument("output_dir", type=Path, help="Directory to store downloaded AlphaFold files")
     parser.add_argument(
-        "--what-formats",
+        "--format",
         type=str,
         action="append",
         choices=sorted(downloadable_formats),
         help=dedent("""AlphaFold formats to retrieve. Can be specified multiple times.
-            Default is 'summary' and 'cif'."""),
+            Default is 'cif'."""),
+    )
+    parser.add_argument(
+        "--db-version",
+        type=str,
+        help="AlphaFold database version to use. If not given, the latest version is used. For example '6'.",
     )
     parser.add_argument(
         "--gzip-files",
@@ -986,25 +991,26 @@ def _handle_retrieve_pdbe(args: argparse.Namespace):
 
 def _handle_retrieve_alphafold(args):
     download_dir = args.output_dir
-    what_formats = args.what_formats
+    raw_formats = args.format
     alphafold_csv = args.alphafold_csv
     max_parallel_downloads = args.max_parallel_downloads
     cacher = _initialize_cacher(args)
     gzip_files = args.gzip_files
     all_isoforms = args.all_isoforms
+    db_version = args.db_version
 
-    if what_formats is None:
-        what_formats = {"summary", "cif"}
+    if raw_formats is None:
+        raw_formats = {"cif"}
 
     # TODO besides `uniprot_accession,af_id\n` csv also allow headless single column format
-    #
     af_ids = _read_column_from_csv(alphafold_csv, "af_id")
-    validated_what: set[DownloadableFormat] = structure(what_formats, set[DownloadableFormat])
-    rprint(f"Retrieving {len(af_ids)} AlphaFold entries with formats {validated_what}")
+    formats: set[DownloadableFormat] = structure(raw_formats, set[DownloadableFormat])
+    rprint(f"Retrieving {len(af_ids)} AlphaFold entries with formats {formats}")
     afs = af_fetch(
         af_ids,
         download_dir,
-        what=validated_what,
+        formats=formats,
+        db_version=db_version,
         max_parallel_downloads=max_parallel_downloads,
         cacher=cacher,
         gzip_files=gzip_files,

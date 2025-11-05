@@ -1,0 +1,48 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Range:
+      - bytes=0-200
+    method: GET
+    uri: https://ftp.ebi.ac.uk/pub/databases/alphafold/accession_ids.csv
+  response:
+    body:
+      string: 'A0A7Y8APW1,1,271,AF-A0A7Y8APW1-F1,6
+
+        A0A8T5JJK5,1,222,AF-A0A8T5JJK5-F1,6
+
+        A0A061SVX4,1,96,AF-A0A061SVX4-F1,6
+
+        A0A2S5NPX2,1,495,AF-A0A2S5NPX2-F1,6
+
+        A0A4V1KNZ5,1,252,AF-A0A4V1KNZ5-F1,6
+
+        A0A1H8BMQ7,1,393,AF-A0'
+    headers:
+      Accept-Ranges:
+      - bytes
+      Access-Control-Allow-Headers:
+      - Authorization,Origin,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Accept
+      Access-Control-Allow-Methods:
+      - GET,OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Content-Length:
+      - '201'
+      Content-Range:
+      - bytes 0-200/8483771738
+      Content-Type:
+      - text/csv
+      Date:
+      - Wed, 05 Nov 2025 08:24:49 GMT
+      Etag:
+      - '"1f9ac155a-63d1a3a5ecf80"'
+      Last-Modified:
+      - Sun, 24 Aug 2025 10:51:58 GMT
+      Server:
+      - Apache
+    status:
+      code: 206
+      message: Partial Content
+version: 1
