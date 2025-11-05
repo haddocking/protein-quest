@@ -21,6 +21,7 @@ dependencies = [
     "yarl>=1.20.1",
     "platformdirs>=4.3.8",
     "mmcif>=0.92.0",
+    "shtab>=1.7.2",
 ]
 
 [project.urls]

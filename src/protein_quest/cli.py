@@ -13,6 +13,7 @@ from io import BytesIO, TextIOWrapper
 from pathlib import Path
 from textwrap import dedent
 
+import shtab
 from cattrs import structure
 from rich.console import Console
 from rich.logging import RichHandler
@@ -81,7 +82,7 @@ def _add_search_uniprot_parser(subparsers: argparse._SubParsersAction):
         "output",
         type=argparse.FileType("w", encoding="UTF-8"),
         help="Output text file for UniProt accessions (one per line). Use `-` for stdout.",
-    )
+    ).complete = shtab.FILE
     parser.add_argument("--taxon-id", type=str, help="NCBI Taxon ID, e.g. 9606 for Homo Sapiens")
     parser.add_argument(
         "--reviewed",
@@ -124,7 +125,7 @@ def _add_search_pdbe_parser(subparsers: argparse._SubParsersAction):
         "uniprot_accessions",
         type=argparse.FileType("r", encoding="UTF-8"),
         help="Text file with UniProt accessions (one per line). Use `-` for stdin.",
-    )
+    ).complete = shtab.FILE
     parser.add_argument(
         "output_csv",
         type=argparse.FileType("w", encoding="UTF-8"),
@@ -136,7 +137,7 @@ def _add_search_pdbe_parser(subparsers: argparse._SubParsersAction):
             and `chain_length` is the length of the chain, for example `100`.
             Use `-` for stdout.
         """),
-    )
+    ).complete = shtab.FILE
     parser.add_argument(
         "--limit", type=int, default=10_000, help="Maximum number of PDB uniprot accessions combinations to return"
     )
@@ -174,12 +175,12 @@ def _add_search_alphafold_parser(subparsers: argparse._SubParsersAction):
         "uniprot_accessions",
         type=argparse.FileType("r", encoding="UTF-8"),
         help="Text file with UniProt accessions (one per line). Use `-` for stdin.",
-    )
+    ).complete = shtab.FILE
     parser.add_argument(
         "output_csv",
         type=argparse.FileType("w", encoding="UTF-8"),
         help="Output CSV with AlphaFold IDs per UniProt accession. Use `-` for stdout.",
-    )
+    ).complete = shtab.FILE
     parser.add_argument("--min-sequence-length", type=int, help="Minimum length of the canonical sequence.")
     parser.add_argument("--max-sequence-length", type=int, help="Maximum length of the canonical sequence.")
     parser.add_argument(
@@ -203,12 +204,12 @@ def _add_search_emdb_parser(subparsers: argparse._SubParsersAction):
         "uniprot_accs",
         type=argparse.FileType("r", encoding="UTF-8"),
         help="Text file with UniProt accessions (one per line). Use `-` for stdin.",
-    )
+    ).complete = shtab.FILE
     parser.add_argument(
         "output_csv",
         type=argparse.FileType("w", encoding="UTF-8"),
         help="Output CSV with EMDB IDs per UniProt accession. Use `-` for stdout.",
-    )
+    ).complete = shtab.FILE
     parser.add_argument("--limit", type=int, default=10_000, help="Maximum number of EMDB entry identifiers to return")
     parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
 
@@ -231,7 +232,7 @@ def _add_search_go_parser(subparsers: argparse._SubParsersAction):
         "output_csv",
         type=argparse.FileType("w", encoding="UTF-8"),
         help="Output CSV with GO term results. Use `-` for stdout.",
-    )
+    ).complete = shtab.FILE
     parser.add_argument("--limit", type=int, default=100, help="Maximum number of GO term results to return")
 
 
@@ -253,7 +254,7 @@ def _add_search_taxonomy_parser(subparser: argparse._SubParsersAction):
         "output_csv",
         type=argparse.FileType("w", encoding="UTF-8"),
         help="Output CSV with taxonomy results. Use `-` for stdout.",
-    )
+    ).complete = shtab.FILE
     parser.add_argument(
         "--field",
         type=str,
@@ -294,7 +295,7 @@ def _add_search_interaction_partners_parser(subparsers: argparse._SubParsersActi
         "output_csv",
         type=argparse.FileType("w", encoding="UTF-8"),
         help="Output CSV with interaction partners per UniProt accession. Use `-` for stdout.",
-    )
+    ).complete = shtab.FILE
     parser.add_argument(
         "--limit", type=int, default=10_000, help="Maximum number of interaction partner uniprot accessions to return"
     )
@@ -325,12 +326,12 @@ def _add_search_complexes_parser(subparsers: argparse._SubParsersAction):
         "uniprot_accessions",
         type=argparse.FileType("r", encoding="UTF-8"),
         help="Text file with UniProt accessions (one per line) as query for searching complexes. Use `-` for stdin.",
-    )
+    ).complete = shtab.FILE
     parser.add_argument(
         "output_csv",
         type=argparse.FileType("w", encoding="UTF-8"),
         help="Output CSV file with complex results. Use `-` for stdout.",
-    )
+    ).complete = shtab.FILE
     parser.add_argument("--limit", type=int, default=100, help="Maximum number of complex results to return")
     parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
 
@@ -363,12 +364,12 @@ def _add_search_uniprot_details_parser(subparsers: argparse._SubParsersAction):
         "uniprot_accessions",
         type=argparse.FileType("r", encoding="UTF-8"),
         help="Text file with UniProt accessions (one per line). Use `-` for stdin.",
-    )
+    ).complete = shtab.FILE
     parser.add_argument(
         "output_csv",
         type=argparse.FileType("w", encoding="UTF-8"),
         help="Output CSV with UniProt details. Use `-` for stdout.",
-    )
+    ).complete = shtab.FILE
     parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
     parser.add_argument("--batch-size", type=int, default=1_000, help="Number of accessions to query per batch")
 
@@ -396,12 +397,13 @@ def _add_cacher_arguments(parser: argparse.ArgumentParser):
         action="store_true",
         help="Disable caching of files to central location.",
     )
-    parser.add_argument(
+    cache_dir_action = parser.add_argument(
         "--cache-dir",
         type=Path,
         default=user_cache_root_dir(),
         help="Directory to use as cache for files.",
     )
+    cache_dir_action.complete = shtab.DIRECTORY  # type: ignore[missing-attribute]
     _add_copy_method_arguments(parser)
 
 
@@ -420,8 +422,10 @@ def _add_retrieve_pdbe_parser(subparsers: argparse._SubParsersAction):
         "pdbe_csv",
         type=argparse.FileType("r", encoding="UTF-8"),
         help="CSV file with `pdb_id` column. Other columns are ignored. Use `-` for stdin.",
-    )
-    parser.add_argument("output_dir", type=Path, help="Directory to store downloaded PDBe mmCIF files")
+    ).complete = shtab.FILE
+    parser.add_argument(
+        "output_dir", type=Path, help="Directory to store downloaded PDBe mmCIF files"
+    ).complete = shtab.DIRECTORY
     parser.add_argument(
         "--max-parallel-downloads",
         type=int,
@@ -443,8 +447,10 @@ def _add_retrieve_alphafold_parser(subparsers: argparse._SubParsersAction):
         "alphafold_csv",
         type=argparse.FileType("r", encoding="UTF-8"),
         help="CSV file with `af_id` column. Other columns are ignored. Use `-` for stdin.",
-    )
-    parser.add_argument("output_dir", type=Path, help="Directory to store downloaded AlphaFold files")
+    ).complete = shtab.FILE
+    parser.add_argument(
+        "output_dir", type=Path, help="Directory to store downloaded AlphaFold files"
+    ).complete = shtab.DIRECTORY
     parser.add_argument(
         "--format",
         type=str,
@@ -495,8 +501,10 @@ def _add_retrieve_emdb_parser(subparsers: argparse._SubParsersAction):
         "emdb_csv",
         type=argparse.FileType("r", encoding="UTF-8"),
         help="CSV file with `emdb_id` column. Other columns are ignored. Use `-` for stdin.",
-    )
-    parser.add_argument("output_dir", type=Path, help="Directory to store downloaded EMDB volume files")
+    ).complete = shtab.FILE
+    parser.add_argument(
+        "output_dir", type=Path, help="Directory to store downloaded EMDB volume files"
+    ).complete = shtab.DIRECTORY
     _add_cacher_arguments(parser)
 
 
@@ -510,8 +518,12 @@ def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
             Passed files are written with residues below threshold removed."""),
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
-    parser.add_argument("input_dir", type=Path, help="Directory with AlphaFold mmcif/PDB files")
-    parser.add_argument("output_dir", type=Path, help="Directory to write filtered mmcif/PDB files")
+    parser.add_argument(
+        "input_dir", type=Path, help="Directory with AlphaFold mmcif/PDB files"
+    ).complete = shtab.DIRECTORY
+    parser.add_argument(
+        "output_dir", type=Path, help="Directory to write filtered mmcif/PDB files"
+    ).complete = shtab.DIRECTORY
     parser.add_argument("--confidence-threshold", type=float, default=70, help="pLDDT confidence threshold (0-100)")
     parser.add_argument(
         "--min-residues", type=int, default=0, help="Minimum number of high-confidence residues a structure should have"
@@ -529,7 +541,7 @@ def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
             Write filter statistics to file.
             In CSV format with `<input_file>,<residue_count>,<passed>,<output_file>` columns.
             Use `-` for stdout."""),
-    )
+    ).complete = shtab.FILE
     _add_copy_method_arguments(parser)
 
 
@@ -549,7 +561,7 @@ def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
         "chains",
         type=argparse.FileType("r", encoding="UTF-8"),
         help="CSV file with `pdb_id` and `chain` columns. Other columns are ignored.",
-    )
+    ).complete = shtab.FILE
     parser.add_argument(
         "input_dir",
         type=Path,
@@ -557,13 +569,13 @@ def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
         Directory with PDB/mmCIF files.
         Expected filenames are `{pdb_id}.cif.gz`, `{pdb_id}.cif`, `{pdb_id}.pdb.gz` or `{pdb_id}.pdb`.
     """),
-    )
+    ).complete = shtab.DIRECTORY
     parser.add_argument(
         "output_dir",
         type=Path,
         help=dedent("""\
         Directory to write the single-chain PDB/mmCIF files. Output files are in same format as input files."""),
-    )
+    ).complete = shtab.DIRECTORY
     parser.add_argument(
         "--scheduler-address",
         help=dedent("""Address of the Dask scheduler to connect to.
@@ -583,14 +595,16 @@ def _add_filter_residue_parser(subparsers: argparse._SubParsersAction):
         """),
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
-    parser.add_argument("input_dir", type=Path, help="Directory with PDB/mmCIF files (e.g., from 'filter chain')")
+    parser.add_argument(
+        "input_dir", type=Path, help="Directory with PDB/mmCIF files (e.g., from 'filter chain')"
+    ).complete = shtab.DIRECTORY
     parser.add_argument(
         "output_dir",
         type=Path,
         help=dedent("""\
         Directory to write filtered PDB/mmCIF files. Files are copied without modification.
     """),
-    )
+    ).complete = shtab.DIRECTORY
     parser.add_argument("--min-residues", type=int, default=0, help="Min residues in chain A")
     parser.add_argument("--max-residues", type=int, default=10_000_000, help="Max residues in chain A")
     parser.add_argument(
@@ -600,7 +614,7 @@ def _add_filter_residue_parser(subparsers: argparse._SubParsersAction):
             Write filter statistics to file.
             In CSV format with `<input_file>,<residue_count>,<passed>,<output_file>` columns.
             Use `-` for stdout."""),
-    )
+    ).complete = shtab.FILE
     _add_copy_method_arguments(parser)
 
 
@@ -612,14 +626,16 @@ def _add_filter_ss_parser(subparsers: argparse._SubParsersAction):
         description="Filter PDB/mmCIF files by secondary structure",
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
-    parser.add_argument("input_dir", type=Path, help="Directory with PDB/mmCIF files (e.g., from 'filter chain')")
+    parser.add_argument(
+        "input_dir", type=Path, help="Directory with PDB/mmCIF files (e.g., from 'filter chain')"
+    ).complete = shtab.DIRECTORY
     parser.add_argument(
         "output_dir",
         type=Path,
         help=dedent("""\
             Directory to write filtered PDB/mmCIF files. Files are copied without modification.
         """),
-    )
+    ).complete = shtab.DIRECTORY
     parser.add_argument("--abs-min-helix-residues", type=int, help="Min residues in helices")
     parser.add_argument("--abs-max-helix-residues", type=int, help="Max residues in helices")
     parser.add_argument("--abs-min-sheet-residues", type=int, help="Min residues in sheets")
@@ -637,7 +653,7 @@ def _add_filter_ss_parser(subparsers: argparse._SubParsersAction):
             <helix_ratio>,<sheet_ratio>,<passed>,<output_file>`.
             Use `-` for stdout.
         """),
-    )
+    ).complete = shtab.FILE
     _add_copy_method_arguments(parser)
 
 
@@ -701,12 +717,12 @@ def _add_convert_uniprot_parser(subparsers: argparse._SubParsersAction):
         "input_dir",
         type=Path,
         help=f"Directory with structure files. Supported extensions are {valid_structure_file_extensions}",
-    )
+    ).complete = shtab.DIRECTORY
     parser.add_argument(
         "output",
         type=argparse.FileType("wt", encoding="UTF-8"),
         help="Output text file with UniProt accessions (one per line). Use '-' for stdout.",
-    )
+    ).complete = shtab.FILE
     parser.add_argument(
         "--grouped",
         action="store_true",
@@ -726,14 +742,14 @@ def _add_convert_structures_parser(subparsers: argparse._SubParsersAction):
         "input_dir",
         type=Path,
         help=f"Directory with structure files. Supported extensions are {valid_structure_file_extensions}",
-    )
+    ).complete = shtab.DIRECTORY
     parser.add_argument(
         "--output-dir",
         type=Path,
         help=dedent("""\
             Directory to write converted structure files. If not given, files are written to `input_dir`.
         """),
-    )
+    ).complete = shtab.DIRECTORY
     parser.add_argument(
         "--format",
         type=str,
@@ -782,6 +798,7 @@ def make_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--log-level", default="WARNING", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    shtab.add_argument_to(parser, ["--print-completion"])
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 

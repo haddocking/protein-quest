@@ -268,6 +268,26 @@ protein-quest mcp
 
 The mcp server contains an prompt template to search/retrieve/filter candidate structures.
 
+## Shell autocompletion
+
+The `protein-quest` command line tool supports shell autocompletion using [shtab](https://shtab.readthedocs.io/).
+
+Initialize for bash shell with:
+
+```shell
+mkdir -p ~/.local/share/bash-completion/completions
+protein-quest --print-completion bash > ~/.local/share/bash-completion/completions/protein-quest
+```
+
+Initialize for zsh shell with:
+
+```shell
+mkdir -p ~/.local/share/zsh/site-functions
+protein-quest --print-completion zsh > ~/.local/share/zsh/site-functions/_protein-quest
+fpath=("$HOME/.local/share/zsh/site-functions" $fpath)
+autoload -Uz compinit && compinit
+```
+
 ## Contributing
 
 For development information and contribution guidelines, please see [CONTRIBUTING.md](CONTRIBUTING.md).
