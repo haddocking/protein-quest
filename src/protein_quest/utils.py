@@ -266,6 +266,7 @@ async def retrieve_files(
     cacher: Cacher | None = None,
     chunk_size: int = 524288,  # 512 KiB
     gzip_files: bool = False,
+    raise_for_not_found: bool = True,
 ) -> list[Path]:
     """Retrieve files from a list of URLs and save them to a directory.
 
@@ -279,6 +280,8 @@ async def retrieve_files(
         cacher: An optional cacher to use for caching files.
         chunk_size: The size of each chunk to read from the response.
         gzip_files: Whether to gzip the downloaded files.
+        raise_for_not_found: Whether to raise an error for HTTP 404 errors.
+            If false then function does not returns Path for which url gave HTTP 404 error and logs as debug message.
 
     Returns:
         A list of paths to the downloaded files.
@@ -295,11 +298,12 @@ async def retrieve_files(
                 cacher=cacher,
                 chunk_size=chunk_size,
                 gzip_files=gzip_files,
+                raise_for_not_found=raise_for_not_found,
             )
             for url, filename in urls
         ]
-        files: list[Path] = await tqdm.gather(*tasks, desc=desc)
-        return files
+        raw_files: list[Path | None] = await tqdm.gather(*tasks, desc=desc)
+        return [f for f in raw_files if f is not None]
 
 
 class InvalidContentEncodingError(aiohttp.ClientResponseError):
@@ -314,7 +318,8 @@ async def _retrieve_file(
     cacher: Cacher | None = None,
     chunk_size: int = 524288,  # 512 KiB
     gzip_files: bool = False,
-) -> Path:
+    raise_for_not_found=True,
+) -> Path | None:
     """Retrieve a single file from a URL and save it to a specified path.
 
     Args:
@@ -325,6 +330,8 @@ async def _retrieve_file(
         cacher: An optional cacher to use for caching files.
         chunk_size: The size of each chunk to read from the response.
         gzip_files: Whether to gzip the downloaded file.
+        raise_for_not_found: Whether to raise an error for HTTP 404 errors.
+            If false then function returns None on HTTP 404 errors and logs as debug message.
 
     Returns:
         The path to the saved file.
@@ -348,6 +355,9 @@ async def _retrieve_file(
         semaphore,
         session.get(url, headers=headers, auto_decompress=auto_decompress) as resp,
     ):
+        if not raise_for_not_found and resp.status == 404:
+            logger.debug(f"File not found at {url}, skipping download.")
+            return None
         resp.raise_for_status()
         if gzip_files and resp.headers.get("Content-Encoding") != "gzip":
             msg = f"Server did not send gzip encoded content for {url}, can not save as gzipped file."
