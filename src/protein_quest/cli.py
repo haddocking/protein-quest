@@ -508,6 +508,15 @@ def _add_retrieve_emdb_parser(subparsers: argparse._SubParsersAction):
     _add_cacher_arguments(parser)
 
 
+def _add_scheduler_address_argument(parser):
+    parser.add_argument(
+        "--scheduler-address",
+        help=dedent("""Address of the Dask scheduler to connect to.
+            If not provided, will create a local cluster.
+            If set to `sequential` will run tasks sequentially."""),
+    )
+
+
 def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
     """Add filter confidence subcommand parser."""
     parser = subparsers.add_parser(
@@ -542,6 +551,7 @@ def _add_filter_confidence_parser(subparsers: argparse._SubParsersAction):
             In CSV format with `<input_file>,<residue_count>,<passed>,<output_file>` columns.
             Use `-` for stdout."""),
     ).complete = shtab.FILE
+    _add_scheduler_address_argument(parser)
     _add_copy_method_arguments(parser)
 
 
@@ -576,12 +586,7 @@ def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
         help=dedent("""\
         Directory to write the single-chain PDB/mmCIF files. Output files are in same format as input files."""),
     ).complete = shtab.DIRECTORY
-    parser.add_argument(
-        "--scheduler-address",
-        help=dedent("""Address of the Dask scheduler to connect to.
-            If not provided, will create a local cluster.
-            If set to `sequential` will run tasks sequentially."""),
-    )
+    _add_scheduler_address_argument(parser)
     _add_copy_method_arguments(parser)
 
 
@@ -1060,6 +1065,7 @@ def _handle_filter_confidence(args: argparse.Namespace):
     max_residues = args.max_residues
     stats_file: TextIOWrapper | None = args.write_stats
     copy_method: CopyMethod = structure(args.copy_method, CopyMethod)  # pyright: ignore[reportArgumentType]
+    scheduler_address = structure(args.scheduler_address, str | None)  # pyright: ignore[reportArgumentType]
 
     output_dir.mkdir(parents=True, exist_ok=True)
     input_files = sorted(glob_structure_files(input_dir))
@@ -1078,16 +1084,14 @@ def _handle_filter_confidence(args: argparse.Namespace):
         writer.writerow(["input_file", "residue_count", "passed", "output_file"])
 
     passed_count = 0
-    for r in tqdm(
-        filter_files_on_confidence(input_files, query, output_dir, copy_method=copy_method),
-        total=len(input_files),
-        unit="file",
-    ):
+    results = filter_files_on_confidence(
+        input_files, query, output_dir, copy_method=copy_method, scheduler_address=scheduler_address
+    )
+    for r in results:
         if r.filtered_file:
             passed_count += 1
         if stats_file:
             writer.writerow([r.input_file, r.count, r.filtered_file is not None, r.filtered_file])  # pyright: ignore[reportPossiblyUnboundVariable]
-
     rprint(f"Filtered {passed_count} mmcif/PDB files by confidence, written to {output_dir} directory")
     if stats_file:
         rprint(f"Statistics written to {_name_of(stats_file)}")
