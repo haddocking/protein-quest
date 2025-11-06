@@ -48,6 +48,24 @@ def filter_file_on_chain(
         return ChainFilterStatistics(input_file=input_file, chain_id=chain_id, discard_reason=e)
 
 
+def _filter_files_on_chain_sequentially(
+    file2chains: Collection[tuple[Path, str]],
+    output_dir: Path,
+    out_chain: str = "A",
+    copy_method: CopyMethod = "copy",
+) -> list[ChainFilterStatistics]:
+    results = []
+    for file_and_chain in tqdm(file2chains, unit="file"):
+        result = filter_file_on_chain(
+            file_and_chain,
+            output_dir=output_dir,
+            out_chain=out_chain,
+            copy_method=copy_method,
+        )
+        results.append(result)
+    return results
+
+
 def filter_files_on_chain(
     file2chains: Collection[tuple[Path, str]],
     output_dir: Path,
@@ -72,11 +90,9 @@ def filter_files_on_chain(
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     if scheduler_address == "sequential":
-
-        def task(file_and_chain: tuple[Path, str]) -> ChainFilterStatistics:
-            return filter_file_on_chain(file_and_chain, output_dir, out_chain=out_chain, copy_method=copy_method)
-
-        return list(map(task, file2chains))
+        return _filter_files_on_chain_sequentially(
+            file2chains, output_dir, out_chain=out_chain, copy_method=copy_method
+        )
 
     # TODO make logger.debug in filter_file_on_chain show to user when --log
     # GPT-5 generated a fairly difficult setup with a WorkerPlugin, need to find a simpler approach

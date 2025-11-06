@@ -49,7 +49,7 @@ def test_filter_files_on_confidence(sample_pdb_file: Path, tmp_path: Path):
         min_residues=10,
     )
 
-    results = list(filter_files_on_confidence(input_files, query, tmp_path))
+    results = filter_files_on_confidence(input_files, query, tmp_path)
 
     expected = [
         ConfidenceFilterResult(

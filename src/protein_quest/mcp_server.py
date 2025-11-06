@@ -40,7 +40,7 @@ from typing import Annotated
 from fastmcp import FastMCP
 from pydantic import Field
 
-from protein_quest.alphafold.confidence import ConfidenceFilterQuery, ConfidenceFilterResult, filter_file_on_residues
+from protein_quest.alphafold.confidence import ConfidenceFilterQuery, ConfidenceFilterResult, filter_file_on_confidence
 from protein_quest.alphafold.fetch import AlphaFoldEntry, DownloadableFormat
 from protein_quest.alphafold.fetch import fetch_many as alphafold_fetch
 from protein_quest.emdb import fetch as emdb_fetch
@@ -199,7 +199,7 @@ def alphafold_confidence_filter(file: Path, query: ConfidenceFilterQuery, filter
 
     If passes filter writes file to filtered_dir with residues above confidence threshold.
     """
-    return filter_file_on_residues(file, query, filtered_dir)
+    return filter_file_on_confidence(file, query, filtered_dir)
 
 
 mcp.tool(filter_file_on_secondary_structure)

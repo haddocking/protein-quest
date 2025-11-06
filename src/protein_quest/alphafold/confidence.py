@@ -4,11 +4,16 @@ import logging
 from collections.abc import Generator
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 import gemmi
+from dask.distributed import Client
+from distributed.deploy.cluster import Cluster
+from tqdm.auto import tqdm
 
 from protein_quest.converter import Percentage, PositiveInt, converter
 from protein_quest.io import read_structure, write_structure
+from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
 from protein_quest.ss import nr_of_residues_in_total
 from protein_quest.utils import CopyMethod, copyfile
 
@@ -112,7 +117,7 @@ class ConfidenceFilterResult:
     filtered_file: Path | None = None
 
 
-def filter_file_on_residues(
+def filter_file_on_confidence(
     file: Path, query: ConfidenceFilterQuery, filtered_dir: Path, copy_method: CopyMethod = "copy"
 ) -> ConfidenceFilterResult:
     """Filter a single AlphaFoldDB structure file (*.pdb[.gz], *.cif[.gz]) based on confidence.
@@ -155,12 +160,31 @@ def filter_file_on_residues(
     )
 
 
+def _filter_files_on_confidence_sequentially(
+    alphafold_pdb_files: list[Path],
+    query: ConfidenceFilterQuery,
+    filtered_dir: Path,
+    copy_method: CopyMethod = "copy",
+) -> list[ConfidenceFilterResult]:
+    results = []
+    for file in tqdm(
+        alphafold_pdb_files,
+        total=len(alphafold_pdb_files),
+        desc="Filtering on confidence",
+        unit="file",
+    ):
+        result = filter_file_on_confidence(file, query, filtered_dir, copy_method)
+        results.append(result)
+    return results
+
+
 def filter_files_on_confidence(
     alphafold_pdb_files: list[Path],
     query: ConfidenceFilterQuery,
     filtered_dir: Path,
     copy_method: CopyMethod = "copy",
-) -> Generator[ConfidenceFilterResult]:
+    scheduler_address: str | Cluster | Literal["sequential"] | None = None,
+) -> list[ConfidenceFilterResult]:
     """Filter AlphaFoldDB structures based on confidence.
 
     Args:
@@ -168,13 +192,35 @@ def filter_files_on_confidence(
         query: The confidence filter query containing the confidence thresholds.
         filtered_dir: Directory where the filtered mmcif/PDB files will be saved.
         copy_method: How to copy when a direct copy is possible.
+        scheduler_address: The address of the Dask scheduler.
+            If not provided, will create a local cluster.
+            If set to `sequential` will run tasks sequentially.
 
-    Yields:
-        For each mmcif/PDB files yields whether it was filtered or not,
+    Returns:
+        For each mmcif/PDB files returns whether it was filtered or not,
             and number of residues with pLDDT above the confidence threshold.
     """
-    # Note on why code looks duplicated:
-    # In ../filter.py:filter_files_on_residues() we filter on number of residues on a file level
-    # here we filter on file level and inside file remove low confidence residues
-    for pdb_file in alphafold_pdb_files:
-        yield filter_file_on_residues(pdb_file, query, filtered_dir, copy_method)
+    filtered_dir.mkdir(parents=True, exist_ok=True)
+    if scheduler_address == "sequential":
+        return _filter_files_on_confidence_sequentially(
+            alphafold_pdb_files,
+            query,
+            filtered_dir,
+            copy_method=copy_method,
+        )
+
+    scheduler_address = configure_dask_scheduler(
+        scheduler_address,
+        name="filter-confidence",
+    )
+
+    with Client(scheduler_address) as client:
+        client.forward_logging()
+        return dask_map_with_progress(
+            client,
+            filter_file_on_confidence,
+            alphafold_pdb_files,
+            query=query,
+            filtered_dir=filtered_dir,
+            copy_method=copy_method,
+        )
