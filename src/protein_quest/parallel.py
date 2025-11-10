@@ -2,7 +2,8 @@
 
 import logging
 import os
-from collections.abc import Callable, Collection
+from collections.abc import Callable, Collection, Iterator
+from contextlib import contextmanager
 from typing import Concatenate, ParamSpec, cast
 
 from dask.distributed import Client, LocalCluster, progress
@@ -12,26 +13,35 @@ from psutil import cpu_count
 logger = logging.getLogger(__name__)
 
 
+@contextmanager
 def configure_dask_scheduler(
     scheduler_address: str | Cluster | None,
     name: str,
     nproc: int = 1,
-) -> str | Cluster:
-    """Configure the Dask scheduler by reusing existing or creating a new cluster.
+) -> Iterator[str | Cluster]:
+    """Context manager that offers a Dask cluster.
+
+    If scheduler_address is None then creates a local Dask cluster
+    else returns scheduler_address unchanged and the callee is responsible for cluster cleanup.
 
     Args:
         scheduler_address: Address of the Dask scheduler to connect to, or None for local cluster.
         name: Name for the Dask cluster.
         nproc: Number of processes to use per worker for CPU support.
 
-    Returns:
-        A Dask Cluster instance or a string address for the scheduler.
+    Yields:
+        The scheduler address as a string or a cluster.
     """
-    if scheduler_address is None:
-        scheduler_address = _configure_cpu_dask_scheduler(nproc, name)
-        logger.info(f"Using local Dask cluster: {scheduler_address}")
-
-    return scheduler_address
+    if scheduler_address is not None:
+        # Pass through existing scheduler address or cluster
+        yield scheduler_address
+        return
+    cluster = _configure_cpu_dask_scheduler(nproc, name)
+    logger.info(f"Using local Dask cluster: {cluster}")
+    try:
+        yield cluster
+    finally:
+        cluster.close()
 
 
 def nr_cpus() -> int:

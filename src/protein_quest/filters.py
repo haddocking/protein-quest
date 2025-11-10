@@ -96,12 +96,13 @@ def filter_files_on_chain(
 
     # TODO make logger.debug in filter_file_on_chain show to user when --log
     # GPT-5 generated a fairly difficult setup with a WorkerPlugin, need to find a simpler approach
-    scheduler_address = configure_dask_scheduler(
-        scheduler_address,
-        name="filter-chain",
-    )
-
-    with Client(scheduler_address) as client:
+    with (
+        configure_dask_scheduler(
+            scheduler_address,
+            name="filter-chain",
+        ) as cluster,
+        Client(cluster) as client,
+    ):
         client.forward_logging()
         return dask_map_with_progress(
             client,
