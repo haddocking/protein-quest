@@ -194,7 +194,7 @@ def write_single_chain_structure_file(
         copyfile(input_file, output_file, copy_method)
         return output_file
 
-    gemmi.Selection(chain_name).remove_not_selected(structure)
+    gemmi.Selection(f"//{chain_name}").remove_not_selected(structure)
     for m in structure:
         m.remove_ligands_and_waters()
     structure.setup_entities()
