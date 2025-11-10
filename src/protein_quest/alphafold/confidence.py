@@ -209,12 +209,7 @@ def filter_files_on_confidence(
             copy_method=copy_method,
         )
 
-    scheduler_address = configure_dask_scheduler(
-        scheduler_address,
-        name="filter-confidence",
-    )
-
-    with Client(scheduler_address) as client:
+    with configure_dask_scheduler(scheduler_address, name="filter-confidence") as cluster, Client(cluster) as client:
         client.forward_logging()
         return dask_map_with_progress(
             client,
