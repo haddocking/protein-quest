@@ -97,15 +97,13 @@ def download_cache_dir() -> Path:
 def lowercase_chain_cif(download_cache_dir: Path) -> Path:
     """Big model (ribosome complex) with >36 chains"""
     pdb_id = "5KCS"
-    cache_dir = download_cache_dir
-    cache_fn = cache_dir / f"{pdb_id.lower()}.cif.gz"
+    cache_fn = download_cache_dir / f"{pdb_id.lower()}.cif.gz"
     if cache_fn.exists():
         logger.info(f"[cache hit] Using cached file: {cache_fn}")
         return cache_fn
 
     logger.info(f"[cache miss] Downloading file for {pdb_id} to {cache_fn}")
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    fetched_files = sync_fetch([pdb_id], cache_dir, max_parallel_downloads=1)
+    fetched_files = sync_fetch([pdb_id], download_cache_dir, max_parallel_downloads=1)
     fetched_file = fetched_files[pdb_id]
     assert cache_fn == fetched_file
     return fetched_file
