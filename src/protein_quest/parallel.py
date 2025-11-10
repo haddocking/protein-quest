@@ -21,7 +21,8 @@ def configure_dask_scheduler(
 ) -> Iterator[str | Cluster]:
     """Context manager that offers a Dask cluster.
 
-    If scheduler_address is None then creates a local Dask cluster else returns scheduler_address unchanged.
+    If scheduler_address is None then creates a local Dask cluster
+    else returns scheduler_address unchanged and the callee is responsible for cluster cleanup.
 
     Args:
         scheduler_address: Address of the Dask scheduler to connect to, or None for local cluster.
