@@ -174,9 +174,6 @@ addopts = [
     # Skip internet tests by default
     "-m", "not internet",
 ]
-markers = [
-    "internet: marks tests that require internet access (deselect with '-m \"not internet\"')",
-]
 
 [tool.coverage.run]
 source = ["src/protein_quest"]

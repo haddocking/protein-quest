@@ -111,7 +111,6 @@ def lowercase_chain_cif(download_cache_dir: Path) -> Path:
     return fetched_file
 
 
-@pytest.mark.internet
 def test_write_single_chain_structure_file_lowercase_chain(lowercase_chain_cif: Path, tmp_path: Path):
     output_file = write_single_chain_structure_file(
         input_file=lowercase_chain_cif,

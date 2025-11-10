@@ -105,7 +105,4 @@ To have fast tests we use [pytest-recording](https://github.com/kiwicom/pytest-r
 See [pytest-recording documentation](https://github.com/kiwicom/pytest-recording) for more details on how to use it.
 Like overwrite previous recordings in test/cassettes/**.yaml files with `--record-mode=rewrite`.
 
-Some tests need Internet access, these are marked with the `internet` marker.
-These tests are skipped by default.
-To run them use `pytest -m internet`.
-The files downloaded from Internet are cached in `~/.cache/protein-quest-tests`.
+The files downloaded for tests are cached in `~/.cache/protein-quest-tests`.
