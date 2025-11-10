@@ -171,8 +171,6 @@ addopts = [
     # default import-mode depend can not have a/test_it.py and b/test_it.py
     # so switch to modern mode
     "--import-mode=importlib",
-    # Skip internet tests by default
-    "-m", "not internet",
 ]
 
 [tool.coverage.run]
