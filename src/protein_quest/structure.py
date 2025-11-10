@@ -194,7 +194,7 @@ def write_single_chain_structure_file(
         copyfile(input_file, output_file, copy_method)
         return output_file
 
-    gemmi.Selection(chain_name).remove_not_selected(structure)
+    gemmi.Selection(f"//{chain_name}").remove_not_selected(structure)
     for m in structure:
         m.remove_ligands_and_waters()
     structure.setup_entities()
@@ -202,6 +202,14 @@ def write_single_chain_structure_file(
     _dedup_helices(structure)
     _dedup_sheets(structure, out_chain)
     _add_provenance_info(structure, chain_name, out_chain)
+
+    if not (len(structure) == 1 and len(structure[0]) == 1 and len(structure[0][out_chain]) > 0):
+        msg = (
+            f"After processing, structure does not have exactly one model ({len(structure)}) "
+            f"with one chain (found {len(structure[0])}) called {out_chain} "
+            f"with some residues ({len(structure[0][out_chain])})."
+        )
+        raise ValueError(msg)
 
     write_structure(structure, output_file)
 

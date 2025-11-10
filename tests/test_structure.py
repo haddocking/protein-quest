@@ -3,14 +3,18 @@ from pathlib import Path
 
 import gemmi
 import pytest
+from platformdirs import user_cache_dir
 
 from protein_quest.io import read_structure
+from protein_quest.pdbe.fetch import sync_fetch
 from protein_quest.structure import (
     ChainNotFoundError,
     nr_residues_in_chain,
     structure2uniprot_accessions,
     write_single_chain_structure_file,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def test_write_single_chain_structure_file_happypath(sample2_cif: Path, tmp_path: Path):
@@ -80,6 +84,47 @@ def test_write_single_chain_structure_file_unknown_format(tmp_path: Path):
             output_dir=tmp_path,
             out_chain="Z",
         )
+
+
+@pytest.fixture
+def download_cache_dir() -> Path:
+    cache_dir = Path(user_cache_dir("protein-quest-tests"))
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir
+
+
+@pytest.fixture
+def lowercase_chain_cif(download_cache_dir: Path) -> Path:
+    """Big model (ribosome complex) with >36 chains"""
+    pdb_id = "5KCS"
+    cache_fn = download_cache_dir / f"{pdb_id.lower()}.cif.gz"
+    if cache_fn.exists():
+        logger.info(f"[cache hit] Using cached file: {cache_fn}")
+        return cache_fn
+
+    logger.info(f"[cache miss] Downloading file for {pdb_id} to {cache_fn}")
+    fetched_files = sync_fetch([pdb_id], download_cache_dir, max_parallel_downloads=1)
+    fetched_file = fetched_files[pdb_id]
+    assert cache_fn == fetched_file
+    return fetched_file
+
+
+def test_write_single_chain_structure_file_lowercase_chain(lowercase_chain_cif: Path, tmp_path: Path):
+    output_file = write_single_chain_structure_file(
+        input_file=lowercase_chain_cif,
+        chain2keep="l",
+        output_dir=tmp_path,
+        out_chain="Z",
+    )
+
+    assert output_file is not None
+    structure = read_structure(output_file)
+    assert len(structure) == 1  # One model
+    model = structure[0]
+    assert len(model) == 1  # One chain
+    chain = model[0]
+    assert chain.name == "Z"
+    assert len(chain) == 123
 
 
 def test_nr_residues_in_chain(sample2_cif: Path):

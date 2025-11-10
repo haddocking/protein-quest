@@ -24,6 +24,11 @@ jobs:
         run: uv sync --locked --dev --extra mcp
       - name: Install pocl
         run: uv pip install pocl-binary-distribution==3.0
+      - name: Cache downloaded test data
+        uses: actions/cache@v4
+        with:
+            path: ~/.cache/protein-quest-tests
+            key: cached-protein-quest-tests
       - name: Run tests
         run: |
           uv run pytest --cov --cov-report=xml
@@ -32,6 +37,7 @@ jobs:
         with:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
           coverage-reports: coverage.xml
+
   build:
     name: build
     runs-on: ubuntu-latest
