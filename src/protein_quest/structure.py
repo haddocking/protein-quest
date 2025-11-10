@@ -1,7 +1,6 @@
 """Module for querying and modifying [gemmi structures][gemmi.Structure]."""
 
 import logging
-from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 
