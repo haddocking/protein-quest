@@ -1,7 +1,6 @@
 """Module for querying and modifying [gemmi structures][gemmi.Structure]."""
 
 import logging
-from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -123,10 +122,15 @@ def chains_in_structure(structure: gemmi.Structure) -> set[gemmi.Chain]:
 class ChainNotFoundError(IndexError):
     """Exception raised when a chain is not found in a structure."""
 
-    def __init__(self, chain: str, file: Path | str, available_chains: Iterable[str]):
-        super().__init__(f"Chain {chain} not found in {file}. Available chains are: {available_chains}")
-        self.chain_id = chain
+    def __init__(self, chain_id: str, file: Path | str, available_chains: set[str]):
+        super().__init__(f"Chain {chain_id} not found in {file}. Available chains are: {available_chains}")
+        self.available_chains = available_chains
+        self.chain_id = chain_id
         self.file = file
+
+    def __reduce__(self):
+        """Helper for pickling the exception."""
+        return (self.__class__, (self.chain_id, self.file, self.available_chains))
 
 
 def write_single_chain_structure_file(
@@ -194,7 +198,7 @@ def write_single_chain_structure_file(
         copyfile(input_file, output_file, copy_method)
         return output_file
 
-    gemmi.Selection(f"//{chain_name}").remove_not_selected(structure)
+    gemmi.Selection(f"/1/{chain_name}").remove_not_selected(structure)
     for m in structure:
         m.remove_ligands_and_waters()
     structure.setup_entities()

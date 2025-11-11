@@ -93,10 +93,7 @@ def download_cache_dir() -> Path:
     return cache_dir
 
 
-@pytest.fixture
-def lowercase_chain_cif(download_cache_dir: Path) -> Path:
-    """Big model (ribosome complex) with >36 chains"""
-    pdb_id = "5KCS"
+def fetch_pdb_file_cached(pdb_id: str, download_cache_dir: Path) -> Path:
     cache_fn = download_cache_dir / f"{pdb_id.lower()}.cif.gz"
     if cache_fn.exists():
         logger.info(f"[cache hit] Using cached file: {cache_fn}")
@@ -107,6 +104,12 @@ def lowercase_chain_cif(download_cache_dir: Path) -> Path:
     fetched_file = fetched_files[pdb_id]
     assert cache_fn == fetched_file
     return fetched_file
+
+
+@pytest.fixture
+def lowercase_chain_cif(download_cache_dir: Path) -> Path:
+    """Big model (ribosome complex) with >36 chains"""
+    return fetch_pdb_file_cached("5KCS", download_cache_dir)
 
 
 def test_write_single_chain_structure_file_lowercase_chain(lowercase_chain_cif: Path, tmp_path: Path):
@@ -125,6 +128,30 @@ def test_write_single_chain_structure_file_lowercase_chain(lowercase_chain_cif: 
     chain = model[0]
     assert chain.name == "Z"
     assert len(chain) == 123
+
+
+@pytest.fixture
+def multi_model_cif(download_cache_dir: Path) -> Path:
+    """A multi model structure"""
+    return fetch_pdb_file_cached("2lmc", download_cache_dir)
+
+
+def test_write_single_chain_structure_file_multi_model_cif(multi_model_cif: Path, tmp_path: Path):
+    output_file = write_single_chain_structure_file(
+        input_file=multi_model_cif,
+        chain2keep="A",
+        output_dir=tmp_path,
+        out_chain="Z",
+    )
+
+    assert output_file is not None
+    structure = read_structure(output_file)
+    assert len(structure) == 1  # One model
+    model = structure[0]
+    assert len(model) == 1  # One chain
+    chain = model[0]
+    assert chain.name == "Z"
+    assert len(chain) == 59
 
 
 def test_nr_residues_in_chain(sample2_cif: Path):
