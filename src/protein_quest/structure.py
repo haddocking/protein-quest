@@ -122,13 +122,14 @@ def chains_in_structure(structure: gemmi.Structure) -> set[gemmi.Chain]:
 class ChainNotFoundError(IndexError):
     """Exception raised when a chain is not found in a structure."""
 
-    def __init__(self, chain: str, file: Path | str, available_chains: set[str]):
-        super().__init__(f"Chain {chain} not found in {file}. Available chains are: {available_chains}")
+    def __init__(self, chain_id: str, file: Path | str, available_chains: set[str]):
+        super().__init__(f"Chain {chain_id} not found in {file}. Available chains are: {available_chains}")
         self.available_chains = available_chains
-        self.chain_id = chain
+        self.chain_id = chain_id
         self.file = file
 
     def __reduce__(self):
+        """Helper for pickling the exception."""
         return (self.__class__, (self.chain_id, self.file, self.available_chains))
 
 
