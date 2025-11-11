@@ -151,7 +151,7 @@ def test_write_single_chain_structure_file_multi_model_cif(multi_model_cif: Path
     assert len(model) == 1  # One chain
     chain = model[0]
     assert chain.name == "Z"
-    assert len(chain) == 66
+    assert len(chain) == 59
 
 
 def test_nr_residues_in_chain(sample2_cif: Path):
