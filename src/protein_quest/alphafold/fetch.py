@@ -114,7 +114,6 @@ class AlphaFoldEntry:
         """Convert paths in an AlphaFoldEntry to be relative to the session directory.
 
         Args:
-            entry: An AlphaFoldEntry instance with absolute paths.
             session_dir: The session directory to which the paths should be made relative.
 
         Returns:
