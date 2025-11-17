@@ -9,7 +9,7 @@
 [![Codacy Badge](https://app.codacy.com/project/badge/Coverage/7a3f3f1fe64640d583a5e50fe7ba828e)](https://app.codacy.com/gh/haddocking/protein-quest/coverage?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
 [![FAIR checklist badge](https://fairsoftwarechecklist.net/badge.svg)](https://fairsoftwarechecklist.net/v0.2?f=31&a=32113&i=32121&r=133)
 [![fair-software.eu](https://img.shields.io/badge/fair--software.eu-%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F-green)](https://fair-software.eu)
-[![Copy/paste detector](https://raw.githubusercontent.com/kucherenko/jscpd/master/assets/jscpd-badge.svg?sanitize=true)](https://github.com/kucherenko/jscpd/)
+[![Copy/paste detector](https://raw.githubusercontent.com/kucherenko/jscpd/refs/tags/v3.5.10/assets/jscpd-badge.svg?sanitize=true)](https://github.com/kucherenko/jscpd/)
 
 
 Python package to search/retrieve/filter proteins and protein structures.
