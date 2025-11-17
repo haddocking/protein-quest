@@ -3,6 +3,7 @@
 [![Documentation](https://img.shields.io/badge/Documentation-bonvinlab.org-blue?style=flat-square&logo=gitbook)](https://www.bonvinlab.org/protein-quest/)
 [![CI](https://github.com/haddocking/protein-quest/actions/workflows/ci.yml/badge.svg)](https://github.com/haddocking/protein-quest/actions/workflows/ci.yml)
 [![Research Software Directory Badge](https://img.shields.io/badge/rsd-00a3e3.svg)](https://www.research-software.nl/software/protein-quest)
+[![bio.tools](https://img.shields.io/badge/bio.tools-protein--quest-009fdf.svg)](https://bio.tools/protein-quest)
 [![PyPI](https://img.shields.io/pypi/v/protein-quest)](https://pypi.org/project/protein-quest/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16941288.svg)](https://doi.org/10.5281/zenodo.16941288)
 [![Codacy Badge](https://app.codacy.com/project/badge/Coverage/7a3f3f1fe64640d583a5e50fe7ba828e)](https://app.codacy.com/gh/haddocking/protein-quest/coverage?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
