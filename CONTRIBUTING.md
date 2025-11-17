@@ -39,7 +39,7 @@ The sections below outline the steps in each case.
 1. lint your code with `uvx ruff check` (use `uvx ruff check --fix` to fix issues automatically);
 1. type check your code with `uv run pyrefly check src tests`;
 1. prevent code duplication, detect with `npx jscpd src`;
-1. update or expand the documentation (see [Contributing with documentation](#contributing-with-documentation) section below);
+1. update or expand the documentation (see [Contributing to documentation](#contributing-to-documentation) section below);
 1. [push](http://rogerdudler.github.io/git-guide/) your feature branch to (your fork of) the protein-quest repository on GitHub;
 1. create the pull request, e.g. following the instructions [here](https://help.github.com/articles/creating-a-pull-request/).
 

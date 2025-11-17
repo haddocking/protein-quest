@@ -77,7 +77,7 @@ pip install git+https://github.com/haddocking/protein-quest.git
 
 The main entry point is the `protein-quest` command line tool which has multiple subcommands to perform actions.
 
-To use programmaticly, see the [Jupyter notebooks](https://www.bonvinlab.org/protein-quest/notebooks) and [API documentation](https://www.bonvinlab.org/protein-quest/autoapi/summary/).
+To use programmaticly, see the [Jupyter notebooks](https://www.bonvinlab.org/protein-quest/notebooks) and [API documentation](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/).
 
 While downloading or copying files it uses a global cache (located at `~/.cache/protein-quest`) and hardlinks to save disk space and improve speed.
 This behavior can be customized with the `--no-cache`, `--cache-dir`, and `--copy-method` command line arguments.
@@ -275,7 +275,7 @@ The mcp server contains an prompt template to search/retrieve/filter candidate s
 
 ## Shell autocompletion
 
-The `protein-quest` command line tool supports shell autocompletion using [shtab](https://shtab.readthedocs.io/).
+The `protein-quest` command line tool supports shell autocompletion using [shtab](https://docs.iterative.ai/shtab).
 
 Initialize for bash shell with:
 
