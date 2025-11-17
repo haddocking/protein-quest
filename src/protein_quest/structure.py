@@ -132,6 +132,18 @@ class ChainNotFoundError(IndexError):
         """Helper for pickling the exception."""
         return (self.__class__, (self.chain_id, self.file, self.available_chains))
 
+    def __eq__(self, other):
+        if not isinstance(other, ChainNotFoundError):
+            return NotImplemented
+        return (
+            self.chain_id == other.chain_id
+            and self.file == other.file
+            and self.available_chains == other.available_chains
+        )
+
+    def __hash__(self):
+        return hash((self.chain_id, str(self.file), frozenset(self.available_chains)))
+
 
 def write_single_chain_structure_file(
     input_file: Path,

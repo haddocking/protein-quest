@@ -81,4 +81,13 @@ jobs:
           find docs/ -name "*.ipynb" -exec uv run --group docs-type marimo convert {} -o {}.py \;
       - name: Run type checkers on docs
         run: uv run --group docs-type pyrefly check docs/notebooks/*.ipynb.py
-
+  duplicated-code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install NodeJS
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Run jscpd to detect duplicated code
+        run: npx jscpd src

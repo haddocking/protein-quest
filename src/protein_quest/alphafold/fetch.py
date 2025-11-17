@@ -483,6 +483,7 @@ def fetch_many_async(
     )
 
 
+# jscpd:ignore-start  # noqa: ERA001
 def fetch_many(
     uniprot_accessions: Iterable[str],
     save_dir: Path,
@@ -492,6 +493,7 @@ def fetch_many(
     cacher: Cacher | None = None,
     gzip_files: bool = False,
     all_isoforms: bool = False,
+    # jscpd:ignore-end  # noqa: ERA001
 ) -> list[AlphaFoldEntry]:
     """Synchronously fetches summaries and/or files like cif from AlphaFold Protein Structure Database.
 

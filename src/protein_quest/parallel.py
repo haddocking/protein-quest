@@ -2,13 +2,19 @@
 
 import logging
 import os
+import sys
+import warnings
 from collections.abc import Callable, Collection, Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from typing import Concatenate, ParamSpec, cast
 
-from dask.distributed import Client, LocalCluster, progress
+from dask.distributed import Client, LocalCluster
 from distributed.deploy.cluster import Cluster
+from distributed.diagnostics.progress import format_time
+from distributed.diagnostics.progressbar import ProgressBar
+from distributed.utils import LoopRunner
 from psutil import cpu_count
+from tornado.ioloop import IOLoop
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +90,60 @@ def _configure_cpu_dask_scheduler(nproc: int, name: str) -> LocalCluster:
 P = ParamSpec("P")
 
 
+class _StderrTextProgressBar(ProgressBar):
+    """Copy of distributed.diagnostics.progressbar.TextProgressBar that prints to stderr instead of stdout."""
+
+    __loop: IOLoop | None = None
+
+    def __init__(
+        self,
+        keys,
+        scheduler=None,
+        interval="100ms",
+        width=40,
+        loop=None,
+        complete=True,
+        start=True,
+        **kwargs,  # noqa: ARG002
+    ):
+        self._loop_runner = loop_runner = LoopRunner(loop=loop)
+        super().__init__(keys, scheduler, interval, complete)
+        self.width = width
+
+        if start:
+            loop_runner.run_sync(self.listen)
+
+    @property
+    def loop(self) -> IOLoop | None:
+        loop = self.__loop
+        if loop is None:
+            # If the loop is not running when this is called, the LoopRunner.loop
+            # property will raise a DeprecationWarning
+            # However subsequent calls might occur - eg atexit, where a stopped
+            # loop is still acceptable - so we cache access to the loop.
+            self.__loop = loop = self._loop_runner.loop
+        return loop
+
+    @loop.setter
+    def loop(self, value: IOLoop) -> None:
+        warnings.warn("setting the loop property is deprecated", DeprecationWarning, stacklevel=2)
+        self.__loop = value
+
+    def _draw_bar(self, remaining, all, **kwargs):  # noqa: A002, ARG002
+        frac = (1 - remaining / all) if all else 1.0
+        bar = "#" * int(self.width * frac)
+        percent = int(100 * frac)
+        elapsed = format_time(self.elapsed)
+        msg = "\r[{0:<{1}}] | {2}% Completed | {3}".format(bar, self.width, percent, elapsed)
+        with suppress(ValueError):
+            sys.stderr.write(msg)
+            sys.stderr.flush()
+
+    def _draw_stop(self, **kwargs):  # noqa: ARG002
+        sys.stderr.write("\33[2K\r")
+        sys.stderr.flush()
+
+
 def dask_map_with_progress[T, R, **P](
     client: Client,
     func: Callable[Concatenate[T, P], R],
@@ -109,6 +169,6 @@ def dask_map_with_progress[T, R, **P](
     if client.dashboard_link:
         logger.info(f"Follow progress on dask dashboard at: {client.dashboard_link}")
     futures = client.map(func, iterable, *args, **kwargs)
-    progress(futures)
+    _StderrTextProgressBar(futures)
     results = client.gather(futures)
     return cast("list[R]", results)
