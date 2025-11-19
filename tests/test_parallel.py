@@ -18,9 +18,9 @@ def run_dask_map_with_progress():
 
     with Client() as client:
         result = dask_map_with_progress(
-            client=client,
-            func=square,
-            iterable=range(5),
+            client,
+            square,
+            range(5),
         )
     assert result == [0, 1, 4, 9, 16]
 
