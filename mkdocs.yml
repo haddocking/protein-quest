@@ -76,6 +76,7 @@ markdown_extensions:
 nav:
   - Home: index.md
   - CLI Reference: cli.md
+  - FAQ: faq.md
   - Notebooks:
     - notebooks/index.md
     - Search uniprot: notebooks/uniprot.ipynb

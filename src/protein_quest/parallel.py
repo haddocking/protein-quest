@@ -86,12 +86,15 @@ def _configure_cpu_dask_scheduler(nproc: int, name: str) -> LocalCluster:
     return LocalCluster(name=name, threads_per_worker=1, n_workers=n_workers)
 
 
-# Generic type parameters used across helpers
-P = ParamSpec("P")
+class MyProgressBar(ProgressBar):
+    """Show progress of Dask computations.
 
+    Copy of distributed.diagnostics.progressbar.TextProgressBar that:
 
-class _StderrTextProgressBar(ProgressBar):
-    """Copy of distributed.diagnostics.progressbar.TextProgressBar that prints to stderr instead of stdout."""
+    - prints to stderr instead of stdout
+    - Can have its interval (in seconds) set with `TQDM_MININTERVAL` environment variable
+
+    """
 
     __loop: IOLoop | None = None
 
@@ -107,6 +110,11 @@ class _StderrTextProgressBar(ProgressBar):
         **kwargs,  # noqa: ARG002
     ):
         self._loop_runner = loop_runner = LoopRunner(loop=loop)
+        if interval == "100ms":
+            interval_env = os.getenv("TQDM_MININTERVAL")
+            if interval_env is not None:
+                interval = interval_env + "s"
+
         super().__init__(keys, scheduler, interval, complete)
         self.width = width
 
@@ -144,6 +152,10 @@ class _StderrTextProgressBar(ProgressBar):
         sys.stderr.flush()
 
 
+# Generic type parameters used across helpers
+P = ParamSpec("P")
+
+
 def dask_map_with_progress[T, R, **P](
     client: Client,
     func: Callable[Concatenate[T, P], R],
@@ -153,6 +165,10 @@ def dask_map_with_progress[T, R, **P](
 ) -> list[R]:
     """
     Wrapper for map, progress, and gather of Dask that returns a correctly typed list.
+
+    Environment variables:
+        - Set interval (in seconds) of progress updates with `TQDM_MININTERVAL`
+        - Disabled by setting `TQDM_DISABLE` to any value
 
     Args:
         client: Dask client.
@@ -169,6 +185,7 @@ def dask_map_with_progress[T, R, **P](
     if client.dashboard_link:
         logger.info(f"Follow progress on dask dashboard at: {client.dashboard_link}")
     futures = client.map(func, iterable, *args, **kwargs)
-    _StderrTextProgressBar(futures)
+    if not os.getenv("TQDM_DISABLE"):
+        MyProgressBar(futures)
     results = client.gather(futures)
     return cast("list[R]", results)
