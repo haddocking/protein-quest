@@ -6,6 +6,7 @@
 [![bio.tools](https://img.shields.io/badge/bio.tools-protein--quest-009fdf.svg)](https://bio.tools/protein-quest)
 [![PyPI](https://img.shields.io/pypi/v/protein-quest)](https://pypi.org/project/protein-quest/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16941288.svg)](https://doi.org/10.5281/zenodo.16941288)
+[![Poster DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17910832.svg)](https://doi.org/10.5281/zenodo.17910832)
 [![Codacy Badge](https://app.codacy.com/project/badge/Coverage/7a3f3f1fe64640d583a5e50fe7ba828e)](https://app.codacy.com/gh/haddocking/protein-quest/coverage?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_coverage)
 [![FAIR checklist badge](https://fairsoftwarechecklist.net/badge.svg)](https://fairsoftwarechecklist.net/v0.2?f=31&a=32113&i=32121&r=133)
 [![fair-software.eu](https://img.shields.io/badge/fair--software.eu-%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F-green)](https://fair-software.eu)
