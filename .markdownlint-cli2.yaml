@@ -1,0 +1,16 @@
+# markdownlint-cli2 configuration file
+# See https://github.com/DavidAnson/markdownlint-cli2 for documentation
+
+# Disable rules that conflict with Prettier formatting
+config:
+  no-trailing-spaces: false
+  no-hard-tabs: false
+  no-multiple-blanks: false
+  line-length: false
+  blanks-around-headings: false
+  list-marker-space: false
+  blanks-around-fences: false
+  blanks-around-lists: false
+  no-inline-html: false
+  single-trailing-newline: false
+  descriptive-link-text: false

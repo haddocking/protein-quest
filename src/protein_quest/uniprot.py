@@ -332,7 +332,7 @@ def _build_sparql_generic_by_uniprot_accessions_query(
 
 def _build_sparql_query_uniprot(query: Query, limit=10_000) -> str:
     dynamic_triples = _query2dynamic_sparql_triples(query)
-    # TODO add usefull columns that have 1:1 mapping to protein
+    # TODO add useful columns that have 1:1 mapping to protein
     # like uniprot_id with `?protein up:mnemonic ?mnemonic .`
     # and sequence, take care to take first isoform
     # ?protein up:sequence ?isoform .

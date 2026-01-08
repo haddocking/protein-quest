@@ -4,7 +4,7 @@ repo_name: haddocking/protein-quest
 repo_url: https://github.com/haddocking/protein-quest
 watch: [mkdocs.yml, README.md, src/protein_quest]
 use_directory_urls: false
-theme: 
+theme:
   name: material
   features:
     - navigation.instant
@@ -19,7 +19,7 @@ theme:
         name: Switch to light mode
     # Palette toggle for light mode
     - media: "(prefers-color-scheme: light)"
-      scheme: default 
+      scheme: default
       primary: teal
       accent: teal
       toggle:
@@ -54,9 +54,9 @@ plugins:
             docstring_style: google
             show_source: false
   - mkdocs-jupyter:
-        remove_tag_config:
-            remove_input_tags:
-                - hide_code
+      remove_tag_config:
+        remove_input_tags:
+          - hide_code
   - mkdocs-rich-argparse:
       module: protein_quest.cli
       factory: make_parser
@@ -78,8 +78,8 @@ nav:
   - CLI Reference: cli.md
   - FAQ: faq.md
   - Notebooks:
-    - notebooks/index.md
-    - Search uniprot: notebooks/uniprot.ipynb
-    - Alphafold: notebooks/alphafold.ipynb
-    - PDBe: notebooks/pdbe.ipynb
+      - notebooks/index.md
+      - Search uniprot: notebooks/uniprot.ipynb
+      - Alphafold: notebooks/alphafold.ipynb
+      - PDBe: notebooks/pdbe.ipynb
   - Contributing guidelines: CONTRIBUTING.md

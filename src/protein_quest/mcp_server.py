@@ -7,8 +7,8 @@ Can be run with:
 fastmcp dev src/protein_quest/mcp_server.py
 # or from inspector
 npx @modelcontextprotocol/inspector
-# tranport type: stdio
-# comand: protein-quest
+# transport type: stdio
+# command: protein-quest
 # arguments: mcp
 
 # or with server and inspector

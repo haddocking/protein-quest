@@ -1236,7 +1236,7 @@ def _handle_mcp(args):
         msg = "Unable to start MCP server, please install `protein-quest[mcp]`."
         raise ImportError(msg)
 
-    from protein_quest.mcp_server import mcp  # noqa: PLC0415
+    from protein_quest.mcp_server import mcp  # noqa: PLC0415 fastmcp is an extra dependency
 
     if args.transport == "stdio":
         mcp.run(transport=args.transport)
