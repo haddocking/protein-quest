@@ -40,7 +40,7 @@ repos:
       - id: prettier
         types_or: [yaml, markdown, html, css, scss, javascript, json]
         args: [--prose-wrap=always]
-        
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: "v0.14.10"
     hooks:
@@ -83,5 +83,5 @@ repos:
   - repo: https://github.com/DavidAnson/markdownlint-cli2
     rev: v0.20.0
     hooks:
-    - id: markdownlint-cli2
-      args: ["--fix"]
+      - id: markdownlint-cli2
+        args: ["--fix"]

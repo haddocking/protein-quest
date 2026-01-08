@@ -17,7 +17,7 @@ authors:
     orcid: "https://orcid.org/0009-0002-1806-7951"
   - given-names: Alexandre
     family-names: Bonvin
-    affiliation: '@UtrechtUniversity'    
+    affiliation: '@UtrechtUniversity'
     orcid: "https://orcid.org/0000-0001-7369-1322"
 repository-code: https://github.com/haddocking/protein-quest
 identifiers:

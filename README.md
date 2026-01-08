@@ -12,14 +12,16 @@
 [![fair-software.eu](https://img.shields.io/badge/fair--software.eu-%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F-green)](https://fair-software.eu)
 [![Copy/paste detector](https://raw.githubusercontent.com/kucherenko/jscpd/refs/tags/v3.5.10/assets/jscpd-badge.svg?sanitize=true)](https://github.com/kucherenko/jscpd/)
 
-
 Python package to search/retrieve/filter proteins and protein structures.
 
 It uses
 
-- [Uniprot Sparql endpoint](https://sparql.uniprot.org/) to search for proteins and their measured or predicted 3D structures.
-- [Uniprot taxonomy](https://www.uniprot.org/taxonomy?query=*) to search for taxonomy.
-- [QuickGO](https://www.ebi.ac.uk/QuickGO/api/index.html) to search for Gene Ontology terms.
+- [Uniprot Sparql endpoint](https://sparql.uniprot.org/) to search for proteins
+  and their measured or predicted 3D structures.
+- [Uniprot taxonomy](https://www.uniprot.org/taxonomy?query=*) to search for
+  taxonomy.
+- [QuickGO](https://www.ebi.ac.uk/QuickGO/api/index.html) to search for Gene
+  Ontology terms.
 - [gemmi](https://project-gemmi.github.io/) to work with macromolecular models.
 - [dask-distributed](https://docs.dask.org/en/latest/) to compute in parallel.
 
@@ -70,18 +72,24 @@ pip install protein-quest
 ```
 
 Or to use the latest development version:
-```
+
+```shell
 pip install git+https://github.com/haddocking/protein-quest.git
 ```
 
 ## Usage
 
-The main entry point is the `protein-quest` command line tool which has multiple subcommands to perform actions.
+The main entry point is the `protein-quest` command line tool which has multiple
+subcommands to perform actions.
 
-To use programmaticly, see the [Jupyter notebooks](https://www.bonvinlab.org/protein-quest/notebooks) and [API documentation](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/).
+To use programmaticly, see the
+[Jupyter notebooks](https://www.bonvinlab.org/protein-quest/notebooks) and
+[API documentation](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/).
 
-While downloading or copying files it uses a global cache (located at `~/.cache/protein-quest`) and hardlinks to save disk space and improve speed.
-This behavior can be customized with the `--no-cache`, `--cache-dir`, and `--copy-method` command line arguments.
+While downloading or copying files it uses a global cache (located at
+`~/.cache/protein-quest`) and hardlinks to save disk space and improve speed.
+This behavior can be customized with the `--no-cache`, `--cache-dir`, and
+`--copy-method` command line arguments.
 
 ### Search Uniprot accessions
 
@@ -95,7 +103,9 @@ protein-quest search uniprot \
     --limit 100 \
     uniprot_accs.txt
 ```
-([GO:0005634](https://www.ebi.ac.uk/QuickGO/term/GO:0005634) is "Nucleus" and [GO:0003677](https://www.ebi.ac.uk/QuickGO/term/GO:0003677) is  "DNA binding")
+
+([GO:0005634](https://www.ebi.ac.uk/QuickGO/term/GO:0005634) is "Nucleus" and
+[GO:0003677](https://www.ebi.ac.uk/QuickGO/term/GO:0003677) is "DNA binding")
 
 ### Search for PDBe structures of uniprot accessions
 
@@ -103,7 +113,8 @@ protein-quest search uniprot \
 protein-quest search pdbe uniprot_accs.txt pdbe.csv
 ```
 
-`pdbe.csv` file is written containing the the PDB id and chain of each uniprot accession.
+`pdbe.csv` file is written containing the the PDB id and chain of each uniprot
+accession.
 
 ### Search for Alphafold structures of uniprot accessions
 
@@ -139,8 +150,8 @@ protein-quest retrieve emdb emdbs.csv downloads-emdb/
 
 ### To filter AlphaFold structures on confidence
 
-Filter AlphaFoldDB structures based on confidence (pLDDT).
-Keeps entries with requested number of residues which have a confidence score above the threshold.
+Filter AlphaFoldDB structures based on confidence (pLDDT). Keeps entries with
+requested number of residues which have a confidence score above the threshold.
 Also writes pdb files with only those residues.
 
 ```shell
@@ -153,7 +164,8 @@ protein-quest filter confidence \
 
 ### To filter PDBe files on chain of uniprot accession
 
-Make PDBe files smaller by only keeping first chain of found uniprot entry and renaming to chain A.
+Make PDBe files smaller by only keeping first chain of found uniprot entry and
+renaming to chain A.
 
 ```shell
 protein-quest filter chain \
@@ -172,7 +184,10 @@ protein-quest filter residue  \
 
 ### To filter on secondary structure
 
-To filter on structure being mostly alpha helices and have no beta sheets. See the following [notebook](https://www.bonvinlab.org/protein-detective/SSE_elements.html) to determine the ratio of secondary structure elements.
+To filter on structure being mostly alpha helices and have no beta sheets. See
+the following
+[notebook](https://www.bonvinlab.org/protein-detective/SSE_elements.html) to
+determine the ratio of secondary structure elements.
 
 ```shell
 protein-quest filter secondary-structure \
@@ -190,8 +205,10 @@ protein-quest search taxonomy "Homo sapiens" -
 
 ### Search Gene Ontology (GO)
 
-You might not know what the identifier of a [Gene Ontology](https://geneontology.org/) term is at `protein-quest search uniprot`.
-You can use following command to search for a Gene Ontology (GO) term.
+You might not know what the identifier of a
+[Gene Ontology](https://geneontology.org/) term is at
+`protein-quest search uniprot`. You can use following command to search for a
+Gene Ontology (GO) term.
 
 ```shell
 protein-quest search go --limit 5 --aspect cellular_component apoptosome -
@@ -199,18 +216,21 @@ protein-quest search go --limit 5 --aspect cellular_component apoptosome -
 
 ### Search for interaction partners
 
-Use https://www.ebi.ac.uk/complexportal to find interaction partners of given UniProt accession.
+Use <https://www.ebi.ac.uk/complexportal> to find interaction partners of given
+UniProt accession.
 
 ```shell
 protein-quest search interaction-partners Q05471 interaction-partners-of-Q05471.txt
 ```
 
-The `interaction-partners-of-Q05471.txt` file contains uniprot accessions (one per line).
+The `interaction-partners-of-Q05471.txt` file contains uniprot accessions (one
+per line).
 
 ### Search for complexes
 
-Given Uniprot accessions search for macromolecular complexes at https://www.ebi.ac.uk/complexportal
-and return the complex entries and their members.
+Given Uniprot accessions search for macromolecular complexes at
+<https://www.ebi.ac.uk/complexportal> and return the complex entries and their
+members.
 
 ```shell
 echo Q05471 | protein-quest search complexes - complexes.csv
@@ -225,7 +245,8 @@ Q05471,CPX-2122,https://www.ebi.ac.uk/complexportal/complex/CPX-2122,Swr1 chroma
 
 ### Search for UniProt details
 
-To get details (like protein name, sequence length, organism) for a list of UniProt accessions.
+To get details (like protein name, sequence length, organism) for a list of
+UniProt accessions.
 
 ```shell
 protein-quest search uniprot-details uniprot_accs.txt uniprot_details.csv
@@ -240,7 +261,8 @@ A0A087WUV0,ZN892_HUMAN,522,True,Zinc finger protein 892,9606,Homo sapiens
 
 ### Convert structure files to .cif format
 
-Some tools (for example [powerfit](https://github.com/haddocking/powerfit)) only work with `.cif` files and not `*.cif.gz` or `*.bcif` files.
+Some tools (for example [powerfit](https://github.com/haddocking/powerfit)) only
+work with `.cif` files and not `*.cif.gz` or `*.bcif` files.
 
 ```shell
 protein-quest convert structures --format cif --output-dir ./filtered-cif ./filtered-ss
@@ -248,15 +270,18 @@ protein-quest convert structures --format cif --output-dir ./filtered-cif ./filt
 
 ### Convert structure files to UniProt accessions
 
-After running some filters you might want to know which UniProt accessions are still present in the filtered structures.
+After running some filters you might want to know which UniProt accessions are
+still present in the filtered structures.
 
 ```shell
 protein-quest convert uniprot ./filtered-ss uniprot_accs.filtered.txt
 ```
 
-##  Model Context Protocol (MCP) server
+## Model Context Protocol (MCP) server
 
-Protein quest can also help LLMs like Claude Sonnet 4 by providing a [set of tools](https://modelcontextprotocol.io/docs/learn/server-concepts#tools-ai-actions) for protein structures.
+Protein quest can also help LLMs like Claude Sonnet 4 by providing a
+[set of tools](https://modelcontextprotocol.io/docs/learn/server-concepts#tools-ai-actions)
+for protein structures.
 
 ![Protein Quest MCP workflow](https://github.com/haddocking/protein-quest/raw/main/docs/protein-quest-mcp.png)
 
@@ -272,11 +297,13 @@ The server can be started with:
 protein-quest mcp
 ```
 
-The mcp server contains an prompt template to search/retrieve/filter candidate structures.
+The mcp server contains an prompt template to search/retrieve/filter candidate
+structures.
 
 ## Shell autocompletion
 
-The `protein-quest` command line tool supports shell autocompletion using [shtab](https://docs.iterative.ai/shtab).
+The `protein-quest` command line tool supports shell autocompletion using
+[shtab](https://docs.iterative.ai/shtab).
 
 Initialize for bash shell with:
 
@@ -296,4 +323,5 @@ autoload -Uz compinit && compinit
 
 ## Contributing
 
-For development information and contribution guidelines, please see [CONTRIBUTING.md](CONTRIBUTING.md).
+For development information and contribution guidelines, please see
+[CONTRIBUTING.md](CONTRIBUTING.md).
