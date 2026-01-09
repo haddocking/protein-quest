@@ -69,9 +69,16 @@ repos:
       # see https://github.com/python-jsonschema/check-jsonschema/issues/489
       # mkdocs schema exists at https://www.schemastore.org/mkdocs-1.6.json
 
-  # Tried to use official jscpd repo, but got jscpd not found error
   - repo: local
     hooks:
+      - id: sparql-lint
+        name: SPARQL syntax checker
+        entry: npx sparqljs
+        language: node
+        args: ["--strict"]
+        types: [text]
+        files: \.rq$
+      # Tried to use official jscpd repo, but got jscpd not found error
       - id: jscpd
         name: jscpd code duplication checker
         entry: npx jscpd
