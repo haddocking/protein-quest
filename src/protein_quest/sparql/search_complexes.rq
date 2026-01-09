@@ -1,0 +1,18 @@
+#+ summary: Search for macromolecular complexes
+#+ description: ComplexPortal entries containing a UniProt accession
+#+ method: GET
+PREFIX up: <http://purl.uniprot.org/core/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?cp_db ?cp_comment (GROUP_CONCAT(DISTINCT STRAFTER(STR(?member), "http://purl.uniprot.org/uniprot/"); separator=",") AS ?complex_members)
+WHERE {
+  BIND (IRI(CONCAT("http://purl.uniprot.org/uniprot/",?_uniprot_acc)) AS ?protein)
+  ?protein a up:Protein .
+  ?protein rdfs:seeAlso ?cp_db .
+  ?cp_db up:database <http://purl.uniprot.org/database/ComplexPortal> .
+  OPTIONAL { ?cp_db rdfs:comment ?cp_comment . }
+  ?member a up:Protein .
+  ?member rdfs:seeAlso ?cp_db .
+}
+GROUP BY ?cp_db ?cp_comment
+LIMIT 10000

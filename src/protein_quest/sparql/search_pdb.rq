@@ -1,0 +1,22 @@
+#+ summary: Search for PDB entries
+#+ description: PDB entries for a UniProt accession
+#+ endpoint: https://sparql.uniprot.org/sparql
+PREFIX up: <http://purl.uniprot.org/core/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?pdb_db ?pdb_method ?pdb_resolution (GROUP_CONCAT(DISTINCT ?pdb_chain; separator=",") AS ?pdb_chains)
+WHERE {
+  BIND (IRI(CONCAT("http://purl.uniprot.org/uniprot/",?_uniprot_acc)) AS ?protein)
+  ?protein a up:Protein .
+  ?protein rdfs:seeAlso ?pdb_db .
+  ?pdb_db up:database <http://purl.uniprot.org/database/PDB> .
+  ?pdb_db up:method ?pdb_method .
+  ?pdb_db up:chainSequenceMapping ?chainSequenceMapping .
+  BIND(STRAFTER(STR(?chainSequenceMapping), "isoforms/") AS ?isoformPart)
+  FILTER(STRSTARTS(?isoformPart, CONCAT(?_uniprot_acc, "-")))
+  ?chainSequenceMapping up:chain ?pdb_chain .
+  OPTIONAL { ?pdb_db up:resolution ?pdb_resolution . }
+}
+GROUP BY ?pdb_db ?pdb_method ?pdb_resolution
+LIMIT 10000

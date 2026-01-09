@@ -1,0 +1,14 @@
+#+ summary: Search for EMDB entries
+#+ description: EMDB database references for a UniProt accession
+#+ method: GET
+PREFIX up: <http://purl.uniprot.org/core/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?emdb_db
+WHERE {
+  BIND (IRI(CONCAT("http://purl.uniprot.org/uniprot/",?_uniprot_acc)) AS ?protein)
+  ?protein a up:Protein .
+  ?protein rdfs:seeAlso ?emdb_db .
+  ?emdb_db up:database <http://purl.uniprot.org/database/EMDB> .
+}
+LIMIT 10000

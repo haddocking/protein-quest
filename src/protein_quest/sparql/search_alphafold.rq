@@ -1,0 +1,15 @@
+#+ summary: Search for AlphaFold entries
+#+ description: AlphaFold structures for a UniProt accession
+#+ method: GET
+PREFIX up: <http://purl.uniprot.org/core/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?af_db
+WHERE {
+  BIND (IRI(CONCAT("http://purl.uniprot.org/uniprot/",?_uniprot_acc)) AS ?protein)
+  ?protein a up:Protein .
+  ?protein rdfs:seeAlso ?af_db .
+  ?af_db up:database <http://purl.uniprot.org/database/AlphaFoldDB> .
+}
+LIMIT 10000
