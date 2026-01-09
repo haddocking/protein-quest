@@ -1,0 +1,27 @@
+#+ summary: Get UniProt details
+#+ description: Protein details including name, taxon, and sequence length
+#+ method: GET
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX up: <http://purl.uniprot.org/core/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?uniprot_id (STRAFTER(STR(?organism), "taxonomy/") AS ?taxon_id) ?taxon_name ?reviewed ?protein_name (STRLEN(?sequence) AS ?seq_length)
+WHERE {
+  BIND (IRI(CONCAT("http://purl.uniprot.org/uniprot/",?_uniprot_acc)) AS ?protein)
+  ?protein a up:Protein .
+  ?protein up:mnemonic ?uniprot_id .
+  ?protein up:organism ?organism .
+  ?organism up:scientificName ?taxon_name .
+  ?protein up:reviewed ?reviewed .
+  OPTIONAL {
+    ?protein up:recommendedName/up:fullName ?protein_name .
+  }
+  ?protein up:sequence ?isoform .
+  ?isoform a up:Simple_Sequence .
+  ?isoform rdf:value ?sequence .
+  BIND (IRI(STRBEFORE(REPLACE(
+    STR(?isoform), "http://purl.uniprot.org/isoforms/", "http://purl.uniprot.org/uniprot/"
+  ), "-")) AS ?ac_of_isoform)
+  FILTER(?ac_of_isoform = ?protein)
+}
+LIMIT 10000
