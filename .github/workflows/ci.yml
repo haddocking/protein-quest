@@ -75,7 +75,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
       - name: Install the project
-        run: uv sync --group docs-type
+        run: uv sync --group docs-type --extras grlc
       - name: Convert notebooks to Python scripts
         run: |
           find docs/ -name "*.ipynb" -exec uv run --group docs-type marimo convert {} -o {}.py \;
