@@ -1,7 +1,14 @@
 #+ summary: Search for UniProt accessions based on various criteria
 #+ description: Returns UniProt protein accessions filtered by organism, review status, subcellular location, molecular function, and sequence length
 #+ endpoint: https://sparql.uniprot.org/sparql
-#+ method: GET
+#+ endpoint_in_url: False
+#+ method: POST
+#+ enumerate:
+#+   - reviewed:
+#+     - "true"
+#+     - "false"
+#+     - "any"
+#+ pagination: 1000
 PREFIX up: <http://purl.uniprot.org/core/>
 PREFIX taxon: <http://purl.uniprot.org/taxonomy/>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
@@ -15,39 +22,38 @@ WHERE {
 
     # Taxon filter (optional)
     OPTIONAL {
-        FILTER(BOUND(?_taxon_id_iri))
-        ?protein up:organism ?_taxon_id_iri .
+        ?protein up:organism ?organism .
+        ?organism up:taxon ?__taxon .
     }
 
     # Reviewed filter (optional)
     OPTIONAL {
-        FILTER(BOUND(?_reviewed_value))
-        ?protein up:reviewed ?_reviewed_value .
+        ?protein up:reviewed ?__reviewed .
     }
 
     # Subcellular location UniProt (optional)
     OPTIONAL {
-        FILTER(BOUND(?_subcell_label))
+        FILTER(BOUND(?__subCellularLocationUniprot))
         ?protein up:annotation ?subcellAnnotation .
         ?subcellAnnotation up:locatedIn/up:cellularComponent ?cellcmpt .
-        ?cellcmpt skos:prefLabel ?_subcell_label .
+        ?cellcmpt skos:prefLabel ?__subCellularLocationUniprot .
     }
 
     # Subcellular location GO (optional)
     OPTIONAL {
-        FILTER(BOUND(?_subcell_go_iri))
-        ?protein up:classifiedWith|(up:classifiedWith/rdfs:subClassOf+) ?_subcell_go_iri .
+        FILTER(BOUND(?__subCellularLocationGo))
+        ?protein up:classifiedWith|(up:classifiedWith/rdfs:subClassOf+) ?__subCellularLocationGo .
     }
 
     # Molecular function GO (optional)
     OPTIONAL {
-        FILTER(BOUND(?_mol_func_go_iri))
-        ?protein up:classifiedWith|(up:classifiedWith/rdfs:subClassOf+) ?_mol_func_go_iri .
+        FILTER(BOUND(?__molecularFunctionGo))
+        ?protein up:classifiedWith|(up:classifiedWith/rdfs:subClassOf+) ?__molecularFunctionGo .
     }
 
     # Sequence length filter (optional)
     OPTIONAL {
-        FILTER(BOUND(?_min_seq_length) || BOUND(?_max_seq_length))
+        FILTER(BOUND(?__minimumSequenceLength) || BOUND(?__maximumSequenceLength))
         ?protein up:sequence ?isoform .
         ?isoform a up:Simple_Sequence .
         BIND (IRI(STRBEFORE(REPLACE(
@@ -57,9 +63,8 @@ WHERE {
         ?isoform rdf:value ?sequence .
         BIND (STRLEN(?sequence) AS ?seq_length)
         FILTER(
-            (!BOUND(?_min_seq_length) || ?seq_length >= ?_min_seq_length) &&
-            (!BOUND(?_max_seq_length) || ?seq_length <= ?_max_seq_length)
+            (!BOUND(?__minimumSequenceLength) || ?seq_length >= ?__minimumSequenceLength) &&
+            (!BOUND(?__maximumSequenceLength) || ?seq_length <= ?__maximumSequenceLength)
         )
     }
 }
-LIMIT 10000
