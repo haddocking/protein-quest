@@ -7,7 +7,6 @@
 #+   - reviewed:
 #+     - "true"
 #+     - "false"
-#+     - "any"
 #+ pagination: 1000
 PREFIX up: <http://purl.uniprot.org/core/>
 PREFIX taxon: <http://purl.uniprot.org/taxonomy/>
@@ -22,18 +21,17 @@ WHERE {
 
     # Taxon filter (optional)
     OPTIONAL {
-        ?protein up:organism ?organism .
-        ?organism up:taxon ?__taxon .
+        BIND(IRI(CONCAT("http://purl.uniprot.org/taxonomy/", STR(?__taxon_integer))) AS ?taxonIRI)
+        ?protein up:organism ?taxonIRI .
     }
 
     # Reviewed filter (optional)
     OPTIONAL {
-        ?protein up:reviewed ?__reviewed .
+        ?protein up:reviewed ?__reviewed_xsd_boolean .
     }
 
     # Subcellular location UniProt (optional)
     OPTIONAL {
-        FILTER(BOUND(?__subCellularLocationUniprot))
         ?protein up:annotation ?subcellAnnotation .
         ?subcellAnnotation up:locatedIn/up:cellularComponent ?cellcmpt .
         ?cellcmpt skos:prefLabel ?__subCellularLocationUniprot .
@@ -41,19 +39,17 @@ WHERE {
 
     # Subcellular location GO (optional)
     OPTIONAL {
-        FILTER(BOUND(?__subCellularLocationGo))
         ?protein up:classifiedWith|(up:classifiedWith/rdfs:subClassOf+) ?__subCellularLocationGo .
     }
 
     # Molecular function GO (optional)
     OPTIONAL {
-        FILTER(BOUND(?__molecularFunctionGo))
         ?protein up:classifiedWith|(up:classifiedWith/rdfs:subClassOf+) ?__molecularFunctionGo .
     }
 
     # Sequence length filter (optional)
+    FILTER(BOUND(?__minimumSequenceLength) || BOUND(?__maximumSequenceLength))
     OPTIONAL {
-        FILTER(BOUND(?__minimumSequenceLength) || BOUND(?__maximumSequenceLength))
         ?protein up:sequence ?isoform .
         ?isoform a up:Simple_Sequence .
         BIND (IRI(STRBEFORE(REPLACE(
