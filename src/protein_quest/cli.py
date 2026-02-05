@@ -3,6 +3,8 @@
 import argparse
 import asyncio
 import csv
+from datetime import datetime
+from functools import lru_cache
 import logging
 import os
 import sys
@@ -13,6 +15,7 @@ from io import BytesIO, TextIOWrapper
 from pathlib import Path
 from textwrap import dedent
 
+from rocrate_action_recorder import IOArgumentNames, record_with_argparse
 import shtab
 from cattrs import structure
 from rich.console import Console
@@ -797,12 +800,18 @@ def _add_mcp_command(subparsers: argparse._SubParsersAction):
     parser.add_argument("--port", default=8000, type=int, help="Port to bind the server to")
 
 
+@lru_cache(maxsize=1)
 def make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Protein Quest CLI", prog="protein-quest", formatter_class=ArgumentDefaultsRichHelpFormatter
     )
     parser.add_argument("--log-level", default="WARNING", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument(
+        "--prov",
+        action="store_true",
+        help="Whether to write provenance information about the command execution to rocreate-metadata.json file.",
+    )
     shtab.add_argument_to(parser, ["--print-completion"])
 
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -824,7 +833,7 @@ def _name_of(file: TextIOWrapper | BytesIO) -> str:
         return "<stdout>"
 
 
-def _handle_search_uniprot(args):
+def _handle_search_uniprot(args: argparse.Namespace):
     taxon_id = args.taxon_id
     reviewed = args.reviewed
     subcellular_location_uniprot = args.subcellular_location_uniprot
@@ -835,6 +844,7 @@ def _handle_search_uniprot(args):
     limit = args.limit
     timeout = args.timeout
     output_file = args.output
+    start_datetime = datetime.now()
 
     query = structure(
         {
@@ -852,6 +862,13 @@ def _handle_search_uniprot(args):
     accs = search4uniprot(query=query, limit=limit, timeout=timeout)
     rprint(f"Found {len(accs)} UniProt accessions, written to {_name_of(output_file)}")
     _write_lines(output_file, sorted(accs))
+    record_with_argparse(
+        parser=make_parser(),
+        ns=args,
+        ios=IOArgumentNames(output_files=["output"]),
+        start_time=start_datetime,
+        dataset_license="CC BY 4.0",
+    )
 
 
 def _handle_search_pdbe(args):
