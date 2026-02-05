@@ -3,19 +3,18 @@
 import argparse
 import asyncio
 import csv
-from datetime import datetime
-from functools import lru_cache
 import logging
 import os
 import sys
 from collections.abc import Callable, Generator, Iterable, Sequence
 from contextlib import suppress
+from datetime import UTC, datetime
+from functools import lru_cache
 from importlib.util import find_spec
 from io import BytesIO, TextIOWrapper
 from pathlib import Path
 from textwrap import dedent
 
-from rocrate_action_recorder import IOArgumentNames, record_with_argparse
 import shtab
 from cattrs import structure
 from rich.console import Console
@@ -23,6 +22,7 @@ from rich.logging import RichHandler
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich_argparse import ArgumentDefaultsRichHelpFormatter
+from rocrate_action_recorder import IOArgumentNames, record_with_argparse
 from tqdm.rich import tqdm
 
 from protein_quest.__version__ import __version__
@@ -833,6 +833,18 @@ def _name_of(file: TextIOWrapper | BytesIO) -> str:
         return "<stdout>"
 
 
+def record_provenance(args: argparse.Namespace, ios: IOArgumentNames):
+    if args.prov:
+        record_with_argparse(
+            parser=make_parser(),
+            ns=args,
+            ios=ios,
+            start_time=args._start_datetime,
+            end_time=datetime.now(tz=UTC),
+            dataset_license="CC BY 4.0",
+        )
+
+
 def _handle_search_uniprot(args: argparse.Namespace):
     taxon_id = args.taxon_id
     reviewed = args.reviewed
@@ -844,7 +856,6 @@ def _handle_search_uniprot(args: argparse.Namespace):
     limit = args.limit
     timeout = args.timeout
     output_file = args.output
-    start_datetime = datetime.now()
 
     query = structure(
         {
@@ -862,13 +873,7 @@ def _handle_search_uniprot(args: argparse.Namespace):
     accs = search4uniprot(query=query, limit=limit, timeout=timeout)
     rprint(f"Found {len(accs)} UniProt accessions, written to {_name_of(output_file)}")
     _write_lines(output_file, sorted(accs))
-    record_with_argparse(
-        parser=make_parser(),
-        ns=args,
-        ios=IOArgumentNames(output_files=["output"]),
-        start_time=start_datetime,
-        dataset_license="CC BY 4.0",
-    )
+    record_provenance(args, IOArgumentNames(output_files=["output"]))
 
 
 def _handle_search_pdbe(args):
@@ -899,6 +904,7 @@ def _handle_search_pdbe(args):
 
     _write_pdbe_csv(output_csv, results)
     rprint(f"Written to {_name_of(output_csv)}")
+    record_provenance(args, IOArgumentNames(input_files=["uniprot_accessions"], output_files=["output_csv"]))
 
 
 def _handle_search_alphafold(args):
@@ -1442,4 +1448,6 @@ def main(argv: Sequence[str] | None = None):
     if handler is None:
         msg = f"Unknown command: {cmd} {sub}"
         raise SystemExit(msg)
+    start_datetime = datetime.now(tz=UTC)
+    args._start_datetime = start_datetime
     handler(args)
