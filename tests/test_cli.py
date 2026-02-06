@@ -41,6 +41,33 @@ def test_search_uniprot(capsys: pytest.CaptureFixture[str], caplog: pytest.LogCa
 
 
 @pytest.mark.vcr
+def test_search_uniprot_with_provenance(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    output_file = Path("uniprot_accessions.txt")
+    argv = [
+        "--prov",
+        "search",
+        "uniprot",
+        "--taxon-id",
+        "9606",
+        "--reviewed",
+        "--limit",
+        "1",
+        str(output_file),
+    ]
+    monkeypatch.chdir(tmp_path)
+
+    main(argv)
+
+    assert output_file.exists()
+    prov_file = tmp_path / "ro-crate-metadata.json"
+    assert prov_file.exists()
+    body = prov_file.read_text()
+    assert '"@type": "CreateAction"' in body
+    assert '"name": "protein-quest"' in body
+    assert body.count("uniprot_accessions.txt") == 4
+
+
+@pytest.mark.vcr
 def test_search_pdbe(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     input_text = tmp_path / "uniprot_accessions.txt"
     input_text.write_text("P00811\n")
