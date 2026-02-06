@@ -809,7 +809,7 @@ def make_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--prov",
         action="store_true",
-        help="Whether to write provenance information about the command execution to rocreate-metadata.json file.",
+        help="Whether to write provenance information about the command execution to ro-crate-metadata.json file.",
     )
     shtab.add_argument_to(parser, ["--print-completion"])
 
