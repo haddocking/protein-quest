@@ -8,7 +8,6 @@ import os
 import sys
 from collections.abc import Callable, Generator, Iterable, Sequence
 from contextlib import suppress
-from datetime import UTC, datetime
 from functools import lru_cache
 from importlib.util import find_spec
 from io import BytesIO, TextIOWrapper
@@ -22,7 +21,7 @@ from rich.logging import RichHandler
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich_argparse import ArgumentDefaultsRichHelpFormatter
-from rocrate_action_recorder import IOArgumentNames, record_with_argparse
+from rocrate_action_recorder import recorded_argparse
 from tqdm.rich import tqdm
 
 from protein_quest.__version__ import __version__
@@ -833,18 +832,25 @@ def _name_of(file: TextIOWrapper | BytesIO) -> str:
         return "<stdout>"
 
 
-def record_provenance(args: argparse.Namespace, ios: IOArgumentNames):
-    if args.prov:
-        record_with_argparse(
-            parser=make_parser(),
-            ns=args,
-            ios=ios,
-            start_time=args._start_datetime,
-            end_time=datetime.now(tz=UTC),
-            dataset_license="CC BY 4.0",
-        )
+def prov(
+    input_dirs: list[str] | None = None,
+    output_dirs: list[str] | None = None,
+    input_files: list[str] | None = None,
+    output_files: list[str] | None = None,
+):
+    """Decorator to record provenance for protein-quest commands."""
+    return recorded_argparse(
+        parser=make_parser(),
+        input_dirs=input_dirs,
+        output_dirs=output_dirs,
+        input_files=input_files,
+        output_files=output_files,
+        enabled_argument="prov",
+        dataset_license="CC BY 4.0",
+    )
 
 
+@prov(output_files=["output"])
 def _handle_search_uniprot(args: argparse.Namespace):
     taxon_id = args.taxon_id
     reviewed = args.reviewed
@@ -873,10 +879,10 @@ def _handle_search_uniprot(args: argparse.Namespace):
     accs = search4uniprot(query=query, limit=limit, timeout=timeout)
     rprint(f"Found {len(accs)} UniProt accessions, written to {_name_of(output_file)}")
     _write_lines(output_file, sorted(accs))
-    record_provenance(args, IOArgumentNames(output_files=["output"]))
 
 
-def _handle_search_pdbe(args):
+@prov(input_files=["uniprot_accessions"], output_files=["output_csv"])
+def _handle_search_pdbe(args: argparse.Namespace):
     uniprot_accessions = args.uniprot_accessions
     limit = args.limit
     timeout = args.timeout
@@ -904,9 +910,9 @@ def _handle_search_pdbe(args):
 
     _write_pdbe_csv(output_csv, results)
     rprint(f"Written to {_name_of(output_csv)}")
-    record_provenance(args, IOArgumentNames(input_files=["uniprot_accessions"], output_files=["output_csv"]))
 
 
+@prov(input_files=["uniprot_accessions"], output_files=["output_csv"])
 def _handle_search_alphafold(args):
     uniprot_accessions = args.uniprot_accessions
     min_sequence_length = converter.structure(args.min_sequence_length, PositiveInt | None)  # pyright: ignore[reportArgumentType]
@@ -928,6 +934,7 @@ def _handle_search_alphafold(args):
     _write_dict_of_sets2csv(output_csv, results, "af_id")
 
 
+@prov(input_files=["uniprot_accessions"], output_files=["output_csv"])
 def _handle_search_emdb(args):
     uniprot_accessions = args.uniprot_accessions
     limit = args.limit
@@ -942,6 +949,7 @@ def _handle_search_emdb(args):
     _write_dict_of_sets2csv(output_csv, results, "emdb_id")
 
 
+@prov(output_files=["output_csv"])
 def _handle_search_go(args):
     term = structure(args.term, str)
     aspect: Aspect | None = args.aspect
@@ -957,6 +965,7 @@ def _handle_search_go(args):
     write_go_terms_to_csv(results, output_csv)
 
 
+@prov(output_files=["output_csv"])
 def _handle_search_taxonomy(args):
     query: str = args.query
     field: SearchField | None = args.field
@@ -972,6 +981,7 @@ def _handle_search_taxonomy(args):
     _write_taxonomy_csv(results, output_csv)
 
 
+@prov(input_files=["uniprot_accession"], output_files=["output_csv"])
 def _handle_search_interaction_partners(args: argparse.Namespace):
     uniprot_accession: str = args.uniprot_accession
     excludes: set[str] = set(args.exclude) if args.exclude else set()
@@ -985,6 +995,7 @@ def _handle_search_interaction_partners(args: argparse.Namespace):
     _write_lines(output_csv, results.keys())
 
 
+@prov(input_files=["uniprot_accessions"], output_files=["output_csv"])
 def _handle_search_complexes(args: argparse.Namespace):
     uniprot_accessions = args.uniprot_accessions
     limit = args.limit
@@ -998,6 +1009,7 @@ def _handle_search_complexes(args: argparse.Namespace):
     _write_complexes_csv(results, output_csv)
 
 
+@prov(input_files=["uniprot_accessions"], output_files=["output_csv"])
 def _handle_search_uniprot_details(args: argparse.Namespace):
     uniprot_accessions = args.uniprot_accessions
     timeout = args.timeout
@@ -1020,6 +1032,7 @@ def _initialize_cacher(args: argparse.Namespace) -> Cacher:
     )
 
 
+@prov(input_files=["pdbe_csv"], output_dirs=["output_dir"])
 def _handle_retrieve_pdbe(args: argparse.Namespace):
     pdbe_csv = args.pdbe_csv
     output_dir = args.output_dir
@@ -1034,6 +1047,7 @@ def _handle_retrieve_pdbe(args: argparse.Namespace):
     rprint(f"Retrieved {len(result)} PDBe entries")
 
 
+@prov(input_files=["alphafold_csv"], output_dirs=["output_dir"])
 def _handle_retrieve_alphafold(args):
     download_dir = args.output_dir
     raw_formats = args.format
@@ -1065,6 +1079,7 @@ def _handle_retrieve_alphafold(args):
     rprint(f"Retrieved {total_nr_files} AlphaFold files and {len(afs)} summaries, written to {download_dir}")
 
 
+@prov(input_files=["emdb_csv"], output_dirs=["output_dir"])
 def _handle_retrieve_emdb(args):
     emdb_csv = args.emdb_csv
     output_dir = args.output_dir
@@ -1076,6 +1091,7 @@ def _handle_retrieve_emdb(args):
     rprint(f"Retrieved {len(result)} EMDB entries")
 
 
+@prov(input_dirs=["input_dir"], output_dirs=["output_dir"], output_files=["write_stats"])
 def _handle_filter_confidence(args: argparse.Namespace):
     # we are repeating types here and in add_argument call
     # TODO replace argparse with modern alternative like cyclopts
@@ -1120,6 +1136,7 @@ def _handle_filter_confidence(args: argparse.Namespace):
         rprint(f"Statistics written to {_name_of(stats_file)}")
 
 
+@prov(input_dirs=["input_dir"], output_dirs=["output_dir"], output_files=["write_stats"])
 def _handle_filter_chain(args):
     input_dir = args.input_dir
     output_dir = structure(args.output_dir, Path)
@@ -1163,6 +1180,7 @@ def _handle_filter_chain(args):
             rprint(f"[red]Discarding {result.input_file} ({result.discard_reason})[/red]")
 
 
+@prov(input_dirs=["input_dir"], output_dirs=["output_dir"], output_files=["write_stats"])
 def _handle_filter_residue(args):
     input_dir = structure(args.input_dir, Path)
     output_dir = structure(args.output_dir, Path)
@@ -1192,6 +1210,7 @@ def _handle_filter_residue(args):
         rprint(f"Statistics written to {_name_of(stats_file)}")
 
 
+@prov(input_dirs=["input_dir"], output_dirs=["output_dir"], output_files=["write_stats"])
 def _handle_filter_ss(args):
     input_dir = structure(args.input_dir, Path)
     output_dir = structure(args.output_dir, Path)
@@ -1267,6 +1286,7 @@ def _handle_mcp(args):
         mcp.run(transport=args.transport, host=args.host, port=args.port)
 
 
+@prov(input_dirs=["input_dir"], output_files=["output"])
 def _handle_convert_uniprot(args):
     input_dir = structure(args.input_dir, Path)
     output_file: TextIOWrapper = args.output
@@ -1287,6 +1307,7 @@ def _handle_convert_uniprot(args):
         _write_lines(output_file, sorted(uniprot_accessions))
 
 
+@prov(input_dirs=["input_dir"], output_dirs=["output_dir"])
 def _handle_convert_structures(args):
     input_dir = structure(args.input_dir, Path)
     output_dir = input_dir if args.output_dir is None else structure(args.output_dir, Path)
@@ -1448,6 +1469,4 @@ def main(argv: Sequence[str] | None = None):
     if handler is None:
         msg = f"Unknown command: {cmd} {sub}"
         raise SystemExit(msg)
-    start_datetime = datetime.now(tz=UTC)
-    args._start_datetime = start_datetime
     handler(args)

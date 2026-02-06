@@ -279,7 +279,10 @@ protein-quest convert uniprot ./filtered-ss uniprot_accs.filtered.txt
 
 ## Provenance
 
-You can use `protein-quest --prov ...` to store provenance information of your CLI invocation in a [Research Object crate](https://www.researchobject.org/ro-crate/) file called ro-crate-metadata.json.
+You can use `protein-quest --prov ...` to store provenance information of your
+CLI invocations in a
+[Research Object crate](https://www.researchobject.org/ro-crate/) file called
+ro-crate-metadata.json.
 
 ## Model Context Protocol (MCP) server
 
