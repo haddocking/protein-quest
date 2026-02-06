@@ -61,7 +61,10 @@ def test_search_uniprot_with_provenance(tmp_path: Path, monkeypatch: pytest.Monk
     assert output_file.exists()
     prov_file = tmp_path / "ro-crate-metadata.json"
     assert prov_file.exists()
-    # TODO verify contents of RO-Crate metadata
+    body = prov_file.read_text()
+    assert '"@type": "CreateAction"' in body
+    assert '"name": "protein-quest"' in body
+    assert body.count("uniprot_accessions.txt") == 4
 
 
 @pytest.mark.vcr
