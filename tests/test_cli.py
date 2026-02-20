@@ -107,7 +107,7 @@ def test_search_pdbe(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
 def test_search_emdb(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     input_text = tmp_path / "uniprot_accessions.txt"
     input_text.write_text("O14646\n")
-    output_file = (tmp_path / "emdbs.csv").relative_to(tmp_path)
+    output_file = tmp_path / "emdbs.csv"
     argv = [
         "search",
         "emdb",
@@ -128,7 +128,8 @@ def test_search_emdb(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     assert result == expected
     captured = capsys.readouterr()
     assert "Finding EMDB entries for 1 uniprot accessions" in captured.err
-    assert "Found 2 EMDB entries, written to emdbs.csv" in captured.err
+    assert "Found 2 EMDB entries, written to" in captured.err
+    assert str(output_file) in captured.err
 
 
 @pytest.mark.vcr
