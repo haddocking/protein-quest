@@ -330,7 +330,7 @@ def _files_for_alphafold_entry(
         "msa": URL(f"https://alphafold.ebi.ac.uk/files/msa/AF-{uniprot_accession}-F1-msa_v{db_version}.a3m"),
         "plddtDoc": URL(f"https://alphafold.ebi.ac.uk/files/AF-{uniprot_accession}-F1-confidence_v{db_version}.json"),
     }
-    url_filename_pairs = {}
+    url_filename_pairs: UrlFileNamePairsOfFormats = {}
     for fmt in formats:
         if fmt == "summary":
             # Summaries are downloaded separately as its using API instead of static files
