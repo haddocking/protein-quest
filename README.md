@@ -24,6 +24,7 @@ It uses
   Ontology terms.
 - [gemmi](https://project-gemmi.github.io/) to work with macromolecular models.
 - [dask-distributed](https://docs.dask.org/en/latest/) to compute in parallel.
+- [rocrate-action-recorder](https://rocrate-action-recorder.readthedocs.io/) for provenance tracking.
 
 The package is used by
 
