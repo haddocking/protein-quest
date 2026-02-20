@@ -194,7 +194,7 @@ determine the ratio of secondary structure elements.
 protein-quest filter secondary-structure \
     --ratio-min-helix-residues 0.5 \
     --ratio-max-sheet-residues 0.0 \
-    --write-stats filtered-ss/stats.csv \
+    --write-stats filtered-ss-stats.csv \
     ./filtered-chains ./filtered-ss
 ```
 
