@@ -99,6 +99,12 @@ docs-type = [
 requires = ["hatchling >= 1.26"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src",
+  "CITATION.cff",
+]
+
 [tool.hatch.version]
 path = "src/protein_quest/__version__.py"
 
