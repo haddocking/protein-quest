@@ -45,6 +45,7 @@ from protein_quest.structure import structure2uniprot_accessions
 from protein_quest.taxonomy import SearchField, _write_taxonomy_csv, search_fields, search_taxon
 from protein_quest.uniprot import (
     ComplexPortalEntry,
+    PdbChainLengthError,
     PdbResults,
     Query,
     UniprotDetails,
@@ -136,7 +137,8 @@ def _add_search_pdbe_parser(subparsers: argparse._SubParsersAction):
             `uniprot_accession`, `pdb_id`, `method`, `resolution`, `uniprot_chains`, `chain`, `chain_length`.
             Where `uniprot_chains` is the raw UniProt chain string, for example `A=1-100`.
             and where `chain` is the first chain from `uniprot_chains`, for example `A`
-            and `chain_length` is the length of the chain, for example `100`.
+            and `chain_length` is the length of the chain, for example `100`
+            or '' if it could not be determined.
             Use `-` for stdout.
         """),
     ).complete = shtab.FILE
@@ -1351,6 +1353,13 @@ def _write_pdbe_csv(path: TextIOWrapper, data: PdbResults):
     writer.writeheader()
     for uniprot_accession, entries in sorted(data.items()):
         for e in sorted(entries, key=lambda x: (x.id, x.method)):
+            try:
+                chain_length = e.chain_length
+            except PdbChainLengthError:
+                msg = f"Could not determine chain length for {uniprot_accession} / {e.id} chain {e.chain}"
+                msg += f" from '{e.uniprot_chains}'. No chain length for this entry."
+                logger.warning(msg)
+                chain_length = None
             writer.writerow(
                 {
                     "uniprot_accession": uniprot_accession,
@@ -1359,7 +1368,7 @@ def _write_pdbe_csv(path: TextIOWrapper, data: PdbResults):
                     "resolution": e.resolution or "",
                     "uniprot_chains": e.uniprot_chains,
                     "chain": e.chain,
-                    "chain_length": e.chain_length,
+                    "chain_length": chain_length,
                 }
             )
 

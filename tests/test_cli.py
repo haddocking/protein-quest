@@ -104,6 +104,27 @@ def test_search_pdbe(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
 
 
 @pytest.mark.vcr
+def test_search_pdbe_bad_chain_length(tmp_path: Path, caplog: pytest.LogCaptureFixture):
+    input_text = tmp_path / "uniprot_accessions.txt"
+    input_text.write_text("Q9NTW7\n")
+    output_file = tmp_path / "pdbe_results.csv"
+    argv = [
+        "search",
+        "pdbe",
+        str(input_text),
+        str(output_file),
+    ]
+
+    main(argv)
+
+    assert len(output_file.read_text()) == 159
+
+    assert "Could not determine chain length for " in caplog.text
+    assert "Q9NTW7 / 1X5W chain A from 'A=-'" in caplog.text
+    assert "No chain length for this entry." in caplog.text
+
+
+@pytest.mark.vcr
 def test_search_uniprot_details(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     input_text = tmp_path / "uniprot_accessions.txt"
     input_text.write_text("P05067\nA0A0B5AC95\n")

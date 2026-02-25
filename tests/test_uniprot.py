@@ -295,9 +295,10 @@ def test_pdb_result_chain_length(query, expected):
 
 
 def test_pdb_result_chain_length_invalid():
-    pdb_result = PdbResult(id="DUMMY", method="DUMMY", uniprot_chains="A=-")
+    # uniprot/Q9NTW7 pdb/1X5W
+    pdb_result = PdbResult(id="1X5W", method="NMR", uniprot_chains="A=-")
 
-    with pytest.raises(PdbChainLengthError, match="Could not determine chain length of 'DUMMY' from 'A=-'"):
+    with pytest.raises(PdbChainLengthError, match="Could not determine chain length of '1X5W' from 'A=-'"):
         _ = pdb_result.chain_length
 
 
