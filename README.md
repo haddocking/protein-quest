@@ -24,6 +24,8 @@ It uses
   Ontology terms.
 - [gemmi](https://project-gemmi.github.io/) to work with macromolecular models.
 - [dask-distributed](https://docs.dask.org/en/latest/) to compute in parallel.
+- [rocrate-action-recorder](https://rocrate-action-recorder.readthedocs.io/) for
+  provenance tracking.
 
 The package is used by
 
@@ -193,7 +195,7 @@ determine the ratio of secondary structure elements.
 protein-quest filter secondary-structure \
     --ratio-min-helix-residues 0.5 \
     --ratio-max-sheet-residues 0.0 \
-    --write-stats filtered-ss/stats.csv \
+    --write-stats filtered-ss-stats.csv \
     ./filtered-chains ./filtered-ss
 ```
 

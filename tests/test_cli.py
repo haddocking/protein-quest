@@ -124,6 +124,34 @@ def test_search_pdbe_bad_chain_length(tmp_path: Path, caplog: pytest.LogCaptureF
     assert "No chain length for this entry." in caplog.text
 
 
+def test_search_emdb(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    input_text = tmp_path / "uniprot_accessions.txt"
+    input_text.write_text("O14646\n")
+    output_file = tmp_path / "emdbs.csv"
+    argv = [
+        "search",
+        "emdb",
+        "--limit",
+        "150",
+        str(input_text),
+        str(output_file),
+    ]
+
+    main(argv)
+
+    result = output_file.read_text()
+    expected = dedent("""\
+        uniprot_accession,emdb_id
+        O14646,EMD-47841
+        O14646,EMD-49406
+        """)
+    assert result == expected
+    captured = capsys.readouterr()
+    assert "Finding EMDB entries for 1 uniprot accessions" in captured.err
+    assert "Found 2 EMDB entries, written to" in captured.err
+    assert str(output_file) in captured.err
+
+
 @pytest.mark.vcr
 def test_search_uniprot_details(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     input_text = tmp_path / "uniprot_accessions.txt"

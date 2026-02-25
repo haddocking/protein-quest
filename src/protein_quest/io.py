@@ -21,11 +21,6 @@ from protein_quest.utils import CopyMethod, copyfile, user_cache_root_dir
 
 logger = logging.getLogger(__name__)
 
-# TODO remove once v0.7.4 of gemmi is released,
-# as uv pip install git+https://github.com/project-gemmi/gemmi.git installs 0.7.4.dev0 which does not print leaks
-# Swallow gemmi leaked function warnings
-gemmi.set_leak_warnings(False)
-
 
 StructureFileExtensions = Literal[".pdb", ".pdb.gz", ".ent", ".ent.gz", ".cif", ".cif.gz", ".bcif", ".bcif.gz"]
 """Type of supported structure file extensions."""

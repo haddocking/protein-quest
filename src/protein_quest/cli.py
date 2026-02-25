@@ -205,7 +205,7 @@ def _add_search_emdb_parser(subparsers: argparse._SubParsersAction):
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
     parser.add_argument(
-        "uniprot_accs",
+        "uniprot_accessions",
         type=argparse.FileType("r", encoding="UTF-8"),
         help="Text file with UniProt accessions (one per line). Use `-` for stdin.",
     ).complete = shtab.FILE

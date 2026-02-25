@@ -184,7 +184,7 @@ def dask_map_with_progress[T, R, **P](
     """
     if client.dashboard_link:
         logger.info(f"Follow progress on dask dashboard at: {client.dashboard_link}")
-    futures = client.map(func, iterable, *args, **kwargs)
+    futures = client.map(func, iterable, *args, **kwargs)  # pyrefly: ignore[bad-argument-type]
     if not os.getenv("TQDM_DISABLE"):
         MyProgressBar(futures)
     results = client.gather(futures)
