@@ -103,7 +103,81 @@ def test_search_pdbe(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     assert "Written to " in captured.err
 
 
+@pytest.mark.default_cassette("test_search_pdbe_bad_chain_length.yaml")
 @pytest.mark.vcr
+def test_search_pdbe_bad_chain_length(tmp_path: Path, caplog: pytest.LogCaptureFixture):
+    input_text = tmp_path / "uniprot_accessions.txt"
+    input_text.write_text("Q9NTW7\n")
+    output_file = tmp_path / "pdbe_results.csv"
+    argv = [
+        "search",
+        "pdbe",
+        str(input_text),
+        str(output_file),
+    ]
+
+    main(argv)
+
+    assert len(output_file.read_text()) == 159
+
+    assert "Could not determine chain length for " in caplog.text
+    assert "Q9NTW7 / 1X5W chain A from 'A=-'" in caplog.text
+    assert "No chain length for this entry." in caplog.text
+
+
+@pytest.mark.default_cassette("test_search_pdbe_bad_chain_length.yaml")
+@pytest.mark.vcr
+def test_search_pdbe_bad_chain_length_with_min_nokeep(tmp_path: Path, caplog: pytest.LogCaptureFixture):
+    input_text = tmp_path / "uniprot_accessions.txt"
+    input_text.write_text("Q9NTW7\n")
+    output_file = tmp_path / "pdbe_results.csv"
+    argv = [
+        "search",
+        "pdbe",
+        "--min-residues",
+        "42",
+        str(input_text),
+        str(output_file),
+    ]
+
+    main(argv)
+
+    assert len(output_file.read_text()) == 122
+
+    log = caplog.text
+    assert (
+        "Filtering out PDB entry '1X5W' belonging to uniprot accession 'Q9NTW7' due to invalid chain length from 'A=-'"
+        in log
+    )
+
+
+@pytest.mark.default_cassette("test_search_pdbe_bad_chain_length.yaml")
+@pytest.mark.vcr
+def test_search_pdbe_bad_chain_length_with_min_keep(tmp_path: Path, caplog: pytest.LogCaptureFixture):
+    input_text = tmp_path / "uniprot_accessions.txt"
+    input_text.write_text("Q9NTW7\n")
+    output_file = tmp_path / "pdbe_results.csv"
+    argv = [
+        "search",
+        "pdbe",
+        "--keep-invalid",
+        "--min-residues",
+        "42",
+        str(input_text),
+        str(output_file),
+    ]
+
+    main(argv)
+
+    assert len(output_file.read_text()) == 159
+
+    log = caplog.text
+    assert "for completeness not filtering it out" in log
+    assert "Could not determine chain length for " in log
+    assert "Q9NTW7 / 1X5W chain A from 'A=-'" in log
+    assert "No chain length for this entry." in log
+
+
 def test_search_emdb(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     input_text = tmp_path / "uniprot_accessions.txt"
     input_text.write_text("O14646\n")
