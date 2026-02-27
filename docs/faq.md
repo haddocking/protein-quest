@@ -46,8 +46,8 @@ tar -C "$SCRATCH_RUN" -xf "$PERSIST_DIR/filtered-2026-02-27.tar"
 This pattern keeps active runs fast on scratch while storing long-term results
 as a small number of tarballs in persistent storage.
 
-If you have downstream tools that can not read from tarballs, 
-you can mount the tarball as a filesystem with [ratarmount](https://github.com/mxmlnkn/ratarmount)
+If you have downstream tools that can not read from tarballs, you can mount the
+tarball as a filesystem with [ratarmount](https://github.com/mxmlnkn/ratarmount)
 and unmount with `fusermount -u <mount_point>`.
 
 ## My log is polluted with progress bar lines. How can I fix this?
