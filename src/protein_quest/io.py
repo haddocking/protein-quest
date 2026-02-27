@@ -85,6 +85,61 @@ def read_structure(file: Path) -> gemmi.Structure:
     return gemmi.read_structure(str(file))
 
 
+def read_structure_bytes(filename: str, content: bytes) -> gemmi.Structure:
+    """Read a structure from bytes.
+
+    Args:
+        filename: Name of the source file, used to infer format.
+        content: Raw source bytes.
+
+    Returns:
+        A gemmi Structure object representing the structure in the bytes.
+
+    Raises:
+        ValueError: If ``filename`` extension is not a supported structure format.
+    """
+    if filename.endswith(".pdb") or filename.endswith(".ent"):
+        return gemmi.read_structure_string(content, format=gemmi.CoorFormat.Pdb)
+    if filename.endswith(".pdb.gz") or filename.endswith(".ent.gz"):
+        raw = gzip.decompress(content)
+        return gemmi.read_structure_string(raw, format=gemmi.CoorFormat.Pdb)
+    if filename.endswith(".cif"):
+        return gemmi.read_structure_string(content, format=gemmi.CoorFormat.Mmcif)
+    if filename.endswith(".cif.gz"):
+        raw = gzip.decompress(content)
+        return gemmi.read_structure_string(raw, format=gemmi.CoorFormat.Mmcif)
+    msg = f"Unsupported file extension in {filename}. Supported extensions are: {valid_structure_file_extensions}"
+    raise ValueError(msg)
+
+
+def write_structure_bytes(structure: gemmi.Structure, filename: str) -> bytes:
+    """Write a gemmi structure to bytes.
+
+    Args:
+        structure: The gemmi structure to write.
+        filename: Target filename used to infer output format.
+
+    Returns:
+        Serialized structure bytes.
+
+    Raises:
+        ValueError: If ``filename`` extension is not a supported structure format.
+    """
+    if filename.endswith(".pdb") or filename.endswith(".ent"):
+        return structure.make_pdb_string().encode("utf-8")
+    if filename.endswith(".pdb.gz") or filename.endswith(".ent.gz"):
+        body = structure.make_pdb_string().encode("utf-8")
+        return gzip.compress(body)
+    if filename.endswith(".cif"):
+        doc = structure.make_mmcif_document(gemmi.MmcifOutputGroups(True, chem_comp=False))
+        return doc.as_string().encode("utf-8")
+    if filename.endswith(".cif.gz"):
+        doc = structure.make_mmcif_document(gemmi.MmcifOutputGroups(True, chem_comp=False))
+        return gzip.compress(doc.as_string().encode("utf-8"))
+    msg = f"Unsupported file extension in {filename}. Supported extensions are: {valid_structure_file_extensions}"
+    raise ValueError(msg)
+
+
 def bcif2cif(bcif_file: Path) -> str:
     """Convert a binary CIF (bcif) file to a CIF string.
 

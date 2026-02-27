@@ -7,7 +7,13 @@ from pathlib import Path
 import gemmi
 
 from protein_quest.__version__ import __version__
-from protein_quest.io import read_structure, split_name_and_extension, write_structure
+from protein_quest.io import (
+    read_structure,
+    read_structure_bytes,
+    split_name_and_extension,
+    valid_structure_file_extensions,
+    write_structure_bytes,
+)
 from protein_quest.utils import CopyMethod, copyfile
 
 logger = logging.getLogger(__name__)
@@ -183,32 +189,85 @@ def write_single_chain_structure_file(
         ChainNotFoundError: If the specified chain is not found in the input file.
     """
 
-    logger.debug(f"chain2keep: {chain2keep}, out_chain: {out_chain}")
-    structure = read_structure(input_file)
-    structure.setup_entities()
+    _, extension = split_name_and_extension(input_file.name)
+    if extension not in valid_structure_file_extensions:
+        msg = f"Unknown format: {input_file}"
+        raise RuntimeError(msg)
 
-    chain = find_chain_in_structure(structure, chain2keep)
-    chainnames_in_structure = {c.name for c in chains_in_structure(structure)}
-    if chain is None:
-        raise ChainNotFoundError(chain2keep, input_file, chainnames_in_structure)
-    chain_name = chain.name
-    name, extension = split_name_and_extension(input_file.name)
-    output_file = output_dir / f"{name}_{chain_name}2{out_chain}{extension}"
+    input_content = input_file.read_bytes()
+    try:
+        output_filename, output_content = write_single_chain_structure_bytes(
+            input_filename=input_file.name,
+            input_content=input_content,
+            chain2keep=chain2keep,
+            out_chain=out_chain,
+        )
+    except ChainNotFoundError as e:
+        raise ChainNotFoundError(e.chain_id, input_file, e.available_chains) from e
+    output_file = output_dir / output_filename
 
     if output_file.exists():
         logger.info("Output file %s already exists for input file %s. Skipping.", output_file, input_file)
         return output_file
 
-    if chain_name == out_chain and len(chainnames_in_structure) == 1:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    if output_content is input_content:
         logger.info(
             "%s only has chain %s and out_chain is also %s. Copying file to %s.",
             input_file,
-            chain_name,
+            out_chain,
             out_chain,
             output_file,
         )
         copyfile(input_file, output_file, copy_method)
         return output_file
+
+    output_file.write_bytes(output_content)
+
+    return output_file
+
+
+def write_single_chain_structure_bytes(
+    input_filename: str,
+    input_content: bytes,
+    chain2keep: str,
+    out_chain: str = "A",
+) -> tuple[str, bytes]:
+    """Write a single chain from structure bytes to output structure bytes.
+
+    Args:
+        input_filename: Name of the input structure file.
+        input_content: Input structure bytes.
+        chain2keep: The chain to keep.
+        out_chain: The chain identifier for the output file.
+
+    Returns:
+        Tuple of output filename and output content.
+
+    Raises:
+        ChainNotFoundError: If ``chain2keep`` does not exist in input structure.
+        ValueError: If processed structure integrity checks fail.
+    """
+    logger.debug(f"chain2keep: {chain2keep}, out_chain: {out_chain}")
+    structure = read_structure_bytes(input_filename, input_content)
+    structure.setup_entities()
+
+    chain = find_chain_in_structure(structure, chain2keep)
+    chainnames_in_structure = {c.name for c in chains_in_structure(structure)}
+    if chain is None:
+        raise ChainNotFoundError(chain2keep, input_filename, chainnames_in_structure)
+    chain_name = chain.name
+    name, extension = split_name_and_extension(input_filename)
+    output_filename = f"{name}_{chain_name}2{out_chain}{extension}"
+
+    if chain_name == out_chain and len(chainnames_in_structure) == 1:
+        logger.info(
+            "%s only has chain %s and out_chain is also %s.",
+            input_filename,
+            chain_name,
+            out_chain,
+        )
+        return output_filename, input_content
 
     gemmi.Selection(f"/1/{chain_name}").remove_not_selected(structure)
     for m in structure:
@@ -227,9 +286,8 @@ def write_single_chain_structure_file(
         )
         raise ValueError(msg)
 
-    write_structure(structure, output_file)
-
-    return output_file
+    output_content = write_structure_bytes(structure, output_filename)
+    return output_filename, output_content
 
 
 def structure2uniprot_accessions(structure: gemmi.Structure) -> set[str]:

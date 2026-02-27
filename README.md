@@ -183,6 +183,12 @@ protein-quest filter chain \
     ./downloads-pdbe ./filtered-chains
 ```
 
+Or use tarballs for input and/or output:
+
+```shell
+protein-quest filter chain pdbe.csv ./downloads-pdbe.tar ./filtered-chains.tar
+```
+
 ### To filter PDBe files on nr of residues
 
 ```shell
