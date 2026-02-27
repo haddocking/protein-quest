@@ -29,7 +29,7 @@ protein-quest filter confidence \
 	--confidence-threshold 50 \
 	--min-residues 100 \
 	--max-residues 1000 \
-	--cache-dir "$SCRATCH_RUN/cache" \
+
 	"$SCRATCH_RUN/downloads-af" "$SCRATCH_RUN/filtered"
 
 # Bundle outputs for persistent storage (home/project)
@@ -46,7 +46,7 @@ tar -C "$SCRATCH_RUN" -xf "$PERSIST_DIR/filtered-2026-02-27.tar"
 This pattern keeps active runs fast on scratch while storing long-term results
 as a small number of tarballs in persistent storage.
 
-If you have downstream tools that can not read from tarballs, you can mount the
+If you have downstream tools that cannot read from tarballs, you can mount the
 tarball as a filesystem with [ratarmount](https://github.com/mxmlnkn/ratarmount)
 and unmount with `fusermount -u <mount_point>`.
 
