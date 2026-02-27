@@ -1,4 +1,3 @@
-import tarfile
 from pathlib import Path
 
 import pytest
@@ -6,7 +5,6 @@ import pytest
 from protein_quest.filters import (
     ChainFilterStatistics,
     ResidueFilterStatistics,
-    filter_chain_rows_mixed_io,
     filter_files_on_chain,
     filter_files_on_residues,
 )
@@ -78,126 +76,3 @@ def test_filter_files_on_residues(sample_cif: Path, sample2_cif: Path, tmp_path:
     )
 
     assert results == [expected_passed, expected_discarded]
-
-
-def test_filter_chain_rows_mixed_io_tar_to_dir(sample2_cif: Path, tmp_path: Path):
-    rows = [{"pdb_id": "2Y29", "chain": "A"}]
-    input_tar = tmp_path / "downloads-pdbe.tar"
-    with tarfile.open(input_tar, "w") as tar:
-        tar.add(sample2_cif, arcname=sample2_cif.name)
-
-    output_dir = tmp_path / "filtered"
-    nr_written, errors, discards = filter_chain_rows_mixed_io(
-        rows,
-        input_tar,
-        output_dir,
-        scheduler_address="sequential",
-    )
-
-    assert nr_written == 1
-    assert errors == []
-    assert discards == []
-    assert (output_dir / "2Y29_A2A.cif.gz").exists()
-
-
-def test_filter_chain_rows_mixed_io_dir_to_tar(sample2_cif: Path, tmp_path: Path):
-    rows = [{"pdb_id": "2Y29", "chain": "A"}]
-    output_tar = tmp_path / "filtered-chains.tar"
-
-    nr_written, errors, discards = filter_chain_rows_mixed_io(
-        rows,
-        sample2_cif.parent,
-        output_tar,
-        scheduler_address="sequential",
-    )
-
-    assert nr_written == 1
-    assert errors == []
-    assert discards == []
-    assert output_tar.exists()
-    with tarfile.open(output_tar, "r") as tar:
-        assert "2Y29_A2A.cif.gz" in tar.getnames()
-
-
-def test_filter_chain_rows_mixed_io_tar_to_tar(sample2_cif: Path, tmp_path: Path):
-    rows = [{"pdb_id": "2Y29", "chain": "A"}]
-    input_tar = tmp_path / "downloads-pdbe.tar"
-    with tarfile.open(input_tar, "w") as tar:
-        tar.add(sample2_cif, arcname=sample2_cif.name)
-    output_tar = tmp_path / "filtered-chains.tar"
-
-    nr_written, errors, discards = filter_chain_rows_mixed_io(
-        rows,
-        input_tar,
-        output_tar,
-        scheduler_address="sequential",
-    )
-
-    assert nr_written == 1
-    assert errors == []
-    assert discards == []
-    assert output_tar.exists()
-    with tarfile.open(output_tar, "r") as tar:
-        assert "2Y29_A2A.cif.gz" in tar.getnames()
-
-
-def test_filter_chain_rows_mixed_io_input_tar_notfound(tmp_path: Path):
-    rows = [{"pdb_id": "2Y29", "chain": "A"}]
-    input_tar = tmp_path / "downloads-pdbe.tar"
-    with tarfile.open(input_tar, "w"):
-        pass
-    output_tar = tmp_path / "filtered-chains.tar"
-
-    nr_written, errors, discards = filter_chain_rows_mixed_io(
-        rows,
-        input_tar,
-        output_tar,
-        scheduler_address="sequential",
-    )
-
-    assert nr_written == 0
-    assert len(errors) == 1
-    assert "No structure file found for 2Y29" in str(errors[0])
-    assert discards == []
-    assert not output_tar.exists()
-
-
-def test_filter_chain_rows_mixed_io_input_tar_partial_notfound(sample2_cif: Path, tmp_path: Path):
-    rows = [{"pdb_id": "2Y29", "chain": "A"}, {"pdb_id": "1ABC", "chain": "A"}]
-    input_tar = tmp_path / "downloads-pdbe.tar"
-    with tarfile.open(input_tar, "w") as tar:
-        tar.add(sample2_cif, arcname=sample2_cif.name)
-    output_tar = tmp_path / "filtered-chains.tar"
-
-    nr_written, errors, discards = filter_chain_rows_mixed_io(
-        rows,
-        input_tar,
-        output_tar,
-        scheduler_address="sequential",
-    )
-
-    assert nr_written == 1
-    assert len(errors) == 1
-    assert "No structure file found for 1ABC" in str(errors[0])
-    assert discards == []
-    assert output_tar.exists()
-    with tarfile.open(output_tar, "r") as tar:
-        assert "2Y29_A2A.cif.gz" in tar.getnames()
-
-
-def test_filter_chain_rows_mixed_io_tar_to_tar_with_dask_scheduler(sample2_cif: Path, tmp_path: Path):
-    rows = [{"pdb_id": "2Y29", "chain": "A"}, {"pdb_id": "2Y29", "chain": "A"}]
-    input_tar = tmp_path / "downloads-pdbe.tar"
-    with tarfile.open(input_tar, "w") as tar:
-        tar.add(sample2_cif, arcname=sample2_cif.name)
-    output_tar = tmp_path / "filtered-chains.tar"
-
-    nr_written, errors, discards = filter_chain_rows_mixed_io(rows, input_tar, output_tar, scheduler_address=None)
-
-    assert nr_written == 1
-    assert errors == []
-    assert discards == []
-    assert output_tar.exists()
-    with tarfile.open(output_tar, "r") as tar:
-        assert "2Y29_A2A.cif.gz" in tar.getnames()
-    assert not list(output_tar.parent.glob(".filtered-chains.worker-*.tar"))

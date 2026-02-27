@@ -312,16 +312,6 @@ def test_filter_chain_happy_path(sample2_cif: Path, tmp_path: Path, capsys: pyte
     assert "Wrote 1 single-chain PDB/mmCIF files to" in captured.err
 
 
-def test_filter_chain_output_tar_exists(sample2_cif: Path, tmp_path: Path):
-    chains_fn = tmp_path / "chains.csv"
-    chains_fn.write_text("pdb_id,chain\n2Y29,A\n")
-    output_tar = tmp_path / "filtered-chains.tar"
-    output_tar.write_text("already exists")
-
-    with pytest.raises(FileExistsError, match="Tar output file already exists"):
-        main(["filter", "chain", str(chains_fn), str(sample2_cif.parent), str(output_tar)])
-
-
 def test_filter_chain_input_file_notfound(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     input_dir = tmp_path / "input"
     input_dir.mkdir()

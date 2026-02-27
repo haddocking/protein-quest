@@ -30,16 +30,12 @@ from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_forma
 from protein_quest.alphafold.fetch import fetch_many as af_fetch
 from protein_quest.converter import PositiveInt, converter
 from protein_quest.emdb import fetch as emdb_fetch
-from protein_quest.filters import (
-    filter_chain_rows_mixed_io,
-    filter_files_on_chain,
-    filter_files_on_residues,
-    make_chain_file_mapping,
-)
+from protein_quest.filters import filter_files_on_chain, filter_files_on_residues
 from protein_quest.go import Aspect, allowed_aspects, search_gene_ontology_term, write_go_terms_to_csv
 from protein_quest.io import (
     convert_to_cif_files,
     glob_structure_files,
+    locate_structure_file,
     read_structure,
     valid_structure_file_extensions,
 )
@@ -574,8 +570,7 @@ def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
             For each input PDB/mmCIF and chain combination
             write a PDB/mmCIF file with just the given chain
             and rename it to chain `A`.
-            Filtering is done in parallel using a Dask cluster.
-            When using tarball as input and/or output, unchanged files are duplicated instead of being hardlinked."""),
+            Filtering is done in parallel using a Dask cluster."""),
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
     parser.add_argument(
@@ -587,19 +582,16 @@ def _add_filter_chain_parser(subparsers: argparse._SubParsersAction):
         "input_dir",
         type=Path,
         help=dedent("""\
-        Directory with PDB/mmCIF files, or a `.tar` archive containing those files.
+        Directory with PDB/mmCIF files.
         Expected filenames are `{pdb_id}.cif.gz`, `{pdb_id}.cif`, `{pdb_id}.pdb.gz` or `{pdb_id}.pdb`.
     """),
-    ).complete = shtab.DIRECTORY  # also accepts `.tar` files
-    # TODO use custom autocomplete for either dir or *.tar file
-    # see https://github.com/iterative/shtab/blob/main/examples/customcomplete.py
+    ).complete = shtab.DIRECTORY
     parser.add_argument(
         "output_dir",
         type=Path,
         help=dedent("""\
-        Directory to write the single-chain PDB/mmCIF files, or an output `.tar` archive.
-        Output files are in same format as input files."""),
-    ).complete = shtab.DIRECTORY  # also accepts `.tar` files
+        Directory to write the single-chain PDB/mmCIF files. Output files are in same format as input files."""),
+    ).complete = shtab.DIRECTORY
     _add_scheduler_address_argument(parser)
     _add_copy_method_arguments(parser)
 
@@ -1169,39 +1161,26 @@ def _handle_filter_confidence(args: argparse.Namespace):
 
 @prov(input_dirs=["input_dir"], output_dirs=["output_dir"], output_files=["write_stats"])
 def _handle_filter_chain(args):
-    input_path = structure(args.input_dir, Path)
-    output_path = structure(args.output_dir, Path)
+    input_dir = args.input_dir
+    output_dir = structure(args.output_dir, Path)
     pdb_id2chain_mapping_file = args.chains
     scheduler_address = structure(args.scheduler_address, str | None)  # pyright: ignore[reportArgumentType]
     copy_method: CopyMethod = structure(args.copy_method, CopyMethod)  # pyright: ignore[reportArgumentType]
+
+    # make sure files in input dir with entries in mapping file are the same
+    # complain when files from mapping file are missing on disk
     rows = list(_iter_csv_rows(pdb_id2chain_mapping_file))
+    file2chain: set[tuple[Path, str]] = set()
+    errors: list[FileNotFoundError] = []
 
-    if output_path.suffix == ".tar" and output_path.exists():
-        msg = f"Tar output file already exists: {output_path}"
-        raise FileExistsError(msg)
-
-    if input_path.suffix == ".tar" or output_path.suffix == ".tar":
-        nr_written, errors, discards = filter_chain_rows_mixed_io(
-            rows,
-            input_path,
-            output_path,
-            scheduler_address=scheduler_address,
-        )
-
-        if errors:
-            msg = f"Some structure files could not be found ({len(errors)} missing), skipping them"
-            rprint(Panel(os.linesep.join(map(str, errors)), title=msg, style="red"))
-
-        if nr_written == 0 and not discards:
-            rprint("[red]No valid structure files found. Exiting.")
-            sys.exit(1)
-
-        rprint(f"Wrote {nr_written} single-chain PDB/mmCIF files to {output_path}.")
-        for input_name, discard_reason in discards:
-            rprint(f"[red]Discarding {input_name} ({discard_reason})[/red]")
-        return
-
-    file2chain, errors = make_chain_file_mapping(rows, input_path)
+    for row in rows:
+        pdb_id = row["pdb_id"]
+        chain = row["chain"]
+        try:
+            f = locate_structure_file(input_dir, pdb_id)
+            file2chain.add((f, chain))
+        except FileNotFoundError as e:
+            errors.append(e)
 
     if errors:
         msg = f"Some structure files could not be found ({len(errors)} missing), skipping them"
@@ -1212,15 +1191,12 @@ def _handle_filter_chain(args):
         sys.exit(1)
 
     results = filter_files_on_chain(
-        file2chain,
-        output_path,
-        scheduler_address=scheduler_address,
-        copy_method=copy_method,
+        file2chain, output_dir, scheduler_address=scheduler_address, copy_method=copy_method
     )
 
     nr_written = len([r for r in results if r.passed])
 
-    rprint(f"Wrote {nr_written} single-chain PDB/mmCIF files to {output_path}.")
+    rprint(f"Wrote {nr_written} single-chain PDB/mmCIF files to {output_dir}.")
 
     for result in results:
         if result.discard_reason:
