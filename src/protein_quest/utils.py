@@ -3,9 +3,14 @@
 import argparse
 import asyncio
 import hashlib
+import io
 import logging
 import shutil
+import tarfile
+import threading
+import time
 from collections.abc import Coroutine, Iterable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from functools import lru_cache
 from pathlib import Path
@@ -309,6 +314,135 @@ async def retrieve_files(
 
 class InvalidContentEncodingError(aiohttp.ClientResponseError):
     """Content encoding is invalid."""
+
+
+class MissingContentLengthError(RuntimeError):
+    """Raised when response has no valid content-length in tar mode."""
+
+
+def _tar_add_member_from_bytes(
+    tar_path: Path,
+    member_name: str,
+    content: bytes,
+    lock: threading.Lock,
+) -> None:
+    tar_info = tarfile.TarInfo(name=member_name)
+    tar_info.size = len(content)
+    tar_info.mtime = int(time.time())
+
+    with lock:
+        mode = "a" if tar_path.exists() else "w"
+        with tarfile.open(tar_path, mode=mode) as tar:
+            tar.addfile(tar_info, fileobj=io.BytesIO(content))
+
+
+async def _retrieve_file_to_tar(
+    session: RetryClient,
+    url: URL | str,
+    filename: str,
+    tar_path: Path,
+    semaphore: asyncio.Semaphore,
+    tar_lock: threading.Lock,
+    executor: ThreadPoolExecutor,
+    chunk_size: int = 524288,
+):
+    auto_decompress = False
+    headers = {"Accept-Encoding": "gzip"}
+    async with (
+        semaphore,
+        session.get(url, headers=headers, auto_decompress=auto_decompress) as resp,
+    ):
+        resp.raise_for_status()
+        content_length_raw = resp.headers.get("Content-Length")
+        if content_length_raw is None:
+            msg = f"Server did not provide Content-Length for {url}"
+            raise MissingContentLengthError(msg)
+
+        try:
+            int(content_length_raw)
+        except ValueError as e:
+            msg = f"Invalid Content-Length '{content_length_raw}' for {url}"
+            raise MissingContentLengthError(msg) from e
+
+        data = bytearray()
+        async for chunk in resp.content.iter_chunked(chunk_size):
+            data.extend(chunk)
+
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(
+            executor,
+            _tar_add_member_from_bytes,
+            tar_path,
+            filename,
+            bytes(data),
+            tar_lock,
+        )
+
+
+async def retrieve_files_to_tar(
+    urls: Iterable[tuple[URL | str, str]],
+    tar_path: Path,
+    max_parallel_downloads: int = 5,
+    retries: int = 3,
+    total_timeout: int = 300,
+    chunk_size: int = 524288,
+    desc: str = "Downloading files",
+) -> tuple[list[str], dict[str, Exception]]:
+    """Retrieve files from URLs directly into a tar archive.
+
+    Args:
+        urls: Iterable of (URL, filename-in-tar) tuples.
+        tar_path: Output tar file path.
+        max_parallel_downloads: Maximum number of parallel downloads.
+        retries: Number of retries for failed requests.
+        total_timeout: Request timeout in seconds.
+        chunk_size: Response read chunk size.
+        desc: Description for progress bar.
+
+    Returns:
+        Tuple of successful member names and failed member->exception mapping.
+    """
+    if tar_path.exists():
+        raise FileExistsError(tar_path)
+    tar_path.parent.mkdir(parents=True, exist_ok=True)
+
+    semaphore = asyncio.Semaphore(max_parallel_downloads)
+    tar_lock = threading.Lock()
+    successes: list[str] = []
+    failures: dict[str, Exception] = {}
+
+    async with friendly_session(retries, total_timeout) as session:
+        with ThreadPoolExecutor(max_workers=max_parallel_downloads) as executor:
+            prepared_urls = list(urls)
+
+            async def _download_one(url: URL | str, filename: str):
+                try:
+                    await _retrieve_file_to_tar(
+                        session=session,
+                        url=url,
+                        filename=filename,
+                        tar_path=tar_path,
+                        semaphore=semaphore,
+                        tar_lock=tar_lock,
+                        executor=executor,
+                        chunk_size=chunk_size,
+                    )
+                except Exception as e:  # noqa: BLE001
+                    return filename, e
+                else:
+                    return filename, None
+
+            tasks = [_download_one(url, filename) for url, filename in prepared_urls]
+            results: list[tuple[str, Exception | None]] = await tqdm.gather(*tasks, desc=desc)
+            for filename, error in results:
+                if error is None:
+                    successes.append(filename)
+                else:
+                    failures[filename] = error
+
+    if not successes and tar_path.exists():
+        tar_path.unlink()
+    return successes, failures
 
 
 async def _retrieve_file(

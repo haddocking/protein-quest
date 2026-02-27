@@ -428,7 +428,9 @@ def _add_retrieve_pdbe_parser(subparsers: argparse._SubParsersAction):
         help="CSV file with `pdb_id` column. Other columns are ignored. Use `-` for stdin.",
     ).complete = shtab.FILE
     parser.add_argument(
-        "output_dir", type=Path, help="Directory to store downloaded PDBe mmCIF files"
+        "output_dir",
+        type=Path,
+        help="Directory to store downloaded PDBe mmCIF files or output .tar file",
     ).complete = shtab.DIRECTORY
     parser.add_argument(
         "--max-parallel-downloads",
@@ -1039,9 +1041,28 @@ def _handle_retrieve_pdbe(args: argparse.Namespace):
     pdbe_csv = args.pdbe_csv
     output_dir = args.output_dir
     max_parallel_downloads = args.max_parallel_downloads
-    cacher = _initialize_cacher(args)
 
     pdb_ids = _read_column_from_csv(pdbe_csv, "pdb_id")
+    if output_dir.suffix == ".tar":
+        if output_dir.exists():
+            msg = f"Tar output file already exists: {output_dir}"
+            raise FileExistsError(msg)
+        rprint(f"Retrieving {len(pdb_ids)} PDBe entries into tarball {output_dir}")
+        result, failures = asyncio.run(
+            pdbe_fetch.fetch_to_tar(
+                pdb_ids,
+                output_dir,
+                max_parallel_downloads=max_parallel_downloads,
+            )
+        )
+        rprint(f"Retrieved {len(result)} PDBe entries into {output_dir}")
+        if failures:
+            rprint(f"Failed to retrieve {len(failures)} PDBe entries: {', '.join(sorted(failures))}")
+        if not result:
+            raise SystemExit(1)
+        return
+
+    cacher = _initialize_cacher(args)
     rprint(f"Retrieving {len(pdb_ids)} PDBe entries")
     result = asyncio.run(
         pdbe_fetch.fetch(pdb_ids, output_dir, max_parallel_downloads=max_parallel_downloads, cacher=cacher)
