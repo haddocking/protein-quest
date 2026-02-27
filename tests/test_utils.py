@@ -1,7 +1,6 @@
 import asyncio
 import gzip
 import logging
-import tarfile
 from pathlib import Path
 
 import pytest
@@ -9,7 +8,6 @@ from aiohttp.client import ClientResponseError
 from aiohttp.streams import AsyncStreamIterator
 from aiohttp.test_utils import TestServer
 from aiohttp.web import Application
-from aiohttp.web_response import StreamResponse
 from aiohttp_compress import compress_middleware
 from pytest_aiohttp import AiohttpServer
 
@@ -22,7 +20,6 @@ from protein_quest.utils import (
     copyfile,
     populate_cache_command,
     retrieve_files,
-    retrieve_files_to_tar,
     user_cache_root_dir,
 )
 
@@ -519,42 +516,3 @@ async def test_retrieve_files_gzipped(
     with gzip.open(expected_file, "rt") as f:
         content = f.read()
         assert content == "This is file 1."
-
-
-@pytest.mark.asyncio
-async def test_retrieve_files_to_tar(tmp_path: Path, aiohttp_server: AiohttpServer):
-    server = await static_server(tmp_path, aiohttp_server)
-    tar_path = tmp_path / "downloads.tar"
-    urls = [(server.make_url("file1.txt"), "file1.txt")]
-
-    success, failures = await retrieve_files_to_tar(urls, tar_path=tar_path)
-
-    assert success == ["file1.txt"]
-    assert failures == {}
-    assert tar_path.exists()
-    assert not (tmp_path / "file1.txt").exists()
-    with tarfile.open(tar_path, "r") as tar:
-        member = tar.extractfile("file1.txt")
-        assert member is not None
-        assert member.read().decode("utf-8") == "This is file 1."
-
-
-@pytest.mark.asyncio
-async def test_retrieve_files_to_tar_missing_content_length(tmp_path: Path, aiohttp_server: AiohttpServer):
-    async def stream_without_length(request):
-        response = StreamResponse(status=200)
-        await response.prepare(request)
-        await response.write(b"abc")
-        await response.write_eof()
-        return response
-
-    app = Application()
-    app.router.add_get("/stream", stream_without_length)
-    server = await aiohttp_server(app)
-
-    tar_path = tmp_path / "downloads.tar"
-    success, failures = await retrieve_files_to_tar([(server.make_url("stream"), "stream.bin")], tar_path=tar_path)
-
-    assert success == []
-    assert "stream.bin" in failures
-    assert not tar_path.exists()

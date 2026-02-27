@@ -3,7 +3,7 @@
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 
-from protein_quest.utils import Cacher, retrieve_files, retrieve_files_to_tar, run_async
+from protein_quest.utils import Cacher, retrieve_files, run_async
 
 
 def _map_id_mmcif(pdb_id: str) -> tuple[str, str]:
@@ -52,35 +52,6 @@ async def fetch(
 
     await retrieve_files(urls, save_dir, max_parallel_downloads, desc="Downloading PDBe mmCIF files", cacher=cacher)
     return id2paths
-
-
-async def fetch_to_tar(
-    ids: Iterable[str], tar_path: Path, max_parallel_downloads: int = 5
-) -> tuple[Mapping[str, str], Mapping[str, Exception]]:
-    """Fetch PDBe mmCIF files and write them directly into a tar archive.
-
-    Args:
-        ids: PDB IDs to fetch.
-        tar_path: Path to output tar archive.
-        max_parallel_downloads: Maximum number of parallel downloads.
-
-    Returns:
-        Tuple of successful `pdb_id -> member_name` and failed `pdb_id -> error`.
-    """
-    id2urls = {pdb_id: _map_id_mmcif(pdb_id) for pdb_id in ids}
-    urls = list(id2urls.values())
-    filename2id = {filename: pdb_id for pdb_id, (_, filename) in id2urls.items()}
-
-    downloaded_members, member_failures = await retrieve_files_to_tar(
-        urls,
-        tar_path,
-        max_parallel_downloads=max_parallel_downloads,
-        desc="Downloading PDBe mmCIF files",
-    )
-
-    successful_ids = {filename2id[member]: member for member in downloaded_members}
-    failed_ids = {filename2id[member]: error for member, error in member_failures.items()}
-    return successful_ids, failed_ids
 
 
 def sync_fetch(ids: Iterable[str], save_dir: Path, max_parallel_downloads: int = 5) -> Mapping[str, Path]:

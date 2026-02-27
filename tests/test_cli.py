@@ -1,5 +1,4 @@
 import csv
-import tarfile
 from pathlib import Path
 from textwrap import dedent
 
@@ -205,36 +204,6 @@ def test_search_emdb(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     assert "Finding EMDB entries for 1 uniprot accessions" in captured.err
     assert "Found 2 EMDB entries, written to" in captured.err
     assert str(output_file) in captured.err
-
-
-@pytest.mark.vcr
-def test_retrieve_pdbe_tar_mode(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
-    input_csv = tmp_path / "pdbe.csv"
-    input_csv.write_text("pdb_id\n2Y29\n")
-    output_tar = tmp_path / "downloads-pdbe.tar"
-
-    main(["retrieve", "pdbe", str(input_csv), str(output_tar)])
-
-    assert output_tar.exists()
-    with tarfile.open(output_tar, "r") as tar:
-        assert "2y29.cif.gz" in tar.getnames()
-
-    captured = capsys.readouterr()
-    assert "Retrieving 1 PDBe entries into tarball" in captured.err
-    assert "Retrieved 1 PDBe entries into" in captured.err
-
-
-@pytest.mark.vcr
-def test_retrieve_pdbe_tar_mode_all_failed(tmp_path: Path):
-    input_csv = tmp_path / "pdbe.csv"
-    input_csv.write_text("pdb_id\nZZZZ\n")
-    output_tar = tmp_path / "downloads-pdbe.tar"
-
-    with pytest.raises(SystemExit) as exc_info:
-        main(["retrieve", "pdbe", str(input_csv), str(output_tar)])
-
-    assert exc_info.value.code == 1
-    assert not output_tar.exists()
 
 
 @pytest.mark.vcr

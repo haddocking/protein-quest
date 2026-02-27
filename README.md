@@ -136,14 +136,6 @@ protein-quest search emdb uniprot_accs.txt emdbs.csv
 protein-quest retrieve pdbe pdbe.csv downloads-pdbe/
 ```
 
-Or write directly into a tarball:
-
-```shell
-protein-quest retrieve pdbe pdbe.csv downloads-pdbe.tar
-```
-
-In tarball mode, caching is disabled.
-
 ### To retrieve AlphaFold structure files
 
 ```shell
