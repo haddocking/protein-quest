@@ -193,6 +193,66 @@ def _add_search_alphafold_parser(subparsers: argparse._SubParsersAction):
     parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
 
 
+def _add_search_structure_parser(subparsers: argparse._SubParsersAction):
+    """Add search structure subcommand parser."""
+    parser = subparsers.add_parser(
+        "structure",
+        help="Search PDBe/Alphafold/... structures of given UniProt accessions",
+        description="Search for structures of given UniProt accessions in the Uniprot SPARQL endpoint.",
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+    )
+    parser.add_argument(
+        "uniprot_accessions",
+        type=argparse.FileType("r", encoding="UTF-8"),
+        help="Text file with UniProt accessions (one per line). Use `-` for stdin.",
+    ).complete = shtab.FILE
+    parser.add_argument(
+        "output_csv",
+        type=argparse.FileType("w", encoding="UTF-8"),
+        help=dedent("""\
+            Output CSV with following columns:
+            `uniprot_accession`, `source`, `id`, `download_url`, `method`, `resolution`, `uniprot_chains`, `chain`, `chain_length`.
+            Where `uniprot_chains` is the raw UniProt chain string, for example `A=1-100`.
+            and where `chain` is the first chain from `uniprot_chains`, for example `A`
+            and `chain_length` is the length of the chain, for example `100`
+            or '' if it could not be determined.
+            Use `-` for stdout.
+        """),
+    ).complete = shtab.FILE
+    # T
+    source_choices = {"PDB", "AlphaFoldDB", "PED", "AlphaFill", "isoform.io"}
+    parser.add_argument(
+        "--source",
+        type=str,
+        choices=source_choices,
+        default=("PDB", "AlphaFoldDB"),
+        help="Source of the structures to search for.",
+    )
+    parser.add_argument(
+        "--limit", type=int, default=10_000, help="Maximum number of PDB uniprot accessions combinations to return"
+    )
+    parser.add_argument(
+        "--min-residues",
+        type=int,
+        help="Minimum number of residues required in the chain mapped to the UniProt accession.",
+    )
+    parser.add_argument(
+        "--max-residues",
+        type=int,
+        help="Maximum number of residues allowed in chain mapped to the UniProt accession.",
+    )
+    parser.add_argument(
+        "--keep-invalid",
+        action="store_true",
+        help=dedent("""\
+            Keep PDB results when chain length could not be determined.
+            If not given, such results are dropped.
+            Only applies if min/max residues arguments are set.
+        """),
+    )
+    parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
+
+
 def _add_search_emdb_parser(subparsers: argparse._SubParsersAction):
     """Add search emdb subcommand parser."""
     parser = subparsers.add_parser(
@@ -679,6 +739,7 @@ def _add_search_subcommands(subparsers: argparse._SubParsersAction):
     _add_search_uniprot_parser(subsubparsers)
     _add_search_pdbe_parser(subsubparsers)
     _add_search_alphafold_parser(subsubparsers)
+    _add_search_structure_parser(subsubparsers)
     _add_search_emdb_parser(subsubparsers)
     _add_search_go_parser(subsubparsers)
     _add_search_taxonomy_parser(subsubparsers)
@@ -935,6 +996,11 @@ def _handle_search_alphafold(args):
     rprint(f"Found {len(results)} AlphaFold entries, written to {_name_of(output_csv)}")
     _write_dict_of_sets2csv(output_csv, results, "af_id")
 
+@prov(input_files=["uniprot_accessions"], output_files=["output_csv"])
+def _handle_search_structure(args: argparse.Namespace):
+    # TODO implement
+    msg = "Search structure is not implemented yet. Use 'search pdbe' or 'search alphafold' instead."
+    raise NotImplementedError(msg)
 
 @prov(input_files=["uniprot_accessions"], output_files=["output_csv"])
 def _handle_search_emdb(args):
@@ -1442,6 +1508,7 @@ HANDLERS: dict[tuple[str, str | None], Callable] = {
     ("search", "uniprot"): _handle_search_uniprot,
     ("search", "pdbe"): _handle_search_pdbe,
     ("search", "alphafold"): _handle_search_alphafold,
+    ("search", "structure"): _handle_search_structure,
     ("search", "emdb"): _handle_search_emdb,
     ("search", "go"): _handle_search_go,
     ("search", "taxonomy"): _handle_search_taxonomy,
