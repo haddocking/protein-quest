@@ -39,6 +39,7 @@ graph TB;
     goterm[/Search GO term/] -. go_ids .-> searchuniprot[/Search UniprotKB/]
     searchuniprot --> |uniprot_accessions|searchpdbe[/Search PDBe/]
     searchuniprot --> |uniprot_accessions|searchaf[/Search Alphafold/]
+    searchuniprot -. uniprot_accessions .-> searchstructures[/Search structures/]
     searchuniprot -. uniprot_accessions .-> searchemdb[/Search EMDB/]
     searchuniprot -. uniprot_accessions .-> searchuniprotdetails[/Search UniProt details/]
     searchintactionpartners[/Search interaction partners/] -.-x |uniprot_accessions|searchuniprot
@@ -58,6 +59,7 @@ graph TB;
     taxonomy:::dashedBorder
     searchemdb:::dashedBorder
     fetchemdb:::dashedBorder
+    searchstructures:::dashedBorder
     searchintactionpartners:::dashedBorder
     searchcomplexes:::dashedBorder
     searchuniprotdetails:::dashedBorder
@@ -122,6 +124,20 @@ accession.
 
 ```shell
 protein-quest search alphafold uniprot_accs.txt alphafold.csv
+```
+
+### Search for any structures of uniprot accessions
+
+Use [3D beacon network](https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/) to search for any type of structure (measured or predicted) of given uniprot accessions.
+
+```shell
+protein-quest search structures uniprot_accs.txt structures.csv
+```
+
+Or to select sources 
+
+```shell
+protein-quest search structure uniprot_accs.h5.txt structures.h5.txt --raw structures.h5.json --source alphafill --source alphafold --source ped --source isoformio
 ```
 
 ### Search for EMDB structures of uniprot accessions
