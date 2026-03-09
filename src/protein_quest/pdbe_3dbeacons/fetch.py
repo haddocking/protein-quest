@@ -11,7 +11,7 @@ import logging
 from asyncio import sleep
 from collections.abc import Generator, Iterable
 from itertools import batched
-from typing import cast, get_args
+from typing import get_args
 
 from aiohttp_retry import RetryClient
 from attrs import define, field, validators
@@ -52,6 +52,8 @@ MAX_POST_LIMIT = 10
 """Maximum number of uniprot accessions to query in each batch.
 The 3D beacons HUB API has a maximum limit of 10 accessions per POST request."""
 
+DEFAULT_PROVIDERS: set[Provider] = {"pdbe", "alphafold"}
+
 
 @define
 class PruneOptions:
@@ -72,7 +74,7 @@ class PruneOptions:
         validator=[
             validators.min_len(1),  # non-empty set required
         ],
-        default=cast("set[Provider]", {"pdbe", "alphafold"}),
+        default=DEFAULT_PROVIDERS,
     )
     limit: PositiveInt = 10_000
     min_residues: PositiveInt | None = None
