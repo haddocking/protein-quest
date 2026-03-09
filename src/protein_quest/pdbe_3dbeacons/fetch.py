@@ -100,6 +100,14 @@ def _prune_on_residues(
             max_residues is None or residue_count <= max_residues
         ):
             filtered_on_residues.append(structure)
+        else:
+            logger.debug(
+                "Pruning structure %s because residue count %d outside bounds [%s, %s]",
+                structure.summary.model_identifier,
+                residue_count,
+                min_residues if min_residues is not None else "-inf",
+                max_residues if max_residues is not None else "inf",
+            )
     return filtered_on_residues
 
 
@@ -122,7 +130,7 @@ def prune_on_limit(
                 "Pruning structure %s from provider %s for uniprot %s because limit of %d reached",
                 structure.summary.model_identifier,
                 provider,
-                summary.uniprot_entry,
+                summary.uniprot_entry.ac if summary.uniprot_entry else None,
                 limit,
             )
     return filtered_on_limit

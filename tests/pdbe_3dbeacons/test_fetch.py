@@ -265,7 +265,8 @@ async def test_uniprots2structures_all_providers():
 @pytest.mark.asyncio
 @pytest.mark.default_cassette("test_uniprots2structures_all_providers.yaml")
 @pytest.mark.vcr
-async def test_uniprots2structures_all_providers_limit1():
+async def test_uniprots2structures_all_providers_limit1(caplog: pytest.LogCaptureFixture):
+    caplog.set_level("DEBUG", logger="protein_quest.pdbe_3dbeacons.fetch")
     raw_summaries = await uniprots2structures(
         {"P38634"},
         PruneOptions(providers=search_structure_provider_choices, limit=1),
@@ -313,6 +314,9 @@ async def test_uniprots2structures_all_providers_limit1():
     ]
     assert summaries == expected
 
+    assert "Pruning structure 3v7d from provider PDBe for uniprot P38634 because limit of 1 reached" in caplog.text
+    assert len(caplog.get_records(when="call")) == 20
+
 
 @pytest.mark.asyncio
 @pytest.mark.vcr
@@ -358,7 +362,8 @@ async def test_uniprots2structures_1providermissing():
 @pytest.mark.asyncio
 @pytest.mark.default_cassette("test_uniprots2structures_all_providers.yaml")
 @pytest.mark.vcr
-async def test_uniprots2structures_min_residues():
+async def test_uniprots2structures_min_residues(caplog: pytest.LogCaptureFixture):
+    caplog.set_level("DEBUG", logger="protein_quest.pdbe_3dbeacons.fetch")
     raw_summaries = await uniprots2structures(
         {"P38634"},
         PruneOptions(providers=search_structure_provider_choices, min_residues=200),
@@ -387,6 +392,9 @@ async def test_uniprots2structures_min_residues():
         },
     ]
     assert summaries == expected
+
+    assert "Pruning structure 6g86 because residue count 16 outside bounds [200, inf]" in caplog.text
+    assert len(caplog.get_records(when="call")) == 22
 
 
 @pytest.mark.asyncio
