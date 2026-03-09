@@ -6,7 +6,7 @@ import csv
 import logging
 import os
 import sys
-from collections.abc import Callable, Generator, Iterable, Sequence
+from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from contextlib import suppress
 from functools import lru_cache
 from importlib.util import find_spec
@@ -1038,10 +1038,7 @@ def _handle_search_structure(args: argparse.Namespace):
     if not rows:
         rprint("No structures found")
         return
-    fieldnames = rows[0].keys()
-    writer = csv.DictWriter(output_csv, fieldnames=fieldnames)
-    writer.writeheader()
-    writer.writerows(rows)
+    _write_list_of_dicts_to_csv(output_csv, rows)
     rprint(f"Found {len(rows)} structures, written to {_name_of(output_csv)}")
 
 
@@ -1541,6 +1538,10 @@ def _write_uniprot_details_csv(
         raise ValueError(msg)
     # As all props of UniprotDetails are scalar, we can directly unstructure to dicts
     rows = converter.unstructure(uniprot_details_list)
+    _write_list_of_dicts_to_csv(output_csv, rows)
+
+
+def _write_list_of_dicts_to_csv(output_csv: TextIOWrapper, rows: Sequence[Mapping[str, str | int | float | None]]):
     fieldnames = rows[0].keys()
     writer = csv.DictWriter(output_csv, fieldnames=fieldnames)
     writer.writeheader()
