@@ -44,7 +44,8 @@ provider_request2response = {
     "levylab": "levylab",
 }
 # When Provider in model module changes, update this mapping accordingly.
-"""The request uses slightly different provider names than the response. Use this mapping to convert between them."""
+"""The response uses slightly different [provider names][protein_quest.pdbe_3dbeacons.model.Provider] than the request.
+Use this mapping to convert between them."""
 
 # From https://github.com/3D-Beacons/3d-beacons-hub-api/blob/ffc0648a80701e756cbe88742a96974f1022ac89/app/config/__init__.py#L11
 MAX_POST_LIMIT = 10
