@@ -201,7 +201,7 @@ def _add_search_alphafold_parser(subparsers: argparse._SubParsersAction):
 
 def _add_search_structure_parser(subparsers: argparse._SubParsersAction):
     """Add search structure subcommand parser."""
-    description=dedent("""\
+    description = dedent("""\
         Search for experimentally determined and predicted structures
         of given UniProt accessions in the [3D Beacons HUB](https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/) API.
 
@@ -212,7 +212,7 @@ def _add_search_structure_parser(subparsers: argparse._SubParsersAction):
     parser = subparsers.add_parser(
         "structure",
         help="Search for experimentally determined and predicted structures of given UniProt accessions",
-        description=Markdown(description, style="argparse.text"), # type: ignore using rich formatter makes this OK
+        description=Markdown(description, style="argparse.text"),  # type: ignore using rich formatter makes this OK
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
     parser.add_argument(
