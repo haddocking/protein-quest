@@ -17,24 +17,16 @@ from aiohttp_retry import RetryClient
 from tqdm.rich import tqdm
 
 from protein_quest.converter import converter
-from protein_quest.pdbe_3dbeacons.model import AccessionListRequest, UniprotSummary
+from protein_quest.pdbe_3dbeacons.model import (
+    AccessionListRequest,
+    Overview,
+    Provider,
+    UniprotSummary,
+)
 from protein_quest.utils import friendly_session
 
 logger = logging.getLogger(__name__)
 
-Provider = Literal[
-    "pdbe",
-    "ped",
-    "swissmodel",
-    "alphafold",
-    "sasbdb",
-    "alphafill",
-    "hegelab",  # for example Q9H222
-    "modelarchive",
-    "isoformio",
-    "levylab",  # for example P32449
-]
-"""Allowed providers"""
 search_structure_provider_choices = set(get_args(Provider))
 """All providers"""
 
@@ -50,6 +42,7 @@ provider_request2response = {
     "isoformio": "isoform.io",
     "levylab": "levylab",
 }
+# When Provider in model module changes, update this mapping accordingly.
 """The request uses slightly different provider names than the response. Use this mapping to convert between them."""
 
 # From https://github.com/3D-Beacons/3d-beacons-hub-api/blob/ffc0648a80701e756cbe88742a96974f1022ac89/app/config/__init__.py#L11
@@ -206,7 +199,7 @@ def flatten_structure_summaries(summaries: list[UniprotSummary]) -> Generator[di
                 "provider": provider,
                 "model_identifier": s.model_identifier,
                 "model_url": s.model_url,
-                "model_format": s.model_format.value,
+                "model_format": s.model_format,
                 "chain": chain,
             }
             yield row
