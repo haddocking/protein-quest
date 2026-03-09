@@ -33,6 +33,38 @@ async def test_uniprots2structures_single_provider():
 
 @pytest.mark.asyncio
 @pytest.mark.vcr
+async def test_uniprots2structures_2batches():
+    raw_summaries = await uniprots2structures(
+        {"P05067", "P38634"}, PruneOptions(providers={"alphafill"}, limit=1), batch_size=1
+    )
+
+    summaries = list(flatten_structure_summaries(raw_summaries))
+
+    expected = [
+        {
+            "chain": "A",
+            "model_format": "MMCIF",
+            "model_identifier": "P05067",
+            "model_url": "https://alphafill.eu/v1/aff/P05067",
+            "residue_count": 770,
+            "provider": "alphafill",
+            "uniprot_accession": "P05067",
+        },
+        {
+            "chain": "A",
+            "model_format": "MMCIF",
+            "model_identifier": "P38634",
+            "model_url": "https://alphafill.eu/v1/aff/P38634",
+            "residue_count": 284,
+            "provider": "alphafill",
+            "uniprot_accession": "P38634",
+        },
+    ]
+    assert summaries == expected
+
+
+@pytest.mark.asyncio
+@pytest.mark.vcr
 async def test_uniprots2structures_all_providers():
     raw_summaries = await uniprots2structures(
         {"P38634"},
