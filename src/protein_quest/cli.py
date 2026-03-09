@@ -41,7 +41,7 @@ from protein_quest.io import (
 )
 from protein_quest.pdbe import fetch as pdbe_fetch
 from protein_quest.pdbe_3dbeacons.fetch import (
-    Provider,
+    PruneOptions,
     flatten_structure_summaries,
     search_structure_provider_choices,
     uniprots2structures,
@@ -201,10 +201,18 @@ def _add_search_alphafold_parser(subparsers: argparse._SubParsersAction):
 
 def _add_search_structure_parser(subparsers: argparse._SubParsersAction):
     """Add search structure subcommand parser."""
+    description=dedent("""\
+        Search for experimentally determined and predicted structures
+        of given UniProt accessions in the [3D Beacons HUB](https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/) API.
+
+        This subcommand can be used for PDBe and AlphaFold structures,
+        but is less performant than dedicated subcommands due to many HTTP requests.
+    """)
+
     parser = subparsers.add_parser(
         "structure",
-        help="Search PDBe/Alphafold/... structures of given UniProt accessions",
-        description="Search for structures of given UniProt accessions in the 3D Beacons HUB API.",
+        help="Search for experimentally determined and predicted structures of given UniProt accessions",
+        description=Markdown(description, style="argparse.text"), # type: ignore using rich formatter makes this OK
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
     parser.add_argument(
@@ -217,7 +225,7 @@ def _add_search_structure_parser(subparsers: argparse._SubParsersAction):
         type=argparse.FileType("w", encoding="UTF-8"),
         help=dedent("""\
             Output CSV with following columns:
-            `uniprot_accession`, `provider`, `model_identifier`, `model_url`, `model_format`, `chain`.
+            `uniprot_accession`, `provider`, `model_identifier`, `model_url`, `model_format`, `chain`, `residue_count`.
             Use `-` for stdout.
         """),
     ).complete = shtab.FILE
@@ -227,6 +235,16 @@ def _add_search_structure_parser(subparsers: argparse._SubParsersAction):
         action="append",
         choices=search_structure_provider_choices,
         help="Source of the structures to search for. Default `pdbe` and `alphafold`. Can be given multiple times.",
+    )
+    parser.add_argument(
+        "--min-residues",
+        type=int,
+        help="Minimum number of residues required in the chain mapped to the UniProt accession.",
+    )
+    parser.add_argument(
+        "--max-residues",
+        type=int,
+        help="Maximum number of residues allowed in the chain mapped to the UniProt accession.",
     )
     parser.add_argument(
         "--limit",
@@ -990,22 +1008,25 @@ def _handle_search_alphafold(args):
 @prov(input_files=["uniprot_accessions"], output_files=["output_csv", "raw"])
 def _handle_search_structure(args: argparse.Namespace):
     uniprot_accessions: TextIOWrapper = args.uniprot_accessions
-    sources = converter.structure(args.source, set[Provider])
-    if not sources:
-        sources: set[Provider] = {"pdbe", "alphafold"}
-    limit = converter.structure(args.limit, int)
     timeout = converter.structure(args.timeout, int)
     output_csv: TextIOWrapper = args.output_csv
     raw_path = converter.structure(args.raw, Path | None)  # pyright: ignore[reportArgumentType]
-
+    prune_options = converter.structure(
+        {
+            "providers": args.source,
+            "limit": args.limit,
+            "min_residues": args.min_residues,
+            "max_residues": args.max_residues,
+        },
+        PruneOptions,
+    )
     accs = set(_read_lines(uniprot_accessions))
     rprint(f"Finding structures for {len(accs)} uniprot accessions")
 
     results = asyncio.run(
         uniprots2structures(
             accs,
-            sources,
-            limit=limit,
+            prune_options,
             timeout=timeout,
         )
     )
