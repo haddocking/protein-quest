@@ -7,6 +7,7 @@
 * code at <https://github.com/3D-Beacons/3d-beacons-hub-api/>
 """
 
+import logging
 from asyncio import sleep
 from collections.abc import Generator, Iterable
 from itertools import batched
@@ -18,6 +19,8 @@ from tqdm.rich import tqdm
 from protein_quest.converter import converter
 from protein_quest.pdbe_3dbeacons.model import AccessionListRequest, UniprotSummary
 from protein_quest.utils import friendly_session
+
+logger = logging.getLogger(__name__)
 
 Provider = Literal[
     "pdbe",
@@ -63,17 +66,34 @@ def _prune_summaries(summaries: list[UniprotSummary], providers: set[Provider], 
     Args:
         summaries: List of summaries to prune.
         providers: Set of providers to keep in the summaries.
-        limit: Maximum number of structures per summary to return.
+        limit: Maximum number of structures per uniprot summary per provider to return.
     """
     # TODO add sequence length filter
     response_providers = {provider_request2response[provider] for provider in providers}
     for summary in summaries:
         if summary.structures is None:
             continue
-        filtered = [structure for structure in summary.structures if structure.summary.provider in response_providers]
+        filtered_on_provider = [
+            structure for structure in summary.structures if structure.summary.provider in response_providers
+        ]
+        filtered_on_limit = []
+        provider_counts: dict[str, int] = dict.fromkeys(response_providers, 0)
+        for structure in filtered_on_provider:
+            provider = structure.summary.provider
+            if provider_counts[provider] < limit:
+                filtered_on_limit.append(structure)
+                provider_counts[provider] += 1
+            else:
+                logger.debug(
+                    "Pruning structure %s from provider %s for uniprot %s because limit of %d reached",
+                    structure.summary.model_identifier,
+                    provider,
+                    summary.uniprot_entry,
+                    limit,
+                )
         yield UniprotSummary(
             uniprot_entry=summary.uniprot_entry,
-            structures=filtered[:limit],
+            structures=filtered_on_limit,
         )
 
 
@@ -88,6 +108,7 @@ async def fetch_summary_batch(
     provider = None
     if len(providers) == 1:
         provider = next(iter(providers))
+    exclude_provider = None
     if len(providers) == len(search_structure_provider_choices) - 1:
         exclude_provider = next(iter(search_structure_provider_choices - providers))
     pdbe_provider: Provider = "pdbe"
@@ -121,7 +142,7 @@ async def uniprots2structures(
     Args:
         uniprot_accessions: Set of uniprot accessions to find structures for.
         providers: Set of providers to search for structures.
-        limit: Maximum number of structures per accesion to return.
+        limit: Maximum number of structures per accesion per provider to return.
         timeout: Maximum seconds to wait for each batch query to complete.
         batch_size: Number of uniprot accessions to query in each batch.
         sleep_between_batches: Seconds to wait between each batch query.
@@ -159,15 +180,15 @@ async def uniprots2structures(
     return structures
 
 
-def flatten(summaries: list[UniprotSummary]) -> Generator[dict[str, str]]:
+def flatten_structure_summaries(summaries: list[UniprotSummary]) -> Generator[dict[str, str]]:
     """Flatten the summaries to a list of dicts with uniprot accession and structure information.
 
     Args:
         summaries: List of summaries to flatten.
 
     Yields:
-        Dict with uniprot accession, provider, model identifier, model url, model format, entity type,
-        entity description, and ':' seperated chains.
+        Dict with uniprot accession, provider, model identifier, model url, model format,
+        chain (first chain of first entity or 'A').
     """
     provider_response2request = {v: k for k, v in provider_request2response.items()}
     for summary in summaries:
@@ -177,16 +198,15 @@ def flatten(summaries: list[UniprotSummary]) -> Generator[dict[str, str]]:
         for structure_summary in summary.structures:
             s = structure_summary.summary
             provider = provider_response2request[s.provider]
-            for e in s.entities:
-                chains = ":".join(e.chain_ids)
-                row = {
-                    "uniprot_accession": uniprot_accession,
-                    "provider": provider,
-                    "model_identifier": s.model_identifier,
-                    "model_url": s.model_url,
-                    "model_format": s.model_format.value,
-                    "entity_type": e.entity_type.value,
-                    "description": e.description,
-                    "chains": chains,
-                }
-                yield row
+            # Most providers have the POLYMER entity as first entity with single chain.
+            # A PED structure has zero entities, but its cif file has chain A
+            chain = s.entities[0].chain_ids[0] if len(s.entities) >= 1 and len(s.entities[0].chain_ids) else "A"
+            row = {
+                "uniprot_accession": uniprot_accession,
+                "provider": provider,
+                "model_identifier": s.model_identifier,
+                "model_url": s.model_url,
+                "model_format": s.model_format.value,
+                "chain": chain,
+            }
+            yield row
