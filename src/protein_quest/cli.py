@@ -40,7 +40,12 @@ from protein_quest.io import (
     valid_structure_file_extensions,
 )
 from protein_quest.pdbe import fetch as pdbe_fetch
-from protein_quest.pdbe_3dbeacons.fetch import Provider, flatten, search_structure_provider_choices, uniprots2structures
+from protein_quest.pdbe_3dbeacons.fetch import (
+    Provider,
+    flatten_structure_summaries,
+    search_structure_provider_choices,
+    uniprots2structures,
+)
 from protein_quest.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
 from protein_quest.structure import structure2uniprot_accessions
 from protein_quest.taxonomy import SearchField, _write_taxonomy_csv, search_fields, search_taxon
@@ -199,7 +204,7 @@ def _add_search_structure_parser(subparsers: argparse._SubParsersAction):
     parser = subparsers.add_parser(
         "structure",
         help="Search PDBe/Alphafold/... structures of given UniProt accessions",
-        description="Search for structures of given UniProt accessions in the Uniprot SPARQL endpoint.",
+        description="Search for structures of given UniProt accessions in the 3D Beacons HUB API.",
         formatter_class=ArgumentDefaultsRichHelpFormatter,
     )
     parser.add_argument(
@@ -212,12 +217,7 @@ def _add_search_structure_parser(subparsers: argparse._SubParsersAction):
         type=argparse.FileType("w", encoding="UTF-8"),
         help=dedent("""\
             Output CSV with following columns:
-            `uniprot_accession`, `source`, `structure_id`,
-             `method`, `resolution`, `uniprot_chains`, `chain`, `chain_length`.
-            Where `uniprot_chains` is the raw UniProt chain string, for example `A=1-100`.
-            and where `chain` is the first chain from `uniprot_chains`, for example `A`
-            and `chain_length` is the length of the chain, for example `100`
-            or '' if it could not be determined.
+            `uniprot_accession`, `provider`, `model_identifier`, `model_url`, `model_format`, `chain`.
             Use `-` for stdout.
         """),
     ).complete = shtab.FILE
@@ -226,32 +226,21 @@ def _add_search_structure_parser(subparsers: argparse._SubParsersAction):
         type=str,
         action="append",
         choices=search_structure_provider_choices,
-        default=("pdbe", "alphafold"),
-        help="Source of the structures to search for.",
+        help="Source of the structures to search for. Default `pdbe` and `alphafold`. Can be given multiple times.",
     )
     parser.add_argument(
-        "--limit", type=int, default=10_000, help="Maximum number of structures per uniprot accesion to return."
-    )
-    parser.add_argument(
-        "--min-residues",
+        "--limit",
         type=int,
-        help="Minimum number of residues required in the chain mapped to the UniProt accession.",
-    )
-    parser.add_argument(
-        "--max-residues",
-        type=int,
-        help="Maximum number of residues allowed in chain mapped to the UniProt accession.",
-    )
-    parser.add_argument(
-        "--keep-invalid",
-        action="store_true",
-        help=dedent("""\
-            Keep PDB results when chain length could not be determined.
-            If not given, such results are dropped.
-            Only applies if min/max residues arguments are set.
-        """),
+        default=10_000,
+        help="Maximum number of structures per uniprot accesion per source to return.",
     )
     parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
+    parser.add_argument(
+        "--raw",
+        type=Path,
+        help="""Path to write raw uniprot-structure mapping results as JSON.\
+            Raw results has more information than normal output.""",
+    )
 
 
 def _add_search_emdb_parser(subparsers: argparse._SubParsersAction):
@@ -998,15 +987,16 @@ def _handle_search_alphafold(args):
     _write_dict_of_sets2csv(output_csv, results, "af_id")
 
 
-@prov(input_files=["uniprot_accessions"], output_files=["output_csv"])
+@prov(input_files=["uniprot_accessions"], output_files=["output_csv", "raw"])
 def _handle_search_structure(args: argparse.Namespace):
-    uniprot_accessions = args.uniprot_accessions
-    sources = converter.structure(args.sources, set[Provider])
-    _min_sequence_length = converter.structure(args.min_sequence_length, PositiveInt | None)  # pyright: ignore[reportArgumentType]
-    _max_sequence_length = converter.structure(args.max_sequence_length, PositiveInt | None)  # pyright: ignore[reportArgumentType]
-    limit = args.limit
-    timeout = args.timeout
-    output_csv = args.output_csv
+    uniprot_accessions: TextIOWrapper = args.uniprot_accessions
+    sources = converter.structure(args.source, set[Provider])
+    if not sources:
+        sources: set[Provider] = {"pdbe", "alphafold"}
+    limit = converter.structure(args.limit, int)
+    timeout = converter.structure(args.timeout, int)
+    output_csv: TextIOWrapper = args.output_csv
+    raw_path = converter.structure(args.raw, Path | None)  # pyright: ignore[reportArgumentType]
 
     accs = set(_read_lines(uniprot_accessions))
     rprint(f"Finding structures for {len(accs)} uniprot accessions")
@@ -1019,11 +1009,19 @@ def _handle_search_structure(args: argparse.Namespace):
             timeout=timeout,
         )
     )
-    rows = list(flatten(results))
+
+    if raw_path:
+        raw_path.write_bytes(converter.dumps(results))
+        rprint(f"Written raw results to {raw_path}")
+    rows = list(flatten_structure_summaries(results))
+    if not rows:
+        rprint("No structures found")
+        return
     fieldnames = rows[0].keys()
     writer = csv.DictWriter(output_csv, fieldnames=fieldnames)
     writer.writeheader()
     writer.writerows(rows)
+    rprint(f"Found {len(rows)} structures, written to {_name_of(output_csv)}")
 
 
 @prov(input_files=["uniprot_accessions"], output_files=["output_csv"])
