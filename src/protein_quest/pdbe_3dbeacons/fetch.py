@@ -267,8 +267,16 @@ def flatten_structure_summaries(summaries: list[UniprotSummary]) -> Generator[di
         summaries: List of summaries to flatten.
 
     Yields:
-        Dict with uniprot accession, provider, model identifier, model url, model format,
-        chain (first chain of first entity or 'A'), and number of residues.
+        Dict with following keys:
+
+            * uniprot_accession: Uniprot accession.
+            * provider: [Provider][protein_quest.pdbe_3dbeacons.model.Provider] of the structure.
+            * model_identifier: Model identifier of the structure.
+            * model_url: URL to download the structure.
+            * model_format: [Format][protein_quest.pdbe_3dbeacons.model.AppUniprotSchemaModelFormat]
+                of the structure file
+            * chain: Chain identifier of the structure (first chain of first entity or "A" if no entities or chains).
+            * residue_count: Number of residues in the structure
     """
     provider_response2request = {v: k for k, v in provider_request2response.items()}
     for summary in summaries:
