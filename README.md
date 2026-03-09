@@ -128,13 +128,14 @@ protein-quest search alphafold uniprot_accs.txt alphafold.csv
 
 ### Search for any structures of uniprot accessions
 
-Use [3D beacon network](https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/) to search for any type of structure (measured or predicted) of given uniprot accessions.
+Use [3D beacon network](https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/) to search
+for any type of structure (measured or predicted) of given uniprot accessions.
 
 ```shell
 protein-quest search structures uniprot_accs.txt structures.csv
 ```
 
-Or to select sources 
+Or to select sources
 
 ```shell
 protein-quest search structure uniprot_accs.h5.txt structures.h5.txt --raw structures.h5.json --source alphafill --source alphafold --source ped --source isoformio

@@ -54,7 +54,7 @@ provider_request2response = {
 
 # From https://github.com/3D-Beacons/3d-beacons-hub-api/blob/ffc0648a80701e756cbe88742a96974f1022ac89/app/config/__init__.py#L11
 MAX_POST_LIMIT = 10
-"""Maxium number of uniprot accessions to query in each batch.
+"""Maximum number of uniprot accessions to query in each batch.
 The 3D beacons HUB API has a maximum limit of 10 accessions per POST request."""
 
 
