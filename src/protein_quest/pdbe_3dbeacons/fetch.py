@@ -11,7 +11,7 @@ import logging
 from asyncio import sleep
 from collections.abc import Generator, Iterable
 from itertools import batched
-from typing import get_args
+from typing import TypedDict, get_args
 
 from aiohttp_retry import RetryClient
 from attrs import define, field, validators
@@ -20,6 +20,7 @@ from tqdm.rich import tqdm
 from protein_quest.converter import PositiveInt, converter
 from protein_quest.pdbe_3dbeacons.model import (
     AccessionListRequest,
+    AppUniprotSchemaSummaryItems,
     Overview,
     Provider,
     UniprotSummary,
@@ -260,25 +261,69 @@ async def uniprots2structures(
     return structures
 
 
-def flatten_structure_summaries(summaries: list[UniprotSummary]) -> Generator[dict[str, str | int]]:
+def _find_chain_for_uniprot(uniprot_accession: str, summary: AppUniprotSchemaSummaryItems) -> str:
+    if entities_of_uniprot := [e for e in summary.entities if e.identifier == uniprot_accession]:
+        # Surest way to get the correct chain,
+        # only supported by PDBe, SWISS-model and Alphafold DB
+        return entities_of_uniprot[0].chain_ids[0]
+    if summary.entities:
+        # Most providers have the POLYMER entity as first entity with single chain.
+        return summary.entities[0].chain_ids[0]
+    # A PED structure has zero entities, but its cif file has chain A
+    return "A"
+
+
+class FlattenedUniprotSummary(TypedDict):
+    """Typed representation of a flattened structure summary.
+
+    Attributes:
+        uniprot_accession: Uniprot accession.
+        provider: [Provider][protein_quest.pdbe_3dbeacons.model.Provider] of the structure.
+        model_identifier: Model identifier of the structure.
+        model_url: URL to download the structure.
+        model_format: [Format][protein_quest.pdbe_3dbeacons.model.AppUniprotSchemaModelFormat]
+          of the structure file
+        chain: Chain identifier of the structure (first chain of first entity or "A" if no entities or chains).
+        residue_count: Number of residues in the structure
+    """
+
+    uniprot_accession: str
+    provider: str
+    model_identifier: str
+    model_url: str
+    model_format: str
+    chain: str
+    residue_count: int
+
+
+def _sum_residue_counts_for_same_models(summaries: list[FlattenedUniprotSummary]) -> list[FlattenedUniprotSummary]:
+    """Sum the residue counts for summaries with the same provider and model identifier.
+
+    Needed for uniprot acc P38634 as chain y in 8k0g pdb entry which has residues: 2 — 5, 6 — 48
+    API returns two summaries with `2 — 5` and `6 — 48` as uniprot start - end.
+    Here we sum them 4 + 43 to get the total residue count of 47 for the model.
+    """
+    model_chain_to_row: dict[tuple[str, str], FlattenedUniprotSummary] = {}
+    for summary in summaries:
+        provider_id = (summary["provider"], summary["model_identifier"])
+        if provider_id in model_chain_to_row:
+            model_chain_to_row[provider_id]["residue_count"] += summary["residue_count"]
+        else:
+            model_chain_to_row[provider_id] = summary
+    return list(model_chain_to_row.values())
+
+
+def flatten_structure_summaries(summaries: list[UniprotSummary]) -> list[FlattenedUniprotSummary]:
     """Flatten the summaries to a list of dicts with uniprot accession and structure information.
 
     Args:
         summaries: List of summaries to flatten.
 
-    Yields:
-        Dict with following keys:
-
-            * uniprot_accession: Uniprot accession.
-            * provider: [Provider][protein_quest.pdbe_3dbeacons.model.Provider] of the structure.
-            * model_identifier: Model identifier of the structure.
-            * model_url: URL to download the structure.
-            * model_format: [Format][protein_quest.pdbe_3dbeacons.model.AppUniprotSchemaModelFormat]
-                of the structure file
-            * chain: Chain identifier of the structure (first chain of first entity or "A" if no entities or chains).
-            * residue_count: Number of residues in the structure
+    Returns:
+        List of dicts.
     """
     provider_response2request = {v: k for k, v in provider_request2response.items()}
+    rows: list[FlattenedUniprotSummary] = []
     for summary in summaries:
         if summary.uniprot_entry is None or summary.structures is None:
             continue
@@ -286,11 +331,9 @@ def flatten_structure_summaries(summaries: list[UniprotSummary]) -> Generator[di
         for structure_summary in summary.structures:
             s = structure_summary.summary
             provider = provider_response2request[s.provider]
-            # Most providers have the POLYMER entity as first entity with single chain.
-            # A PED structure has zero entities, but its cif file has chain A
-            chain = s.entities[0].chain_ids[0] if len(s.entities) >= 1 and len(s.entities[0].chain_ids) else "A"
+            chain = _find_chain_for_uniprot(uniprot_accession, s)
             residue_count = s.uniprot_end - s.uniprot_start + 1
-            row = {
+            row: FlattenedUniprotSummary = {
                 "uniprot_accession": uniprot_accession,
                 "provider": provider,
                 "model_identifier": s.model_identifier,
@@ -299,4 +342,5 @@ def flatten_structure_summaries(summaries: list[UniprotSummary]) -> Generator[di
                 "chain": chain,
                 "residue_count": residue_count,
             }
-            yield row
+            rows.append(row)
+    return _sum_residue_counts_for_same_models(rows)

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from functools import cached_property
 from itertools import batched
 from textwrap import dedent
+from typing import TypedDict
 
 from SPARQLWrapper import JSON, SPARQLWrapper
 from tqdm.auto import tqdm
@@ -846,11 +847,10 @@ def search4interaction_partners(
     return hits
 
 
-@dataclass(frozen=True)
-class UniprotDetails:
+class UniprotDetails(TypedDict):
     """Details of an UniProt entry.
 
-    Parameters:
+    Attributes:
         uniprot_accession: UniProt accession.
         uniprot_id: UniProt ID (mnemonic).
         sequence_length: Length of the canonical sequence.

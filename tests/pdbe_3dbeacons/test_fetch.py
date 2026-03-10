@@ -15,7 +15,7 @@ from protein_quest.pdbe_3dbeacons.fetch import (
 async def test_uniprots2structures_single_provider():
     raw_summaries = await uniprots2structures({"P05067"}, PruneOptions(providers={"alphafill"}))
 
-    summaries = list(flatten_structure_summaries(raw_summaries))
+    summaries = flatten_structure_summaries(raw_summaries)
 
     expected = [
         {
@@ -38,7 +38,7 @@ async def test_uniprots2structures_2batches():
         {"P05067", "P38634"}, PruneOptions(providers={"alphafill"}, limit=1), batch_size=1
     )
 
-    summaries = list(flatten_structure_summaries(raw_summaries))
+    summaries = flatten_structure_summaries(raw_summaries)
 
     expected = [
         {
@@ -71,7 +71,7 @@ async def test_uniprots2structures_all_providers():
         PruneOptions(providers=search_structure_provider_choices),
     )
 
-    summaries = list(flatten_structure_summaries(raw_summaries))
+    summaries = flatten_structure_summaries(raw_summaries)
 
     expected = [
         {
@@ -84,7 +84,7 @@ async def test_uniprots2structures_all_providers():
             "uniprot_accession": "P38634",
         },
         {
-            "chain": "B",
+            "chain": "E",
             "model_format": "MMCIF",
             "model_identifier": "3v7d",
             "model_url": "https://www.ebi.ac.uk/pdbe/static/entry/3v7d_updated.cif",
@@ -93,20 +93,11 @@ async def test_uniprots2structures_all_providers():
             "uniprot_accession": "P38634",
         },
         {
-            "chain": "X",
+            "chain": "y",
             "model_format": "MMCIF",
             "model_identifier": "8k0g",
             "model_url": "https://www.ebi.ac.uk/pdbe/static/entry/8k0g_updated.cif",
-            "residue_count": 4,
-            "provider": "pdbe",
-            "uniprot_accession": "P38634",
-        },
-        {
-            "chain": "X",
-            "model_format": "MMCIF",
-            "model_identifier": "8k0g",
-            "model_url": "https://www.ebi.ac.uk/pdbe/static/entry/8k0g_updated.cif",
-            "residue_count": 43,
+            "residue_count": 47,
             "provider": "pdbe",
             "uniprot_accession": "P38634",
         },
@@ -304,7 +295,7 @@ async def test_uniprots2structures_all_providers_limit1(caplog: pytest.LogCaptur
         PruneOptions(providers=search_structure_provider_choices, limit=1),
     )
 
-    summaries = list(flatten_structure_summaries(raw_summaries))
+    summaries = flatten_structure_summaries(raw_summaries)
 
     expected = [
         {
@@ -357,7 +348,7 @@ async def test_uniprots2structures_1providermissing():
     providers.remove("pdbe")
     raw_summaries = await uniprots2structures({"P38634"}, PruneOptions(providers=providers, limit=1))
 
-    summaries = list(flatten_structure_summaries(raw_summaries))
+    summaries = flatten_structure_summaries(raw_summaries)
 
     expected = [
         {
@@ -401,7 +392,7 @@ async def test_uniprots2structures_min_residues(caplog: pytest.LogCaptureFixture
         PruneOptions(providers=search_structure_provider_choices, min_residues=200),
     )
 
-    summaries = list(flatten_structure_summaries(raw_summaries))
+    summaries = flatten_structure_summaries(raw_summaries)
 
     expected = [
         {
@@ -438,7 +429,7 @@ async def test_uniprots2structures_max_residues():
         PruneOptions(providers=search_structure_provider_choices, max_residues=16),
     )
 
-    summaries = list(flatten_structure_summaries(raw_summaries))
+    summaries = flatten_structure_summaries(raw_summaries)
 
     expected = [
         {
@@ -451,7 +442,7 @@ async def test_uniprots2structures_max_residues():
             "uniprot_accession": "P38634",
         },
         {
-            "chain": "X",
+            "chain": "y",
             "model_format": "MMCIF",
             "model_identifier": "8k0g",
             "model_url": "https://www.ebi.ac.uk/pdbe/static/entry/8k0g_updated.cif",
@@ -472,7 +463,7 @@ async def test_uniprots2structures_minandmax_residues():
         PruneOptions(providers=search_structure_provider_choices, min_residues=200, max_residues=300),
     )
 
-    summaries = list(flatten_structure_summaries(raw_summaries))
+    summaries = flatten_structure_summaries(raw_summaries)
 
     expected = [
         {
@@ -493,6 +484,56 @@ async def test_uniprots2structures_minandmax_residues():
             "provider": "alphafill",
             "uniprot_accession": "P38634",
         },
+    ]
+    assert summaries == expected
+
+
+@pytest.mark.asyncio
+@pytest.mark.vcr
+async def test_uniprots2structures_1entitynonpolymer():
+    raw_summaries = await uniprots2structures(
+        {"Q9NTW7"},
+        PruneOptions(providers={"swissmodel"}, limit=1),
+    )
+
+    summaries = flatten_structure_summaries(raw_summaries)
+
+    expected = [
+        {
+            "chain": "C",
+            "model_format": "MMCIF",
+            "model_identifier": "Q9NTW7_329-603:5v3m.1.C",
+            "model_url": "https://swissmodel.expasy.org/3d-beacons/uniprot/Q9NTW7.cif?range=329-603&template=5v3m.1.C&provider=swissmodel",
+            "residue_count": 275,
+            "provider": "swissmodel",
+            "uniprot_accession": "Q9NTW7",
+        },
+    ]
+    assert summaries == expected
+
+
+@pytest.mark.asyncio
+@pytest.mark.vcr
+async def test_uniprots2structures_merge_same_pdb():
+    raw_summaries = await uniprots2structures(
+        {"P38634"},
+        PruneOptions(providers={"pdbe"}, limit=10),
+    )
+
+    all_summaries = flatten_structure_summaries(raw_summaries)
+    model_identifier = "8k0g"
+    summaries = [s for s in all_summaries if s["model_identifier"] == model_identifier]
+
+    expected = [
+        {
+            "chain": "y",
+            "model_format": "MMCIF",
+            "model_identifier": "8k0g",
+            "model_url": "https://www.ebi.ac.uk/pdbe/static/entry/8k0g_updated.cif",
+            "residue_count": 4 + 43,  # sum residue counts of both summaries with same model identifier
+            "provider": "pdbe",
+            "uniprot_accession": "P38634",
+        }
     ]
     assert summaries == expected
 

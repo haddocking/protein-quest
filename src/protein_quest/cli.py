@@ -13,6 +13,7 @@ from importlib.util import find_spec
 from io import BytesIO, TextIOWrapper
 from pathlib import Path
 from textwrap import dedent
+from typing import Any
 
 import shtab
 from cattrs import structure
@@ -250,7 +251,7 @@ def _add_search_structure_parser(subparsers: argparse._SubParsersAction):
         "--limit",
         type=int,
         default=10_000,
-        help="Maximum number of structures per uniprot accesion per source to return.",
+        help="Maximum number of structures per uniprot accession per source to return.",
     )
     parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
     parser.add_argument(
@@ -1034,7 +1035,7 @@ def _handle_search_structure(args: argparse.Namespace):
     if raw_path:
         raw_path.write_bytes(converter.dumps(results))
         rprint(f"Written raw results to {raw_path}")
-    rows = list(flatten_structure_summaries(results))
+    rows = flatten_structure_summaries(results)
     if not rows:
         rprint("No structures found")
         return
@@ -1531,17 +1532,16 @@ def _write_complexes_csv(complexes: list[ComplexPortalEntry], output_csv: TextIO
 
 def _write_uniprot_details_csv(
     output_csv: TextIOWrapper,
-    uniprot_details_list: Iterable[UniprotDetails],
+    uniprot_details_list: list[UniprotDetails],
 ) -> None:
     if not uniprot_details_list:
         msg = "No UniProt entries found for given accessions"
         raise ValueError(msg)
     # As all props of UniprotDetails are scalar, we can directly unstructure to dicts
-    rows = converter.unstructure(uniprot_details_list)
-    _write_list_of_dicts_to_csv(output_csv, rows)
+    _write_list_of_dicts_to_csv(output_csv, uniprot_details_list)
 
 
-def _write_list_of_dicts_to_csv(output_csv: TextIOWrapper, rows: Sequence[Mapping[str, str | int | float | None]]):
+def _write_list_of_dicts_to_csv(output_csv: TextIOWrapper, rows: Sequence[Mapping[str, Any]]):
     fieldnames = rows[0].keys()
     writer = csv.DictWriter(output_csv, fieldnames=fieldnames)
     writer.writeheader()

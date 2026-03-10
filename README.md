@@ -132,7 +132,7 @@ Use [3D beacon network](https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/) to search
 for any type of structure (measured or predicted) of given uniprot accessions.
 
 ```shell
-protein-quest search structures uniprot_accs.txt structures.csv
+protein-quest search structure uniprot_accs.txt structures.csv
 ```
 
 Or to select sources

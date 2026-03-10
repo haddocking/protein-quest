@@ -1,4 +1,4 @@
-"""Models of 3D Beacons API HUB.
+"""Models of [3D Beacons API HUB](https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/).
 
 Generated with
 ```shell
@@ -10,7 +10,7 @@ uvx --from=datamodel-code-generator datamodel-codegen \
     --openapi-scopes schemas parameters paths --include-path-parameters \
     --input ./openapi.json --output model.py
 ```
-When 3D beaconds API changes this module should be regenerated and the above command and steps below should be repeated.
+When 3D beacons API changes this module should be regenerated and the above command and steps below should be repeated.
 
 After generation changes:
 
