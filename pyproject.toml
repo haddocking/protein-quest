@@ -87,7 +87,7 @@ docs = [
     "mkdocs-jupyter>=0.25.1",
     "mkdocs-material>=9.6.14",
     "mkdocs-rich-argparse>=0.1.2",
-    "mkdocstrings[python]>=0.29.1",
+    "mkdocstrings-python>=2.0.2",
 ]
 docs-type = [
     "marimo>=0.13.15",

@@ -6,13 +6,14 @@ import csv
 import logging
 import os
 import sys
-from collections.abc import Callable, Generator, Iterable, Sequence
+from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from contextlib import suppress
 from functools import lru_cache
 from importlib.util import find_spec
 from io import BytesIO, TextIOWrapper
 from pathlib import Path
 from textwrap import dedent
+from typing import Any
 
 import shtab
 from cattrs import structure
@@ -40,6 +41,12 @@ from protein_quest.io import (
     valid_structure_file_extensions,
 )
 from protein_quest.pdbe import fetch as pdbe_fetch
+from protein_quest.pdbe_3dbeacons.fetch import (
+    PruneOptions,
+    flatten_structure_summaries,
+    search_structure_provider_choices,
+    uniprots2structures,
+)
 from protein_quest.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
 from protein_quest.structure import structure2uniprot_accessions
 from protein_quest.taxonomy import SearchField, _write_taxonomy_csv, search_fields, search_taxon
@@ -191,6 +198,68 @@ def _add_search_alphafold_parser(subparsers: argparse._SubParsersAction):
         "--limit", type=int, default=10_000, help="Maximum number of Alphafold entry identifiers to return"
     )
     parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
+
+
+def _add_search_structure_parser(subparsers: argparse._SubParsersAction):
+    """Add search structure subcommand parser."""
+    description = dedent("""\
+        Search for experimentally determined and predicted structures
+        of given UniProt accessions in the [3D Beacons HUB](https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/) API.
+
+        This subcommand can be used for PDBe and AlphaFold structures,
+        but it is slower than dedicated subcommands due to many HTTP requests it has to make.
+    """)
+
+    parser = subparsers.add_parser(
+        "structure",
+        help="Search for experimentally determined and predicted structures of given UniProt accessions",
+        description=Markdown(description, style="argparse.text"),  # type: ignore using rich formatter makes this OK
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+    )
+    parser.add_argument(
+        "uniprot_accessions",
+        type=argparse.FileType("r", encoding="UTF-8"),
+        help="Text file with UniProt accessions (one per line). Use `-` for stdin.",
+    ).complete = shtab.FILE
+    parser.add_argument(
+        "output_csv",
+        type=argparse.FileType("w", encoding="UTF-8"),
+        help=dedent("""\
+            Output CSV with following columns:
+            `uniprot_accession`, `provider`, `model_identifier`, `model_url`, `model_format`, `chain`, `residue_count`.
+            Use `-` for stdout.
+        """),
+    ).complete = shtab.FILE
+    parser.add_argument(
+        "--source",
+        type=str,
+        action="append",
+        choices=search_structure_provider_choices,
+        help="Source of the structures to search for. Default `pdbe` and `alphafold`. Can be given multiple times.",
+    )
+    parser.add_argument(
+        "--min-residues",
+        type=int,
+        help="Minimum number of residues required in the chain mapped to the UniProt accession.",
+    )
+    parser.add_argument(
+        "--max-residues",
+        type=int,
+        help="Maximum number of residues allowed in the chain mapped to the UniProt accession.",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=10_000,
+        help="Maximum number of structures per uniprot accession per source to return.",
+    )
+    parser.add_argument("--timeout", type=int, default=1_800, help="Maximum seconds to wait for query to complete")
+    parser.add_argument(
+        "--raw",
+        type=Path,
+        help="""Path to write raw uniprot-structure mapping results as JSON.\
+            Raw results has more information than normal output.""",
+    )
 
 
 def _add_search_emdb_parser(subparsers: argparse._SubParsersAction):
@@ -679,6 +748,7 @@ def _add_search_subcommands(subparsers: argparse._SubParsersAction):
     _add_search_uniprot_parser(subsubparsers)
     _add_search_pdbe_parser(subsubparsers)
     _add_search_alphafold_parser(subsubparsers)
+    _add_search_structure_parser(subsubparsers)
     _add_search_emdb_parser(subsubparsers)
     _add_search_go_parser(subsubparsers)
     _add_search_taxonomy_parser(subsubparsers)
@@ -934,6 +1004,43 @@ def _handle_search_alphafold(args):
     )
     rprint(f"Found {len(results)} AlphaFold entries, written to {_name_of(output_csv)}")
     _write_dict_of_sets2csv(output_csv, results, "af_id")
+
+
+@prov(input_files=["uniprot_accessions"], output_files=["output_csv", "raw"])
+def _handle_search_structure(args: argparse.Namespace):
+    uniprot_accessions: TextIOWrapper = args.uniprot_accessions
+    timeout = converter.structure(args.timeout, int)
+    output_csv: TextIOWrapper = args.output_csv
+    raw_path = converter.structure(args.raw, Path | None)  # pyright: ignore[reportArgumentType]
+    prune_options = converter.structure(
+        {
+            "providers": args.source,
+            "limit": args.limit,
+            "min_residues": args.min_residues,
+            "max_residues": args.max_residues,
+        },
+        PruneOptions,
+    )
+    accs = set(_read_lines(uniprot_accessions))
+    rprint(f"Finding structures for {len(accs)} uniprot accessions")
+
+    results = asyncio.run(
+        uniprots2structures(
+            accs,
+            prune_options,
+            timeout=timeout,
+        )
+    )
+
+    if raw_path:
+        raw_path.write_bytes(converter.dumps(results))
+        rprint(f"Written raw results to {raw_path}")
+    rows = flatten_structure_summaries(results)
+    if not rows:
+        rprint("No structures found")
+        return
+    _write_list_of_dicts_to_csv(output_csv, rows)
+    rprint(f"Found {len(rows)} structures, written to {_name_of(output_csv)}")
 
 
 @prov(input_files=["uniprot_accessions"], output_files=["output_csv"])
@@ -1425,13 +1532,16 @@ def _write_complexes_csv(complexes: list[ComplexPortalEntry], output_csv: TextIO
 
 def _write_uniprot_details_csv(
     output_csv: TextIOWrapper,
-    uniprot_details_list: Iterable[UniprotDetails],
+    uniprot_details_list: list[UniprotDetails],
 ) -> None:
     if not uniprot_details_list:
         msg = "No UniProt entries found for given accessions"
         raise ValueError(msg)
     # As all props of UniprotDetails are scalar, we can directly unstructure to dicts
-    rows = converter.unstructure(uniprot_details_list)
+    _write_list_of_dicts_to_csv(output_csv, uniprot_details_list)
+
+
+def _write_list_of_dicts_to_csv(output_csv: TextIOWrapper, rows: Sequence[Mapping[str, Any]]):
     fieldnames = rows[0].keys()
     writer = csv.DictWriter(output_csv, fieldnames=fieldnames)
     writer.writeheader()
@@ -1442,6 +1552,7 @@ HANDLERS: dict[tuple[str, str | None], Callable] = {
     ("search", "uniprot"): _handle_search_uniprot,
     ("search", "pdbe"): _handle_search_pdbe,
     ("search", "alphafold"): _handle_search_alphafold,
+    ("search", "structure"): _handle_search_structure,
     ("search", "emdb"): _handle_search_emdb,
     ("search", "go"): _handle_search_go,
     ("search", "taxonomy"): _handle_search_taxonomy,

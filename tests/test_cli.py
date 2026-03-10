@@ -178,6 +178,38 @@ def test_search_pdbe_bad_chain_length_with_min_keep(tmp_path: Path, caplog: pyte
     assert "No chain length for this entry." in log
 
 
+@pytest.mark.vcr
+def test_search_structure(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    input_text = tmp_path / "uniprot_accessions.txt"
+    input_text.write_text("Q9NTW7\n")
+    output_file = tmp_path / "structure_results.csv"
+    raw_output_file = tmp_path / "structure.results.json"
+    argv = [
+        "search",
+        "structure",
+        "--limit",
+        "1",
+        "--source",
+        "alphafold",
+        "--source",
+        "alphafill",
+        "--raw",
+        str(raw_output_file),
+        str(input_text),
+        str(output_file),
+    ]
+
+    main(argv)
+
+    assert len(output_file.read_text()) == 260
+    assert len(raw_output_file.read_text()) == 3522
+
+    captured = capsys.readouterr()
+    assert "Finding structures for 1 uniprot accessions" in captured.err
+    assert "Written raw results to" in captured.err
+    assert "Found 2 structures, written to" in captured.err
+
+
 def test_search_emdb(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     input_text = tmp_path / "uniprot_accessions.txt"
     input_text.write_text("O14646\n")

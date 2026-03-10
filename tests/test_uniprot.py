@@ -510,9 +510,9 @@ def test_search4interaction_partners():
 @pytest.mark.vcr
 def test_map_uniprot_accessions2uniprot_details():
     uniprot_accessions = ["P05067", "A6NGD5", "O14627", "P00697", "P42284", "A0A0B5AC95", "A0A0S2Z4R0"]
-    results = set(map_uniprot_accessions2uniprot_details(uniprot_accessions))
+    results = list(map_uniprot_accessions2uniprot_details(uniprot_accessions))
 
-    expected = {
+    expected = [
         UniprotDetails(
             uniprot_accession="A0A0B5AC95",
             uniprot_id="INS1A_CONGE",
@@ -576,5 +576,5 @@ def test_map_uniprot_accessions2uniprot_details():
             taxon_id=7227,
             taxon_name="Drosophila melanogaster",
         ),
-    }
+    ]
     assert results == expected
