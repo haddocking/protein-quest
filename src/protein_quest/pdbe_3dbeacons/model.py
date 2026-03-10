@@ -522,7 +522,7 @@ type AppUniprotSchemaOligomericState = Literal[
 App Uniprot Schema Oligomeric State
 """
 
-type Provider = Literal[
+Provider = Literal[
     "pdbe",
     "ped",
     "swissmodel",

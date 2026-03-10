@@ -207,7 +207,7 @@ def _add_search_structure_parser(subparsers: argparse._SubParsersAction):
         of given UniProt accessions in the [3D Beacons HUB](https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/) API.
 
         This subcommand can be used for PDBe and AlphaFold structures,
-        but it is less efficient than dedicated subcommands due to many HTTP requests it has to make.
+        but it is slower than dedicated subcommands due to many HTTP requests it has to make.
     """)
 
     parser = subparsers.add_parser(
