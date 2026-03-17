@@ -47,6 +47,7 @@ from protein_quest.pdbe_3dbeacons.fetch import (
     search_structure_provider_choices,
     uniprots2structures,
 )
+from protein_quest.pdbe_3dbeacons.retrieve import read_retrieve_structure_rows, retrieve_structures
 from protein_quest.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
 from protein_quest.structure import structure2uniprot_accessions
 from protein_quest.taxonomy import SearchField, _write_taxonomy_csv, search_fields, search_taxon
@@ -230,6 +231,7 @@ def _add_search_structure_parser(subparsers: argparse._SubParsersAction):
             Use `-` for stdout.
         """),
     ).complete = shtab.FILE
+    # TODO make it easier to specify all providers, with --source all
     parser.add_argument(
         "--source",
         type=str,
@@ -581,6 +583,38 @@ def _add_retrieve_emdb_parser(subparsers: argparse._SubParsersAction):
     _add_cacher_arguments(parser)
 
 
+def _add_retrieve_structure_parser(subparsers: argparse._SubParsersAction):
+    """Add retrieve structure subcommand parser."""
+    parser = subparsers.add_parser(
+        "structure",
+        help="Retrieve structure files from search structure CSV output",
+        description="Retrieve structure files from model URLs listed in search structure CSV output.",
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+    )
+    parser.add_argument(
+        "structures_csv",
+        type=argparse.FileType("r", encoding="UTF-8"),
+        help=(
+            "CSV file with `provider`, `model_identifier`, `model_url`, and `model_format` columns. Use `-` for stdin."
+        ),
+    ).complete = shtab.FILE
+    parser.add_argument(
+        "output_dir", type=Path, help="Directory to store retrieved structure files"
+    ).complete = shtab.DIRECTORY
+    parser.add_argument(
+        "--raw",
+        action="store_true",
+        help="By default files are downloaded as compressed MMCIF (.cif.gz). Add flag to download structures in the native format from the CSV model metadata.",
+    )
+    parser.add_argument(
+        "--max-parallel-downloads",
+        type=int,
+        default=5,
+        help="Maximum number of parallel downloads",
+    )
+    _add_cacher_arguments(parser)
+
+
 def _add_scheduler_address_argument(parser):
     parser.add_argument(
         "--scheduler-address",
@@ -769,6 +803,7 @@ def _add_retrieve_subcommands(subparsers: argparse._SubParsersAction):
 
     _add_retrieve_pdbe_parser(subsubparsers)
     _add_retrieve_alphafold_parser(subsubparsers)
+    _add_retrieve_structure_parser(subsubparsers)
     _add_retrieve_emdb_parser(subsubparsers)
 
 
@@ -1200,6 +1235,30 @@ def _handle_retrieve_emdb(args):
     rprint(f"Retrieved {len(result)} EMDB entries")
 
 
+@prov(input_files=["structures_csv"], output_dirs=["output_dir"])
+def _handle_retrieve_structure(args: argparse.Namespace):
+    rows = read_retrieve_structure_rows(args.structures_csv)
+    raw = converter.structure(args.raw, bool)
+    max_parallel_downloads = converter.structure(args.max_parallel_downloads, int)
+    output_dir = Path(args.output_dir)
+    cacher = _initialize_cacher(args)
+
+    summary = asyncio.run(
+        retrieve_structures(
+            rows,
+            output_dir,
+            raw=raw,
+            max_parallel_downloads=max_parallel_downloads,
+            cacher=cacher,
+        )
+    )
+    rprint(
+        "Retrieved structure files "
+        f"requested={summary.requested}, downloaded={summary.downloaded}, skipped={summary.skipped}, "
+        f"converted={summary.converted}, final={summary.final}"
+    )
+
+
 @prov(input_dirs=["input_dir"], output_dirs=["output_dir"], output_files=["write_stats"])
 def _handle_filter_confidence(args: argparse.Namespace):
     # we are repeating types here and in add_argument call
@@ -1561,6 +1620,7 @@ HANDLERS: dict[tuple[str, str | None], Callable] = {
     ("search", "uniprot-details"): _handle_search_uniprot_details,
     ("retrieve", "pdbe"): _handle_retrieve_pdbe,
     ("retrieve", "alphafold"): _handle_retrieve_alphafold,
+    ("retrieve", "structure"): _handle_retrieve_structure,
     ("retrieve", "emdb"): _handle_retrieve_emdb,
     ("filter", "confidence"): _handle_filter_confidence,
     ("filter", "chain"): _handle_filter_chain,

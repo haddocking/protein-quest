@@ -257,7 +257,7 @@ class DirectoryCacher(Cacher):
 
 
 async def retrieve_files(
-    urls: Iterable[tuple[URL | str, str]],
+    urls: Iterable[tuple[URL | str, str]] | Iterable[tuple[URL | str, str, bool]],
     save_dir: Path,
     max_parallel_downloads: int = 5,
     retries: int = 3,
@@ -272,6 +272,7 @@ async def retrieve_files(
 
     Args:
         urls: A list of tuples, where each tuple contains a URL and a filename.
+            Or tuple with URL, filename and whether to download gzipped content.
         save_dir: The directory to save the downloaded files to.
         max_parallel_downloads: The maximum number of files to download in parallel.
         retries: The number of times to retry a failed download.
@@ -298,10 +299,10 @@ async def retrieve_files(
                 semaphore=semaphore,
                 cacher=cacher,
                 chunk_size=chunk_size,
-                gzip_files=gzip_files,
+                gzip_files=rest[0] if rest else gzip_files,
                 raise_for_not_found=raise_for_not_found,
             )
-            for url, filename in urls
+            for url, filename, *rest in urls
         ]
         raw_files: list[Path | None] = await tqdm.gather(*tasks, desc=desc)
         return [f for f in raw_files if f is not None]
