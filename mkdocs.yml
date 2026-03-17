@@ -78,7 +78,7 @@ nav:
   - CLI Reference: cli.md
   - FAQ: faq.md
   - Notebooks:
-      - notebooks/index.md
+      - Overview: notebooks/README.md
       - Search uniprot: notebooks/uniprot.ipynb
       - Alphafold: notebooks/alphafold.ipynb
       - PDBe: notebooks/pdbe.ipynb
