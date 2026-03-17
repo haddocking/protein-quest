@@ -87,8 +87,8 @@ The main entry point is the `protein-quest` command line tool which has multiple
 subcommands to perform actions.
 
 To use programmaticly, see the
-[Jupyter notebooks](https://www.bonvinlab.org/protein-quest/notebooks) and
-[API documentation](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/).
+[Jupyter notebooks](https://www.bonvinlab.org/protein-quest/notebooks/README.html),
+and [API documentation](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/).
 
 While downloading or copying files it uses a global cache (located at
 `~/.cache/protein-quest`) and hardlinks to save disk space and improve speed.
