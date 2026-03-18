@@ -17,7 +17,7 @@ After generation changes:
 * ruff format
 * ruff check --fix
 * ruff ignores
-* extract Provider type
+* extract Provider type and search_structure_provider_choices set
 
 Also document UniprotSummary and its children:
 
@@ -40,7 +40,7 @@ Convert name of type from CamelCase to Camel case as docstring.
 
 # ruff: noqa: N815
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 
 @dataclass
@@ -537,6 +537,9 @@ Provider = Literal[
 """
 Provider
 """
+
+search_structure_provider_choices = set(get_args(Provider))
+"""All providers"""
 
 
 @dataclass

@@ -9,6 +9,7 @@ from pathlib import Path
 
 from protein_quest.converter import converter
 from protein_quest.io import read_structure, split_name_and_extension, write_structure
+from protein_quest.pdbe_3dbeacons.fetch import search_structure_provider_choices
 from protein_quest.pdbe_3dbeacons.model import AppUniprotSchemaModelFormat, Provider
 from protein_quest.utils import Cacher, PassthroughCacher, retrieve_files
 
@@ -86,6 +87,9 @@ async def _prepare_structure_downloads(
 
     nr_cached = 0
     for row in rows:
+        if row.provider not in search_structure_provider_choices:
+            msg = f"Unsupported provider: {row.provider}"
+            raise ValueError(msg)
         gzip_row = not raw and row.provider in gzipped_response_capable_providers
         filename = _build_structure_filename(row.provider, row.model_identifier, row.model_format, gzip_row)
         if raw:

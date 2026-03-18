@@ -174,6 +174,34 @@ async def test_retrieve_structures_skips_download_when_output_exists(
     )
     assert f"File {output_file.name} already exists in {tmp_path}, skipping download." in caplog.text
 
+@pytest.mark.asyncio
+async def test_retrieve_structures_raises_on_invalid_format(tmp_path: Path):
+    rows = [
+        RetrieveStructureRow(
+            provider="swissmodel",
+            model_identifier="42",
+            model_url="http://example.org/model.42",
+            model_format="INVALID_FORMAT", # type: ignore[reportArgumentType]
+        )
+    ]
+
+    with pytest.raises(ValueError, match="Unsupported model format: INVALID_FORMAT"):
+        await retrieve_structures(rows, tmp_path)
+
+@pytest.mark.asyncio
+async def test_retrieve_structures_raises_on_invalid_provider(tmp_path: Path):
+    rows = [
+        RetrieveStructureRow(
+            provider="invalid_provider", # type: ignore[reportArgumentType]
+            model_identifier="42",
+            model_url="http://example.org/model.cif",
+            model_format="MMCIF",
+        )
+    ]
+
+    with pytest.raises(ValueError, match="Unsupported provider: invalid_provider"):
+        await retrieve_structures(rows, tmp_path)
+
 
 class TestReadRetrieveStructureRows:
     def test_allows_extra_columns_and_strips_values(self):

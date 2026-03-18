@@ -44,9 +44,9 @@ from protein_quest.pdbe import fetch as pdbe_fetch
 from protein_quest.pdbe_3dbeacons.fetch import (
     PruneOptions,
     flatten_structure_summaries,
-    search_structure_provider_choices,
     uniprots2structures,
 )
+from protein_quest.pdbe_3dbeacons.model import search_structure_provider_choices
 from protein_quest.pdbe_3dbeacons.retrieve import read_retrieve_structure_rows, retrieve_structures
 from protein_quest.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
 from protein_quest.structure import structure2uniprot_accessions
