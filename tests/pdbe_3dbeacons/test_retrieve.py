@@ -137,6 +137,73 @@ class TestRetrieveStructures:
         )
         assert f"File {cached_file_name} already exists in cache, skipping download." in caplog.text
 
+    @pytest.mark.asyncio
+    @pytest.mark.vcr
+    @pytest.mark.default_cassette("TestRetrieveStructures.test_native_pdb_convert_to_cif_gz.yaml")
+    async def test_caches_converted_output_for_later_run(self, tmp_path: Path):
+        rows = [
+            RetrieveStructureRow(
+                provider="isoformio",
+                model_identifier="CHS.58955.1",
+                model_url="https://storage.googleapis.com/isoform.io/pdb/CHS.58955.1.pdb",
+                model_format="PDB",
+            )
+        ]
+
+        cacher = DirectoryCacher(tmp_path / "cache", copy_method="copy")
+        first_output_dir = tmp_path / "first"
+        second_output_dir = tmp_path / "second"
+        # populate cache with first run
+        expected_name = "isoformio~CHS.58955.1.cif.gz"
+        await retrieve_structures(rows, first_output_dir, cacher=cacher)
+
+        second_summary = await retrieve_structures(rows, second_output_dir, cacher=cacher)
+
+        first_output_file = first_output_dir / expected_name
+        second_output_file = second_output_dir / expected_name
+        assert second_output_file.read_bytes() == first_output_file.read_bytes()
+        assert second_summary == RetrieveStructureSummary(
+            requested=0,
+            downloaded=0,
+            skipped=0,
+            converted=0,
+            final=0,
+            cached=1,
+        )
+
+    @pytest.mark.asyncio
+    @pytest.mark.vcr
+    async def test_cif_to_gzip_cached(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
+        rows = [
+            RetrieveStructureRow(
+                provider="ped",
+                model_identifier="PED03502e001",
+                model_url="https://deposition.proteinensemble.org/api/v1/entries/PED03502/ensembles/e001/ensemble-sample/",
+                model_format="MMCIF",
+            )
+        ]
+
+        cacher = DirectoryCacher(tmp_path / "cache", copy_method="copy")
+        output_dir = tmp_path / "second"
+        # populate cache with first run
+        expected_name = "ped~PED03502e001.cif.gz"
+
+        with caplog.at_level("DEBUG", logger="protein_quest.pdbe_3dbeacons.retrieve"):
+            summary = await retrieve_structures(rows, output_dir, cacher=cacher)
+
+        output_file = output_dir / expected_name
+        assert output_file.exists()
+        assert output_file.stat().st_size > 0
+        assert_is_gzipped(output_file)
+        assert summary == RetrieveStructureSummary(
+            requested=1,
+            downloaded=1,
+            skipped=0,
+            converted=1,
+            final=1,
+            cached=0,
+        )
+
     @pytest.mark.vcr
     @pytest.mark.asyncio
     async def test_skips_download_when_output_exists(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):

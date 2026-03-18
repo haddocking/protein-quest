@@ -1,6 +1,7 @@
 """Helpers for retrieving structure files from 3D Beacons search results."""
 
 import csv
+import gzip
 import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -8,7 +9,7 @@ from io import StringIO, TextIOWrapper
 from pathlib import Path
 
 from protein_quest.converter import converter
-from protein_quest.io import read_structure, split_name_and_extension, write_structure
+from protein_quest.io import read_structure, split_name_and_extension, structure2cifgz
 from protein_quest.pdbe_3dbeacons.model import AppUniprotSchemaModelFormat, Provider, search_structure_provider_choices
 from protein_quest.utils import Cacher, PassthroughCacher, retrieve_files
 
@@ -118,11 +119,12 @@ async def _prepare_structure_downloads(
     return urls, nr_cached
 
 
-def _finalize_downloaded_structures(
+async def _finalize_downloaded_structures(
     downloaded: list[Path],
     urls: list[tuple[str, str, bool]],
     output_dir: Path,
     raw: bool,
+    cacher: Cacher,
 ) -> tuple[int, int]:
     downloaded_by_name = {path.name: path for path in downloaded}
     converted_count = 0
@@ -145,9 +147,12 @@ def _finalize_downloaded_structures(
 
         target = output_dir / f"{stem}.cif.gz"
         logger.info(f"Converting {downloaded_path} to {target} format")
-        structure_obj = read_structure(downloaded_path)
-        write_structure(structure_obj, target)
-        # TODO write target to cache, but need target as bytes, not as Path
+        if native_ext == ".cif":
+            converted_bytes = gzip.compress(downloaded_path.read_bytes())
+        else:
+            structure_obj = read_structure(downloaded_path)
+            converted_bytes = structure2cifgz(structure_obj)
+        await cacher.write_bytes(target, converted_bytes)
         downloaded_path.unlink()
         converted_count += 1
         final_written += 1
@@ -175,11 +180,12 @@ async def retrieve_structures(
         raise_for_not_found=False,
     )
 
-    converted_count, final_written = _finalize_downloaded_structures(
+    converted_count, final_written = await _finalize_downloaded_structures(
         downloaded=downloaded,
         urls=urls,
         output_dir=output_dir,
         raw=raw,
+        cacher=cacher,
     )
 
     nr_requested = len(urls)
