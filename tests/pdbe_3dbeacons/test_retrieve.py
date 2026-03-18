@@ -145,9 +145,7 @@ async def test_retrieve_structures_uses_cacher_and_skips_download(tmp_path: Path
 @pytest.mark.vcr
 @pytest.mark.default_cassette("test_retrieve_structures_defaults_to_cif_gz.yaml")
 @pytest.mark.asyncio
-async def test_retrieve_structures_skips_download_when_output_exists(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
-):
+async def test_retrieve_structures_skips_download_when_output_exists(tmp_path: Path, caplog: pytest.LogCaptureFixture):
     rows = [
         RetrieveStructureRow(
             provider="swissmodel",
@@ -174,6 +172,7 @@ async def test_retrieve_structures_skips_download_when_output_exists(
     )
     assert f"File {output_file.name} already exists in {tmp_path}, skipping download." in caplog.text
 
+
 @pytest.mark.asyncio
 async def test_retrieve_structures_raises_on_invalid_format(tmp_path: Path):
     rows = [
@@ -181,18 +180,19 @@ async def test_retrieve_structures_raises_on_invalid_format(tmp_path: Path):
             provider="swissmodel",
             model_identifier="42",
             model_url="http://example.org/model.42",
-            model_format="INVALID_FORMAT", # type: ignore[reportArgumentType]
+            model_format="INVALID_FORMAT",  # type: ignore[reportArgumentType]
         )
     ]
 
     with pytest.raises(ValueError, match="Unsupported model format: INVALID_FORMAT"):
         await retrieve_structures(rows, tmp_path)
 
+
 @pytest.mark.asyncio
 async def test_retrieve_structures_raises_on_invalid_provider(tmp_path: Path):
     rows = [
         RetrieveStructureRow(
-            provider="invalid_provider", # type: ignore[reportArgumentType]
+            provider="invalid_provider",  # type: ignore[reportArgumentType]
             model_identifier="42",
             model_url="http://example.org/model.cif",
             model_format="MMCIF",

@@ -604,7 +604,10 @@ def _add_retrieve_structure_parser(subparsers: argparse._SubParsersAction):
     parser.add_argument(
         "--raw",
         action="store_true",
-        help="By default files are downloaded as compressed MMCIF (.cif.gz). Add flag to download structures in the native format from the CSV model metadata.",
+        help=dedent("""\
+            By default files are downloaded as compressed MMCIF (.cif.gz).
+            Add flag to download structures in the native format from the CSV model metadata.
+        """),
     )
     parser.add_argument(
         "--max-parallel-downloads",
@@ -1255,7 +1258,7 @@ def _handle_retrieve_structure(args: argparse.Namespace):
     rprint(
         "Retrieved structure files "
         f"requested={summary.requested}, downloaded={summary.downloaded}, skipped={summary.skipped}, "
-        f"converted={summary.converted}, final={summary.final}"
+        f"converted={summary.converted}, final={summary.final}, cached={summary.cached}"
     )
 
 

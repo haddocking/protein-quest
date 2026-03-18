@@ -476,9 +476,10 @@ def test_retrieve_structure_happy_path(tmp_path: Path, capsys: pytest.CaptureFix
     )
     output_dir = tmp_path / "downloads"
 
-    main(["retrieve", "structure", str(input_csv), str(output_dir)])
+    main(["retrieve", "structure", "--no-cache", str(input_csv), str(output_dir)])
 
     assert (output_dir / "swissmodel~Q9NTW7_329-603:5v3m.1.C.cif.gz").exists()
     captured = capsys.readouterr()
     assert "downloaded=1" in captured.err
-    assert "converted=1" in captured.err
+    assert "converted=0" in captured.err
+    assert "cached=0" in captured.err

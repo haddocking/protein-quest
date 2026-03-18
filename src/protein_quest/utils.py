@@ -273,6 +273,8 @@ async def retrieve_files(
     Args:
         urls: A list of tuples, where each tuple contains a URL and a filename.
             Or tuple with URL, filename and whether to download gzipped content.
+            When given (...,...,True) then,
+            it requires the server of that URL can send gzip encoded content.
         save_dir: The directory to save the downloaded files to.
         max_parallel_downloads: The maximum number of files to download in parallel.
         retries: The number of times to retry a failed download.
