@@ -41,13 +41,13 @@ from protein_quest.io import (
     valid_structure_file_extensions,
 )
 from protein_quest.pdbe import fetch as pdbe_fetch
-from protein_quest.pdbe_3dbeacons.fetch import (
+from protein_quest.pdbe_3dbeacons.model import search_structure_provider_choices
+from protein_quest.pdbe_3dbeacons.retrieve import read_retrieve_structure_rows, retrieve_structures
+from protein_quest.pdbe_3dbeacons.search import (
     PruneOptions,
     flatten_structure_summaries,
     uniprots2structures,
 )
-from protein_quest.pdbe_3dbeacons.model import search_structure_provider_choices
-from protein_quest.pdbe_3dbeacons.retrieve import read_retrieve_structure_rows, retrieve_structures
 from protein_quest.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
 from protein_quest.structure import structure2uniprot_accessions
 from protein_quest.taxonomy import SearchField, _write_taxonomy_csv, search_fields, search_taxon

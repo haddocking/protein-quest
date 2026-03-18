@@ -9,8 +9,7 @@ from pathlib import Path
 
 from protein_quest.converter import converter
 from protein_quest.io import read_structure, split_name_and_extension, write_structure
-from protein_quest.pdbe_3dbeacons.fetch import search_structure_provider_choices
-from protein_quest.pdbe_3dbeacons.model import AppUniprotSchemaModelFormat, Provider
+from protein_quest.pdbe_3dbeacons.model import AppUniprotSchemaModelFormat, Provider, search_structure_provider_choices
 from protein_quest.utils import Cacher, PassthroughCacher, retrieve_files
 
 logger = logging.getLogger(__name__)
