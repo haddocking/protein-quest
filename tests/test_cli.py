@@ -210,6 +210,36 @@ def test_search_structure(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     assert "Found 2 structures, written to" in captured.err
 
 
+@pytest.mark.vcr
+def test_search_structure_all_sources(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    input_text = tmp_path / "uniprot_accessions.txt"
+    input_text.write_text("Q9NTW7\n")
+    output_file = tmp_path / "structure_results.csv"
+    raw_output_file = tmp_path / "structure.results.json"
+    argv = [
+        "search",
+        "structure",
+        "--limit",
+        "1",
+        "--source",
+        "all",
+        "--raw",
+        str(raw_output_file),
+        str(input_text),
+        str(output_file),
+    ]
+
+    main(argv)
+
+    assert len(output_file.read_text()) == 612
+    assert len(raw_output_file.read_text()) == 6561
+
+    captured = capsys.readouterr()
+    assert "Finding structures for 1 uniprot accessions" in captured.err
+    assert "Written raw results to" in captured.err
+    assert "Found 5 structures, written to" in captured.err
+
+
 def test_search_emdb(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     input_text = tmp_path / "uniprot_accessions.txt"
     input_text.write_text("O14646\n")

@@ -11,7 +11,7 @@ import logging
 from asyncio import sleep
 from collections.abc import Generator, Iterable
 from itertools import batched
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 from aiohttp_retry import RetryClient
 from attrs import define, field, validators

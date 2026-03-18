@@ -231,13 +231,13 @@ def _add_search_structure_parser(subparsers: argparse._SubParsersAction):
             Use `-` for stdout.
         """),
     ).complete = shtab.FILE
-    # TODO make it easier to specify all providers, with --source all
     parser.add_argument(
         "--source",
         type=str,
         action="append",
-        choices=search_structure_provider_choices,
-        help="Source of the structures to search for. Default `pdbe` and `alphafold`. Can be given multiple times.",
+        choices={*search_structure_provider_choices, "all"},
+        help="Source of the structures to search for. Default `pdbe` and `alphafold`.\
+            Can be given multiple times. Use 'all' to search all sources.",
     )
     parser.add_argument(
         "--min-residues",
@@ -1050,6 +1050,8 @@ def _handle_search_structure(args: argparse.Namespace):
     timeout = converter.structure(args.timeout, int)
     output_csv: TextIOWrapper = args.output_csv
     raw_path = converter.structure(args.raw, Path | None)  # pyright: ignore[reportArgumentType]
+    if len(args.source) == 1 and args.source[0] == "all":
+        args.source = search_structure_provider_choices
     prune_options = converter.structure(
         {
             "providers": args.source,

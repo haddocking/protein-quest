@@ -538,7 +538,7 @@ Provider = Literal[
 Provider
 """
 
-search_structure_provider_choices = set(get_args(Provider))
+search_structure_provider_choices: set[Provider] = set(get_args(Provider))
 """All providers"""
 
 
