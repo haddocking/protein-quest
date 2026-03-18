@@ -78,6 +78,7 @@ async def _prepare_structure_downloads(
     cacher: Cacher,
 ) -> tuple[list[tuple[str, str, bool]], int]:
     urls: list[tuple[str, str, bool]] = []
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     # Tested with `uvx --from=httpx[cli] httpx -h 'Accept-Encoding' gzip --download somefile -v <url>`
     # should have Content-Encoding: gzip in the response headers
@@ -100,6 +101,7 @@ async def _prepare_structure_downloads(
                 logger.debug(f"File {filename} already exists in cache, skipping download.")
                 await cacher.copy_from_cache(output_dir / filename)
                 nr_cached += 1
+                continue
         else:
             # If *.cif.gz exist, skip download
             output_file = output_dir / _build_structure_filename(row.provider, row.model_identifier, "MMCIF", True)

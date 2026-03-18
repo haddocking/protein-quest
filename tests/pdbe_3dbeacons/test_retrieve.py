@@ -194,6 +194,68 @@ class TestRetrieveStructures:
         with pytest.raises(ValueError, match="Unsupported provider: invalid_provider"):
             await retrieve_structures(rows, tmp_path)
 
+    @pytest.mark.asyncio
+    async def test_raw_exists(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
+        rows = [
+            RetrieveStructureRow(
+                provider="swissmodel",
+                model_identifier="Q9NTW7_329-603:5v3m.1.C",
+                model_url="https://swissmodel.expasy.org/3d-beacons/uniprot/Q9NTW7.cif?range=329-603&template=5v3m.1.C&provider=swissmodel",
+                model_format="MMCIF",
+            )
+        ]
+
+        output_file = tmp_path / "swissmodel~Q9NTW7_329-603:5v3m.1.C.cif"
+        output_file.write_bytes(b"existing-content")
+
+        with caplog.at_level("DEBUG", logger="protein_quest.pdbe_3dbeacons.retrieve"):
+            summary = await retrieve_structures(rows, tmp_path, raw=True)
+
+        assert output_file.read_bytes() == b"existing-content"
+        assert summary == RetrieveStructureSummary(
+            requested=0,
+            downloaded=0,
+            skipped=0,
+            converted=0,
+            final=0,
+            cached=0,
+        )
+        assert f"File {output_file.name} already exists in {tmp_path}, skipping download." in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_raw_exists_in_cache(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
+        rows = [
+            RetrieveStructureRow(
+                provider="swissmodel",
+                model_identifier="Q9NTW7_329-603:5v3m.1.C",
+                model_url="https://swissmodel.expasy.org/3d-beacons/uniprot/Q9NTW7.cif?range=329-603&template=5v3m.1.C&provider=swissmodel",
+                model_format="MMCIF",
+            )
+        ]
+        cache_dir = tmp_path / "cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        cacher = DirectoryCacher(cache_dir)
+        filename = "swissmodel~Q9NTW7_329-603:5v3m.1.C.cif"
+        cache_source_file = tmp_path / filename
+        await cacher.write_bytes(cache_source_file, b"cached-content")
+
+        output_dir = tmp_path / "output"
+
+        with caplog.at_level("DEBUG", logger="protein_quest.pdbe_3dbeacons.retrieve"):
+            summary = await retrieve_structures(rows, output_dir, cacher=cacher, raw=True)
+        output_file = output_dir / filename
+        assert output_file.exists()
+        assert output_file.read_bytes() == b"cached-content"
+        assert summary == RetrieveStructureSummary(
+            requested=0,
+            downloaded=0,
+            skipped=0,
+            converted=0,
+            final=0,
+            cached=1,
+        )
+        assert f"File {filename} already exists in cache, skipping download." in caplog.text
+
 
 class TestReadRetrieveStructureRows:
     def test_allows_extra_columns_and_strips_values(self):
