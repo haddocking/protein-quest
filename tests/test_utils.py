@@ -1,6 +1,8 @@
 import asyncio
 import gzip
 import logging
+import re
+from io import StringIO
 from pathlib import Path
 
 import pytest
@@ -19,6 +21,7 @@ from protein_quest.utils import (
     async_copyfile,
     copyfile,
     populate_cache_command,
+    read_ids_from_csv,
     retrieve_files,
     user_cache_root_dir,
 )
@@ -553,3 +556,33 @@ async def test_retrieve_files_somegzipped(
         assert content == "This is file 1."
     assert expected_file2.exists()
     assert expected_file2.read_text() == "This is file 2."
+
+
+class TestReadIdsFromCsv:
+    def test_reads_direct_id_column(self):
+        csv_data = StringIO("pdb_id\n2Y29\n8WAS\n2Y29\n")
+
+        ids = read_ids_from_csv(csv_data, id_column="pdb_id", model_provider="pdbe")
+
+        assert ids == {"2Y29", "8WAS"}
+
+    def test_reads_model_identifier_with_transform(self):
+        csv_data = StringIO("model_provider,model_identifier\nalphafold,AF-A0A1B0GVZ6-F1\nalphafold,AF-P05067-F1\n")
+
+        ids = read_ids_from_csv(
+            csv_data,
+            id_column="af_id",
+            model_provider="alphafold",
+            transform_model_identifier=lambda raw_id: raw_id.split("-")[1],
+        )
+
+        assert ids == {"A0A1B0GVZ6", "P05067"}
+
+    def test_raises_for_missing_columns(self):
+        csv_data = StringIO("uniprot_acc\nP05067\n")
+
+        with pytest.raises(
+            ValueError,
+            match=re.escape("Column 'af_id' or 'model_provider'/'model_identifier' columns not found in CSV file"),
+        ):
+            read_ids_from_csv(csv_data, id_column="af_id", model_provider="alphafold")

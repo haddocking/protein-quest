@@ -1,4 +1,5 @@
 import re
+from io import StringIO
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,7 @@ from protein_quest.alphafold.fetch import (
     fetch_alphafold_db_version,
     fetch_many,
     files_for_alphafold_entries,
+    read_af_ids_from_csv,
 )
 from protein_quest.converter import converter
 
@@ -278,6 +280,22 @@ def test_files_for_alphafold_entries():
         },
     }
     assert result == expected
+
+
+class TestReadAfIdsFromCsv:
+    def test_reads_af_id_column(self):
+        csv_data = StringIO("af_id\nP05067\nQ9H9K5\nP05067\n")
+
+        ids = read_af_ids_from_csv(csv_data)
+
+        assert ids == {"P05067", "Q9H9K5"}
+
+    def test_reads_model_identifier_for_alphafold_provider(self):
+        csv_data = StringIO("model_provider,model_identifier\nalphafold,AF-P05067-F1\nalphafold,AF-Q9H9K5-F1\n")
+
+        ids = read_af_ids_from_csv(csv_data)
+
+        assert ids == {"P05067", "Q9H9K5"}
 
 
 def test_files_for_alphafold_entries_someformats_gzipped():

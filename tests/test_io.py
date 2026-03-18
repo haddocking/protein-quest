@@ -1,7 +1,6 @@
 import gzip
 from pathlib import Path
 
-import gemmi
 import pytest
 
 from protein_quest.io import (

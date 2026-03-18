@@ -27,7 +27,7 @@ from tqdm.rich import tqdm
 
 from protein_quest.__version__ import __version__
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
-from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_formats
+from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_formats, read_af_ids_from_csv
 from protein_quest.alphafold.fetch import fetch_many as af_fetch
 from protein_quest.converter import PositiveInt, converter
 from protein_quest.emdb import fetch as emdb_fetch
@@ -1188,7 +1188,7 @@ def _handle_retrieve_pdbe(args: argparse.Namespace):
     max_parallel_downloads = args.max_parallel_downloads
     cacher = _initialize_cacher(args)
 
-    pdb_ids = _read_column_from_csv(pdbe_csv, "pdb_id")
+    pdb_ids = pdbe_fetch.read_pdb_ids_from_csv(pdbe_csv)
     rprint(f"Retrieving {len(pdb_ids)} PDBe entries")
     result = asyncio.run(
         pdbe_fetch.fetch(pdb_ids, output_dir, max_parallel_downloads=max_parallel_downloads, cacher=cacher)
@@ -1211,7 +1211,7 @@ def _handle_retrieve_alphafold(args):
         raw_formats = {"cif"}
 
     # TODO besides `uniprot_accession,af_id\n` csv also allow headless single column format
-    af_ids = _read_column_from_csv(alphafold_csv, "af_id")
+    af_ids = read_af_ids_from_csv(alphafold_csv)
     formats: set[DownloadableFormat] = structure(raw_formats, set[DownloadableFormat])
     rprint(f"Retrieving {len(af_ids)} AlphaFold entries with formats {formats}")
     afs = af_fetch(
