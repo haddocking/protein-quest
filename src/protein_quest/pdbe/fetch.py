@@ -1,9 +1,10 @@
 """Module for fetching structures from PDBe."""
 
 from collections.abc import Iterable, Mapping
+from io import TextIOBase
 from pathlib import Path
 
-from protein_quest.utils import Cacher, retrieve_files, run_async
+from protein_quest.utils import Cacher, read_ids_from_csv, retrieve_files, run_async
 
 
 def _map_id_mmcif(pdb_id: str) -> tuple[str, str]:
@@ -66,3 +67,19 @@ def sync_fetch(ids: Iterable[str], save_dir: Path, max_parallel_downloads: int =
         A dict of id and paths to the downloaded mmCIF files.
     """
     return run_async(fetch(ids, save_dir, max_parallel_downloads))
+
+
+def read_pdb_ids_from_csv(file: TextIOBase) -> set[str]:
+    """Reads PDB IDs from a CSV file.
+
+    The CSV file should have either a "pdb_id" column or
+    a combination of "model_provider" and "model_identifier" columns.
+    Reads value of "model_identifier" column rows where the "model_provider" column has value "pdbe",
+
+    Arguments:
+        file: A file-like object containing the CSV data.
+
+    Returns:
+        A set of PDB IDs extracted from the CSV file.
+    """
+    return read_ids_from_csv(file, id_column="pdb_id", model_provider="pdbe")

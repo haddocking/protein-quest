@@ -163,6 +163,12 @@ protein-quest retrieve alphafold alphafold.csv downloads-af/
 
 For each entry downloads the cif file.
 
+### To retrieve structures from `search structure` output
+
+```shell
+protein-quest retrieve structure structures.csv downloads-structure/
+```
+
 ### To retrieve EMDB volume files
 
 ```shell

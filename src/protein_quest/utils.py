@@ -5,9 +5,11 @@ import asyncio
 import hashlib
 import logging
 import shutil
-from collections.abc import Coroutine, Iterable, Sequence
+from collections.abc import Callable, Coroutine, Iterable, Sequence
 from contextlib import asynccontextmanager
+from csv import DictReader
 from functools import lru_cache
+from io import TextIOBase
 from pathlib import Path
 from textwrap import dedent
 from typing import Any, Literal, Protocol, get_args, runtime_checkable
@@ -257,7 +259,7 @@ class DirectoryCacher(Cacher):
 
 
 async def retrieve_files(
-    urls: Iterable[tuple[URL | str, str]],
+    urls: Iterable[tuple[URL | str, str]] | Iterable[tuple[URL | str, str, bool]],
     save_dir: Path,
     max_parallel_downloads: int = 5,
     retries: int = 3,
@@ -272,6 +274,9 @@ async def retrieve_files(
 
     Args:
         urls: A list of tuples, where each tuple contains a URL and a filename.
+            Or tuple with URL, filename and whether to download gzipped content.
+            When given (...,...,True) then,
+            it requires the server of that URL can send gzip encoded content.
         save_dir: The directory to save the downloaded files to.
         max_parallel_downloads: The maximum number of files to download in parallel.
         retries: The number of times to retry a failed download.
@@ -298,10 +303,10 @@ async def retrieve_files(
                 semaphore=semaphore,
                 cacher=cacher,
                 chunk_size=chunk_size,
-                gzip_files=gzip_files,
+                gzip_files=rest[0] if rest else gzip_files,
                 raise_for_not_found=raise_for_not_found,
             )
-            for url, filename in urls
+            for url, filename, *rest in urls
         ]
         raw_files: list[Path | None] = await tqdm.gather(*tasks, desc=desc)
         return [f for f in raw_files if f is not None]
@@ -541,6 +546,52 @@ def populate_cache_command(raw_args: Sequence[str] | None = None):
         rich.print(f"Cached {len(cached_files)} files from {source_dir} to {cacher.cache_dir}")
         for src, cached in cached_files.items():
             rich.print(f"- {src.relative_to(source_dir)} -> {cached.relative_to(cacher.cache_dir)}")
+
+
+def read_ids_from_csv(
+    file: TextIOBase,
+    *,
+    id_column: str,
+    model_provider: str,
+    transform_model_identifier: Callable[[str], str] | None = None,
+) -> set[str]:
+    """Read model IDs from a CSV file.
+
+    The CSV file can provide source-specific IDs via ``id_column`` (for example
+    ``pdb_id`` or ``af_id``), or generic identifiers via the combination of
+    ``model_provider`` and ``model_identifier`` columns.
+
+    Args:
+        file: A file-like object containing CSV data.
+        id_column: Name of the direct ID column to read when present.
+        model_provider: Expected value in the ``model_provider`` column.
+        transform_model_identifier: Optional function to transform
+            ``model_identifier`` values before adding them.
+
+    Returns:
+        A set of IDs extracted from the CSV file.
+
+    Raises:
+        ValueError: If required columns are missing.
+    """
+    ids: set[str] = set()
+    for row in DictReader(file):
+        if id_column in row:
+            ids.add(row[id_column])
+            continue
+
+        has_provider_and_identifier = "model_provider" in row and "model_identifier" in row
+        if has_provider_and_identifier and row["model_provider"] == model_provider:
+            model_identifier = row["model_identifier"]
+            if transform_model_identifier is not None:
+                model_identifier = transform_model_identifier(model_identifier)
+            ids.add(model_identifier)
+            continue
+
+        msg = f"Column '{id_column}' or 'model_provider'/'model_identifier' columns not found in CSV file {file}"
+        raise ValueError(msg)
+
+    return ids
 
 
 if __name__ == "__main__":

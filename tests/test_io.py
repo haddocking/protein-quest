@@ -1,3 +1,4 @@
+import gzip
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,7 @@ from protein_quest.io import (
     read_structure,
     split_name_and_extension,
     structure2bcif,
+    structure2cifgz,
     valid_structure_file_extensions,
     write_structure,
 )
@@ -58,6 +60,17 @@ def test_read_structure(sample2_cif: Path, tmp_path: Path, extension: str):
     structure_from_extension = read_structure(thefile)
 
     assert structure_from_extension.make_pdb_string() == structure_from_cif.make_pdb_string()
+
+
+def test_structure2cifgz(sample2_cif: Path):
+    structure = read_structure(sample2_cif)
+
+    cif_gz_bytes = structure2cifgz(structure)
+
+    assert isinstance(cif_gz_bytes, bytes)
+    assert len(cif_gz_bytes) > 0
+    observed_cif_text = gzip.decompress(cif_gz_bytes).decode("utf-8")
+    assert observed_cif_text.startswith("data_")
 
 
 @pytest.mark.parametrize(

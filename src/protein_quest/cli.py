@@ -27,7 +27,7 @@ from tqdm.rich import tqdm
 
 from protein_quest.__version__ import __version__
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
-from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_formats
+from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_formats, read_af_ids_from_csv
 from protein_quest.alphafold.fetch import fetch_many as af_fetch
 from protein_quest.converter import PositiveInt, converter
 from protein_quest.emdb import fetch as emdb_fetch
@@ -41,10 +41,11 @@ from protein_quest.io import (
     valid_structure_file_extensions,
 )
 from protein_quest.pdbe import fetch as pdbe_fetch
-from protein_quest.pdbe_3dbeacons.fetch import (
+from protein_quest.pdbe_3dbeacons.model import search_structure_provider_choices
+from protein_quest.pdbe_3dbeacons.retrieve import read_retrieve_structure_rows, retrieve_structures
+from protein_quest.pdbe_3dbeacons.search import (
     PruneOptions,
     flatten_structure_summaries,
-    search_structure_provider_choices,
     uniprots2structures,
 )
 from protein_quest.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
@@ -234,8 +235,9 @@ def _add_search_structure_parser(subparsers: argparse._SubParsersAction):
         "--source",
         type=str,
         action="append",
-        choices=search_structure_provider_choices,
-        help="Source of the structures to search for. Default `pdbe` and `alphafold`. Can be given multiple times.",
+        choices={*search_structure_provider_choices, "all"},
+        help="Source of the structures to search for. Default `pdbe` and `alphafold`.\
+            Can be given multiple times. Use 'all' to search all sources.",
     )
     parser.add_argument(
         "--min-residues",
@@ -581,6 +583,41 @@ def _add_retrieve_emdb_parser(subparsers: argparse._SubParsersAction):
     _add_cacher_arguments(parser)
 
 
+def _add_retrieve_structure_parser(subparsers: argparse._SubParsersAction):
+    """Add retrieve structure subcommand parser."""
+    parser = subparsers.add_parser(
+        "structure",
+        help="Retrieve structure files from search structure CSV output",
+        description="Retrieve structure files from model URLs listed in search structure CSV output.",
+        formatter_class=ArgumentDefaultsRichHelpFormatter,
+    )
+    parser.add_argument(
+        "structures_csv",
+        type=argparse.FileType("r", encoding="UTF-8"),
+        help=(
+            "CSV file with `provider`, `model_identifier`, `model_url`, and `model_format` columns. Use `-` for stdin."
+        ),
+    ).complete = shtab.FILE
+    parser.add_argument(
+        "output_dir", type=Path, help="Directory to store retrieved structure files"
+    ).complete = shtab.DIRECTORY
+    parser.add_argument(
+        "--raw",
+        action="store_true",
+        help=dedent("""\
+            By default files are downloaded as compressed MMCIF (.cif.gz).
+            Add flag to download structures in the native format from the CSV model metadata.
+        """),
+    )
+    parser.add_argument(
+        "--max-parallel-downloads",
+        type=int,
+        default=5,
+        help="Maximum number of parallel downloads",
+    )
+    _add_cacher_arguments(parser)
+
+
 def _add_scheduler_address_argument(parser):
     parser.add_argument(
         "--scheduler-address",
@@ -769,6 +806,7 @@ def _add_retrieve_subcommands(subparsers: argparse._SubParsersAction):
 
     _add_retrieve_pdbe_parser(subsubparsers)
     _add_retrieve_alphafold_parser(subsubparsers)
+    _add_retrieve_structure_parser(subsubparsers)
     _add_retrieve_emdb_parser(subsubparsers)
 
 
@@ -1012,6 +1050,8 @@ def _handle_search_structure(args: argparse.Namespace):
     timeout = converter.structure(args.timeout, int)
     output_csv: TextIOWrapper = args.output_csv
     raw_path = converter.structure(args.raw, Path | None)  # pyright: ignore[reportArgumentType]
+    if len(args.source) == 1 and args.source[0] == "all":
+        args.source = search_structure_provider_choices
     prune_options = converter.structure(
         {
             "providers": args.source,
@@ -1148,7 +1188,7 @@ def _handle_retrieve_pdbe(args: argparse.Namespace):
     max_parallel_downloads = args.max_parallel_downloads
     cacher = _initialize_cacher(args)
 
-    pdb_ids = _read_column_from_csv(pdbe_csv, "pdb_id")
+    pdb_ids = pdbe_fetch.read_pdb_ids_from_csv(pdbe_csv)
     rprint(f"Retrieving {len(pdb_ids)} PDBe entries")
     result = asyncio.run(
         pdbe_fetch.fetch(pdb_ids, output_dir, max_parallel_downloads=max_parallel_downloads, cacher=cacher)
@@ -1171,7 +1211,7 @@ def _handle_retrieve_alphafold(args):
         raw_formats = {"cif"}
 
     # TODO besides `uniprot_accession,af_id\n` csv also allow headless single column format
-    af_ids = _read_column_from_csv(alphafold_csv, "af_id")
+    af_ids = read_af_ids_from_csv(alphafold_csv)
     formats: set[DownloadableFormat] = structure(raw_formats, set[DownloadableFormat])
     rprint(f"Retrieving {len(af_ids)} AlphaFold entries with formats {formats}")
     afs = af_fetch(
@@ -1198,6 +1238,30 @@ def _handle_retrieve_emdb(args):
     rprint(f"Retrieving {len(emdb_ids)} EMDB entries")
     result = asyncio.run(emdb_fetch(emdb_ids, output_dir, cacher=cacher))
     rprint(f"Retrieved {len(result)} EMDB entries")
+
+
+@prov(input_files=["structures_csv"], output_dirs=["output_dir"])
+def _handle_retrieve_structure(args: argparse.Namespace):
+    rows = read_retrieve_structure_rows(args.structures_csv)
+    raw = converter.structure(args.raw, bool)
+    max_parallel_downloads = converter.structure(args.max_parallel_downloads, int)
+    output_dir = Path(args.output_dir)
+    cacher = _initialize_cacher(args)
+
+    summary = asyncio.run(
+        retrieve_structures(
+            rows,
+            output_dir,
+            raw=raw,
+            max_parallel_downloads=max_parallel_downloads,
+            cacher=cacher,
+        )
+    )
+    rprint(
+        "Retrieved structure files "
+        f"requested={summary.requested}, downloaded={summary.downloaded}, skipped={summary.skipped}, "
+        f"converted={summary.converted}, final={summary.final}, cached={summary.cached}"
+    )
 
 
 @prov(input_dirs=["input_dir"], output_dirs=["output_dir"], output_files=["write_stats"])
@@ -1561,6 +1625,7 @@ HANDLERS: dict[tuple[str, str | None], Callable] = {
     ("search", "uniprot-details"): _handle_search_uniprot_details,
     ("retrieve", "pdbe"): _handle_retrieve_pdbe,
     ("retrieve", "alphafold"): _handle_retrieve_alphafold,
+    ("retrieve", "structure"): _handle_retrieve_structure,
     ("retrieve", "emdb"): _handle_retrieve_emdb,
     ("filter", "confidence"): _handle_filter_confidence,
     ("filter", "chain"): _handle_filter_chain,
