@@ -143,13 +143,13 @@ interactions:
       Content-Type:
       - text/html; charset=UTF-8
       Date:
-      - Tue, 17 Mar 2026 12:37:17 GMT
+      - Wed, 18 Mar 2026 09:06:05 GMT
       Expires:
       - '-1'
       Pragma:
       - no-cache
       Set-Cookie:
-      - X-Mapping-hdhfbfda=B5E940A7929E0340F8DBA1EE1DA3570B; path=/
+      - X-Mapping-hdhfbfda=9796CF94C2BD18E5EAF9C72CD0FC8B94; path=/
       Strict-Transport-Security:
       - max-age=0
       Transfer-Encoding:
@@ -160,7 +160,7 @@ interactions:
       - nosniff
       - nosniff
       X-Drupal-Cache:
-      - MISS
+      - HIT
       X-Drupal-Dynamic-Cache:
       - HIT
       X-Frame-Options:
