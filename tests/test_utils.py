@@ -516,3 +516,40 @@ async def test_retrieve_files_gzipped(
     with gzip.open(expected_file, "rt") as f:
         content = f.read()
         assert content == "This is file 1."
+
+
+@pytest.mark.asyncio
+async def test_retrieve_files_somegzipped(
+    tmp_path: Path,
+    aiohttp_server: AiohttpServer,
+):
+    host_dir = tmp_path / "host"
+    host_dir.mkdir()
+    (host_dir / "file1.txt").write_text("This is file 1.")
+    (host_dir / "file2.txt").write_text("This is file 2.")
+    app = Application()
+    app.router.add_static("/", str(host_dir))
+    app.middlewares.append(compress_middleware)  # type: ignore  # noqa: PGH003
+    server = await aiohttp_server(app)
+
+    urls = [
+        (server.make_url("file1.txt"), "file1.txt.gz", True),
+        (server.make_url("file2.txt"), "file2.txt", False),
+    ]
+    save_dir = tmp_path / "downloads"
+    save_dir.mkdir()
+
+    downloaded_files = await retrieve_files(
+        urls,
+        save_dir=save_dir,
+    )
+
+    expected_file = save_dir / "file1.txt.gz"
+    expected_file2 = save_dir / "file2.txt"
+    assert downloaded_files == [expected_file, expected_file2]
+    assert expected_file.exists()
+    with gzip.open(expected_file, "rt") as f:
+        content = f.read()
+        assert content == "This is file 1."
+    assert expected_file2.exists()
+    assert expected_file2.read_text() == "This is file 2."
