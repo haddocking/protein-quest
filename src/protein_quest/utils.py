@@ -565,6 +565,7 @@ def read_ids_from_csv(
         file: A file-like object containing CSV data.
         id_column: Name of the direct ID column to read when present.
         model_provider: Expected value in the ``model_provider`` column.
+            If row has different provider it is skipped.
         transform_model_identifier: Optional function to transform
             ``model_identifier`` values before adding them.
 
@@ -581,15 +582,19 @@ def read_ids_from_csv(
             continue
 
         has_provider_and_identifier = "model_provider" in row and "model_identifier" in row
-        if has_provider_and_identifier and row["model_provider"] == model_provider:
-            model_identifier = row["model_identifier"]
-            if transform_model_identifier is not None:
-                model_identifier = transform_model_identifier(model_identifier)
-            ids.add(model_identifier)
-            continue
-
-        msg = f"Column '{id_column}' or 'model_provider'/'model_identifier' columns not found in CSV file {file}"
-        raise ValueError(msg)
+        if has_provider_and_identifier:
+            if row["model_provider"] == model_provider:
+                model_identifier = row["model_identifier"]
+                if transform_model_identifier is not None:
+                    model_identifier = transform_model_identifier(model_identifier)
+                ids.add(model_identifier)
+                continue
+            logger.debug(
+                f"Skipping row, '{row['model_provider']}'!= '{model_provider}'"
+            )
+        else:
+            msg = f"Column '{id_column}' or 'model_provider'/'model_identifier' columns not found in CSV file"
+            raise ValueError(msg)
 
     return ids
 

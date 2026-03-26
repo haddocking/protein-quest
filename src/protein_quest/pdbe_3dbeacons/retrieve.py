@@ -84,7 +84,8 @@ async def _prepare_structure_downloads(
     # Tested with `uvx --from=httpx[cli] httpx -h 'Accept-Encoding' gzip --download somefile -v <url>`
     # should have Content-Encoding: gzip in the response headers
     gzipped_response_capable_providers: set[Provider] = {"pdbe", "alphafold", "alphafill", "swissmodel"}
-    _gzipped_response_incapable_providers: set[Provider] = {"ped", "isoformio"}
+    # The ped and isoformio providers do not support gzipped responses
+    # other provider capabilities are unknown, so we assume they do not support gzipped responses either
 
     nr_cached = 0
     for row in rows:

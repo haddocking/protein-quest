@@ -566,6 +566,32 @@ class TestReadIdsFromCsv:
 
         assert ids == {"2Y29", "8WAS"}
 
+    def test_reads_model_identifier(self):
+        csv_data = StringIO("model_provider,model_identifier\nalphafold,AF-A0A1B0GVZ6-F1\nalphafold,AF-P05067-F1\n")
+
+        ids = read_ids_from_csv(
+            csv_data,
+            id_column="af_id",
+            model_provider="alphafold",
+        )
+
+        assert ids == {"AF-A0A1B0GVZ6-F1", "AF-P05067-F1"}
+
+    def test_multiple_providers(self, caplog: pytest.LogCaptureFixture):
+        caplog.set_level(logging.DEBUG, logger="protein_quest.utils")
+        csv_data = StringIO(
+            "model_provider,model_identifier\nalphafold,AF-A0A1B0GVZ6-F1\nalphafold,AF-P05067-F1\nother_provider,OP-12345\n"
+        )
+
+        ids = read_ids_from_csv(
+            csv_data,
+            id_column="af_id",
+            model_provider="alphafold",
+        )
+
+        assert ids == {"AF-A0A1B0GVZ6-F1", "AF-P05067-F1"}
+        assert "Skipping row, 'other_provider'!= 'alphafold'" in caplog.text
+
     def test_reads_model_identifier_with_transform(self):
         csv_data = StringIO("model_provider,model_identifier\nalphafold,AF-A0A1B0GVZ6-F1\nalphafold,AF-P05067-F1\n")
 
