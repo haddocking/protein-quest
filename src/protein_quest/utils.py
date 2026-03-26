@@ -589,9 +589,7 @@ def read_ids_from_csv(
                     model_identifier = transform_model_identifier(model_identifier)
                 ids.add(model_identifier)
                 continue
-            logger.debug(
-                f"Skipping row, '{row['model_provider']}'!= '{model_provider}'"
-            )
+            logger.debug(f"Skipping row, '{row['model_provider']}'!= '{model_provider}'")
         else:
             msg = f"Column '{id_column}' or 'model_provider'/'model_identifier' columns not found in CSV file"
             raise ValueError(msg)
