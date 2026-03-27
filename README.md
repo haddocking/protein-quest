@@ -18,6 +18,8 @@ It uses
 
 - [Uniprot Sparql endpoint](https://sparql.uniprot.org/) to search for proteins
   and their measured or predicted 3D structures.
+- [3D beacon network](https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/) is used to
+  search for any experimentally determined and predicted structure
 - [Uniprot taxonomy](https://www.uniprot.org/taxonomy?query=*) to search for
   taxonomy.
 - [QuickGO](https://www.ebi.ac.uk/QuickGO/api/index.html) to search for Gene
@@ -38,13 +40,15 @@ graph TB;
     taxonomy[/Search taxon/] -. taxon_ids .-> searchuniprot[/Search UniprotKB/]
     goterm[/Search GO term/] -. go_ids .-> searchuniprot[/Search UniprotKB/]
     searchuniprot --> |uniprot_accessions|searchpdbe[/Search PDBe/]
-    searchuniprot --> |uniprot_accessions|searchaf[/Search Alphafold/]
     searchuniprot -. uniprot_accessions .-> searchstructures[/Search structures/]
+    searchuniprot --> |uniprot_accessions|searchaf[/Search Alphafold/]
     searchuniprot -. uniprot_accessions .-> searchemdb[/Search EMDB/]
     searchuniprot -. uniprot_accessions .-> searchuniprotdetails[/Search UniProt details/]
     searchintactionpartners[/Search interaction partners/] -.-x |uniprot_accessions|searchuniprot
     searchcomplexes[/Search complexes/]
     searchpdbe -->|pdb_ids|fetchpdbe[Retrieve PDBe]
+    searchstructures -. pdb_ids .-> fetchpdbe
+    searchstructures -. af_ids .-> fetchad
     searchaf --> |uniprot_accessions|fetchad(Retrieve AlphaFold)
     searchemdb -. emdb_ids .->fetchemdb[Retrieve EMDB]
     fetchpdbe -->|mmcif_files| chainfilter{{Filter on chain of uniprot}}

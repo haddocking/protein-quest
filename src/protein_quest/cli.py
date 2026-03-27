@@ -206,7 +206,7 @@ def _add_search_structure_parser(subparsers: argparse._SubParsersAction):
     """Add search structure subcommand parser."""
     description = dedent("""\
         Search for experimentally determined and predicted structures
-        of given UniProt accessions in the [3D Beacons HUB](https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/) API.
+        of given UniProt accessions in the [3D Beacons Network](https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/) API.
 
         This subcommand can be used for PDBe and AlphaFold structures,
         but it is slower than dedicated subcommands due to many HTTP requests it has to make.
@@ -260,7 +260,7 @@ def _add_search_structure_parser(subparsers: argparse._SubParsersAction):
     parser.add_argument(
         "--raw",
         type=Path,
-        help="""Path to write raw uniprot-structure mapping results as JSON.\
+        help="""Path to write raw 3D beacon summaries as JSON.\
             Raw results has more information than normal output.""",
     )
 
