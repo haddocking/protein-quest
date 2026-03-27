@@ -72,9 +72,12 @@ def sync_fetch(ids: Iterable[str], save_dir: Path, max_parallel_downloads: int =
 def read_pdb_ids_from_csv(file: TextIOBase) -> set[str]:
     """Reads PDB IDs from a CSV file.
 
-    The CSV file should have either a "pdb_id" column or
-    a combination of "model_provider" and "model_identifier" columns.
-    Reads value of "model_identifier" column rows where the "model_provider" column has value "pdbe",
+    The CSV file can provide PDB IDs in the ``pdb_id`` column. It can also
+    provide generic identifiers through the ``model_provider`` and
+    ``model_identifier`` columns. In that case, only rows with
+    ``model_provider == "pdbe"`` are used. If the CSV contains only one
+    column, every value in that column is treated as an ID, including the
+    first row.
 
     Arguments:
         file: A file-like object containing the CSV data.

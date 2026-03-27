@@ -44,3 +44,10 @@ class TestReadPdbIdsFromCsv:
         ids = read_pdb_ids_from_csv(csv_data)
 
         assert ids == {"8WAS", "2Y29"}
+
+    def test_single_column(self):
+        csv_data = StringIO("2Y29\n8WAS\n")
+
+        ids = read_pdb_ids_from_csv(csv_data)
+
+        assert ids == {"2Y29", "8WAS"}

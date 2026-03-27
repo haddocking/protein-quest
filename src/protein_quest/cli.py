@@ -31,6 +31,7 @@ from protein_quest.alphafold.fetch import DownloadableFormat, downloadable_forma
 from protein_quest.alphafold.fetch import fetch_many as af_fetch
 from protein_quest.converter import PositiveInt, converter
 from protein_quest.emdb import fetch as emdb_fetch
+from protein_quest.emdb import read_emdb_ids_from_csv
 from protein_quest.filters import filter_files_on_chain, filter_files_on_residues
 from protein_quest.go import Aspect, allowed_aspects, search_gene_ontology_term, write_go_terms_to_csv
 from protein_quest.io import (
@@ -496,7 +497,13 @@ def _add_retrieve_pdbe_parser(subparsers: argparse._SubParsersAction):
     parser.add_argument(
         "pdbe_csv",
         type=argparse.FileType("r", encoding="UTF-8"),
-        help="CSV file with `pdb_id` column. Other columns are ignored. Use `-` for stdin.",
+        help=(
+            "CSV file with a `pdb_id` column, or with `model_provider` and "
+            "`model_identifier` columns. When using `model_provider`, only rows "
+            "with `model_provider == 'pdbe'` are used. Single-column CSV files "
+            "are also accepted, and the first row is treated as an ID. Use `-` "
+            "for stdin."
+        ),
     ).complete = shtab.FILE
     parser.add_argument(
         "output_dir", type=Path, help="Directory to store downloaded PDBe mmCIF files"
@@ -521,7 +528,13 @@ def _add_retrieve_alphafold_parser(subparsers: argparse._SubParsersAction):
     parser.add_argument(
         "alphafold_csv",
         type=argparse.FileType("r", encoding="UTF-8"),
-        help="CSV file with `af_id` column. Other columns are ignored. Use `-` for stdin.",
+        help=(
+            "CSV file with an `af_id` column, or with `model_provider` and "
+            "`model_identifier` columns. When using `model_provider`, only rows "
+            "with `model_provider == 'alphafold'` are used. Single-column CSV "
+            "files are also accepted, and the first row is treated as an ID. "
+            "Use `-` for stdin."
+        ),
     ).complete = shtab.FILE
     parser.add_argument(
         "output_dir", type=Path, help="Directory to store downloaded AlphaFold files"
@@ -575,7 +588,11 @@ def _add_retrieve_emdb_parser(subparsers: argparse._SubParsersAction):
     parser.add_argument(
         "emdb_csv",
         type=argparse.FileType("r", encoding="UTF-8"),
-        help="CSV file with `emdb_id` column. Other columns are ignored. Use `-` for stdin.",
+        help=(
+            "CSV file with `emdb_id` column. Other columns are ignored. "
+            "Single-column CSV files are also accepted, and the first row is treated as an ID. "
+            "Use `-` for stdin."
+        ),
     ).complete = shtab.FILE
     parser.add_argument(
         "output_dir", type=Path, help="Directory to store downloaded EMDB volume files"
@@ -1210,7 +1227,6 @@ def _handle_retrieve_alphafold(args):
     if raw_formats is None:
         raw_formats = {"cif"}
 
-    # TODO besides `uniprot_accession,af_id\n` csv also allow headless single column format
     af_ids = read_af_ids_from_csv(alphafold_csv)
     formats: set[DownloadableFormat] = structure(raw_formats, set[DownloadableFormat])
     rprint(f"Retrieving {len(af_ids)} AlphaFold entries with formats {formats}")
@@ -1234,7 +1250,7 @@ def _handle_retrieve_emdb(args):
     output_dir = args.output_dir
     cacher = _initialize_cacher(args)
 
-    emdb_ids = _read_column_from_csv(emdb_csv, "emdb_id")
+    emdb_ids = read_emdb_ids_from_csv(emdb_csv)
     rprint(f"Retrieving {len(emdb_ids)} EMDB entries")
     result = asyncio.run(emdb_fetch(emdb_ids, output_dir, cacher=cacher))
     rprint(f"Retrieved {len(result)} EMDB entries")

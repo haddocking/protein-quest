@@ -297,6 +297,13 @@ class TestReadAfIdsFromCsv:
 
         assert ids == {"P05067", "Q9H9K5"}
 
+    def test_single_column(self):
+        csv_data = StringIO("P05067\nQ9H9K5\n")
+
+        ids = read_af_ids_from_csv(csv_data)
+
+        assert ids == {"P05067", "Q9H9K5"}
+
 
 def test_files_for_alphafold_entries_someformats_gzipped():
     db_version = "6"

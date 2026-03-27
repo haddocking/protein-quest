@@ -552,9 +552,12 @@ def _af_model_identifier_to_accession(raw_af_id: str) -> str:
 def read_af_ids_from_csv(file: TextIOBase) -> set[str]:
     """Reads AlphaFold IDs from a CSV file.
 
-    The CSV file should have either a "af_id" column or
-    a combination of "model_provider" and "model_identifier" columns.
-    Reads value of "model_identifier" column rows where the "model_provider" column has value "alphafold",
+    The CSV file can provide AlphaFold IDs in the ``af_id`` column. It can
+    also provide generic identifiers through the ``model_provider`` and
+    ``model_identifier`` columns. In that case, only rows with
+    ``model_provider == "alphafold"`` are used. If the CSV contains only one
+    column, every value in that column is treated as an ID, including the
+    first row.
 
     Arguments:
         file: A file-like object containing the CSV data.

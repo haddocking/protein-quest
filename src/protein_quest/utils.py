@@ -557,9 +557,11 @@ def read_ids_from_csv(
 ) -> set[str]:
     """Read model IDs from a CSV file.
 
-    The CSV file can provide source-specific IDs via ``id_column`` (for example
-    ``pdb_id`` or ``af_id``), or generic identifiers via the combination of
-    ``model_provider`` and ``model_identifier`` columns.
+    The CSV file can provide source-specific IDs in ``id_column`` (for example,
+    ``pdb_id`` or ``af_id``). It can also provide generic identifiers through
+    the ``model_provider`` and ``model_identifier`` columns. If the CSV
+    contains only one column, every value in that column is treated as an ID,
+    including the first row.
 
     Args:
         file: A file-like object containing CSV data.
@@ -590,8 +592,17 @@ def read_ids_from_csv(
                 ids.add(model_identifier)
                 continue
             logger.debug(f"Skipping row, '{row['model_provider']}'!= '{model_provider}'")
+        elif len(row) == 1:
+            key = next(iter(row.keys()))
+            if key not in ids:
+                ids.add(key)
+            ids.add(row[key])
         else:
-            msg = f"Column '{id_column}' or 'model_provider'/'model_identifier' columns not found in CSV file"
+            msg = (
+                f"CSV must contain either '{id_column}' or both "
+                "'model_provider' and 'model_identifier' columns, "
+                "or be a single-column file"
+            )
             raise ValueError(msg)
 
     return ids

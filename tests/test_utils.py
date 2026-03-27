@@ -1,7 +1,6 @@
 import asyncio
 import gzip
 import logging
-import re
 from io import StringIO
 from pathlib import Path
 
@@ -605,10 +604,20 @@ class TestReadIdsFromCsv:
         assert ids == {"A0A1B0GVZ6", "P05067"}
 
     def test_raises_for_missing_columns(self):
-        csv_data = StringIO("uniprot_acc\nP05067\n")
+        csv_data = StringIO("uniprot_acc,uniprot_id\nP05067,A4_HUMAN\n")
 
         with pytest.raises(
             ValueError,
-            match=re.escape("Column 'af_id' or 'model_provider'/'model_identifier' columns not found in CSV file"),
-        ):
+        ) as excinfo:
             read_ids_from_csv(csv_data, id_column="af_id", model_provider="alphafold")
+        excmsg = str(excinfo.value)
+        assert "CSV must contain either 'af_id'" in excmsg
+        assert "'model_provider' and 'model_identifier'" in excmsg
+        assert "or be a single-column file" in excmsg
+
+    def test_reads_single_column_headless(self):
+        csv_data = StringIO("2Y29\n8WAS\n")
+
+        ids = read_ids_from_csv(csv_data, id_column="pdb_id", model_provider="pdbe")
+
+        assert ids == {"2Y29", "8WAS"}
