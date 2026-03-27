@@ -11,7 +11,7 @@ import logging
 from asyncio import sleep
 from collections.abc import Generator, Iterable
 from itertools import batched
-from typing import TypedDict, get_args
+from typing import TypedDict
 
 from aiohttp_retry import RetryClient
 from attrs import define, field, validators
@@ -24,13 +24,12 @@ from protein_quest.pdbe_3dbeacons.model import (
     Overview,
     Provider,
     UniprotSummary,
+    search_structure_provider_choices,
 )
 from protein_quest.utils import friendly_session
 
 logger = logging.getLogger(__name__)
 
-search_structure_provider_choices = set(get_args(Provider))
-"""All providers"""
 
 provider_request2response = {
     "pdbe": "PDBe",

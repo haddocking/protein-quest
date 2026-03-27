@@ -54,10 +54,7 @@ def write_structure(structure: gemmi.Structure, path: Path):
         doc = structure.make_mmcif_document(gemmi.MmcifOutputGroups(True, chem_comp=False))
         doc.write_file(str(path))
     elif path.name.endswith(".cif.gz"):
-        doc = structure.make_mmcif_document(gemmi.MmcifOutputGroups(True, chem_comp=False))
-        cif_str = doc.as_string()
-        with gzip.open(path, "wt") as f:
-            f.write(cif_str)
+        path.write_bytes(structure2cifgz(structure))
     elif path.name.endswith(".bcif"):
         structure2bcif(structure, path)
     elif path.name.endswith(".bcif.gz"):
@@ -168,6 +165,19 @@ def structure2bcif(structure: gemmi.Structure, bcif_file: Path):
     dict_api = _initialize_dictionary_api(containers)
     writer = BinaryCifWriter(dictionaryApi=dict_api)
     writer.serialize(str(bcif_file), containers)
+
+
+def structure2cifgz(structure: gemmi.Structure) -> bytes:
+    """Render a gemmi Structure as gzipped mmCIF bytes.
+
+    Args:
+        structure: The gemmi Structure object to render.
+
+    Returns:
+        Gzipped mmCIF bytes.
+    """
+    doc = structure.make_mmcif_document(gemmi.MmcifOutputGroups(True, chem_comp=False))
+    return gzip.compress(doc.as_string().encode("utf-8"))
 
 
 def gunzip_file(gz_file: Path, output_file: Path | None = None, keep_original: bool = True) -> Path:

@@ -4,6 +4,7 @@ import logging
 from asyncio import Semaphore
 from collections.abc import AsyncGenerator, Iterable
 from dataclasses import dataclass
+from io import TextIOBase
 from pathlib import Path
 from typing import Literal, cast, get_args
 
@@ -15,7 +16,14 @@ from yarl import URL
 
 from protein_quest.alphafold.entry_summary import EntrySummary
 from protein_quest.converter import converter
-from protein_quest.utils import Cacher, PassthroughCacher, friendly_session, retrieve_files, run_async
+from protein_quest.utils import (
+    Cacher,
+    PassthroughCacher,
+    friendly_session,
+    read_ids_from_csv,
+    retrieve_files,
+    run_async,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -533,3 +541,33 @@ def fetch_many(
         ]
 
     return run_async(gather_entries())
+
+
+def _af_model_identifier_to_accession(raw_af_id: str) -> str:
+    # AF-A0A1B0GVZ6-F1 -> A0A1B0GVZ6
+    [_, af_id, _] = raw_af_id.split("-")
+    return af_id
+
+
+def read_af_ids_from_csv(file: TextIOBase) -> set[str]:
+    """Reads AlphaFold IDs from a CSV file.
+
+    The CSV file can provide AlphaFold IDs in the ``af_id`` column. It can
+    also provide generic identifiers through the ``model_provider`` and
+    ``model_identifier`` columns. In that case, only rows with
+    ``model_provider == "alphafold"`` are used. If the CSV contains only one
+    column, every value in that column is treated as an ID, including the
+    first row.
+
+    Arguments:
+        file: A file-like object containing the CSV data.
+
+    Returns:
+        A set of AlphaFold IDs extracted from the CSV file.
+    """
+    return read_ids_from_csv(
+        file,
+        id_column="af_id",
+        model_provider="alphafold",
+        transform_model_identifier=_af_model_identifier_to_accession,
+    )

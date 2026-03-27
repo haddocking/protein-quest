@@ -2,7 +2,7 @@ import pytest
 from cattrs import ClassValidationError
 
 from protein_quest.converter import converter
-from protein_quest.pdbe_3dbeacons.fetch import (
+from protein_quest.pdbe_3dbeacons.search import (
     PruneOptions,
     flatten_structure_summaries,
     search_structure_provider_choices,
@@ -289,7 +289,7 @@ async def test_uniprots2structures_all_providers():
 @pytest.mark.default_cassette("test_uniprots2structures_all_providers.yaml")
 @pytest.mark.vcr
 async def test_uniprots2structures_all_providers_limit1(caplog: pytest.LogCaptureFixture):
-    caplog.set_level("DEBUG", logger="protein_quest.pdbe_3dbeacons.fetch")
+    caplog.set_level("DEBUG", logger="protein_quest.pdbe_3dbeacons.search")
     raw_summaries = await uniprots2structures(
         {"P38634"},
         PruneOptions(providers=search_structure_provider_choices, limit=1),
@@ -386,7 +386,7 @@ async def test_uniprots2structures_1providermissing():
 @pytest.mark.default_cassette("test_uniprots2structures_all_providers.yaml")
 @pytest.mark.vcr
 async def test_uniprots2structures_min_residues(caplog: pytest.LogCaptureFixture):
-    caplog.set_level("DEBUG", logger="protein_quest.pdbe_3dbeacons.fetch")
+    caplog.set_level("DEBUG", logger="protein_quest.pdbe_3dbeacons.search")
     raw_summaries = await uniprots2structures(
         {"P38634"},
         PruneOptions(providers=search_structure_provider_choices, min_residues=200),

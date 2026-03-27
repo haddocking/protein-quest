@@ -210,6 +210,36 @@ def test_search_structure(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     assert "Found 2 structures, written to" in captured.err
 
 
+@pytest.mark.vcr
+def test_search_structure_all_sources(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    input_text = tmp_path / "uniprot_accessions.txt"
+    input_text.write_text("Q9NTW7\n")
+    output_file = tmp_path / "structure_results.csv"
+    raw_output_file = tmp_path / "structure.results.json"
+    argv = [
+        "search",
+        "structure",
+        "--limit",
+        "1",
+        "--source",
+        "all",
+        "--raw",
+        str(raw_output_file),
+        str(input_text),
+        str(output_file),
+    ]
+
+    main(argv)
+
+    assert len(output_file.read_text()) == 612
+    assert len(raw_output_file.read_text()) == 6561
+
+    captured = capsys.readouterr()
+    assert "Finding structures for 1 uniprot accessions" in captured.err
+    assert "Written raw results to" in captured.err
+    assert "Found 5 structures, written to" in captured.err
+
+
 def test_search_emdb(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     input_text = tmp_path / "uniprot_accessions.txt"
     input_text.write_text("O14646\n")
@@ -465,3 +495,21 @@ def test_filter_secondary_structure(
     assert "by secondary structure" in captured.err
     assert "Wrote 1 files to" in captured.err
     assert "Statistics written to" in captured.err
+
+
+@pytest.mark.vcr
+def test_retrieve_structure_happy_path(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    input_csv = tmp_path / "structures.csv"
+    input_csv.write_text(
+        "provider,model_identifier,model_url,model_format\n"
+        "swissmodel,Q9NTW7_329-603:5v3m.1.C,https://swissmodel.expasy.org/3d-beacons/uniprot/Q9NTW7.cif?range=329-603&template=5v3m.1.C&provider=swissmodel,MMCIF\n"
+    )
+    output_dir = tmp_path / "downloads"
+
+    main(["retrieve", "structure", "--no-cache", str(input_csv), str(output_dir)])
+
+    assert (output_dir / "swissmodel~Q9NTW7_329-603:5v3m.1.C.cif.gz").exists()
+    captured = capsys.readouterr()
+    assert "downloaded=1" in captured.err
+    assert "converted=0" in captured.err
+    assert "cached=0" in captured.err

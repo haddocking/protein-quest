@@ -1,0 +1,91 @@
+interactions:
+- request:
+    body: '{"accessions":["Q9NTW7"],"provider":null,"exclude_provider":null}'
+    headers:
+      Accept:
+      - application/json
+      Content-Type:
+      - application/json
+    method: POST
+    uri: https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/api/v2/uniprot/summary
+  response:
+    body:
+      string: '[{"uniprot_entry":{"ac":"Q9NTW7","id":"ZF64B_HUMAN","uniprot_checksum":"D7D336A59C128CC0","sequence_length":645,"segment_start":141,"segment_end":604},"structures":[{"summary":{"model_identifier":"2dmd","model_category":"EXPERIMENTALLY
+        DETERMINED","model_url":"https://www.ebi.ac.uk/pdbe/static/entry/2dmd_updated.cif","model_format":"MMCIF","model_page_url":"https://www.ebi.ac.uk/pdbe/entry/pdb/2dmd","provider":"PDBe","created":"2006-04-21","sequence_identity":100.0,"uniprot_start":174,"uniprot_end":254,"coverage":0.126,"experimental_method":"SOLUTION
+        NMR","resolution":null,"entities":[{"entity_type":"POLYMER","entity_poly_type":"POLYPEPTIDE(L)","identifier":"Q9NTW7","identifier_category":"UNIPROT","description":"Zinc
+        finger protein 64, isoforms 1 and 2","chain_ids":["A"]},{"entity_type":"NON-POLYMER","identifier":"ZN","identifier_category":"CCD","description":"ZINC
+        ION","chain_ids":["A"]}]}},{"summary":{"model_identifier":"1x5w","model_category":"EXPERIMENTALLY
+        DETERMINED","model_url":"https://www.ebi.ac.uk/pdbe/static/entry/1x5w_updated.cif","model_format":"MMCIF","model_page_url":"https://www.ebi.ac.uk/pdbe/entry/pdb/1x5w","provider":"PDBe","created":"2005-05-17","sequence_identity":73.0,"uniprot_start":493,"uniprot_end":548,"coverage":0.087,"experimental_method":"SOLUTION
+        NMR","resolution":null,"entities":[{"entity_type":"POLYMER","entity_poly_type":"POLYPEPTIDE(L)","identifier":"Q9NTW7","identifier_category":"UNIPROT","description":"Zinc
+        finger protein 64, isoforms 1","chain_ids":["A"]},{"entity_type":"NON-POLYMER","identifier":"ZN","identifier_category":"CCD","description":"ZINC
+        ION","chain_ids":["A"]}]}},{"summary":{"model_identifier":"Q9NTW7_329-603:5v3m.1.C","model_category":"TEMPLATE-BASED","model_url":"https://swissmodel.expasy.org/3d-beacons/uniprot/Q9NTW7.cif?range=329-603&template=5v3m.1.C&provider=swissmodel","model_format":"MMCIF","model_type":"ATOMIC","model_page_url":"https://swissmodel.expasy.org/repository/uniprot/Q9NTW7?range=329-603&template=5v3m.1.C","provider":"SWISS-MODEL","created":"2026-03-12","sequence_identity":1.0,"uniprot_start":329,"uniprot_end":603,"coverage":0.426,"confidence_type":"QMEANDisCo","confidence_version":"4.5.0","confidence_avg_local_score":0.547,"oligomeric_state":"MONOMER","entities":[{"entity_type":"NON-POLYMER","identifier":"ZN","identifier_category":"CCD","description":"ZINC
+        ION","chain_ids":["_","_","_","_","_","_"]},{"entity_type":"POLYMER","entity_poly_type":"POLYPEPTIDE(L)","identifier":"Q9NTW7","identifier_category":"UNIPROT","description":"model
+        based on template 5v3m.1.C: Zinc finger protein 568","chain_ids":["C"]}]}},{"summary":{"model_identifier":"Q9NTW7_161-437:5v3m.1.C","model_category":"TEMPLATE-BASED","model_url":"https://swissmodel.expasy.org/3d-beacons/uniprot/Q9NTW7.cif?range=161-437&template=5v3m.1.C&provider=swissmodel","model_format":"MMCIF","model_type":"ATOMIC","model_page_url":"https://swissmodel.expasy.org/repository/uniprot/Q9NTW7?range=161-437&template=5v3m.1.C","provider":"SWISS-MODEL","created":"2026-03-12","sequence_identity":1.0,"uniprot_start":161,"uniprot_end":437,"coverage":0.429,"confidence_type":"QMEANDisCo","confidence_version":"4.5.0","confidence_avg_local_score":0.539,"oligomeric_state":"MONOMER","entities":[{"entity_type":"NON-POLYMER","identifier":"ZN","identifier_category":"CCD","description":"ZINC
+        ION","chain_ids":["_","_","_","_","_"]},{"entity_type":"POLYMER","entity_poly_type":"POLYPEPTIDE(L)","identifier":"Q9NTW7","identifier_category":"UNIPROT","description":"model
+        based on template 5v3m.1.C: Zinc finger protein 568","chain_ids":["C"]}]}},{"summary":{"model_identifier":"Q9NTW7_328-577:8ssu.1.A","model_category":"TEMPLATE-BASED","model_url":"https://swissmodel.expasy.org/3d-beacons/uniprot/Q9NTW7.cif?range=328-577&template=8ssu.1.A&provider=swissmodel","model_format":"MMCIF","model_type":"ATOMIC","model_page_url":"https://swissmodel.expasy.org/repository/uniprot/Q9NTW7?range=328-577&template=8ssu.1.A","provider":"SWISS-MODEL","created":"2026-03-12","sequence_identity":1.0,"uniprot_start":328,"uniprot_end":577,"coverage":0.388,"confidence_type":"QMEANDisCo","confidence_version":"4.5.0","confidence_avg_local_score":0.534,"oligomeric_state":"MONOMER","entities":[{"entity_type":"NON-POLYMER","identifier":"ZN","identifier_category":"CCD","description":"ZINC
+        ION","chain_ids":["_","_","_","_","_","_"]},{"entity_type":"POLYMER","entity_poly_type":"POLYPEPTIDE(L)","identifier":"Q9NTW7","identifier_category":"UNIPROT","description":"model
+        based on template 8ssu.1.A: Transcriptional repressor CTCF,LIM domain-binding
+        protein 1","chain_ids":["A"]}]}},{"summary":{"model_identifier":"Q9NTW7_143-465:5v3j.1.C","model_category":"TEMPLATE-BASED","model_url":"https://swissmodel.expasy.org/3d-beacons/uniprot/Q9NTW7.cif?range=143-465&template=5v3j.1.C&provider=swissmodel","model_format":"MMCIF","model_type":"ATOMIC","model_page_url":"https://swissmodel.expasy.org/repository/uniprot/Q9NTW7?range=143-465&template=5v3j.1.C","provider":"SWISS-MODEL","created":"2026-03-12","sequence_identity":1.0,"uniprot_start":143,"uniprot_end":465,"coverage":0.501,"confidence_type":"QMEANDisCo","confidence_version":"4.5.0","confidence_avg_local_score":0.532,"oligomeric_state":"MONOMER","entities":[{"entity_type":"NON-POLYMER","identifier":"ZN","identifier_category":"CCD","description":"ZINC
+        ION","chain_ids":["_","_","_","_","_","_","_"]},{"entity_type":"POLYMER","entity_poly_type":"POLYPEPTIDE(L)","identifier":"Q9NTW7","identifier_category":"UNIPROT","description":"model
+        based on template 5v3j.1.C: Zinc finger protein 568","chain_ids":["C"]}]}},{"summary":{"model_identifier":"Q9NTW7_141-464:5wjq.1.C","model_category":"TEMPLATE-BASED","model_url":"https://swissmodel.expasy.org/3d-beacons/uniprot/Q9NTW7.cif?range=141-464&template=5wjq.1.C&provider=swissmodel","model_format":"MMCIF","model_type":"ATOMIC","model_page_url":"https://swissmodel.expasy.org/repository/uniprot/Q9NTW7?range=141-464&template=5wjq.1.C","provider":"SWISS-MODEL","created":"2026-03-12","sequence_identity":1.0,"uniprot_start":141,"uniprot_end":464,"coverage":0.502,"confidence_type":"QMEANDisCo","confidence_version":"4.5.0","confidence_avg_local_score":0.526,"oligomeric_state":"MONOMER","entities":[{"entity_type":"NON-POLYMER","identifier":"ZN","identifier_category":"CCD","description":"ZINC
+        ION","chain_ids":["_","_","_","_","_","_","_"]},{"entity_type":"POLYMER","entity_poly_type":"POLYPEPTIDE(L)","identifier":"Q9NTW7","identifier_category":"UNIPROT","description":"model
+        based on template 5wjq.1.C: Zinc finger protein 568","chain_ids":["C"]}]}},{"summary":{"model_identifier":"Q9NTW7_296-603:5wjq.1.C","model_category":"TEMPLATE-BASED","model_url":"https://swissmodel.expasy.org/3d-beacons/uniprot/Q9NTW7.cif?range=296-603&template=5wjq.1.C&provider=swissmodel","model_format":"MMCIF","model_type":"ATOMIC","model_page_url":"https://swissmodel.expasy.org/repository/uniprot/Q9NTW7?range=296-603&template=5wjq.1.C","provider":"SWISS-MODEL","created":"2026-03-12","sequence_identity":1.0,"uniprot_start":296,"uniprot_end":603,"coverage":0.478,"confidence_type":"QMEANDisCo","confidence_version":"4.5.0","confidence_avg_local_score":0.522,"oligomeric_state":"MONOMER","entities":[{"entity_type":"NON-POLYMER","identifier":"ZN","identifier_category":"CCD","description":"ZINC
+        ION","chain_ids":["_","_","_","_","_","_","_"]},{"entity_type":"POLYMER","entity_poly_type":"POLYPEPTIDE(L)","identifier":"Q9NTW7","identifier_category":"UNIPROT","description":"model
+        based on template 5wjq.1.C: Zinc finger protein 568","chain_ids":["C"]}]}},{"summary":{"model_identifier":"Q9NTW7_173-411:8ssu.1.A","model_category":"TEMPLATE-BASED","model_url":"https://swissmodel.expasy.org/3d-beacons/uniprot/Q9NTW7.cif?range=173-411&template=8ssu.1.A&provider=swissmodel","model_format":"MMCIF","model_type":"ATOMIC","model_page_url":"https://swissmodel.expasy.org/repository/uniprot/Q9NTW7?range=173-411&template=8ssu.1.A","provider":"SWISS-MODEL","created":"2026-03-12","sequence_identity":1.0,"uniprot_start":173,"uniprot_end":411,"coverage":0.371,"confidence_type":"QMEANDisCo","confidence_version":"4.5.0","confidence_avg_local_score":0.51,"oligomeric_state":"MONOMER","entities":[{"entity_type":"NON-POLYMER","identifier":"ZN","identifier_category":"CCD","description":"ZINC
+        ION","chain_ids":["_","_","_","_","_"]},{"entity_type":"POLYMER","entity_poly_type":"POLYPEPTIDE(L)","identifier":"Q9NTW7","identifier_category":"UNIPROT","description":"model
+        based on template 8ssu.1.A: Transcriptional repressor CTCF,LIM domain-binding
+        protein 1","chain_ids":["A"]}]}},{"summary":{"model_identifier":"Q9NTW7_165-409:5wjq.1.C","model_category":"TEMPLATE-BASED","model_url":"https://swissmodel.expasy.org/3d-beacons/uniprot/Q9NTW7.cif?range=165-409&template=5wjq.1.C&provider=swissmodel","model_format":"MMCIF","model_type":"ATOMIC","model_page_url":"https://swissmodel.expasy.org/repository/uniprot/Q9NTW7?range=165-409&template=5wjq.1.C","provider":"SWISS-MODEL","created":"2026-03-12","sequence_identity":1.0,"uniprot_start":165,"uniprot_end":409,"coverage":0.38,"confidence_type":"QMEANDisCo","confidence_version":"4.5.0","confidence_avg_local_score":0.508,"oligomeric_state":"MONOMER","entities":[{"entity_type":"NON-POLYMER","identifier":"ZN","identifier_category":"CCD","description":"ZINC
+        ION","chain_ids":["_","_","_","_","_","_"]},{"entity_type":"POLYMER","entity_poly_type":"POLYPEPTIDE(L)","identifier":"Q9NTW7","identifier_category":"UNIPROT","description":"model
+        based on template 5wjq.1.C: Zinc finger protein 568","chain_ids":["C"]}]}},{"summary":{"model_identifier":"Q9NTW7_202-546:5v3m.1.C","model_category":"TEMPLATE-BASED","model_url":"https://swissmodel.expasy.org/3d-beacons/uniprot/Q9NTW7.cif?range=202-546&template=5v3m.1.C&provider=swissmodel","model_format":"MMCIF","model_type":"ATOMIC","model_page_url":"https://swissmodel.expasy.org/repository/uniprot/Q9NTW7?range=202-546&template=5v3m.1.C","provider":"SWISS-MODEL","created":"2026-03-12","sequence_identity":1.0,"uniprot_start":202,"uniprot_end":546,"coverage":0.535,"confidence_type":"QMEANDisCo","confidence_version":"4.5.0","confidence_avg_local_score":0.506,"oligomeric_state":"MONOMER","entities":[{"entity_type":"NON-POLYMER","identifier":"ZN","identifier_category":"CCD","description":"ZINC
+        ION","chain_ids":["_","_","_","_","_","_","_","_"]},{"entity_type":"POLYMER","entity_poly_type":"POLYPEPTIDE(L)","identifier":"Q9NTW7","identifier_category":"UNIPROT","description":"model
+        based on template 5v3m.1.C: Zinc finger protein 568","chain_ids":["C"]}]}},{"summary":{"model_identifier":"Q9NTW7_298-604:5v3j.2.C","model_category":"TEMPLATE-BASED","model_url":"https://swissmodel.expasy.org/3d-beacons/uniprot/Q9NTW7.cif?range=298-604&template=5v3j.2.C&provider=swissmodel","model_format":"MMCIF","model_type":"ATOMIC","model_page_url":"https://swissmodel.expasy.org/repository/uniprot/Q9NTW7?range=298-604&template=5v3j.2.C","provider":"SWISS-MODEL","created":"2026-03-12","sequence_identity":1.0,"uniprot_start":298,"uniprot_end":604,"coverage":0.476,"confidence_type":"QMEANDisCo","confidence_version":"4.5.0","confidence_avg_local_score":0.504,"oligomeric_state":"MONOMER","entities":[{"entity_type":"NON-POLYMER","identifier":"ZN","identifier_category":"CCD","description":"ZINC
+        ION","chain_ids":["_","_","_","_","_","_","_"]},{"entity_type":"POLYMER","entity_poly_type":"POLYPEPTIDE(L)","identifier":"Q9NTW7","identifier_category":"UNIPROT","description":"model
+        based on template 5v3j.2.C: Zinc finger protein 568","chain_ids":["C"]}]}},{"summary":{"model_identifier":"Q9NTW7_142-437:8ssq.1.A","model_category":"TEMPLATE-BASED","model_url":"https://swissmodel.expasy.org/3d-beacons/uniprot/Q9NTW7.cif?range=142-437&template=8ssq.1.A&provider=swissmodel","model_format":"MMCIF","model_type":"ATOMIC","model_page_url":"https://swissmodel.expasy.org/repository/uniprot/Q9NTW7?range=142-437&template=8ssq.1.A","provider":"SWISS-MODEL","created":"2026-03-12","sequence_identity":1.0,"uniprot_start":142,"uniprot_end":437,"coverage":0.459,"confidence_type":"QMEANDisCo","confidence_version":"4.5.0","confidence_avg_local_score":0.504,"oligomeric_state":"MONOMER","entities":[{"entity_type":"NON-POLYMER","identifier":"ZN","identifier_category":"CCD","description":"ZINC
+        ION","chain_ids":["_","_"]},{"entity_type":"POLYMER","entity_poly_type":"POLYPEPTIDE(L)","identifier":"Q9NTW7","identifier_category":"UNIPROT","description":"model
+        based on template 8ssq.1.A: Transcriptional repressor CTCF","chain_ids":["A"]}]}},{"summary":{"model_identifier":"Q9NTW7_298-546:8ssq.1.A","model_category":"TEMPLATE-BASED","model_url":"https://swissmodel.expasy.org/3d-beacons/uniprot/Q9NTW7.cif?range=298-546&template=8ssq.1.A&provider=swissmodel","model_format":"MMCIF","model_type":"ATOMIC","model_page_url":"https://swissmodel.expasy.org/repository/uniprot/Q9NTW7?range=298-546&template=8ssq.1.A","provider":"SWISS-MODEL","created":"2026-03-12","sequence_identity":1.0,"uniprot_start":298,"uniprot_end":546,"coverage":0.386,"confidence_type":"QMEANDisCo","confidence_version":"4.5.0","confidence_avg_local_score":0.502,"oligomeric_state":"MONOMER","entities":[{"entity_type":"NON-POLYMER","identifier":"ZN","identifier_category":"CCD","description":"ZINC
+        ION","chain_ids":["_"]},{"entity_type":"POLYMER","entity_poly_type":"POLYPEPTIDE(L)","identifier":"Q9NTW7","identifier_category":"UNIPROT","description":"model
+        based on template 8ssq.1.A: Transcriptional repressor CTCF","chain_ids":["A"]}]}},{"summary":{"model_identifier":"AF-Q9NTW7-F1","model_category":"AB-INITIO","model_url":"https://alphafold.ebi.ac.uk/files/AF-Q9NTW7-F1-model_v6.cif","model_format":"MMCIF","model_type":null,"model_page_url":"https://alphafold.ebi.ac.uk/entry/AF-Q9NTW7-F1","provider":"AlphaFold
+        DB","number_of_conformers":null,"ensemble_sample_url":null,"ensemble_sample_format":null,"created":"2025-08-01T00:00:00Z","sequence_identity":1.0,"uniprot_start":1,"uniprot_end":645,"coverage":1.0,"experimental_method":null,"resolution":null,"confidence_type":"pLDDT","confidence_version":null,"confidence_avg_local_score":63.91,"oligomeric_state":null,"preferred_assembly_id":null,"entities":[{"entity_type":"POLYMER","entity_poly_type":"POLYPEPTIDE(L)","identifier":"Q9NTW7","identifier_category":"UNIPROT","description":"Zinc
+        finger protein 64","chain_ids":["A"]}]}},{"summary":{"model_identifier":"Q9NTW7","model_category":"TEMPLATE-BASED","model_url":"https://alphafill.eu/v1/aff/Q9NTW7","model_format":"MMCIF","model_page_url":"https://alphafill.eu/model?id=Q9NTW7","provider":"AlphaFill","created":"2023-12-28","sequence_identity":1.0,"uniprot_start":1,"uniprot_end":645,"coverage":1.0,"entities":[{"entity_type":"POLYMER","entity_poly_type":"POLYPEPTIDE(L)","description":"Zinc
+        finger protein 64","chain_ids":["A"]},{"entity_type":"NON-POLYMER","description":"ZINC
+        ION","chain_ids":["B","C","D","E","F","G","H","I","J","K","L","M","N","O","R","S","V","X","Z","AA","AB","AC","AD","AE","AF","AG","AJ","AK","AL","AO","AP","AQ","AR","AT","AX","BF","BG","BH","BP","BQ","BR","BV","BW"]},{"entity_type":"NON-POLYMER","description":"MAGNESIUM
+        ION","chain_ids":["P","Q","AU","AV","AW","BI","BJ","BK","BL","BM","BN","BO"]},{"entity_type":"NON-POLYMER","description":"SODIUM
+        ION","chain_ids":["T","U","W","Y","AY","AZ","BA","BE"]},{"entity_type":"NON-POLYMER","description":"BORIC
+        ACID","chain_ids":["AH","AI"]},{"entity_type":"NON-POLYMER","description":"D-MALATE","chain_ids":["AM","AN"]},{"entity_type":"NON-POLYMER","description":"POTASSIUM
+        ION","chain_ids":["AS"]},{"entity_type":"NON-POLYMER","description":"CALCIUM
+        ION","chain_ids":["BB","BC","BD"]},{"entity_type":"NON-POLYMER","description":"MANGANESE
+        (II) ION","chain_ids":["BS"]},{"entity_type":"NON-POLYMER","description":"GUANOSINE-5''-MONOPHOSPHATE","chain_ids":["BT","BU"]}]}},{"summary":{"model_identifier":"CHS.33859.4","model_category":"AB-INITIO","model_url":"https://storage.googleapis.com/isoform.io/pdb/CHS.33859.4.pdb","model_format":"PDB","provider":"isoform.io","created":"2022-06-05","sequence_identity":1.0,"uniprot_start":1,"uniprot_end":645,"coverage":1.0,"entities":[{"entity_type":"POLYMER","description":"Zinc
+        finger protein 64","chain_ids":["A"]}]}}]}]'
+    headers:
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Allow-Headers:
+      - DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization
+      Access-Control-Allow-Methods:
+      - GET, PUT, POST, DELETE, PATCH, OPTIONS
+      Access-Control-Allow-Origin:
+      - '*'
+      Access-Control-Max-Age:
+      - '1728000'
+      Connection:
+      - keep-alive
+      Content-Encoding:
+      - gzip
+      Content-Length:
+      - '1930'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 18 Mar 2026 13:40:23 GMT
+      Strict-Transport-Security:
+      - max-age=0
+      Vary:
+      - Accept-Encoding
+      x-3dbeacons-api-version:
+      - 2.7.1
+      x-process-time:
+      - '0.8447942733764648'
+    status:
+      code: 200
+      message: OK
+version: 1

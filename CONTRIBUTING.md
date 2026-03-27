@@ -155,6 +155,8 @@ test/cassettes/\*\*.yaml files with `--record-mode=rewrite`.
 
 The files downloaded for tests are cached in `~/.cache/protein-quest-tests`.
 
+Sometimes tests fail during recording, but are OK when tested again.
+
 ## Automated code quality checks on git commit
 
 This step is **optional** but recommended for developers who want to
