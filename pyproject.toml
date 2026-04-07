@@ -39,14 +39,14 @@ dependencies = [
     "gemmi>=0.7.4",
     "psutil>=7.0.0",
     "rich>=14.0.0",
-    "rich-argparse>=1.7.1",
     "sparqlwrapper>=2.0.0",
     "tqdm>=4.67.1",
     "yarl>=1.20.1",
     "platformdirs>=4.3.8",
     "mmcif>=0.92.0",
-    "shtab>=1.7.2",
-    "rocrate-action-recorder>=0.5.0",
+    "rocrate-action-recorder>=0.5.1",
+    "cyclopts>=4.5.4",
+    "xdg-base-dirs>=6.0.2",
 ]
 
 [project.urls]
@@ -80,13 +80,13 @@ dev = [
     {include-group = "type"},
 ]
 docs = [
+    "cyclopts[mkdocs]>=4.5.4",
     "ipykernel>=6.29.5", # For notebook support in VS Code
     "ipywidgets", # For tqdm support in notebooks
     "mkdocs>=1.6.1",
     "mkdocs-autoapi>=0.4.1",
     "mkdocs-jupyter>=0.25.1",
     "mkdocs-material>=9.6.14",
-    "mkdocs-rich-argparse>=0.1.2",
     "mkdocstrings-python>=2.0.2",
 ]
 docs-type = [

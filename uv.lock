@@ -697,6 +697,13 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/a9/0f/119fa63fa93e0a331fbedcb27162d8f88d3ba2f38eba1567e3e44307b857/cyclopts-4.5.4-py3-none-any.whl", hash = "sha256:ad001986ec403ca1dc1ed20375c439d62ac796295ea32b451dfe25d6696bc71a", size = 200225, upload-time = "2026-02-20T00:58:47.275Z" },
 ]
 
+[package.optional-dependencies]
+mkdocs = [
+    { name = "markdown" },
+    { name = "mkdocs" },
+    { name = "pymdown-extensions" },
+]
+
 [[package]]
 name = "dask"
 version = "2026.1.2"
@@ -1739,20 +1746,6 @@ wheels = [
 ]
 
 [[package]]
-name = "mkdocs-rich-argparse"
-version = "0.1.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "mkdocs" },
-    { name = "rich" },
-    { name = "rich-argparse" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/d9/ca/9d7ece07900e162e69b76a0e288d101ff24d0ca3dfb85c52402a85c454f8/mkdocs_rich_argparse-0.1.3.tar.gz", hash = "sha256:8354cc76ed08e316c3a42b359faf0dceb19ca2312ea4e6643ba85c258ab906b2", size = 178745, upload-time = "2026-01-28T07:05:34.681Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c0/55/3cc3955e7665f2a5896645479d429cf1bb959319679f9a6c98c33236888e/mkdocs_rich_argparse-0.1.3-py3-none-any.whl", hash = "sha256:e137de0e86a824dba87bdc60e1c0c218ed43fa12ccce63f1f99cd0fe22f1abd4", size = 13664, upload-time = "2026-01-28T07:05:33.575Z" },
-]
-
-[[package]]
 name = "mkdocstrings"
 version = "1.0.3"
 source = { registry = "https://pypi.org/simple" }
@@ -2284,6 +2277,7 @@ dependencies = [
     { name = "aiohttp-retry" },
     { name = "attrs" },
     { name = "cattrs", extra = ["orjson"] },
+    { name = "cyclopts" },
     { name = "dask" },
     { name = "distributed" },
     { name = "gemmi" },
@@ -2291,11 +2285,10 @@ dependencies = [
     { name = "platformdirs" },
     { name = "psutil" },
     { name = "rich" },
-    { name = "rich-argparse" },
     { name = "rocrate-action-recorder" },
-    { name = "shtab" },
     { name = "sparqlwrapper" },
     { name = "tqdm" },
+    { name = "xdg-base-dirs" },
     { name = "yarl" },
 ]
 
@@ -2318,13 +2311,13 @@ dev = [
     { name = "types-tqdm" },
 ]
 docs = [
+    { name = "cyclopts", extra = ["mkdocs"] },
     { name = "ipykernel" },
     { name = "ipywidgets" },
     { name = "mkdocs" },
     { name = "mkdocs-autoapi" },
     { name = "mkdocs-jupyter" },
     { name = "mkdocs-material" },
-    { name = "mkdocs-rich-argparse" },
     { name = "mkdocstrings-python" },
 ]
 docs-type = [
@@ -2347,6 +2340,7 @@ requires-dist = [
     { name = "aiohttp-retry", specifier = ">=2.9.1" },
     { name = "attrs", specifier = ">=25.3.0" },
     { name = "cattrs", extras = ["orjson"], specifier = ">=24.1.3" },
+    { name = "cyclopts", specifier = ">=4.5.4" },
     { name = "dask", specifier = ">=2025.5.1" },
     { name = "distributed", specifier = ">=2025.5.1" },
     { name = "fastmcp", marker = "extra == 'mcp'", specifier = ">=2.11.3" },
@@ -2356,11 +2350,10 @@ requires-dist = [
     { name = "psutil", specifier = ">=7.0.0" },
     { name = "pydantic", marker = "extra == 'mcp'", specifier = ">=2.12.0" },
     { name = "rich", specifier = ">=14.0.0" },
-    { name = "rich-argparse", specifier = ">=1.7.1" },
-    { name = "rocrate-action-recorder", specifier = ">=0.5.0" },
-    { name = "shtab", specifier = ">=1.7.2" },
+    { name = "rocrate-action-recorder", specifier = ">=0.5.1" },
     { name = "sparqlwrapper", specifier = ">=2.0.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
+    { name = "xdg-base-dirs", specifier = ">=6.0.2" },
     { name = "yarl", specifier = ">=1.20.1" },
 ]
 provides-extras = ["mcp"]
@@ -2378,13 +2371,13 @@ dev = [
     { name = "types-tqdm", specifier = ">=4.67.0.20250513" },
 ]
 docs = [
+    { name = "cyclopts", extras = ["mkdocs"], specifier = ">=4.5.4" },
     { name = "ipykernel", specifier = ">=6.29.5" },
     { name = "ipywidgets" },
     { name = "mkdocs", specifier = ">=1.6.1" },
     { name = "mkdocs-autoapi", specifier = ">=0.4.1" },
     { name = "mkdocs-jupyter", specifier = ">=0.25.1" },
     { name = "mkdocs-material", specifier = ">=9.6.14" },
-    { name = "mkdocs-rich-argparse", specifier = ">=0.1.2" },
     { name = "mkdocstrings-python", specifier = ">=2.0.2" },
 ]
 docs-type = [
@@ -2950,18 +2943,6 @@ wheels = [
 ]
 
 [[package]]
-name = "rich-argparse"
-version = "1.7.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "rich" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/4c/f7/1c65e0245d4c7009a87ac92908294a66e7e7635eccf76a68550f40c6df80/rich_argparse-1.7.2.tar.gz", hash = "sha256:64fd2e948fc96e8a1a06e0e72c111c2ce7f3af74126d75c0f5f63926e7289cd1", size = 38500, upload-time = "2025-11-01T10:35:44.232Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/04/80/97b6f357ac458d9ad9872cc3183ca09ef7439ac89e030ea43053ba1294b6/rich_argparse-1.7.2-py3-none-any.whl", hash = "sha256:0559b1f47a19bbeb82bf15f95a057f99bcbbc98385532f57937f9fc57acc501a", size = 25476, upload-time = "2025-11-01T10:35:42.681Z" },
-]
-
-[[package]]
 name = "rich-rst"
 version = "1.3.2"
 source = { registry = "https://pypi.org/simple" }
@@ -2992,14 +2973,14 @@ wheels = [
 
 [[package]]
 name = "rocrate-action-recorder"
-version = "0.5.0"
+version = "0.5.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "rocrate" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f5/4d/196779464397e6bcd4f1ce9edf7fd7c49909ca9cdf09186d8cb7e96ea441/rocrate_action_recorder-0.5.0.tar.gz", hash = "sha256:9e635c0f805a372f7cfc2ece0e9e3a3c983b0736e48ac94302a0e528d45705c0", size = 87820, upload-time = "2026-04-01T06:56:29.323Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/65/36/484e0f6748016bbb821b8f1400ca4ff0450a1a4b5498f6ff5f22c010cae7/rocrate_action_recorder-0.5.1.tar.gz", hash = "sha256:24ea66fca48219c94bd69819c720930ac0dcaca2cfc5e7d72200486d9975733c", size = 87974, upload-time = "2026-04-07T09:26:46.386Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7d/29/efa97addbbface16aa02b62ce5cefbdcdb4f068140aedce30fb9aaf6e14d/rocrate_action_recorder-0.5.0-py3-none-any.whl", hash = "sha256:746c0bdef0c3267f59d33c6da4185379887c224d55d795e20ed717ec78a38471", size = 27006, upload-time = "2026-04-01T06:56:28.188Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/87/3db52bb30cbeeec6950a0b8b845fecbc3277ef1389cfa182feef3c038f37/rocrate_action_recorder-0.5.1-py3-none-any.whl", hash = "sha256:d8aa1f18220690731d4b3abb34fdc35160bbd3784457993641ac4d50cc32309a", size = 27051, upload-time = "2026-04-07T09:26:45.234Z" },
 ]
 
 [[package]]
@@ -3079,15 +3060,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/1c/03/e834bcd866f2f8a49a85eaff47340affa3bfa391ee9912a952a1faa68c7b/secretstorage-3.5.0.tar.gz", hash = "sha256:f04b8e4689cbce351744d5537bf6b1329c6fc68f91fa666f60a380edddcd11be", size = 19884, upload-time = "2025-11-23T19:02:53.191Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/46/f5af3402b579fd5e11573ce652019a67074317e18c1935cc0b4ba9b35552/secretstorage-3.5.0-py3-none-any.whl", hash = "sha256:0ce65888c0725fcb2c5bc0fdb8e5438eece02c523557ea40ce0703c266248137", size = 15554, upload-time = "2025-11-23T19:02:51.545Z" },
-]
-
-[[package]]
-name = "shtab"
-version = "1.8.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b0/7a/7f131b6082d8b592c32e4312d0a6da3d0b28b8f0d305ddd93e49c9d89929/shtab-1.8.0.tar.gz", hash = "sha256:75f16d42178882b7f7126a0c2cb3c848daed2f4f5a276dd1ded75921cc4d073a", size = 46062, upload-time = "2025-11-18T10:57:47.601Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8e/e1/202a31727b0d096a04380f78e809074d7a1d0a22d9d5a39fea1d2353fd02/shtab-1.8.0-py3-none-any.whl", hash = "sha256:f0922a82174b4007e06ac0bac4f79abd826c5cca88e201bfd927f889803c571d", size = 14457, upload-time = "2025-11-18T10:57:45.906Z" },
 ]
 
 [[package]]
@@ -3520,6 +3492,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/1e/06/b500bfc38a4f82d89f34a13069e748c82c5430d365d9e6b75afb3ab74457/wrapt-2.1.1-cp314-cp314t-win_amd64.whl", hash = "sha256:f76bc12c583ab01e73ba0ea585465a41e48d968f6d1311b4daec4f8654e356e3", size = 63855, upload-time = "2026-02-03T02:12:15.47Z" },
     { url = "https://files.pythonhosted.org/packages/d9/cc/5f6193c32166faee1d2a613f278608e6f3b95b96589d020f0088459c46c9/wrapt-2.1.1-cp314-cp314t-win_arm64.whl", hash = "sha256:7ea74fc0bec172f1ae5f3505b6655c541786a5cabe4bbc0d9723a56ac32eb9b9", size = 60443, upload-time = "2026-02-03T02:11:30.869Z" },
     { url = "https://files.pythonhosted.org/packages/c4/da/5a086bf4c22a41995312db104ec2ffeee2cf6accca9faaee5315c790377d/wrapt-2.1.1-py3-none-any.whl", hash = "sha256:3b0f4629eb954394a3d7c7a1c8cca25f0b07cefe6aa8545e862e9778152de5b7", size = 43886, upload-time = "2026-02-03T02:11:45.048Z" },
+]
+
+[[package]]
+name = "xdg-base-dirs"
+version = "6.0.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/d0/bbe05a15347538aaf9fa5b51ac3b97075dfb834931fcb77d81fbdb69e8f6/xdg_base_dirs-6.0.2.tar.gz", hash = "sha256:950504e14d27cf3c9cb37744680a43bf0ac42efefc4ef4acf98dc736cab2bced", size = 4085, upload-time = "2024-10-19T14:35:08.114Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fc/03/030b47fd46b60fc87af548e57ff59c2ca84b2a1dadbe721bb0ce33896b2e/xdg_base_dirs-6.0.2-py3-none-any.whl", hash = "sha256:3c01d1b758ed4ace150ac960ac0bd13ce4542b9e2cdf01312dcda5012cfebabe", size = 4747, upload-time = "2024-10-19T14:35:05.931Z" },
 ]
 
 [[package]]
