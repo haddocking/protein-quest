@@ -123,7 +123,8 @@ class Common:
     Args:
         verbose: Increase verbosity (use multiple times for more detail).
         quiet: Decrease verbosity (use multiple times for less output).
-        prov: Record provenance information to RO-Crate metadata.
+        prov: Whether to write provenance information about the
+            command execution to ro-crate-metadata.json file.
     """
 
     verbose: Annotated[
