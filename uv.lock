@@ -1005,6 +1005,7 @@ dependencies = [
     { name = "griffecli" },
     { name = "griffelib" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/04/56/28a0accac339c164b52a92c6cfc45a903acc0c174caa5c1713803467b533/griffe-2.0.0.tar.gz", hash = "sha256:c68979cd8395422083a51ea7cf02f9c119d889646d99b7b656ee43725de1b80f", size = 293906, upload-time = "2026-03-23T21:06:53.402Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8b/94/ee21d41e7eb4f823b94603b9d40f86d3c7fde80eacc2c3c71845476dddaa/griffe-2.0.0-py3-none-any.whl", hash = "sha256:5418081135a391c3e6e757a7f3f156f1a1a746cc7b4023868ff7d5e2f9a980aa", size = 5214, upload-time = "2026-02-09T19:09:44.105Z" },
 ]
@@ -1017,6 +1018,7 @@ dependencies = [
     { name = "colorama" },
     { name = "griffelib" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/a4/f8/2e129fd4a86e52e58eefe664de05e7d502decf766e7316cc9e70fdec3e18/griffecli-2.0.0.tar.gz", hash = "sha256:312fa5ebb4ce6afc786356e2d0ce85b06c1c20d45abc42d74f0cda65e159f6ef", size = 56213, upload-time = "2026-03-23T21:06:54.8Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e6/ed/d93f7a447bbf7a935d8868e9617cbe1cadf9ee9ee6bd275d3040fbf93d60/griffecli-2.0.0-py3-none-any.whl", hash = "sha256:9f7cd9ee9b21d55e91689358978d2385ae65c22f307a63fb3269acf3f21e643d", size = 9345, upload-time = "2026-02-09T19:09:42.554Z" },
 ]
@@ -1025,6 +1027,7 @@ wheels = [
 name = "griffelib"
 version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ad/06/eccbd311c9e2b3ca45dbc063b93134c57a1ccc7607c5e545264ad092c4a9/griffelib-2.0.0.tar.gz", hash = "sha256:e504d637a089f5cab9b5daf18f7645970509bf4f53eda8d79ed71cce8bd97934", size = 166312, upload-time = "2026-03-23T21:06:55.954Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4d/51/c936033e16d12b627ea334aaaaf42229c37620d0f15593456ab69ab48161/griffelib-2.0.0-py3-none-any.whl", hash = "sha256:01284878c966508b6d6f1dbff9b6fa607bc062d8261c5c7253cb285b06422a7f", size = 142004, upload-time = "2026-02-09T19:09:40.561Z" },
 ]
@@ -2354,7 +2357,7 @@ requires-dist = [
     { name = "pydantic", marker = "extra == 'mcp'", specifier = ">=2.12.0" },
     { name = "rich", specifier = ">=14.0.0" },
     { name = "rich-argparse", specifier = ">=1.7.1" },
-    { name = "rocrate-action-recorder", specifier = ">=0.2.0" },
+    { name = "rocrate-action-recorder", specifier = ">=0.5.0" },
     { name = "shtab", specifier = ">=1.7.2" },
     { name = "sparqlwrapper", specifier = ">=2.0.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
@@ -2989,14 +2992,14 @@ wheels = [
 
 [[package]]
 name = "rocrate-action-recorder"
-version = "0.4.0"
+version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "rocrate" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2e/64/2464c40a75029aebee28404c881d35740b14bb3aa5425c0d4156f5d5de44/rocrate_action_recorder-0.4.0.tar.gz", hash = "sha256:e265f1b65817e4456d1ad20277c5b60c9157dd38d57d29a0463ce23c26f7ecea", size = 65932, upload-time = "2026-02-11T14:14:00.569Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f5/4d/196779464397e6bcd4f1ce9edf7fd7c49909ca9cdf09186d8cb7e96ea441/rocrate_action_recorder-0.5.0.tar.gz", hash = "sha256:9e635c0f805a372f7cfc2ece0e9e3a3c983b0736e48ac94302a0e528d45705c0", size = 87820, upload-time = "2026-04-01T06:56:29.323Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/91/91/f2cb3f3ffb57654a561114cac75fdc92e4a2c9c8b14f8434936bbaeafbfa/rocrate_action_recorder-0.4.0-py3-none-any.whl", hash = "sha256:a934e575d219a2555695c7cd7d8aea3f0724024b33ea6ffaf691f917da639b94", size = 17939, upload-time = "2026-02-11T14:13:59.558Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/29/efa97addbbface16aa02b62ce5cefbdcdb4f068140aedce30fb9aaf6e14d/rocrate_action_recorder-0.5.0-py3-none-any.whl", hash = "sha256:746c0bdef0c3267f59d33c6da4185379887c224d55d795e20ed717ec78a38471", size = 27006, upload-time = "2026-04-01T06:56:28.188Z" },
 ]
 
 [[package]]
