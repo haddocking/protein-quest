@@ -35,7 +35,7 @@ def assertQueryEqual(actual, expected):
 def test_build_sparql_query_uniprot():
     # Test with a simple query
     query = Query(
-        taxon_id="9606",
+        taxon_id=9606,
         reviewed=True,
         subcellular_location_uniprot="nucleus",
         subcellular_location_go={"GO:0005634"},  # Cellular component - Nucleus
@@ -340,7 +340,7 @@ def test_filter_pdb_results_on_chain_length_filtered():
 @pytest.mark.vcr
 def test_search4uniprot():
     query = Query(
-        taxon_id="9606",
+        taxon_id=9606,
         reviewed=True,
         subcellular_location_uniprot="nucleus",
         subcellular_location_go={"GO:0005634"},  # Cellular component - Nucleus
