@@ -15,7 +15,7 @@ from protein_quest.alphafold.fetch import (
 from protein_quest.alphafold.fetch import (
     fetch_many as af_fetch,
 )
-from protein_quest.cli.common import BatchSize, CacheParameter, Common, console, to_cacher
+from protein_quest.cli.common import BatchSize, CacheParameter, Common, StdioPathValidator, console, to_cacher
 from protein_quest.emdb import fetch as emdb_fetch
 from protein_quest.emdb import read_emdb_ids_from_csv
 from protein_quest.pdbe import fetch as pdbe_fetch
@@ -30,7 +30,7 @@ retrieve_app = App(name="retrieve", help="Retrieve structure files")
 
 @retrieve_app.command
 def pdbe(
-    pdbe_csv: Annotated[StdioPath, INPUT_FILE],
+    pdbe_csv: Annotated[StdioPath, Parameter(validator=StdioPathValidator(exists=True, dir_okay=False)), INPUT_FILE],
     output_dir: Annotated[Path, Parameter(validator=validators.Path(file_okay=False)), OUTPUT_DIR],
     /,
     *,
@@ -66,7 +66,9 @@ def pdbe(
 
 @retrieve_app.command
 def alphafold(
-    alphafold_csv: Annotated[StdioPath, INPUT_FILE],
+    alphafold_csv: Annotated[
+        StdioPath, Parameter(validator=StdioPathValidator(exists=True, dir_okay=False)), INPUT_FILE
+    ],
     output_dir: Annotated[Path, Parameter(validator=validators.Path(file_okay=False)), OUTPUT_DIR],
     /,
     *,
@@ -129,7 +131,7 @@ def alphafold(
 
 @retrieve_app.command
 def emdb(
-    emdb_csv: Annotated[StdioPath, INPUT_FILE],
+    emdb_csv: Annotated[StdioPath, Parameter(validator=StdioPathValidator(exists=True, dir_okay=False)), INPUT_FILE],
     output_dir: Annotated[Path, Parameter(validator=validators.Path(file_okay=False)), OUTPUT_DIR],
     /,
     *,
@@ -160,7 +162,9 @@ def emdb(
 
 @retrieve_app.command
 def structure(
-    structures_csv: Annotated[StdioPath, INPUT_FILE],
+    structures_csv: Annotated[
+        StdioPath, Parameter(validator=StdioPathValidator(exists=True, dir_okay=False)), INPUT_FILE
+    ],
     output_dir: Annotated[Path, Parameter(validator=validators.Path(file_okay=False)), OUTPUT_DIR],
     /,
     *,

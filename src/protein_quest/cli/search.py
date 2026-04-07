@@ -259,7 +259,9 @@ def pdbe(
 
 @search_app.command
 def alphafold(
-    uniprot_accessions: Annotated[StdioPath, INPUT_FILE],
+    uniprot_accessions: Annotated[
+        StdioPath, Parameter(validator=StdioPathValidator(exists=True, dir_okay=False)), INPUT_FILE
+    ],
     output_csv: Annotated[StdioPath, Parameter(validator=validators.Path(dir_okay=False)), OUTPUT_FILE],
     /,
     *,
@@ -374,7 +376,9 @@ def structure(
 
 @search_app.command
 def emdb(
-    uniprot_accessions: Annotated[StdioPath, INPUT_FILE],
+    uniprot_accessions: Annotated[
+        StdioPath, Parameter(validator=StdioPathValidator(exists=True, dir_okay=False)), INPUT_FILE
+    ],
     output_csv: Annotated[StdioPath, Parameter(validator=validators.Path(dir_okay=False)), OUTPUT_FILE],
     /,
     *,
@@ -503,7 +507,9 @@ def interaction_partners(
 
 @search_app.command
 def complexes(
-    uniprot_accessions: Annotated[StdioPath, INPUT_FILE],
+    uniprot_accessions: Annotated[
+        StdioPath, Parameter(validator=StdioPathValidator(exists=True, dir_okay=False)), INPUT_FILE
+    ],
     output_csv: Annotated[StdioPath, Parameter(validator=validators.Path(dir_okay=False)), OUTPUT_FILE],
     /,
     *,
@@ -539,7 +545,9 @@ def complexes(
 
 @search_app.command
 def uniprot_details(
-    uniprot_accessions: Annotated[StdioPath, INPUT_FILE],
+    uniprot_accessions: Annotated[
+        StdioPath, Parameter(validator=StdioPathValidator(exists=True, dir_okay=False)), INPUT_FILE
+    ],
     output_csv: Annotated[StdioPath, Parameter(validator=validators.Path(dir_okay=False)), OUTPUT_FILE],
     /,
     *,

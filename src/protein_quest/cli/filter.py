@@ -17,6 +17,7 @@ from protein_quest.cli.common import (
     ConfidenceThreshold,
     MaxResidues,
     MinResidues,
+    StdioPathValidator,
     console,
     write_lines,
 )
@@ -111,7 +112,7 @@ def confidence(
 
 @filter_app.command
 def chain(
-    chains: Annotated[StdioPath, INPUT_FILE],
+    chains: Annotated[StdioPath, Parameter(validator=StdioPathValidator(exists=True, dir_okay=False)), INPUT_FILE],
     input_dir: Annotated[Path, Parameter(validator=validators.Path(exists=True, file_okay=False)), INPUT_DIR],
     output_dir: Annotated[Path, Parameter(validator=validators.Path(file_okay=False)), OUTPUT_DIR],
     /,
