@@ -23,7 +23,7 @@ class GoTerm:
     """A Gene Ontology (GO) term.
 
     Parameters:
-        id: The unique identifier for the GO term, e.g., 'GO:0043293'.
+        id: The unique identifier for the GO term, for example 'GO:0043293'.
         is_obsolete: Whether the GO term is obsolete.
         name: The name of the GO term.
         definition: The definition of the GO term.

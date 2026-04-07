@@ -100,7 +100,8 @@ def alphafold(
             files are also accepted, and the first row is treated as an ID.
             Use `-` for stdin.
         output_dir: Directory to store downloaded AlphaFold files.
-        format_: Formats to retrieve.
+        format_: Formats to retrieve. Defaults to [`cif`].
+            Repeat parameter for multiple formats, for example `--format cif --format pdb`.
         db_version: AlphaFold database version.
         gzip_files: Gzip downloaded files.
         all_isoforms: Return all isoforms.

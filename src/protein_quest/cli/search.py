@@ -8,7 +8,6 @@ import os
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Annotated, Any, Literal, cast
 
-from cattrs import structure as cattrs_structure
 from cyclopts import App, Parameter
 from cyclopts.types import StdioPath
 
@@ -204,13 +203,7 @@ def uniprot(
     output: OutputFile,
     /,
     *,
-    taxon_id: str | None = None,
-    reviewed: bool | None = None,
-    subcellular_location_uniprot: str | None = None,
-    subcellular_location_go: Annotated[set[str] | None, Parameter(negative="")] = None,
-    molecular_function_go: Annotated[set[str] | None, Parameter(negative="")] = None,
-    min_sequence_length: MinSequenceLength | None = None,
-    max_sequence_length: MaxSequenceLength | None = None,
+    query: Query | None = None,
     limit: Limit = 10_000,
     timeout: Timeout = 1_800,
     _: Common | None = None,
@@ -221,29 +214,14 @@ def uniprot(
 
     Args:
         output: Output text file for UniProt accessions (one per line). Use `-` for stdout.
-        taxon_id: NCBI Taxon ID, e.g. 9606 for Homo Sapiens.
-        reviewed: Reviewed=swissprot, no-reviewed=trembl. Default is uniprot=swissprot+trembl.
-        subcellular_location_uniprot: Subcellular location label as used by UniProt (e.g. nucleus).
-        subcellular_location_go: GO term(s) for subcellular location (e.g. GO:0005634).
-        molecular_function_go: GO term(s) for molecular function (e.g. GO:0003677).
-        min_sequence_length: Minimum length of the canonical sequence.
-        max_sequence_length: Maximum length of the canonical sequence.
+        query: Search query for UniProtKB. Can be given as a JSON string or as a path to a JSON file.
         limit: Maximum number of uniprot accessions to return.
         timeout: Maximum seconds to wait for query to complete.
         _: Common CLI options.
     """
-    query = cattrs_structure(
-        {
-            "taxon_id": taxon_id,
-            "reviewed": reviewed,
-            "subcellular_location_uniprot": subcellular_location_uniprot,
-            "subcellular_location_go": subcellular_location_go,
-            "molecular_function_go": molecular_function_go,
-            "min_sequence_length": min_sequence_length,
-            "max_sequence_length": max_sequence_length,
-        },
-        Query,
-    )
+    if query is None:
+        query = Query()
+
     rprint("Searching for UniProt accessions")
     accs = search4uniprot(query=query, limit=limit, timeout=timeout)
     rprint(f"Found {len(accs)} UniProt accessions, written to {_name_of_path(output)}")
@@ -372,7 +350,8 @@ def structure(
             `uniprot_accession`, `provider`, `model_identifier`, `model_url`, `model_format`, `chain`, `residue_count`.
             Use `-` for stdout.
         source: Source of the structures to search for. Default `pdbe` and `alphafold`.
-            Can be given multiple times. Use 'all' to search all sources.
+            Multiple sources can be given by repeating the `--source` parameter.
+            Use 'all' to search all sources.
         min_residues: Minimum number of residues required in the chain mapped to the UniProt accession.
         max_residues: Maximum number of residues allowed in the chain mapped to the UniProt accession.
         limit: Maximum number of structures per uniprot accession per source to return.
@@ -537,6 +516,7 @@ def interaction_partners(
         output_csv: Output CSV with interaction partners per UniProt accession.
             CSV has columns: `uniprot_accession`. Use `-` for stdout.
         exclude: UniProt accessions to exclude from the results.
+            Multiple accessions can be given by repeating the `--exclude` option.
         limit: Maximum number of interaction partner uniprot accessions to return.
         timeout: Maximum seconds to wait for query to complete.
         _: Common CLI options.

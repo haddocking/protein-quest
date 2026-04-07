@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Literal
 
 import gemmi
+from cyclopts import Parameter
 from dask.distributed import Client
 from distributed.deploy.cluster import Cluster
 from tqdm.auto import tqdm
@@ -74,6 +75,7 @@ def filter_out_low_confidence_residues(structure: gemmi.Structure, allowed_resid
     return new_structure
 
 
+@Parameter(name="*")
 @dataclass
 class ConfidenceFilterQuery:
     """Query for filtering AlphaFoldDB structures based on confidence.
@@ -85,9 +87,9 @@ class ConfidenceFilterQuery:
         max_residues: The maximum number of high-confidence residues required to keep the structure.
     """
 
-    confidence: Percentage
-    min_residues: PositiveInt
-    max_residues: PositiveInt
+    confidence: Percentage = 70.0
+    min_residues: PositiveInt = 0
+    max_residues: PositiveInt = 10_000_000
 
 
 base_query_hook = converter.get_structure_hook(ConfidenceFilterQuery)

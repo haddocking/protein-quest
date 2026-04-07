@@ -21,14 +21,14 @@ class Taxon:
     """Dataclass representing a taxon.
 
     Arguments:
-        taxon_id: The unique identifier for the taxon.
+        taxon_id: The unique identifier for the taxon. Also known as the NCBI Taxon ID.
         scientific_name: The scientific name of the taxon.
-        rank: The taxonomic rank of the taxon (e.g., species, genus).
+        rank: The taxonomic rank of the taxon (for example species, genus).
         common_name: The common name of the taxon (if available).
         other_names: A set of other names for the taxon (if available).
     """
 
-    taxon_id: str
+    taxon_id: int
     scientific_name: str
     rank: str
     common_name: str | None = None

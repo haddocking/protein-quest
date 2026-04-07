@@ -11,7 +11,6 @@ from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_fil
 from protein_quest.cli.common import (
     CacheParameter,
     Common,
-    ConfidenceThreshold,
     InputDir,
     InputFile,
     MaxResidues,
@@ -21,7 +20,6 @@ from protein_quest.cli.common import (
     console,
     write_lines,
 )
-from protein_quest.converter import converter
 from protein_quest.filters import filter_files_on_chain, filter_files_on_residues
 from protein_quest.io import (
     glob_structure_files,
@@ -48,9 +46,7 @@ def confidence(
     output_dir: OutputDir,
     /,
     *,
-    confidence_threshold: ConfidenceThreshold = 70,
-    min_residues: MinResidues = 0,
-    max_residues: MaxResidues = 10_000_000,
+    filters: ConfidenceFilterQuery | None = None,
     write_stats: OutputFile | None = None,
     scheduler_address: str | None = None,
     cache: CacheParameter | None = None,
@@ -64,9 +60,7 @@ def confidence(
     Args:
         input_dir: Directory with AlphaFold mmcif/PDB files.
         output_dir: Directory to write filtered mmcif/PDB files.
-        confidence_threshold: pLDDT confidence threshold (0-100).
-        min_residues: Minimum number of high-confidence residues a structure should have.
-        max_residues: Maximum number of high-confidence residues a structure should have.
+        filters: Confidence filtering criteria.
         write_stats: Write filter statistics to file.
             In CSV format with `<input_file>,<residue_count>,<passed>,<output_file>` columns.
             Use `-` for stdout.
@@ -76,19 +70,12 @@ def confidence(
         cache: Cache options including no_cache, cache_dir, and copy_method.
         _: Common CLI options.
     """
+    if filters is None:
+        filters = ConfidenceFilterQuery()
     output_dir.mkdir(parents=True, exist_ok=True)
     input_files = sorted(glob_structure_files(input_dir))
     nr_input_files = len(input_files)
     rprint(f"Starting confidence filtering of {nr_input_files} mmcif/PDB files in {input_dir} directory.")
-
-    query = converter.structure(
-        {
-            "confidence": confidence_threshold,
-            "min_residues": min_residues,
-            "max_residues": max_residues,
-        },
-        ConfidenceFilterQuery,
-    )
 
     if write_stats and (write_stats) != "-":
         write_stats.parent.mkdir(parents=True, exist_ok=True)
@@ -97,7 +84,7 @@ def confidence(
 
     passed_count = 0
     results = filter_files_on_confidence(
-        input_files, query, output_dir, copy_method=cache.copy_method, scheduler_address=scheduler_address
+        input_files, filters, output_dir, copy_method=cache.copy_method, scheduler_address=scheduler_address
     )
 
     stats_lines = ["input_file,residue_count,passed,output_file"]
@@ -196,7 +183,7 @@ def residue(
     Filter PDB/mmCIF files by number of residues in chain A.
 
     Args:
-        input_dir: Directory with PDB/mmCIF files (e.g., from 'filter chain').
+        input_dir: Directory with PDB/mmCIF files (for example from 'filter chain').
         output_dir: Directory to write filtered PDB/mmCIF files. Files are copied without modification.
         min_residues: Min residues in chain A.
         max_residues: Max residues in chain A.
@@ -243,14 +230,7 @@ def secondary_structure(
     output_dir: OutputDir,
     /,
     *,
-    abs_min_helix_residues: int | None = None,
-    abs_max_helix_residues: int | None = None,
-    abs_min_sheet_residues: int | None = None,
-    abs_max_sheet_residues: int | None = None,
-    ratio_min_helix_residues: float | None = None,
-    ratio_max_helix_residues: float | None = None,
-    ratio_min_sheet_residues: float | None = None,
-    ratio_max_sheet_residues: float | None = None,
+    filters: SecondaryStructureFilterQuery | None = None,
     write_stats: OutputFile | None = None,
     cache: CacheParameter | None = None,
     _: Common | None = None,
@@ -260,16 +240,9 @@ def secondary_structure(
     Filter PDB/mmCIF files by secondary structure.
 
     Args:
-        input_dir: Directory with PDB/mmCIF files (e.g., from 'filter chain').
+        input_dir: Directory with PDB/mmCIF files.
         output_dir: Directory to write filtered PDB/mmCIF files. Files are copied without modification.
-        abs_min_helix_residues: Min residues in helices.
-        abs_max_helix_residues: Max residues in helices.
-        abs_min_sheet_residues: Min residues in sheets.
-        abs_max_sheet_residues: Max residues in sheets.
-        ratio_min_helix_residues: Min helix ratio (relative to chain length).
-        ratio_max_helix_residues: Max helix ratio (relative to chain length).
-        ratio_min_sheet_residues: Min sheet ratio (relative to chain length).
-        ratio_max_sheet_residues: Max sheet ratio (relative to chain length).
+        filters: Secondary structure filtering criteria.
         write_stats: Write filter statistics to file.
             In CSV format with columns:
             `<input_file>,<nr_residues>,<nr_helix_residues>,<nr_sheet_residues>,
@@ -278,23 +251,14 @@ def secondary_structure(
         cache: Cache options including no_cache, cache_dir, and copy_method.
         _: Common CLI options.
     """
+    if filters is None:
+        filters = SecondaryStructureFilterQuery()
     cache = cache or CacheParameter()
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if write_stats and str(write_stats) != "-":
         write_stats.parent.mkdir(parents=True, exist_ok=True)
 
-    raw_query = {
-        "abs_min_helix_residues": abs_min_helix_residues,
-        "abs_max_helix_residues": abs_max_helix_residues,
-        "abs_min_sheet_residues": abs_min_sheet_residues,
-        "abs_max_sheet_residues": abs_max_sheet_residues,
-        "ratio_min_helix_residues": ratio_min_helix_residues,
-        "ratio_max_helix_residues": ratio_max_helix_residues,
-        "ratio_min_sheet_residues": ratio_min_sheet_residues,
-        "ratio_max_sheet_residues": ratio_max_sheet_residues,
-    }
-    query = converter.structure(raw_query, SecondaryStructureFilterQuery)
     input_files = sorted(glob_structure_files(input_dir))
     nr_total = len(input_files)
 
@@ -304,7 +268,7 @@ def secondary_structure(
 
     rprint(f"Filtering {nr_total} files in {input_dir} directory by secondary structure.")
     nr_passed = 0
-    for input_file, result in filter_files_on_secondary_structure(input_files, query=query):
+    for input_file, result in filter_files_on_secondary_structure(input_files, query=filters):
         output_file: Path | None = None
         if result.passed:
             output_file = output_dir / input_file.name
