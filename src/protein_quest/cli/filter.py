@@ -2,22 +2,22 @@
 
 import csv
 import os
-from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING
 
-from cyclopts import App, Parameter, validators
-from cyclopts.types import StdioPath
+from cyclopts import App
 from rich.panel import Panel
-from rocrate_action_recorder.adapters.cyclopts import INPUT_DIR, INPUT_FILE, OUTPUT_DIR, OUTPUT_FILE
 
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
 from protein_quest.cli.common import (
     CacheParameter,
     Common,
     ConfidenceThreshold,
+    InputDir,
+    InputFile,
     MaxResidues,
     MinResidues,
-    StdioPathValidator,
+    OutputDir,
+    OutputFile,
     console,
     write_lines,
 )
@@ -33,6 +33,9 @@ from protein_quest.ss import (
 )
 from protein_quest.utils import copyfile
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 rprint = console.print
 
 
@@ -41,14 +44,14 @@ filter_app = App(name="filter", help="Filter files")
 
 @filter_app.command
 def confidence(
-    input_dir: Annotated[Path, Parameter(validator=validators.Path(exists=True, file_okay=False)), INPUT_DIR],
-    output_dir: Annotated[Path, Parameter(validator=validators.Path(file_okay=False)), OUTPUT_DIR],
+    input_dir: InputDir,
+    output_dir: OutputDir,
     /,
     *,
     confidence_threshold: ConfidenceThreshold = 70,
     min_residues: MinResidues = 0,
     max_residues: MaxResidues = 10_000_000,
-    write_stats: Annotated[StdioPath | None, OUTPUT_FILE] = None,
+    write_stats: OutputFile | None = None,
     scheduler_address: str | None = None,
     cache: CacheParameter | None = None,
     _: Common | None = None,
@@ -112,9 +115,9 @@ def confidence(
 
 @filter_app.command
 def chain(
-    chains: Annotated[StdioPath, Parameter(validator=StdioPathValidator(exists=True, dir_okay=False)), INPUT_FILE],
-    input_dir: Annotated[Path, Parameter(validator=validators.Path(exists=True, file_okay=False)), INPUT_DIR],
-    output_dir: Annotated[Path, Parameter(validator=validators.Path(file_okay=False)), OUTPUT_DIR],
+    chains: InputFile,
+    input_dir: InputDir,
+    output_dir: OutputDir,
     /,
     *,
     scheduler_address: str | None = None,
@@ -141,7 +144,7 @@ def chain(
     output_dir.mkdir(parents=True, exist_ok=True)
     cache = cache or CacheParameter()
 
-    with chains.open("r", encoding="utf-8", newline="") as chains_file:
+    with chains.open("r", encoding="utf-8") as chains_file:
         rows = list(csv.DictReader(chains_file))
     file2chain: set[tuple[Path, str]] = set()
     errors: list[FileNotFoundError] = []
@@ -178,13 +181,13 @@ def chain(
 
 @filter_app.command
 def residue(
-    input_dir: Annotated[Path, Parameter(validator=validators.Path(exists=True, file_okay=False)), INPUT_DIR],
-    output_dir: Annotated[Path, Parameter(validator=validators.Path(file_okay=False)), OUTPUT_DIR],
+    input_dir: InputDir,
+    output_dir: OutputDir,
     /,
     *,
     min_residues: MinResidues = 0,
     max_residues: MaxResidues = 10_000_000,
-    write_stats: Annotated[StdioPath | None, OUTPUT_FILE] = None,
+    write_stats: OutputFile | None = None,
     cache: CacheParameter | None = None,
     _: Common | None = None,
 ) -> None:
@@ -236,8 +239,8 @@ def residue(
 
 @filter_app.command
 def secondary_structure(
-    input_dir: Annotated[Path, Parameter(validator=validators.Path(exists=True, file_okay=False)), INPUT_DIR],
-    output_dir: Annotated[Path, Parameter(validator=validators.Path(file_okay=False)), OUTPUT_DIR],
+    input_dir: InputDir,
+    output_dir: OutputDir,
     /,
     *,
     abs_min_helix_residues: int | None = None,
@@ -248,7 +251,7 @@ def secondary_structure(
     ratio_max_helix_residues: float | None = None,
     ratio_min_sheet_residues: float | None = None,
     ratio_max_sheet_residues: float | None = None,
-    write_stats: Annotated[StdioPath | None, OUTPUT_FILE] = None,
+    write_stats: OutputFile | None = None,
     cache: CacheParameter | None = None,
     _: Common | None = None,
 ) -> None:

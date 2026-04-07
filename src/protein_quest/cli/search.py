@@ -1,39 +1,41 @@
 """Search subcommands for protein-quest."""
 
 import asyncio
+import contextlib
 import csv
 import logging
 import os
 from collections.abc import Iterable, Mapping, Sequence
-from pathlib import Path
 from typing import Annotated, Any, Literal, cast
 
 from cattrs import structure as cattrs_structure
-from cyclopts import App, Parameter, validators
+from cyclopts import App, Parameter
 from cyclopts.types import StdioPath
-from rocrate_action_recorder.adapters.cyclopts import INPUT_FILE, OUTPUT_FILE
 
 from protein_quest.cli.common import (
     BatchSize,
     Common,
+    InputFile,
     Limit,
     MaxResidues,
     MaxSequenceLength,
     MinResidues,
     MinSequenceLength,
-    StdioPathValidator,
+    OutputFile,
     Timeout,
     console,
 )
 from protein_quest.converter import converter
-from protein_quest.go import Aspect, search_gene_ontology_term, write_go_terms_to_csv
+from protein_quest.go import Aspect, GoTerm, search_gene_ontology_term
 from protein_quest.pdbe_3dbeacons.model import Provider, search_structure_provider_choices
 from protein_quest.pdbe_3dbeacons.search import PruneOptions, flatten_structure_summaries, uniprots2structures
-from protein_quest.taxonomy import SearchField, search_taxon, write_taxonomy_csv
+from protein_quest.taxonomy import SearchField, Taxon, search_taxon
 from protein_quest.uniprot import (
+    ComplexPortalEntry,
     PdbChainLengthError,
     PdbResults,
     Query,
+    UniprotDetails,
     filter_pdb_results_on_chain_length,
     map_uniprot_accessions2uniprot_details,
     search4af,
@@ -47,6 +49,8 @@ from protein_quest.uniprot import (
 rprint = console.print
 logger = logging.getLogger(__name__)
 
+search_app = App(name="search", help="Search data sources")
+
 
 def _name_of_path(file: StdioPath) -> str:
     """Return a display name for a StdioPath."""
@@ -55,44 +59,42 @@ def _name_of_path(file: StdioPath) -> str:
     return str(file)
 
 
-search_app = App(name="search", help="Search data sources")
-
-
-def _write_pdbe_csv(path, data: PdbResults):
+def _write_pdbe_csv(path: StdioPath, data: PdbResults):
     """Write PDBe results to CSV."""
-    fieldnames = ["uniprot_accession", "pdb_id", "method", "resolution", "uniprot_chains", "chain", "chain_length"]
-    writer = csv.DictWriter(path, fieldnames=fieldnames)
-    writer.writeheader()
-    for uniprot_accession, entries in sorted(data.items()):
-        for e in sorted(entries, key=lambda x: (x.id, x.method)):
-            try:
-                chain_length = e.chain_length
-            except PdbChainLengthError:
-                msg = f"Could not determine chain length for {uniprot_accession} / {e.id} chain {e.chain}"
-                msg += f" from '{e.uniprot_chains}'. No chain length for this entry."
-                logger.warning(msg)
-                chain_length = None
-            writer.writerow(
-                {
-                    "uniprot_accession": uniprot_accession,
-                    "pdb_id": e.id,
-                    "method": e.method,
-                    "resolution": e.resolution or "",
-                    "uniprot_chains": e.uniprot_chains,
-                    "chain": e.chain,
-                    "chain_length": chain_length,
-                }
-            )
+    fieldnames = ("uniprot_accession", "pdb_id", "method", "resolution", "uniprot_chains", "chain", "chain_length")
+    with path.open("w", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for uniprot_accession, entries in sorted(data.items()):
+            for e in sorted(entries, key=lambda x: (x.id, x.method)):
+                try:
+                    chain_length = e.chain_length
+                except PdbChainLengthError:
+                    msg = f"Could not determine chain length for {uniprot_accession} / {e.id} chain {e.chain}"
+                    msg += f" from '{e.uniprot_chains}'. No chain length for this entry."
+                    logger.warning(msg)
+                    chain_length = None
+                writer.writerow(
+                    {
+                        "uniprot_accession": uniprot_accession,
+                        "pdb_id": e.id,
+                        "method": e.method,
+                        "resolution": e.resolution or "",
+                        "uniprot_chains": e.uniprot_chains,
+                        "chain": e.chain,
+                        "chain_length": chain_length,
+                    }
+                )
 
 
-def _write_dict_of_sets2csv(file, data: dict[str, set[str]], ref_id_field: str):
+def _write_dict_of_sets2csv(file: StdioPath, data: dict[str, set[str]], ref_id_field: str):
     """Write a dict of sets to CSV."""
     if str(file) != "-":
         file.parent.mkdir(parents=True, exist_ok=True)
 
     fieldnames = ["uniprot_accession", ref_id_field]
 
-    with file.open("w", encoding="utf-8", newline="") as f:
+    with file.open("w", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         for uniprot_accession, ref_ids in sorted(data.items()):
@@ -100,7 +102,7 @@ def _write_dict_of_sets2csv(file, data: dict[str, set[str]], ref_id_field: str):
                 writer.writerow({"uniprot_accession": uniprot_accession, ref_id_field: ref_id})
 
 
-def _write_lines(file, lines: Iterable[str]):
+def _write_lines(file: StdioPath, lines: Iterable[str]):
     """Write lines to a file or stdout."""
     if str(file) != "-":
         file.parent.mkdir(parents=True, exist_ok=True)
@@ -109,35 +111,47 @@ def _write_lines(file, lines: Iterable[str]):
             f.write(line + os.linesep)
 
 
-def _write_list_of_dicts_to_csv(file, rows: Sequence[Mapping[str, Any]]):
+def _write_list_of_dicts_to_csv(file: StdioPath, rows: Sequence[Mapping[str, Any]]):
     """Write a list of dicts to CSV."""
     if str(file) != "-":
         file.parent.mkdir(parents=True, exist_ok=True)
 
     fieldnames = rows[0].keys()
 
-    with file.open("w", encoding="utf-8", newline="") as f:
+    with file.open("w", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
 
 
-def _write_complexes_csv(complexes, output_csv):
-    """Write ComplexPortal information to a CSV file."""
-    if str(output_csv) != "-":
-        output_csv.parent.mkdir(parents=True, exist_ok=True)
+@contextlib.contextmanager
+def write_csv(path: StdioPath):
+    """Context manager for writing CSV files.
 
-    with output_csv.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["query_protein", "complex_id", "complex_url", "complex_title", "members"])
+    Creates parent directories if they do not exist.
+
+    Yields:
+        CSV writer object to write rows to.
+    """
+    if str(path) != "-":
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+    with path.open("w", encoding="utf-8") as f:
+        yield csv.writer(f)
+
+
+def _write_complexes_csv(complexes: list[ComplexPortalEntry], output_csv: StdioPath):
+    """Write ComplexPortal information to a CSV file."""
+    with write_csv(output_csv) as writer:
+        writer.writerow(("query_protein", "complex_id", "complex_url", "complex_title", "members"))
         for entry in complexes:
             members_str = ";".join(sorted(entry.members))
             writer.writerow(
-                [entry.query_protein, entry.complex_id, entry.complex_url, entry.complex_title, members_str]
+                (entry.query_protein, entry.complex_id, entry.complex_url, entry.complex_title, members_str)
             )
 
 
-def _write_uniprot_details_csv(output_csv, uniprot_details_list):
+def _write_uniprot_details_csv(output_csv: StdioPath, uniprot_details_list: list[UniprotDetails]):
     """Write UniProt details to CSV."""
     if not uniprot_details_list:
         msg = "No UniProt entries found for given accessions"
@@ -145,15 +159,49 @@ def _write_uniprot_details_csv(output_csv, uniprot_details_list):
     _write_list_of_dicts_to_csv(output_csv, uniprot_details_list)
 
 
-def _read_lines(file: Path) -> list[str]:
+def _read_lines(file: StdioPath) -> list[str]:
     """Read lines from a file or stdin."""
     with file.open("r", encoding="utf-8") as f:
         return [line.strip() for line in f]
 
 
+def _write_go_terms_to_csv(terms: list[GoTerm], csv_file: StdioPath) -> None:
+    """Write a list of GO terms to a CSV file.
+
+    Args:
+        terms: The list of GO terms to write.
+        csv_file: The CSV file to write to. Use `-` for stdout.
+    """
+    with write_csv(csv_file) as writer:
+        writer.writerow(["id", "name", "aspect", "definition"])
+        for term in terms:
+            writer.writerow([term.id, term.name, term.aspect, term.definition])
+
+
+def write_taxonomy_csv(taxons: list[Taxon], output_csv: StdioPath) -> None:
+    """Write taxon information to a CSV file.
+
+    Args:
+        taxons: List of Taxon objects to write to the CSV file.
+        output_csv: File object for the output CSV file. Can be a file path or '-' for stdout.
+    """
+    with write_csv(output_csv) as writer:
+        writer.writerow(["taxon_id", "scientific_name", "common_name", "rank", "other_names"])
+        for taxon in taxons:
+            writer.writerow(
+                [
+                    taxon.taxon_id,
+                    taxon.scientific_name,
+                    taxon.common_name,
+                    taxon.rank,
+                    ";".join(taxon.other_names) if taxon.other_names else "",
+                ]
+            )
+
+
 @search_app.command
 def uniprot(
-    output: Annotated[StdioPath, OUTPUT_FILE],
+    output: OutputFile,
     /,
     *,
     taxon_id: str | None = None,
@@ -204,8 +252,8 @@ def uniprot(
 
 @search_app.command
 def pdbe(
-    uniprot_accessions: Annotated[StdioPath, Parameter(validator=StdioPathValidator(exists=True)), INPUT_FILE],
-    output_csv: Annotated[StdioPath, Parameter(validator=validators.Path(dir_okay=False)), OUTPUT_FILE],
+    uniprot_accessions: InputFile,
+    output_csv: OutputFile,
     /,
     *,
     limit: Limit = 10_000,
@@ -252,17 +300,14 @@ def pdbe(
     else:
         rprint(f"Found {raw_total_pdbs} PDB entries for {raw_nr_results} uniprot accessions")
 
-    with output_csv.open("w", encoding="utf-8", newline="") as f:
-        _write_pdbe_csv(f, results)
+    _write_pdbe_csv(output_csv, results)
     rprint(f"Written to {output_csv}")
 
 
 @search_app.command
 def alphafold(
-    uniprot_accessions: Annotated[
-        StdioPath, Parameter(validator=StdioPathValidator(exists=True, dir_okay=False)), INPUT_FILE
-    ],
-    output_csv: Annotated[StdioPath, Parameter(validator=validators.Path(dir_okay=False)), OUTPUT_FILE],
+    uniprot_accessions: InputFile,
+    output_csv: OutputFile,
     /,
     *,
     min_sequence_length: MinSequenceLength | None = None,
@@ -301,8 +346,8 @@ def alphafold(
 
 @search_app.command
 def structure(
-    uniprot_accessions: Annotated[StdioPath, INPUT_FILE],
-    output_csv: Annotated[StdioPath, Parameter(validator=validators.Path(dir_okay=False)), OUTPUT_FILE],
+    uniprot_accessions: InputFile,
+    output_csv: OutputFile,
     /,
     *,
     source: Annotated[
@@ -313,7 +358,7 @@ def structure(
     max_residues: MaxResidues | None = None,
     limit: Limit = 10_000,
     timeout: Timeout = 1_800,
-    raw: Annotated[Path | None, Parameter(validator=validators.Path(dir_okay=False)), OUTPUT_FILE] = None,
+    raw: OutputFile | None = None,
     _: Common | None = None,
 ) -> None:
     """Search for experimentally determined and predicted structures.
@@ -376,10 +421,8 @@ def structure(
 
 @search_app.command
 def emdb(
-    uniprot_accessions: Annotated[
-        StdioPath, Parameter(validator=StdioPathValidator(exists=True, dir_okay=False)), INPUT_FILE
-    ],
-    output_csv: Annotated[StdioPath, Parameter(validator=validators.Path(dir_okay=False)), OUTPUT_FILE],
+    uniprot_accessions: InputFile,
+    output_csv: OutputFile,
     /,
     *,
     limit: Limit = 10_000,
@@ -410,7 +453,7 @@ def emdb(
 @search_app.command
 def go(
     term: str,
-    output_csv: Annotated[StdioPath, Parameter(validator=validators.Path(dir_okay=False)), OUTPUT_FILE],
+    output_csv: OutputFile,
     /,
     *,
     aspect: Aspect | None = None,
@@ -436,13 +479,13 @@ def go(
         rprint(f"Searching for GO terms matching '{term}'")
     results = asyncio.run(search_gene_ontology_term(term, aspect=aspect, limit=limit))
     rprint(f"Found {len(results)} GO terms, written to {output_csv}")
-    write_go_terms_to_csv(results, output_csv)
+    _write_go_terms_to_csv(results, output_csv)
 
 
 @search_app.command
 def taxonomy(
     query: str,
-    output_csv: Annotated[StdioPath, Parameter(validator=validators.Path(dir_okay=False)), OUTPUT_FILE],
+    output_csv: OutputFile,
     /,
     *,
     field: SearchField | None = None,
@@ -476,7 +519,7 @@ def taxonomy(
 @search_app.command
 def interaction_partners(
     uniprot_accession: str,
-    output_csv: Annotated[StdioPath, Parameter(validator=validators.Path(dir_okay=False)), OUTPUT_FILE],
+    output_csv: OutputFile,
     /,
     *,
     exclude: Annotated[list[str] | None, Parameter(negative="")] = None,
@@ -507,10 +550,8 @@ def interaction_partners(
 
 @search_app.command
 def complexes(
-    uniprot_accessions: Annotated[
-        StdioPath, Parameter(validator=StdioPathValidator(exists=True, dir_okay=False)), INPUT_FILE
-    ],
-    output_csv: Annotated[StdioPath, Parameter(validator=validators.Path(dir_okay=False)), OUTPUT_FILE],
+    uniprot_accessions: InputFile,
+    output_csv: OutputFile,
     /,
     *,
     limit: Limit = 100,
@@ -545,10 +586,8 @@ def complexes(
 
 @search_app.command
 def uniprot_details(
-    uniprot_accessions: Annotated[
-        StdioPath, Parameter(validator=StdioPathValidator(exists=True, dir_okay=False)), INPUT_FILE
-    ],
-    output_csv: Annotated[StdioPath, Parameter(validator=validators.Path(dir_okay=False)), OUTPUT_FILE],
+    uniprot_accessions: InputFile,
+    output_csv: OutputFile,
     /,
     *,
     timeout: Timeout = 1_800,

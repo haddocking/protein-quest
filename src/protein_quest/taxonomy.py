@@ -1,10 +1,8 @@
 """Module for searching taxon information from UniProt."""
 
-import csv
 import gzip
 import logging
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Literal, get_args
 
 from aiohttp.client import ClientResponse
@@ -126,28 +124,3 @@ async def search_taxon(query: str, field: SearchField | None = None, limit: int 
             if next_page is None:
                 return taxons
     return taxons
-
-
-def write_taxonomy_csv(taxons: list[Taxon], output_csv: Path) -> None:
-    """Write taxon information to a CSV file.
-
-    Args:
-        taxons: List of Taxon objects to write to the CSV file.
-        output_csv: File object for the output CSV file.
-    """
-    if str(output_csv) != "-":
-        output_csv.parent.mkdir(parents=True, exist_ok=True)
-
-    with output_csv.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["taxon_id", "scientific_name", "common_name", "rank", "other_names"])
-        for taxon in taxons:
-            writer.writerow(
-                [
-                    taxon.taxon_id,
-                    taxon.scientific_name,
-                    taxon.common_name,
-                    taxon.rank,
-                    ";".join(taxon.other_names) if taxon.other_names else "",
-                ]
-            )

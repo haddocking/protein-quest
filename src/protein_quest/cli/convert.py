@@ -1,13 +1,11 @@
 """Convert subcommands for protein-quest."""
 
-from pathlib import Path
 from typing import Annotated, Literal
 
-from cyclopts import App, Parameter, validators
-from rocrate_action_recorder.adapters.cyclopts import INPUT_DIR, OUTPUT_DIR, OUTPUT_FILE
+from cyclopts import App, Parameter
 from tqdm import tqdm
 
-from protein_quest.cli.common import CacheParameter, Common, console, write_lines
+from protein_quest.cli.common import CacheParameter, Common, InputDir, OutputDir, OutputFile, console, write_lines
 from protein_quest.io import convert_to_cif_files, glob_structure_files, read_structure
 from protein_quest.structure import structure2uniprot_accessions
 
@@ -19,8 +17,8 @@ convert_app = App(name="convert", help="Convert files between formats")
 
 @convert_app.command
 def uniprot(
-    input_dir: Annotated[Path, Parameter(validator=validators.Path(exists=True, file_okay=False)), INPUT_DIR],
-    output: Annotated[Path, Parameter(validator=validators.Path(dir_okay=False)), OUTPUT_FILE],
+    input_dir: InputDir,
+    output: OutputFile,
     /,
     *,
     grouped: Annotated[
@@ -59,10 +57,10 @@ def uniprot(
 
 @convert_app.command
 def structures(
-    input_dir: Annotated[Path, Parameter(validator=validators.Path(exists=True, file_okay=False)), INPUT_DIR],
+    input_dir: InputDir,
     /,
     *,
-    output_dir: Annotated[Path | None, Parameter(validator=validators.Path(file_okay=False)), OUTPUT_DIR] = None,
+    output_dir: OutputDir | None = None,
     _format: Annotated[Literal["cif"], Parameter(name="--format")] = "cif",
     cache: CacheParameter | None = None,
     _common: Common | None = None,

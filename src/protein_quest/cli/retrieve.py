@@ -1,12 +1,9 @@
 """Retrieve subcommands for protein-quest."""
 
 import asyncio
-from pathlib import Path
 from typing import Annotated
 
-from cyclopts import App, Parameter, validators
-from cyclopts.types import StdioPath
-from rocrate_action_recorder.adapters.cyclopts import INPUT_FILE, OUTPUT_DIR
+from cyclopts import App, Parameter
 
 from protein_quest.alphafold.fetch import (
     DownloadableFormat,
@@ -15,7 +12,15 @@ from protein_quest.alphafold.fetch import (
 from protein_quest.alphafold.fetch import (
     fetch_many as af_fetch,
 )
-from protein_quest.cli.common import BatchSize, CacheParameter, Common, StdioPathValidator, console, to_cacher
+from protein_quest.cli.common import (
+    BatchSize,
+    CacheParameter,
+    Common,
+    InputFile,
+    OutputDir,
+    console,
+    to_cacher,
+)
 from protein_quest.emdb import fetch as emdb_fetch
 from protein_quest.emdb import read_emdb_ids_from_csv
 from protein_quest.pdbe import fetch as pdbe_fetch
@@ -30,8 +35,8 @@ retrieve_app = App(name="retrieve", help="Retrieve structure files")
 
 @retrieve_app.command
 def pdbe(
-    pdbe_csv: Annotated[StdioPath, Parameter(validator=StdioPathValidator(exists=True, dir_okay=False)), INPUT_FILE],
-    output_dir: Annotated[Path, Parameter(validator=validators.Path(file_okay=False)), OUTPUT_DIR],
+    pdbe_csv: InputFile,
+    output_dir: OutputDir,
     /,
     *,
     max_parallel_downloads: BatchSize = 5,
@@ -66,10 +71,8 @@ def pdbe(
 
 @retrieve_app.command
 def alphafold(
-    alphafold_csv: Annotated[
-        StdioPath, Parameter(validator=StdioPathValidator(exists=True, dir_okay=False)), INPUT_FILE
-    ],
-    output_dir: Annotated[Path, Parameter(validator=validators.Path(file_okay=False)), OUTPUT_DIR],
+    alphafold_csv: InputFile,
+    output_dir: OutputDir,
     /,
     *,
     format_: Annotated[set[DownloadableFormat], Parameter(name="--format", negative="")] | None = None,
@@ -131,8 +134,8 @@ def alphafold(
 
 @retrieve_app.command
 def emdb(
-    emdb_csv: Annotated[StdioPath, Parameter(validator=StdioPathValidator(exists=True, dir_okay=False)), INPUT_FILE],
-    output_dir: Annotated[Path, Parameter(validator=validators.Path(file_okay=False)), OUTPUT_DIR],
+    emdb_csv: InputFile,
+    output_dir: OutputDir,
     /,
     *,
     cache: CacheParameter | None = None,
@@ -162,10 +165,8 @@ def emdb(
 
 @retrieve_app.command
 def structure(
-    structures_csv: Annotated[
-        StdioPath, Parameter(validator=StdioPathValidator(exists=True, dir_okay=False)), INPUT_FILE
-    ],
-    output_dir: Annotated[Path, Parameter(validator=validators.Path(file_okay=False)), OUTPUT_DIR],
+    structures_csv: InputFile,
+    output_dir: OutputDir,
     /,
     *,
     raw: Annotated[

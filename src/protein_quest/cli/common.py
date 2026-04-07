@@ -1,7 +1,6 @@
 """Common CLI options for protein-quest."""
 
 import logging
-import sys
 from collections.abc import Iterable
 from dataclasses import dataclass
 from os import linesep
@@ -9,9 +8,9 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from cyclopts import Group, Parameter, validators
-from cyclopts.types import NonNegativeFloat, PositiveInt
+from cyclopts.types import NonNegativeFloat, PositiveInt, StdioPath
 from rich.console import Console
-from rocrate_action_recorder.adapters.cyclopts import RECORD_TRIGGER
+from rocrate_action_recorder.adapters.cyclopts import INPUT_DIR, INPUT_FILE, OUTPUT_DIR, OUTPUT_FILE, RECORD_TRIGGER
 from xdg_base_dirs import xdg_cache_home
 
 from protein_quest.utils import Cacher, DirectoryCacher, PassthroughCacher
@@ -156,7 +155,7 @@ class Common:
         setup_logging(verbose=self.verbose, quiet=self.quiet)
 
 
-def write_lines(file: Path, lines: Iterable[str]):
+def write_lines(file: StdioPath, lines: Iterable[str]):
     """Write lines to a file
 
     If file is "-", writes to stdout.
@@ -167,14 +166,11 @@ def write_lines(file: Path, lines: Iterable[str]):
         file: Path to output file.
         lines: Iterable of lines to write.
     """
-    if str(file) == "-":
-        for line in lines:
-            sys.stdout.write(line + linesep)
-    else:
+    if str(file) != "-":
         file.parent.mkdir(parents=True, exist_ok=True)
-        with file.open("w", encoding="utf-8") as f:
-            for line in lines:
-                f.write(line + linesep)
+    with file.open("w", encoding="utf-8") as f:
+        for line in lines:
+            f.write(line + linesep)
 
 
 class StdioPathValidator(validators.Path):
@@ -192,3 +188,13 @@ class StdioPathValidator(validators.Path):
                 raise ValueError(msg)
             return None
         return super().__call__(type_, path)
+
+
+InputFile = Annotated[StdioPath, Parameter(validator=StdioPathValidator(exists=True, dir_okay=False)), INPUT_FILE]
+"""Type for input file parameters (file paths that can also be "-" for stdin)."""
+InputDir = Annotated[Path, Parameter(validator=validators.Path(exists=True, file_okay=False)), INPUT_DIR]
+"""Type for input directory parameters (directory paths)."""
+OutputFile = Annotated[StdioPath, Parameter(validator=StdioPathValidator(dir_okay=False)), OUTPUT_FILE]
+"""Type for output file parameters (file paths that can also be "-" for stdout)."""
+OutputDir = Annotated[Path, Parameter(validator=validators.Path(file_okay=False)), OUTPUT_DIR]
+"""Type for output directory parameters (directory paths)."""
