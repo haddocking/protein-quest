@@ -26,6 +26,8 @@ interactions:
       Access-Control-Expose-Headers:
       - X-Total-Results, X-Release, queryid, content-type, user-agent, cache-control,
         etag, range
+      Age:
+      - '1'
       Cache-Control:
       - public
       Connection:
@@ -37,11 +39,11 @@ interactions:
       Content-Type:
       - application/sparql-results+json
       Date:
-      - Fri, 24 Oct 2025 12:15:18 GMT
+      - Fri, 03 Apr 2026 17:58:46 GMT
       ETag:
-      - W/"2025_04"
+      - W/"2026_01"
       Expires:
-      - Sat, 25 Oct 2025 12:15:17 GMT
+      - Sat, 04 Apr 2026 17:58:46 GMT
       Server:
       - Apache
       Strict-Transport-Security:
@@ -55,10 +57,10 @@ interactions:
       X-Powered-By:
       - sib.swiss
       X-Release:
-      - '2025_04'
+      - '2026_01'
       queryid:
-      - '773171'
+      - '1847533377'
     status:
       code: 200
-      message: ''
+      message: OK
 version: 1

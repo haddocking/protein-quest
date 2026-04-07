@@ -1,15 +1,15 @@
 """Module for functions that are used in multiple places."""
 
-import argparse
 import asyncio
 import hashlib
 import logging
 import shutil
+import sys
 from collections.abc import Callable, Coroutine, Iterable, Sequence
 from contextlib import asynccontextmanager
 from csv import DictReader
+from dataclasses import dataclass
 from functools import lru_cache
-from io import TextIOBase
 from pathlib import Path
 from textwrap import dedent
 from typing import Any, Literal, Protocol, get_args, runtime_checkable
@@ -20,8 +20,8 @@ import aiohttp
 import rich
 from aiohttp.streams import AsyncStreamIterator
 from aiohttp_retry import ExponentialRetry, RetryClient
+from cyclopts import App
 from platformdirs import user_cache_dir
-from rich_argparse import ArgumentDefaultsRichHelpFormatter
 from tqdm.asyncio import tqdm
 from yarl import URL
 
@@ -117,6 +117,7 @@ class Cacher(Protocol):
         ...
 
 
+@dataclass(frozen=True, slots=True)
 class PassthroughCacher(Cacher):
     """A cacher that caches nothing.
 
@@ -153,6 +154,7 @@ def user_cache_root_dir() -> Path:
     return Path(user_cache_dir("protein-quest"))
 
 
+@dataclass(slots=True)
 class DirectoryCacher(Cacher):
     """Class to cache files in a directory.
 
@@ -164,33 +166,22 @@ class DirectoryCacher(Cacher):
         copy_method: The method to use for copying files.
     """
 
-    def __init__(
-        self,
-        cache_dir: Path | None = None,
-        copy_method: CopyMethod = "hardlink",
-    ) -> None:
-        """Initialize the cacher.
+    cache_dir: Path | None = None
+    copy_method: CopyMethod = "hardlink"
 
-        If file name of paths are the same then the files are considered the same.
-
-        Args:
-            cache_dir: The directory to use for caching.
-                If None, a default cache directory (~/.cache/protein-quest) is used.
-            copy_method: The method to use for copying.
-        """
-        if cache_dir is None:
-            cache_dir = user_cache_root_dir()
-        self.cache_dir: Path = cache_dir
+    def __post_init__(self) -> None:
+        """Normalize and validate dataclass fields after initialization."""
+        if self.cache_dir is None:
+            self.cache_dir = user_cache_root_dir()
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        if copy_method == "copy":
+        if self.copy_method == "copy":
             logger.warning(
                 "Using copy as copy_method to cache files is not recommended. "
                 "This will use more disk space and be slower than symlink or hardlink."
             )
-        if copy_method not in copy_methods:
-            msg = f"Unknown copy method: {copy_method}. Must be one of {copy_methods}."
+        if self.copy_method not in copy_methods:
+            msg = f"Unknown copy method: {self.copy_method}. Must be one of {copy_methods}."
             raise ValueError(msg)
-        self.copy_method: CopyMethod = copy_method
 
     def __contains__(self, item: str | Path) -> bool:
         cached_file = self._as_cached_path(item)
@@ -513,43 +504,47 @@ def populate_cache_command(raw_args: Sequence[str] | None = None):
     Args:
         raw_args: The raw command line arguments to parse. If None, uses sys.argv.
     """
-    root_parser = argparse.ArgumentParser(formatter_class=ArgumentDefaultsRichHelpFormatter)
-    subparsers = root_parser.add_subparsers(dest="command")
+    actual_argv = raw_args or sys.argv[1:]
 
-    desc = "Populate the cache directory with files from the source directory."
-    populate_cache_parser = subparsers.add_parser(
-        "populate-cache",
-        help=desc,
-        description=desc,
-        formatter_class=ArgumentDefaultsRichHelpFormatter,
-    )
-    populate_cache_parser.add_argument("source_dir", type=Path)
-    populate_cache_parser.add_argument(
-        "--cache-dir",
-        type=Path,
-        default=user_cache_root_dir(),
-        help="Directory to use for caching. If not provided, a default cache directory is used.",
-    )
-    populate_cache_parser.add_argument(
-        "--copy-method",
-        type=str,
-        default="hardlink",
-        choices=copy_methods,
-        help="Method to use for copying files to cache.",
-    )
+    populate_cache_app = App(name="utils")
 
-    args = root_parser.parse_args(raw_args)
-    if args.command == "populate-cache":
-        source_dir = args.source_dir
-        cacher = DirectoryCacher(cache_dir=args.cache_dir, copy_method=args.copy_method)
+    @populate_cache_app.command
+    def populate_cache(
+        source_dir: Path,
+        /,
+        *,
+        cache_dir: Path | None = None,
+        copy_method: Literal["copy", "symlink", "hardlink"] = "hardlink",
+    ):
+        """Populate the cache directory with files from the source directory.
+
+        Can be called from the command line as:
+
+        ```bash
+        python3 -m protein_quest.utils populate-cache /path/to/source/dir
+        ```
+
+        Args:
+            source_dir: Source directory to populate cache from.
+            cache_dir: Directory to use for caching. If not provided, a default cache directory is used.
+            copy_method: Method to use for copying files to cache.
+        """
+        if cache_dir is None:
+            cache_dir = user_cache_root_dir()
+        cacher = DirectoryCacher(cache_dir=cache_dir, copy_method=copy_method)
         cached_files = cacher.populate_cache(source_dir)
+        if cacher.cache_dir is None:
+            msg = "Cache directory should not be None after initialization."
+            raise ValueError(msg)
         rich.print(f"Cached {len(cached_files)} files from {source_dir} to {cacher.cache_dir}")
         for src, cached in cached_files.items():
             rich.print(f"- {src.relative_to(source_dir)} -> {cached.relative_to(cacher.cache_dir)}")
 
+    populate_cache_app(actual_argv)
+
 
 def read_ids_from_csv(
-    file: TextIOBase,
+    file: Path,
     *,
     id_column: str,
     model_provider: str,
@@ -564,7 +559,7 @@ def read_ids_from_csv(
     including the first row.
 
     Args:
-        file: A file-like object containing CSV data.
+        file: Path to file containing CSV data.
         id_column: Name of the direct ID column to read when present.
         model_provider: Expected value in the ``model_provider`` column.
             If row has different provider it is skipped.
@@ -572,40 +567,54 @@ def read_ids_from_csv(
             ``model_identifier`` values before adding them.
 
     Returns:
-        A set of IDs extracted from the CSV file.
+           A set of IDs extracted from the CSV file.
 
-    Raises:
-        ValueError: If required columns are missing.
+       Raises:
+           ValueError: If required columns are missing.
     """
     ids: set[str] = set()
-    for row in DictReader(file):
-        if id_column in row:
-            ids.add(row[id_column])
-            continue
 
-        has_provider_and_identifier = "model_provider" in row and "model_identifier" in row
-        if has_provider_and_identifier:
-            if row["model_provider"] == model_provider:
-                model_identifier = row["model_identifier"]
-                if transform_model_identifier is not None:
-                    model_identifier = transform_model_identifier(model_identifier)
-                ids.add(model_identifier)
-                continue
-            logger.debug(f"Skipping row, '{row['model_provider']}'!= '{model_provider}'")
-        elif len(row) == 1:
-            key = next(iter(row.keys()))
-            if key not in ids:
-                ids.add(key)
-            ids.add(row[key])
-        else:
-            msg = (
-                f"CSV must contain either '{id_column}' or both "
-                "'model_provider' and 'model_identifier' columns, "
-                "or be a single-column file"
-            )
-            raise ValueError(msg)
+    with file.open("rt") as file_handle:
+        for row in DictReader(file_handle):
+            _process_row(row, ids, id_column, model_provider, transform_model_identifier, logger)
 
     return ids
+
+
+def _process_row(
+    row: dict[str, str],
+    ids: set[str],
+    id_column: str,
+    model_provider: str,
+    transform_model_identifier: Callable[[str], str] | None,
+    logger: logging.Logger,
+) -> None:
+    """Process a single CSV row and add IDs to the set."""
+    if id_column in row:
+        ids.add(row[id_column])
+        return
+
+    has_provider_and_identifier = "model_provider" in row and "model_identifier" in row
+    if has_provider_and_identifier:
+        if row["model_provider"] == model_provider:
+            model_identifier = row["model_identifier"]
+            if transform_model_identifier is not None:
+                model_identifier = transform_model_identifier(model_identifier)
+            ids.add(model_identifier)
+            return
+        logger.debug(f"Skipping row, '{row['model_provider']}'!= '{model_provider}'")
+    elif len(row) == 1:
+        key = next(iter(row.keys()))
+        if key not in ids:
+            ids.add(key)
+        ids.add(row[key])
+    else:
+        msg = (
+            f"CSV must contain either '{id_column}' or both "
+            "'model_provider' and 'model_identifier' columns, "
+            "or be a single-column file"
+        )
+        raise ValueError(msg)
 
 
 if __name__ == "__main__":

@@ -1,13 +1,12 @@
 """Module dealing with Electron Microscopy Data Bank (EMDB)."""
 
 from collections.abc import Iterable, Mapping
-from io import TextIOBase
 from pathlib import Path
 
 from protein_quest.utils import Cacher, read_ids_from_csv, retrieve_files
 
 
-def read_emdb_ids_from_csv(file: TextIOBase) -> set[str]:
+def read_emdb_ids_from_csv(file: Path) -> set[str]:
     """Reads EMDB IDs from a CSV file.
 
     The CSV file can provide EMDB IDs in the ``emdb_id`` column.
@@ -15,7 +14,7 @@ def read_emdb_ids_from_csv(file: TextIOBase) -> set[str]:
     is treated as an ID, including the first row.
 
     Arguments:
-        file: A file-like object containing the CSV data.
+        file: A path to a file containing the CSV data.
     Returns:
         A set of EMDB IDs extracted from the CSV file.
     """

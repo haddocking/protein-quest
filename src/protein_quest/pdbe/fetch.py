@@ -1,7 +1,6 @@
 """Module for fetching structures from PDBe."""
 
 from collections.abc import Iterable, Mapping
-from io import TextIOBase
 from pathlib import Path
 
 from protein_quest.utils import Cacher, read_ids_from_csv, retrieve_files, run_async
@@ -69,7 +68,7 @@ def sync_fetch(ids: Iterable[str], save_dir: Path, max_parallel_downloads: int =
     return run_async(fetch(ids, save_dir, max_parallel_downloads))
 
 
-def read_pdb_ids_from_csv(file: TextIOBase) -> set[str]:
+def read_pdb_ids_from_csv(file: Path) -> set[str]:
     """Reads PDB IDs from a CSV file.
 
     The CSV file can provide PDB IDs in the ``pdb_id`` column. It can also
@@ -80,7 +79,7 @@ def read_pdb_ids_from_csv(file: TextIOBase) -> set[str]:
     first row.
 
     Arguments:
-        file: A file-like object containing the CSV data.
+        file: A path to a file containing the CSV data.
 
     Returns:
         A set of PDB IDs extracted from the CSV file.

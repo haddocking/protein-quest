@@ -4,7 +4,7 @@ import csv
 import logging
 from collections.abc import Generator
 from dataclasses import dataclass
-from io import TextIOWrapper
+from pathlib import Path
 from typing import Literal, get_args
 
 from cattrs.gen import make_dict_structure_fn, override
@@ -152,14 +152,18 @@ def _filter_go_terms(terms: list[GoTerm], aspect: Aspect | None, include_obsolet
         yield oboterm
 
 
-def write_go_terms_to_csv(terms: list[GoTerm], csv_file: TextIOWrapper) -> None:
+def write_go_terms_to_csv(terms: list[GoTerm], csv_file: Path) -> None:
     """Write a list of GO terms to a CSV file.
 
     Args:
         terms: The list of GO terms to write.
         csv_file: The CSV file to write to.
     """
-    writer = csv.writer(csv_file)
-    writer.writerow(["id", "name", "aspect", "definition"])
-    for term in terms:
-        writer.writerow([term.id, term.name, term.aspect, term.definition])
+    if str(csv_file) != "-":
+        csv_file.parent.mkdir(parents=True, exist_ok=True)
+
+    with csv_file.open("w", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["id", "name", "aspect", "definition"])
+        for term in terms:
+            writer.writerow([term.id, term.name, term.aspect, term.definition])

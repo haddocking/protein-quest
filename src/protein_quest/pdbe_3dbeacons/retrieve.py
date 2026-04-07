@@ -5,7 +5,6 @@ import gzip
 import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
-from io import StringIO, TextIOWrapper
 from pathlib import Path
 
 from protein_quest.converter import converter
@@ -34,11 +33,11 @@ class RetrieveStructureRow:
     model_format: AppUniprotSchemaModelFormat
 
 
-def read_retrieve_structure_rows(file: TextIOWrapper | StringIO) -> list[RetrieveStructureRow]:
+def read_retrieve_structure_rows(file: Path) -> list[RetrieveStructureRow]:
     """Reads structures.csv file.
 
     Args:
-        file: A file-like object containing the CSV data.
+        file: A CSV file containing the structure data.
 
     Returns:
         A list of `RetrieveStructureRow` objects.
@@ -46,7 +45,8 @@ def read_retrieve_structure_rows(file: TextIOWrapper | StringIO) -> list[Retriev
     Throws:
         ClassValidationError: If any row fails validation.
     """
-    return [converter.structure(row, RetrieveStructureRow) for row in csv.DictReader(file)]
+    with file.open("r", encoding="utf-8") as f:
+        return [converter.structure(row, RetrieveStructureRow) for row in csv.DictReader(f)]
 
 
 def _build_structure_filename(

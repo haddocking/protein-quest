@@ -1,7 +1,6 @@
 import asyncio
 import gzip
 import logging
-from io import StringIO
 from pathlib import Path
 
 import pytest
@@ -143,6 +142,7 @@ class TestDirectoryCacher:
         return DirectoryCacher(tmp_path / "cache", copy_method=copy_method)
 
     def test_init(self, tmp_path: Path, cacher: DirectoryCacher):
+        assert cacher.cache_dir is not None
         assert cacher.cache_dir == tmp_path / "cache"
         assert cacher.cache_dir.exists()
         assert cacher.cache_dir.is_dir()
@@ -318,16 +318,17 @@ def test_populate_cache_command_with_hardlink(tmp_path: Path, capsys: pytest.Cap
     cache_dir = tmp_path / "cache"
     cache_dir.mkdir()
 
-    populate_cache_command(
-        [
-            "populate-cache",
-            str(source_dir),
-            "--cache-dir",
-            str(cache_dir),
-            "--copy-method",
-            "hardlink",
-        ]
-    )
+    with pytest.raises(SystemExit, match="0"):
+        populate_cache_command(
+            [
+                "populate-cache",
+                str(source_dir),
+                "--cache-dir",
+                str(cache_dir),
+                "--copy-method",
+                "hardlink",
+            ]
+        )
 
     assert src1.stat().st_nlink == 2
     assert src2.stat().st_nlink == 2
@@ -558,32 +559,35 @@ async def test_retrieve_files_somegzipped(
 
 
 class TestReadIdsFromCsv:
-    def test_reads_direct_id_column(self):
-        csv_data = StringIO("pdb_id\n2Y29\n8WAS\n2Y29\n")
+    def test_reads_direct_id_column(self, tmp_path: Path):
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text("pdb_id\n2Y29\n8WAS\n2Y29\n")
 
-        ids = read_ids_from_csv(csv_data, id_column="pdb_id", model_provider="pdbe")
+        ids = read_ids_from_csv(csv_file, id_column="pdb_id", model_provider="pdbe")
 
         assert ids == {"2Y29", "8WAS"}
 
-    def test_reads_model_identifier(self):
-        csv_data = StringIO("model_provider,model_identifier\nalphafold,AF-A0A1B0GVZ6-F1\nalphafold,AF-P05067-F1\n")
+    def test_reads_model_identifier(self, tmp_path: Path):
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text("model_provider,model_identifier\nalphafold,AF-A0A1B0GVZ6-F1\nalphafold,AF-P05067-F1\n")
 
         ids = read_ids_from_csv(
-            csv_data,
+            csv_file,
             id_column="af_id",
             model_provider="alphafold",
         )
 
         assert ids == {"AF-A0A1B0GVZ6-F1", "AF-P05067-F1"}
 
-    def test_multiple_providers(self, caplog: pytest.LogCaptureFixture):
+    def test_multiple_providers(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
         caplog.set_level(logging.DEBUG, logger="protein_quest.utils")
-        csv_data = StringIO(
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text(
             "model_provider,model_identifier\nalphafold,AF-A0A1B0GVZ6-F1\nalphafold,AF-P05067-F1\nother_provider,OP-12345\n"
         )
 
         ids = read_ids_from_csv(
-            csv_data,
+            csv_file,
             id_column="af_id",
             model_provider="alphafold",
         )
@@ -591,11 +595,12 @@ class TestReadIdsFromCsv:
         assert ids == {"AF-A0A1B0GVZ6-F1", "AF-P05067-F1"}
         assert "Skipping row, 'other_provider'!= 'alphafold'" in caplog.text
 
-    def test_reads_model_identifier_with_transform(self):
-        csv_data = StringIO("model_provider,model_identifier\nalphafold,AF-A0A1B0GVZ6-F1\nalphafold,AF-P05067-F1\n")
+    def test_reads_model_identifier_with_transform(self, tmp_path: Path):
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text("model_provider,model_identifier\nalphafold,AF-A0A1B0GVZ6-F1\nalphafold,AF-P05067-F1\n")
 
         ids = read_ids_from_csv(
-            csv_data,
+            csv_file,
             id_column="af_id",
             model_provider="alphafold",
             transform_model_identifier=lambda raw_id: raw_id.split("-")[1],
@@ -603,21 +608,23 @@ class TestReadIdsFromCsv:
 
         assert ids == {"A0A1B0GVZ6", "P05067"}
 
-    def test_raises_for_missing_columns(self):
-        csv_data = StringIO("uniprot_acc,uniprot_id\nP05067,A4_HUMAN\n")
+    def test_raises_for_missing_columns(self, tmp_path: Path):
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text("uniprot_acc,uniprot_id\nP05067,A4_HUMAN\n")
 
         with pytest.raises(
             ValueError,
         ) as excinfo:
-            read_ids_from_csv(csv_data, id_column="af_id", model_provider="alphafold")
+            read_ids_from_csv(csv_file, id_column="af_id", model_provider="alphafold")
         excmsg = str(excinfo.value)
         assert "CSV must contain either 'af_id'" in excmsg
         assert "'model_provider' and 'model_identifier'" in excmsg
         assert "or be a single-column file" in excmsg
 
-    def test_reads_single_column_headless(self):
-        csv_data = StringIO("2Y29\n8WAS\n")
+    def test_reads_single_column_headless(self, tmp_path: Path):
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text("2Y29\n8WAS\n")
 
-        ids = read_ids_from_csv(csv_data, id_column="pdb_id", model_provider="pdbe")
+        ids = read_ids_from_csv(csv_file, id_column="pdb_id", model_provider="pdbe")
 
         assert ids == {"2Y29", "8WAS"}

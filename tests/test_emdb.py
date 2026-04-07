@@ -1,6 +1,4 @@
-from io import StringIO
 from pathlib import Path
-from textwrap import dedent
 
 import pytest
 
@@ -20,23 +18,16 @@ async def test_fetch(tmp_path: Path):
 
 
 class TestReadEMDBIdsFromCSV:
-    def test_with_header(self):
-        csv_data = dedent("""\
-            emdb_id,uniprot_acc
-            EMD-1470,ABC123
-            EMD-1480,DEF456
-            """)
-        file = StringIO(csv_data)
+    def test_with_header(self, tmp_path: Path):
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text("emdb_id,uniprot_acc\nEMD-1470,ABC123\nEMD-1480,DEF456\n")
         expected_ids = {"EMD-1470", "EMD-1480"}
-        ids = read_emdb_ids_from_csv(file)
+        ids = read_emdb_ids_from_csv(csv_file)
         assert ids == expected_ids
 
-    def test_without_header(self):
-        csv_data = dedent("""\
-            EMD-1470
-            EMD-1480
-            """)
-        file = StringIO(csv_data)
+    def test_without_header(self, tmp_path: Path):
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text("EMD-1470\nEMD-1480\n")
         expected_ids = {"EMD-1470", "EMD-1480"}
-        ids = read_emdb_ids_from_csv(file)
+        ids = read_emdb_ids_from_csv(csv_file)
         assert ids == expected_ids
