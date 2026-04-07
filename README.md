@@ -26,7 +26,8 @@ It uses
   Ontology terms.
 - [gemmi](https://project-gemmi.github.io/) to work with macromolecular models.
 - [dask-distributed](https://docs.dask.org/en/latest/) to compute in parallel.
-- [cyclopts](https://cyclopts.readthedocs.io/en/latest/) for command line interface
+- [cyclopts](https://cyclopts.readthedocs.io/en/latest/) for command line
+  interface
 - [rocrate-action-recorder](https://rocrate-action-recorder.readthedocs.io/) for
   provenance tracking.
 
@@ -341,7 +342,9 @@ structures.
 
 ## Shell completion
 
-The `protein-quest` command line tool supports shell completion (tab completion) for bash, zsh, and fish shells using [cyclopts](https://cyclopts.readthedocs.io/en/latest/shell_completion.html).
+The `protein-quest` command line tool supports shell completion (tab completion)
+for bash, zsh, and fish shells using
+[cyclopts](https://cyclopts.readthedocs.io/en/latest/shell_completion.html).
 
 Initialize shell completion with:
 
@@ -349,7 +352,8 @@ Initialize shell completion with:
 protein-quest --install-completion
 ```
 
-This will automatically install completion scripts to the appropriate locations for your shell:
+This will automatically install completion scripts to the appropriate locations
+for your shell:
 
 - **Bash**: `~/.local/share/bash-completion/completions/protein-quest`
 - **Zsh**: `~/.zsh/completions/_protein-quest`
