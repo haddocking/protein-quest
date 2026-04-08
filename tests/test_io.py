@@ -171,6 +171,32 @@ def test_convert_cif_to_cif_in_same_dir(sample_cif: Path, tmp_path: Path):
     assert output_file.stat().st_nlink == 1  # no hard link created, same file
 
 
+def test_convert_cif_to_cifgz(sample_cif: Path, tmp_path: Path):
+    uncompressed_cif_file = tmp_path / "3JRS_B2A.cif"
+    gunzip_file(sample_cif, uncompressed_cif_file)
+
+    output_file = convert_to_cif_file(uncompressed_cif_file, tmp_path, copy_method="symlink", output_format=".cif.gz")
+
+    assert output_file.exists()
+    assert output_file.name == "3JRS_B2A.cif.gz"
+    assert output_file.stat().st_size > 0
+    assert read_structure(output_file).make_pdb_string() == read_structure(uncompressed_cif_file).make_pdb_string()
+
+
+def test_convert_many_cif_to_cifgz(sample_cif: Path, tmp_path: Path):
+    uncompressed_cif_file = tmp_path / "3JRS_B2A.cif"
+    gunzip_file(sample_cif, uncompressed_cif_file)
+
+    output_files = list(convert_to_cif_files([uncompressed_cif_file], tmp_path, copy_method="symlink", output_format=".cif.gz"))
+
+    assert len(output_files) == 1
+    input_file, output_file = output_files[0]
+    assert input_file == uncompressed_cif_file
+    assert output_file.exists()
+    assert output_file.name == "3JRS_B2A.cif.gz"
+    assert read_structure(output_file).make_pdb_string() == read_structure(uncompressed_cif_file).make_pdb_string()
+
+
 def test_convert_pdb_to_cif(sample_cif: Path, tmp_path: Path):
     structure = read_structure(sample_cif)
     pdb_file = tmp_path / "bla.pdb"
