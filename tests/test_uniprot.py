@@ -35,11 +35,11 @@ def assertQueryEqual(actual, expected):
 def test_build_sparql_query_uniprot():
     # Test with a simple query
     query = Query(
-        taxon_id="9606",
+        taxon_id=9606,
         reviewed=True,
         subcellular_location_uniprot="nucleus",
-        subcellular_location_go=["GO:0005634"],  # Cellular component - Nucleus
-        molecular_function_go=["GO:0003677"],  # Molecular function - DNA binding
+        subcellular_location_go={"GO:0005634"},  # Cellular component - Nucleus
+        molecular_function_go={"GO:0003677"},  # Molecular function - DNA binding
     )
     result = _build_sparql_query_uniprot(query, limit=10)
 
@@ -229,7 +229,7 @@ def test_append_subcellular_location_filters_invalid_go_term():
         taxon_id=None,
         reviewed=None,
         subcellular_location_uniprot=None,
-        subcellular_location_go=["INVALID:0005634"],  # Invalid GO term
+        subcellular_location_go={"INVALID:0005634"},  # Invalid GO term
         molecular_function_go=None,
     )
 
@@ -243,7 +243,7 @@ def test_append_subcellular_location_filters_invalid_go_term_in_list():
         taxon_id=None,
         reviewed=None,
         subcellular_location_uniprot=None,
-        subcellular_location_go=["GO:0005634", "INVALID:0005737"],  # One invalid GO term
+        subcellular_location_go={"GO:0005634", "INVALID:0005737"},  # One invalid GO term
         molecular_function_go=None,
     )
 
@@ -340,11 +340,11 @@ def test_filter_pdb_results_on_chain_length_filtered():
 @pytest.mark.vcr
 def test_search4uniprot():
     query = Query(
-        taxon_id="9606",
+        taxon_id=9606,
         reviewed=True,
         subcellular_location_uniprot="nucleus",
-        subcellular_location_go=["GO:0005634"],  # Cellular component - Nucleus
-        molecular_function_go=["GO:0003677"],  # Molecular function - DNA binding
+        subcellular_location_go={"GO:0005634"},  # Cellular component - Nucleus
+        molecular_function_go={"GO:0003677"},  # Molecular function - DNA binding
     )
 
     results = search4uniprot(query, limit=1)

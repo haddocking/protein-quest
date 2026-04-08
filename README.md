@@ -26,6 +26,8 @@ It uses
   Ontology terms.
 - [gemmi](https://project-gemmi.github.io/) to work with macromolecular models.
 - [dask-distributed](https://docs.dask.org/en/latest/) to compute in parallel.
+- [cyclopts](https://cyclopts.readthedocs.io/en/latest/) for command line
+  interface
 - [rocrate-action-recorder](https://rocrate-action-recorder.readthedocs.io/) for
   provenance tracking.
 
@@ -338,26 +340,26 @@ protein-quest mcp
 The mcp server contains an prompt template to search/retrieve/filter candidate
 structures.
 
-## Shell autocompletion
+## Shell completion
 
-The `protein-quest` command line tool supports shell autocompletion using
-[shtab](https://docs.iterative.ai/shtab).
+The `protein-quest` command line tool supports shell completion (tab completion)
+for bash, zsh, and fish shells using
+[cyclopts](https://cyclopts.readthedocs.io/en/latest/shell_completion.html).
 
-Initialize for bash shell with:
-
-```shell
-mkdir -p ~/.local/share/bash-completion/completions
-protein-quest --print-completion bash > ~/.local/share/bash-completion/completions/protein-quest
-```
-
-Initialize for zsh shell with:
+Initialize shell completion with:
 
 ```shell
-mkdir -p ~/.local/share/zsh/site-functions
-protein-quest --print-completion zsh > ~/.local/share/zsh/site-functions/_protein-quest
-fpath=("$HOME/.local/share/zsh/site-functions" $fpath)
-autoload -Uz compinit && compinit
+protein-quest --install-completion
 ```
+
+This will automatically install completion scripts to the appropriate locations
+for your shell:
+
+- **Bash**: `~/.local/share/bash-completion/completions/protein-quest`
+- **Zsh**: `~/.zsh/completions/_protein-quest`
+- **Fish**: `~/.config/fish/completions/protein-quest.fish`
+
+After installation, restart your shell or source your shell configuration file.
 
 ## Contributing
 

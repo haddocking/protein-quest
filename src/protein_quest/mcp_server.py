@@ -37,7 +37,7 @@ from pathlib import Path
 from textwrap import dedent
 from typing import Annotated
 
-from fastmcp import FastMCP
+from fastmcp import FastMCP, settings
 from pydantic import Field
 
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, ConfidenceFilterResult, filter_file_on_confidence
@@ -64,7 +64,10 @@ from protein_quest.uniprot import (
     search4uniprot,
 )
 
+settings.check_for_updates = "off"
+
 mcp = FastMCP("protein-quest")
+
 
 # do not want to make dataclasses in non-mcp code into Pydantic models,
 # so we use Annotated here to add description on roots.

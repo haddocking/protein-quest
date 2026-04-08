@@ -60,11 +60,11 @@ interactions:
       Content-Type:
       - application/sparql-results+json
       Date:
-      - Wed, 29 Oct 2025 13:05:44 GMT
+      - Fri, 03 Apr 2026 17:59:03 GMT
       ETag:
-      - W/"2025_04"
+      - W/"2026_01"
       Expires:
-      - Thu, 30 Oct 2025 13:05:39 GMT
+      - Sat, 04 Apr 2026 17:58:58 GMT
       Server:
       - Apache
       Strict-Transport-Security:
@@ -78,9 +78,9 @@ interactions:
       X-Powered-By:
       - sib.swiss
       X-Release:
-      - '2025_04'
+      - '2026_01'
       queryid:
-      - '621109861'
+      - '2270056087'
     status:
       code: 200
       message: ''

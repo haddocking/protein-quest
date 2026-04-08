@@ -6,7 +6,7 @@ from protein_quest.taxonomy import Taxon, search_taxon
 @pytest.fixture
 def expected_human() -> Taxon:
     return Taxon(
-        taxon_id="9606",
+        taxon_id=9606,
         scientific_name="Homo sapiens",
         common_name="Human",
         rank="species",

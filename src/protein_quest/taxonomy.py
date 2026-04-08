@@ -1,6 +1,5 @@
 """Module for searching taxon information from UniProt."""
 
-import csv
 import gzip
 import logging
 from dataclasses import dataclass
@@ -12,7 +11,6 @@ from cattrs.gen import make_dict_structure_fn, override
 from yarl import URL
 
 from protein_quest.converter import converter
-from protein_quest.go import TextIOWrapper
 from protein_quest.utils import friendly_session
 
 logger = logging.getLogger(__name__)
@@ -23,14 +21,14 @@ class Taxon:
     """Dataclass representing a taxon.
 
     Arguments:
-        taxon_id: The unique identifier for the taxon.
+        taxon_id: The unique identifier for the taxon. Also known as the NCBI Taxon ID.
         scientific_name: The scientific name of the taxon.
-        rank: The taxonomic rank of the taxon (e.g., species, genus).
+        rank: The taxonomic rank of the taxon (for example species, genus).
         common_name: The common name of the taxon (if available).
         other_names: A set of other names for the taxon (if available).
     """
 
-    taxon_id: str
+    taxon_id: int
     scientific_name: str
     rank: str
     common_name: str | None = None
@@ -126,24 +124,3 @@ async def search_taxon(query: str, field: SearchField | None = None, limit: int 
             if next_page is None:
                 return taxons
     return taxons
-
-
-def _write_taxonomy_csv(taxons: list[Taxon], output_csv: TextIOWrapper) -> None:
-    """Write taxon information to a CSV file.
-
-    Args:
-        taxons: List of Taxon objects to write to the CSV file.
-        output_csv: File object for the output CSV file.
-    """
-    writer = csv.writer(output_csv)
-    writer.writerow(["taxon_id", "scientific_name", "common_name", "rank", "other_names"])
-    for taxon in taxons:
-        writer.writerow(
-            [
-                taxon.taxon_id,
-                taxon.scientific_name,
-                taxon.common_name,
-                taxon.rank,
-                ";".join(taxon.other_names) if taxon.other_names else "",
-            ]
-        )

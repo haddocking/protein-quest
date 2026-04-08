@@ -4,7 +4,6 @@ import logging
 from asyncio import Semaphore
 from collections.abc import AsyncGenerator, Iterable
 from dataclasses import dataclass
-from io import TextIOBase
 from pathlib import Path
 from typing import Literal, cast, get_args
 
@@ -549,7 +548,7 @@ def _af_model_identifier_to_accession(raw_af_id: str) -> str:
     return af_id
 
 
-def read_af_ids_from_csv(file: TextIOBase) -> set[str]:
+def read_af_ids_from_csv(file: Path) -> set[str]:
     """Reads AlphaFold IDs from a CSV file.
 
     The CSV file can provide AlphaFold IDs in the ``af_id`` column. It can
@@ -560,7 +559,7 @@ def read_af_ids_from_csv(file: TextIOBase) -> set[str]:
     first row.
 
     Arguments:
-        file: A file-like object containing the CSV data.
+        file: A path to a file containing the CSV data.
 
     Returns:
         A set of AlphaFold IDs extracted from the CSV file.

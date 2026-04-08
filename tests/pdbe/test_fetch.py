@@ -1,4 +1,3 @@
-from io import StringIO
 from pathlib import Path
 
 import pytest
@@ -31,23 +30,26 @@ def test_sync_fetch(tmp_path: Path):
 
 
 class TestReadPdbIdsFromCsv:
-    def test_reads_pdb_id_column(self):
-        csv_data = StringIO("pdb_id\n2Y29\n8WAS\n2Y29\n")
+    def test_reads_pdb_id_column(self, tmp_path: Path):
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text("pdb_id\n2Y29\n8WAS\n2Y29\n")
 
-        ids = read_pdb_ids_from_csv(csv_data)
+        ids = read_pdb_ids_from_csv(csv_file)
 
         assert ids == {"2Y29", "8WAS"}
 
-    def test_reads_model_identifier_for_pdbe_provider(self):
-        csv_data = StringIO("model_provider,model_identifier\npdbe,8WAS\npdbe,2Y29\n")
+    def test_reads_model_identifier_for_pdbe_provider(self, tmp_path: Path):
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text("model_provider,model_identifier\npdbe,8WAS\npdbe,2Y29\n")
 
-        ids = read_pdb_ids_from_csv(csv_data)
+        ids = read_pdb_ids_from_csv(csv_file)
 
         assert ids == {"8WAS", "2Y29"}
 
-    def test_single_column(self):
-        csv_data = StringIO("2Y29\n8WAS\n")
+    def test_single_column(self, tmp_path: Path):
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text("2Y29\n8WAS\n")
 
-        ids = read_pdb_ids_from_csv(csv_data)
+        ids = read_pdb_ids_from_csv(csv_file)
 
         assert ids == {"2Y29", "8WAS"}

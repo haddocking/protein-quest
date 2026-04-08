@@ -5,6 +5,7 @@ from collections.abc import Generator, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
+from cyclopts import Parameter
 from gemmi import Structure
 
 from protein_quest.converter import PositiveInt, Ratio, converter
@@ -83,6 +84,7 @@ def nr_of_residues_in_sheet(structure: Structure) -> int:
     return count
 
 
+@Parameter(name="*")
 @dataclass
 class SecondaryStructureFilterQuery:
     """Query object to filter on secondary structure.
@@ -92,10 +94,10 @@ class SecondaryStructureFilterQuery:
         abs_max_helix_residues: Maximum number of residues in helices (absolute).
         abs_min_sheet_residues: Minimum number of residues in sheets (absolute).
         abs_max_sheet_residues: Maximum number of residues in sheets (absolute).
-        ratio_min_helix_residues: Minimum number of residues in helices (relative).
-        ratio_max_helix_residues: Maximum number of residues in helices (relative).
-        ratio_min_sheet_residues: Minimum number of residues in sheets (relative).
-        ratio_max_sheet_residues: Maximum number of residues in sheets (relative).
+        ratio_min_helix_residues: Minimum helix residue ratio (fraction from 0 to 1).
+        ratio_max_helix_residues: Maximum helix residue ratio (fraction from 0 to 1).
+        ratio_min_sheet_residues: Minimum sheet residue ratio (fraction from 0 to 1).
+        ratio_max_sheet_residues: Maximum sheet residue ratio (fraction from 0 to 1).
     """
 
     abs_min_helix_residues: PositiveInt | None = None

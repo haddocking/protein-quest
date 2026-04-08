@@ -6,36 +6,39 @@ from dataclasses import dataclass
 from functools import cached_property
 from itertools import batched
 from textwrap import dedent
-from typing import TypedDict
+from typing import Annotated, TypedDict
 
+from cyclopts import Parameter
 from SPARQLWrapper import JSON, SPARQLWrapper
 from tqdm.auto import tqdm
 
 logger = logging.getLogger(__name__)
 
 
+@Parameter(name="*")
 @dataclass
 class Query:
     """Search query for UniProtKB.
 
     Parameters:
-        taxon_id: NCBI Taxon ID to filter results by organism (e.g., "9606" for human).
+        taxon_id: NCBI Taxon ID to filter results by organism (for example 9606 for human).
         reviewed: Whether to filter results by reviewed status (True for reviewed, False for unreviewed).
-        subcellular_location_uniprot: Subcellular location in UniProt format (e.g., "nucleus").
+        subcellular_location_uniprot: Subcellular location in UniProt format (for example "nucleus").
         subcellular_location_go: Subcellular location in GO format. Can be a single GO term
-            (e.g., ["GO:0005634"]) or a collection of GO terms (e.g., ["GO:0005634", "GO:0005737"]).
+            (for example, ["GO:0005634"]) or a collection of GO terms (for example, ["GO:0005634", "GO:0005737"]),
+            which are searched with OR logic.
         molecular_function_go: Molecular function in GO format. Can be a single GO term
-            (e.g., ["GO:0003674"]) or a collection of GO terms (e.g., ["GO:0003674", "GO:0008150"]).
+            (for example, ["GO:0003674"]) or a collection of GO terms (for example, ["GO:0003674", "GO:0008150"]),
+            which are searched with OR logic.
         min_sequence_length: Minimum length of the canonical sequence.
         max_sequence_length: Maximum length of the canonical sequence.
     """
 
-    # TODO make taxon_id an int
-    taxon_id: str | None
+    taxon_id: int | None = None
     reviewed: bool | None = None
     subcellular_location_uniprot: str | None = None
-    subcellular_location_go: list[str] | None = None
-    molecular_function_go: list[str] | None = None
+    subcellular_location_go: Annotated[set[str], Parameter(negative="")] | None = None
+    molecular_function_go: Annotated[set[str], Parameter(negative="")] | None = None
     min_sequence_length: int | None = None
     max_sequence_length: int | None = None
 
@@ -107,10 +110,10 @@ class PdbResult:
     """Result of a PDB search in UniProtKB.
 
     Parameters:
-        id: PDB ID (e.g., "1H3O").
-        method: Method used for the PDB entry (e.g., "X-ray diffraction").
-        uniprot_chains: Chains in UniProt format (e.g., "A/B=1-42,A/B=50-99").
-        resolution: Resolution of the PDB entry (e.g., "2.0" for 2.0 Å). Optional.
+        id: PDB ID (for example "1H3O").
+        method: Method used for the PDB entry (for example "X-ray diffraction").
+        uniprot_chains: Chains in UniProt format (for example "A/B=1-42,A/B=50-99").
+        resolution: Resolution of the PDB entry (for example "2.0" for 2.0 Å). Optional.
     """
 
     id: str
@@ -228,7 +231,7 @@ def _create_go_filter(go_terms: Collection[str], term_type: str) -> str:
 
     Args:
         go_terms: Collection of GO terms to filter by.
-        term_type: Type of GO terms for error messages (e.g., "Molecular function", "Subcellular location").
+        term_type: Type of GO terms for error messages (for example "Molecular function", "Subcellular location").
 
     Returns:
         SPARQL filter string.

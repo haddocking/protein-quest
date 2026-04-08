@@ -63,7 +63,7 @@ class PruneOptions:
         providers: Set of providers to keep in the summaries.
             Default is `pdbe` and `alphafold`.
             Use
-            [search_structure_provider_choices][protein_quest.pdbe_3dbeacons.fetch.search_structure_provider_choices]
+            [search_structure_provider_choices][protein_quest.pdbe_3dbeacons.model.search_structure_provider_choices]
             for all providers.
         limit: Maximum number of structures per uniprot summary per provider to return.
         min_residues: Minimum number of residues a structure must have to be included.
@@ -281,7 +281,7 @@ class FlattenedUniprotSummary(TypedDict):
         model_identifier: Model identifier of the structure.
         model_url: URL to download the structure.
         model_format: [Format][protein_quest.pdbe_3dbeacons.model.AppUniprotSchemaModelFormat]
-          of the structure file
+            of the structure file
         chain: Chain identifier of the structure (first chain of first entity or "A" if no entities or chains).
         residue_count: Number of residues in the structure
     """

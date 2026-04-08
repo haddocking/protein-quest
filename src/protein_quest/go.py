@@ -1,10 +1,8 @@
 """Module for Gene Ontology (GO) functions."""
 
-import csv
 import logging
 from collections.abc import Generator
 from dataclasses import dataclass
-from io import TextIOWrapper
 from typing import Literal, get_args
 
 from cattrs.gen import make_dict_structure_fn, override
@@ -25,7 +23,7 @@ class GoTerm:
     """A Gene Ontology (GO) term.
 
     Parameters:
-        id: The unique identifier for the GO term, e.g., 'GO:0043293'.
+        id: The unique identifier for the GO term, for example 'GO:0043293'.
         is_obsolete: Whether the GO term is obsolete.
         name: The name of the GO term.
         definition: The definition of the GO term.
@@ -150,16 +148,3 @@ def _filter_go_terms(terms: list[GoTerm], aspect: Aspect | None, include_obsolet
         if aspect and oboterm.aspect != aspect:
             continue
         yield oboterm
-
-
-def write_go_terms_to_csv(terms: list[GoTerm], csv_file: TextIOWrapper) -> None:
-    """Write a list of GO terms to a CSV file.
-
-    Args:
-        terms: The list of GO terms to write.
-        csv_file: The CSV file to write to.
-    """
-    writer = csv.writer(csv_file)
-    writer.writerow(["id", "name", "aspect", "definition"])
-    for term in terms:
-        writer.writerow([term.id, term.name, term.aspect, term.definition])

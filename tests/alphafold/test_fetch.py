@@ -1,5 +1,4 @@
 import re
-from io import StringIO
 from pathlib import Path
 
 import pytest
@@ -283,24 +282,27 @@ def test_files_for_alphafold_entries():
 
 
 class TestReadAfIdsFromCsv:
-    def test_reads_af_id_column(self):
-        csv_data = StringIO("af_id\nP05067\nQ9H9K5\nP05067\n")
+    def test_reads_af_id_column(self, tmp_path: Path):
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text("af_id\nP05067\nQ9H9K5\nP05067\n")
 
-        ids = read_af_ids_from_csv(csv_data)
-
-        assert ids == {"P05067", "Q9H9K5"}
-
-    def test_reads_model_identifier_for_alphafold_provider(self):
-        csv_data = StringIO("model_provider,model_identifier\nalphafold,AF-P05067-F1\nalphafold,AF-Q9H9K5-F1\n")
-
-        ids = read_af_ids_from_csv(csv_data)
+        ids = read_af_ids_from_csv(csv_file)
 
         assert ids == {"P05067", "Q9H9K5"}
 
-    def test_single_column(self):
-        csv_data = StringIO("P05067\nQ9H9K5\n")
+    def test_reads_model_identifier_for_alphafold_provider(self, tmp_path: Path):
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text("model_provider,model_identifier\nalphafold,AF-P05067-F1\nalphafold,AF-Q9H9K5-F1\n")
 
-        ids = read_af_ids_from_csv(csv_data)
+        ids = read_af_ids_from_csv(csv_file)
+
+        assert ids == {"P05067", "Q9H9K5"}
+
+    def test_single_column(self, tmp_path: Path):
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text("P05067\nQ9H9K5\n")
+
+        ids = read_af_ids_from_csv(csv_file)
 
         assert ids == {"P05067", "Q9H9K5"}
 

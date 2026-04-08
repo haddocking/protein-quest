@@ -31,8 +31,6 @@ interactions:
       Access-Control-Expose-Headers:
       - X-Total-Results, X-Release, queryid, content-type, user-agent, cache-control,
         etag, range
-      Age:
-      - '21'
       Cache-Control:
       - public
       Connection:
@@ -44,11 +42,11 @@ interactions:
       Content-Type:
       - application/sparql-results+json
       Date:
-      - Fri, 20 Feb 2026 08:42:04 GMT
+      - Tue, 07 Apr 2026 07:11:08 GMT
       ETag:
       - W/"2026_01"
       Expires:
-      - Sat, 21 Feb 2026 08:42:04 GMT
+      - Wed, 08 Apr 2026 07:11:08 GMT
       Server:
       - Apache
       Strict-Transport-Security:
@@ -64,8 +62,8 @@ interactions:
       X-Release:
       - '2026_01'
       queryid:
-      - '605841441'
+      - '2270641738'
     status:
       code: 200
-      message: OK
+      message: ''
 version: 1

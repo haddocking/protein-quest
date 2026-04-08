@@ -50,6 +50,7 @@ plugins:
             - https://docs.dask.org/en/stable/objects.inv
             - https://distributed.dask.org/en/latest/objects.inv
             - https://yarl.aio-libs.org/en/latest/objects.inv
+            - https://cyclopts.readthedocs.io/en/latest/objects.inv
           options:
             docstring_style: google
             show_source: false
@@ -57,9 +58,7 @@ plugins:
       remove_tag_config:
         remove_input_tags:
           - hide_code
-  - mkdocs-rich-argparse:
-      module: protein_quest.cli
-      factory: make_parser
+  - cyclopts
 
 markdown_extensions:
   # Use to render part of README as home

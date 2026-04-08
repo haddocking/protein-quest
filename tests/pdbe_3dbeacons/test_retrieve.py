@@ -1,5 +1,4 @@
 import gzip
-from io import StringIO
 from pathlib import Path
 
 import pytest
@@ -325,13 +324,14 @@ class TestRetrieveStructures:
 
 
 class TestReadRetrieveStructureRows:
-    def test_allows_extra_columns_and_strips_values(self):
-        csv_content = StringIO(
+    def test_allows_extra_columns_and_strips_values(self, tmp_path: Path):
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text(
             "provider,model_identifier,model_url,model_format,uniprot_accession\n"
             "swissmodel,Q9NTW7_329-603:5v3m.1.C,https://example.org/model.cif,MMCIF,Q9NTW7\n"
         )
 
-        rows = read_retrieve_structure_rows(csv_content)
+        rows = read_retrieve_structure_rows(csv_file)
 
         assert rows == [
             RetrieveStructureRow(
@@ -342,11 +342,12 @@ class TestReadRetrieveStructureRows:
             )
         ]
 
-    def test_fails_on_missing_provider_field(self):
-        csv_content = StringIO(
+    def test_fails_on_missing_provider_field(self, tmp_path: Path):
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text(
             "provider,model_identifier,model_url,model_format,uniprot_accession\n"
             ",Q9NTW7_329-603:5v3m.1.C,https://example.org/model.cif,MMCIF,Q9NTW7\n"
         )
 
         with pytest.raises(ClassValidationError):
-            read_retrieve_structure_rows(csv_content)
+            read_retrieve_structure_rows(csv_file)
