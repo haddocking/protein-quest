@@ -46,7 +46,6 @@ dependencies = [
     "mmcif>=0.92.0",
     "rocrate-action-recorder>=0.5.1",
     "cyclopts>=4.5.4",
-    "xdg-base-dirs>=6.0.2",
 ]
 
 [project.urls]

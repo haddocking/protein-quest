@@ -11,9 +11,8 @@ from cyclopts import Group, Parameter, validators
 from cyclopts.types import NonNegativeFloat, PositiveInt, StdioPath
 from rich.console import Console
 from rocrate_action_recorder.adapters.cyclopts import INPUT_DIR, INPUT_FILE, OUTPUT_DIR, OUTPUT_FILE, RECORD_TRIGGER
-from xdg_base_dirs import xdg_cache_home
 
-from protein_quest.utils import Cacher, DirectoryCacher, PassthroughCacher
+from protein_quest.utils import Cacher, DirectoryCacher, PassthroughCacher, user_cache_root_dir
 
 # Custom annotated types for common CLI parameters
 Limit = PositiveInt
@@ -97,7 +96,7 @@ class CacheParameter:
             negative="",
         ),
     ] = False
-    cache_dir: Path = xdg_cache_home() / "protein-quest"
+    cache_dir: Path = user_cache_root_dir()  # noqa: RUF009
     copy_method: Literal["copy", "symlink", "hardlink"] = "hardlink"
 
 

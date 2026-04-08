@@ -569,12 +569,12 @@ def read_ids_from_csv(
     Returns:
            A set of IDs extracted from the CSV file.
 
-       Raises:
-           ValueError: If required columns are missing.
+    Raises:
+        ValueError: If required columns are missing.
     """
     ids: set[str] = set()
 
-    with file.open("rt") as file_handle:
+    with file.open("rt", encoding="utf-8") as file_handle:
         for row in DictReader(file_handle):
             _process_row(row, ids, id_column, model_provider, transform_model_identifier, logger)
 
