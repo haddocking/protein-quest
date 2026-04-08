@@ -189,7 +189,7 @@ Also writes pdb files with only those residues.
 
 ```shell
 protein-quest filter confidence \
-    --confidence-threshold 50 \
+    --confidence 50 \
     --min-residues 100 \
     --max-residues 1000 \
     ./downloads-af ./filtered
