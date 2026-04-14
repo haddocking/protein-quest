@@ -175,6 +175,29 @@ def test_filter_files_on_resolution_no_uniprot_does_not_pass(sample2_cif: Path, 
     assert list(output_dir.iterdir()) == []
 
 
+def test_filter_files_on_resolution_no_uniprot_can_pass_when_grouping_disabled(sample2_cif: Path, tmp_path: Path):
+    no_uniprot = tmp_path / "no-uniprot.cif.gz"
+    with gzip.open(sample2_cif, "rt", encoding="utf-8") as handle:
+        text = handle.read()
+    # Remove UniProt database entries while keeping a valid mmCIF structure.
+    no_uniprot.write_bytes(gzip.compress(text.replace("UNP", "XXX").encode("utf-8")))
+
+    output_dir = tmp_path / "output"
+    results = list(filter_files_on_resolution(input_files=[no_uniprot], output_dir=output_dir, top=1, group_by=None))
+
+    expected = ResolutionFilterStatistics(
+        input_file=no_uniprot,
+        uniprot_accession=None,
+        resolution=2.3,
+        total_residue_count=8,
+        is_alphafold=False,
+        passed=True,
+        output_file=output_dir / no_uniprot.name,
+    )
+    assert results == [expected]
+    assert results[0].output_file is not None and results[0].output_file.exists()
+
+
 class TestGroupResolutionStatistics:
     def test_best_resolution_passes(self):
         good = _make_stats("a.cif.gz", "P12345", resolution=1.8)
@@ -231,6 +254,29 @@ class TestGroupResolutionStatistics:
         results = group_resolution_statistics([p1, p2], top=1)
 
         assert all(r.passed for r in results)
+
+    def test_none_grouping_uses_global_top(self):
+        # Same accession-based ranking key as production code; global top=1 should keep only a.cif.gz.
+        best = _make_stats("a.cif.gz", "P11111", resolution=1.0)
+        second = _make_stats("b.cif.gz", "P22222", resolution=1.5)
+        third = _make_stats("c.cif.gz", "P33333", resolution=2.0)
+
+        results = group_resolution_statistics([third, best, second], top=1, group_by=None)
+
+        passed_names = {r.input_file.name for r in results if r.passed}
+        assert passed_names == {"a.cif.gz"}
+        assert [r.input_file.name for r in results] == ["a.cif.gz", "b.cif.gz", "c.cif.gz"]
+
+    def test_none_grouping_does_not_warn_for_missing_accession(self, caplog: pytest.LogCaptureFixture):
+        with_acc = _make_stats("a.cif.gz", "P12345", resolution=2.0)
+        no_acc = _make_stats("z.cif.gz", None, resolution=1.0)
+
+        with caplog.at_level(logging.WARNING):
+            results = group_resolution_statistics([with_acc, no_acc], top=1, group_by=None)
+
+        assert all("No UniProt accession found" not in record.message for record in caplog.records)
+        passed_names = {r.input_file.name for r in results if r.passed}
+        assert passed_names == {"z.cif.gz"}
 
 
 class TestCopyResolutionStatistics:

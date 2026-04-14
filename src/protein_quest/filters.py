@@ -16,6 +16,9 @@ from protein_quest.utils import CopyMethod, copyfile
 
 logger = logging.getLogger(__name__)
 
+GroupBy = Literal["uniprot_accession"] | None
+"""Type for grouping strategy in resolution-based filtering."""
+
 
 @dataclass
 class ChainFilterStatistics:
@@ -190,20 +193,33 @@ def iter_resolution_statistics(
 def group_resolution_statistics(
     stats: Iterable[ResolutionFilterStatistics],
     top: int,
+    group_by: GroupBy = "uniprot_accession",
 ) -> list[ResolutionFilterStatistics]:
-    """Group stats by UniProt accession, rank by resolution, and mark the top N as passed.
+    """Rank stats by resolution and mark the top N as passed.
 
-    Files with no UniProt accession are skipped with a warning and appended last.
-    Within each group, results are sorted alphabetically by filename.
-    No disk I/O is performed.
+    In ``group_by='uniprot_accession'`` mode, files with no UniProt accession
+    are skipped with a warning and appended last. In ``group_by=None`` mode,
+    all files are ranked globally and no missing-accession warnings are emitted.
+
+    If 2 stuctures have the same low resolution the structure with most residues is preferred.
+
+    Output order is deterministic and sorted alphabetically by filename.
 
     Args:
         stats: Resolution statistics to group and rank.
-        top: Maximum number of structures to pass per UniProt accession.
+        top: Maximum number of structures to pass.
+        group_by: Ranking strategy. ``uniprot_accession`` applies top-N per
+            accession. ``None`` applies top-N globally.
 
     Returns:
         All statistics with ``passed`` updated; skipped entries appended last.
     """
+    if group_by is None:
+        ranked = sorted(stats, key=_resolution_rank_key)
+        for result in ranked[:top]:
+            result.passed = True
+        return sorted(ranked, key=lambda item: item.input_file.name)
+
     grouped: dict[str, list[ResolutionFilterStatistics]] = {}
     skipped: list[ResolutionFilterStatistics] = []
 
@@ -253,21 +269,27 @@ def filter_files_on_resolution(
     input_files: list[Path],
     output_dir: Path,
     top: int,
+    group_by: GroupBy = "uniprot_accession",
     copy_method: CopyMethod = "copy",
 ) -> Generator[ResolutionFilterStatistics]:
-    """Filter structure files by resolution rank per UniProt accession.
+    """Filter structure files by resolution rank.
+
+    If 2 stuctures have the same low resolution the structure with most residues is preferred.
+
 
     Args:
         input_files: Structure files to rank and filter.
         output_dir: Directory where passed files will be written.
-        top: Maximum number of files to keep per UniProt accession.
+        top: Maximum number of files to keep.
+        group_by: Ranking strategy. ``uniprot_accession`` applies top-N per
+            accession. ``None`` applies top-N globally.
         copy_method: How to copy passed files to output directory.
 
     Yields:
         Objects describing the filtering result for each input file.
     """
     stats = list(iter_resolution_statistics(input_files))
-    grouped = group_resolution_statistics(stats, top)
+    grouped = group_resolution_statistics(stats, top, group_by=group_by)
     yield from copy_resolution_statistics(grouped, output_dir, copy_method)
 
 

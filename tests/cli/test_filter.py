@@ -1,18 +1,11 @@
 """Filter CLI tests for protein-quest."""
 
 import csv
-import gzip
 from pathlib import Path
 
 import pytest
 
 from protein_quest.cli import main
-
-
-def _rewrite_gzip_text(input_file: Path, output_file: Path, old: str, new: str):
-    with gzip.open(input_file, "rt", encoding="utf-8") as handle:
-        text = handle.read()
-    output_file.write_bytes(gzip.compress(text.replace(old, new).encode("utf-8")))
 
 
 def test_filter_chain_happy_path(sample2_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
@@ -191,124 +184,254 @@ def test_filter_secondary_structure(
     assert "Statistics written to" in captured.err
 
 
-def test_filter_resolution_ranks_by_resolution_with_default_grouping(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-):
-    """Test filter resolution ranks structures per UniProt accession."""
-    fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
-    input_dir = tmp_path / "input"
-    input_dir.mkdir()
-    for fixture_name in ("2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz", "1amb_updated.cif.gz"):
-        (input_dir / fixture_name).symlink_to(fixtures_dir / fixture_name)
+class TestResolution:
+    def test_ranks_by_resolution_with_default_grouping(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+        """Test filter resolution ranks structures per UniProt accession."""
+        fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        for fixture_name in ("2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz", "1amb_updated.cif.gz"):
+            (input_dir / fixture_name).symlink_to(fixtures_dir / fixture_name)
 
-    output_dir = tmp_path / "output"
+        output_dir = tmp_path / "output"
 
-    argv = [
-        "filter",
-        "resolution",
-        str(input_dir),
-        str(output_dir),
-        "--top",
-        "1",
-        "--copy-method",
-        "symlink",
-    ]
+        argv = [
+            "filter",
+            "resolution",
+            str(input_dir),
+            str(output_dir),
+            "--top",
+            "1",
+            "--copy-method",
+            "symlink",
+        ]
 
-    main(argv)
+        main(argv)
 
-    output_files = sorted(path.name for path in output_dir.iterdir())
-    assert output_files == ["2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"]
+        output_files = sorted(path.name for path in output_dir.iterdir())
+        assert output_files == ["2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"]
 
-    captured = capsys.readouterr()
-    assert "Filtering 3 files" in captured.err
-    assert "Wrote 2 files to" in captured.err
+        captured = capsys.readouterr()
+        assert "Filtering 3 files" in captured.err
+        assert "Wrote 2 files to" in captured.err
 
+    def test_uses_default_top_without_stats_message(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+        """Test filter resolution defaults to top 1000 and stays quiet about stats when unused."""
+        fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        for fixture_name in ("2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz", "1amb_updated.cif.gz"):
+            (input_dir / fixture_name).symlink_to(fixtures_dir / fixture_name)
 
-def test_filter_resolution_uses_default_top_without_stats_message(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
-    """Test filter resolution defaults to top 1000 and stays quiet about stats when unused."""
-    fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
-    input_dir = tmp_path / "input"
-    input_dir.mkdir()
-    for fixture_name in ("2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz", "1amb_updated.cif.gz"):
-        (input_dir / fixture_name).symlink_to(fixtures_dir / fixture_name)
+        output_dir = tmp_path / "output"
 
-    output_dir = tmp_path / "output"
+        argv = [
+            "filter",
+            "resolution",
+            str(input_dir),
+            str(output_dir),
+            "--copy-method",
+            "symlink",
+        ]
 
-    argv = [
-        "filter",
-        "resolution",
-        str(input_dir),
-        str(output_dir),
-        "--copy-method",
-        "symlink",
-    ]
+        main(argv)
 
-    main(argv)
+        output_files = sorted(path.name for path in output_dir.iterdir())
+        assert output_files == ["1amb_updated.cif.gz", "2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"]
 
-    output_files = sorted(path.name for path in output_dir.iterdir())
-    assert output_files == ["1amb_updated.cif.gz", "2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"]
+        captured = capsys.readouterr()
+        assert "Wrote 3 files to" in captured.err
+        assert "Statistics written to" not in captured.err
 
-    captured = capsys.readouterr()
-    assert "Wrote 3 files to" in captured.err
-    assert "Statistics written to" not in captured.err
+    def test_write_stats_to_log_file(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+        """Test filter resolution writes CSV stats even when output file uses .log extension."""
+        fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        for fixture_name in ("2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz", "1amb_updated.cif.gz"):
+            (input_dir / fixture_name).symlink_to(fixtures_dir / fixture_name)
 
+        output_dir = tmp_path / "output"
+        stats_fn = tmp_path / "some.log"
 
-def test_filter_resolution_write_stats_to_log_file(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
-    """Test filter resolution writes CSV stats even when output file uses .log extension."""
-    fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
-    input_dir = tmp_path / "input"
-    input_dir.mkdir()
-    for fixture_name in ("2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz", "1amb_updated.cif.gz"):
-        (input_dir / fixture_name).symlink_to(fixtures_dir / fixture_name)
+        argv = [
+            "filter",
+            "resolution",
+            str(input_dir),
+            str(output_dir),
+            "--copy-method",
+            "symlink",
+            "--write-stats",
+            str(stats_fn),
+        ]
 
-    output_dir = tmp_path / "output"
-    stats_fn = tmp_path / "some.log"
+        main(argv)
 
-    argv = [
-        "filter",
-        "resolution",
-        str(input_dir),
-        str(output_dir),
-        "--copy-method",
-        "symlink",
-        "--write-stats",
-        str(stats_fn),
-    ]
+        with stats_fn.open() as handle:
+            rows = list(csv.DictReader(handle))
 
-    main(argv)
+        assert len(rows) == 3
+        assert rows[0] == {
+            "input_file": str(input_dir / "1amb_updated.cif.gz"),
+            "uniprot_accession": "P05067",
+            "resolution": "0.0",
+            "total_residue_count": "28",
+            "is_alphafold": "False",
+            "passed": "True",
+            "output_file": str(output_dir / "1amb_updated.cif.gz"),
+        }
+        assert rows[1] == {
+            "input_file": str(input_dir / "2Y29.cif.gz"),
+            "uniprot_accession": "P05067",
+            "resolution": "2.3",
+            "total_residue_count": "8",
+            "is_alphafold": "False",
+            "passed": "True",
+            "output_file": str(output_dir / "2Y29.cif.gz"),
+        }
+        assert rows[2] == {
+            "input_file": str(input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
+            "uniprot_accession": "A0A0C5B5G6",
+            "resolution": "0.0",
+            "total_residue_count": "16",
+            "is_alphafold": "True",
+            "passed": "True",
+            "output_file": str(output_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
+        }
 
-    with stats_fn.open() as handle:
-        rows = list(csv.DictReader(handle))
+        captured = capsys.readouterr()
+        assert "Statistics written to" in captured.err
+        assert str(stats_fn) in captured.err
 
-    assert len(rows) == 3
-    assert rows[0] == {
-        "input_file": str(input_dir / "1amb_updated.cif.gz"),
-        "uniprot_accession": "P05067",
-        "resolution": "0.0",
-        "total_residue_count": "28",
-        "is_alphafold": "False",
-        "passed": "True",
-        "output_file": str(output_dir / "1amb_updated.cif.gz"),
-    }
-    assert rows[1] == {
-        "input_file": str(input_dir / "2Y29.cif.gz"),
-        "uniprot_accession": "P05067",
-        "resolution": "2.3",
-        "total_residue_count": "8",
-        "is_alphafold": "False",
-        "passed": "True",
-        "output_file": str(output_dir / "2Y29.cif.gz"),
-    }
-    assert rows[2] == {
-        "input_file": str(input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
-        "uniprot_accession": "A0A0C5B5G6",
-        "resolution": "0.0",
-        "total_residue_count": "16",
-        "is_alphafold": "True",
-        "passed": "True",
-        "output_file": str(output_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
-    }
+    def test_none_grouping_uses_global_top_and_stats_schema(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+        fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        for fixture_name in ("2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz", "1amb_updated.cif.gz"):
+            (input_dir / fixture_name).symlink_to(fixtures_dir / fixture_name)
 
-    captured = capsys.readouterr()
-    assert "Statistics written to" in captured.err
-    assert str(stats_fn) in captured.err
+        output_dir = tmp_path / "output"
+        stats_fn = tmp_path / "stats.csv"
+
+        argv = [
+            "filter",
+            "resolution",
+            str(input_dir),
+            str(output_dir),
+            "--no-group-by",
+            "--top",
+            "1",
+            "--copy-method",
+            "symlink",
+            "--write-stats",
+            str(stats_fn),
+        ]
+
+        main(argv)
+
+        output_files = sorted(path.name for path in output_dir.iterdir())
+        assert output_files == ["2Y29.cif.gz"]
+
+        with stats_fn.open() as handle:
+            rows = list(csv.DictReader(handle))
+
+        expected_rows = [
+            {
+                "input_file": str(input_dir / "1amb_updated.cif.gz"),
+                "resolution": "0.0",
+                "total_residue_count": "28",
+                "is_alphafold": "False",
+                "passed": "False",
+                "output_file": "",
+            },
+            {
+                "input_file": str(input_dir / "2Y29.cif.gz"),
+                "resolution": "2.3",
+                "total_residue_count": "8",
+                "is_alphafold": "False",
+                "passed": "True",
+                "output_file": str(output_dir / "2Y29.cif.gz"),
+            },
+            {
+                "input_file": str(input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
+                "resolution": "0.0",
+                "total_residue_count": "16",
+                "is_alphafold": "True",
+                "passed": "False",
+                "output_file": "",
+            },
+        ]
+        assert rows == expected_rows
+
+        captured = capsys.readouterr()
+        assert "global resolution ranking (no grouping)" in captured.err
+
+    def test_no_group_by_flag_is_alias_for_none(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+        fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        for fixture_name in ("2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz", "1amb_updated.cif.gz"):
+            (input_dir / fixture_name).symlink_to(fixtures_dir / fixture_name)
+
+        output_dir = tmp_path / "output"
+
+        argv = [
+            "filter",
+            "resolution",
+            str(input_dir),
+            str(output_dir),
+            "--no-group-by",
+            "--top",
+            "1",
+            "--copy-method",
+            "symlink",
+        ]
+
+        main(argv)
+
+        output_files = sorted(path.name for path in output_dir.iterdir())
+        assert output_files == ["2Y29.cif.gz"]
+
+        captured = capsys.readouterr()
+        assert "global resolution ranking (no grouping)" in captured.err
+
+    def test_group_by_and_no_group_by_are_mutually_exclusive(self, tmp_path: Path):
+        fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        (input_dir / "2Y29.cif.gz").symlink_to(fixtures_dir / "2Y29.cif.gz")
+
+        output_dir = tmp_path / "output"
+
+        argv = [
+            "filter",
+            "resolution",
+            str(input_dir),
+            str(output_dir),
+            "--group-by",
+            "uniprot_accession",
+            "--no-group-by",
+        ]
+
+        with pytest.raises(SystemExit):
+            main(argv)
+
+    def test_rejects_zero_top(self, tmp_path: Path):
+        fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        (input_dir / "2Y29.cif.gz").symlink_to(fixtures_dir / "2Y29.cif.gz")
+
+        output_dir = tmp_path / "output"
+
+        argv = [
+            "filter",
+            "resolution",
+            str(input_dir),
+            str(output_dir),
+            "--top",
+            "0",
+        ]
+
+        with pytest.raises(SystemExit):
+            main(argv)

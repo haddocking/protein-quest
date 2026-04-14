@@ -2,9 +2,11 @@
 
 import csv
 import os
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Annotated
 
-from cyclopts import App
+from cyclopts import App, Group, Parameter
+from cyclopts.types import PositiveInt
+from cyclopts.validators import MutuallyExclusive
 from rich.panel import Panel
 
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
@@ -20,7 +22,7 @@ from protein_quest.cli.common import (
     console,
     write_lines,
 )
-from protein_quest.filters import filter_files_on_chain, filter_files_on_residues, filter_files_on_resolution
+from protein_quest.filters import GroupBy, filter_files_on_chain, filter_files_on_residues, filter_files_on_resolution
 from protein_quest.io import (
     glob_structure_files,
     locate_structure_file,
@@ -38,6 +40,32 @@ rprint = console.print
 
 
 filter_app = App(name="filter", help="Filter files")
+
+_GROUP_BY = Group(show=False, validator=MutuallyExclusive())
+
+
+def _resolution_stats_header(group_by: GroupBy) -> str:
+    if group_by is None:
+        return "input_file,resolution,total_residue_count,is_alphafold,passed,output_file"
+    return "input_file,uniprot_accession,resolution,total_residue_count,is_alphafold,passed,output_file"
+
+
+def _resolution_stats_row(result, group_by: GroupBy) -> str:
+    if group_by is None:
+        return (
+            f"{result.input_file},{result.resolution},{result.total_residue_count},"
+            f"{result.is_alphafold},{result.passed},{result.output_file or ''}"
+        )
+    return (
+        f"{result.input_file},{result.uniprot_accession or ''},{result.resolution},"
+        f"{result.total_residue_count},{result.is_alphafold},{result.passed},{result.output_file or ''}"
+    )
+
+
+def _resolution_progress_message(nr_total: int, input_dir: "Path", group_by: GroupBy) -> str:
+    if group_by is None:
+        return f"Filtering {nr_total} files in {input_dir} directory by global resolution ranking (no grouping)."
+    return f"Filtering {nr_total} files in {input_dir} directory by resolution grouped by {group_by}."
 
 
 @filter_app.command
@@ -230,26 +258,36 @@ def resolution(
     output_dir: OutputDir,
     /,
     *,
-    group_by: Literal["uniprot_accession"] = "uniprot_accession",
-    top: int = 1_000,
+    group_by: Annotated[GroupBy, Parameter(group=_GROUP_BY)] = "uniprot_accession",
+    no_group_by: Annotated[bool, Parameter(name="--no-group-by", negative="", group=_GROUP_BY)] = False,
+    top: PositiveInt = 1_000,
     write_stats: OutputFile | None = None,
     cache: CacheParameter | None = None,
     _: Common | None = None,
 ) -> None:
-    """Filter structure files by top resolution per UniProt accession.
+    """Filter structure files by top resolution.
+
+    If 2 stuctures have the same low resolution the structure with most residues is preferred.
 
     Args:
-        input_dir: Directory with already normalized structure files.
+        input_dir: Directory structure files.
         output_dir: Directory to write the selected structure files.
-        group_by: Grouping field.
-        top: Maximum number of files to keep per UniProt accession.
+        group_by: Grouping mode. Use ``uniprot_accession`` for top-N per accession
+        no_group_by: Disable grouping and use global top-N ranking across all files.
+            Mutually exclusive with ``group_by``.
+        top: Maximum number of files to keep.
         write_stats: Write filter statistics to file.
-            In CSV format with columns:
+            In CSV format. For ``--group-by=uniprot_accession`` columns are:
             `<input_file>,<uniprot_accession>,<resolution>,<total_residue_count>,<is_alphafold>,<passed>,<output_file>`.
+            For ``--no-group-by`` columns are:
+            `<input_file>,<resolution>,<total_residue_count>,<is_alphafold>,<passed>,<output_file>`.
             Use `-` for stdout.
         cache: Cache options
         _: Common CLI options.
     """
+    if no_group_by:
+        group_by = None
+
     output_dir.mkdir(parents=True, exist_ok=True)
     cache = cache or CacheParameter()
 
@@ -258,20 +296,18 @@ def resolution(
 
     input_files = sorted(glob_structure_files(input_dir))
     nr_total = len(input_files)
-    rprint(f"Filtering {nr_total} files in {input_dir} directory by resolution grouped by {group_by}.")
+    rprint(_resolution_progress_message(nr_total, input_dir, group_by))
 
-    stats_lines = ["input_file,uniprot_accession,resolution,total_residue_count,is_alphafold,passed,output_file"]
+    stats_lines = [_resolution_stats_header(group_by)]
     nr_passed = 0
     for result in filter_files_on_resolution(
         input_files,
         output_dir,
         top=top,
+        group_by=group_by,
         copy_method=cache.copy_method,
     ):
-        stats_lines.append(
-            f"{result.input_file},{result.uniprot_accession or ''},{result.resolution},"
-            f"{result.total_residue_count},{result.is_alphafold},{result.passed},{result.output_file or ''}"
-        )
+        stats_lines.append(_resolution_stats_row(result, group_by))
         if result.passed:
             nr_passed += 1
 

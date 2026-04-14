@@ -216,7 +216,7 @@ protein-quest filter residue  \
     ./filtered-chains ./filtered
 ```
 
-### To filter structures on top resolution per UniProt accession
+### To filter structures by top lowest resolution per UniProt accession
 
 ```shell
 protein-quest filter resolution \
