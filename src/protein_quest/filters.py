@@ -1,7 +1,7 @@
 """Module for filtering structure files and their contents."""
 
 import logging
-from collections.abc import Collection, Generator
+from collections.abc import Collection, Generator, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -11,7 +11,7 @@ from distributed.deploy.cluster import Cluster
 from tqdm.auto import tqdm
 
 from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
-from protein_quest.structure import nr_residues_in_chain, write_single_chain_structure_file
+from protein_quest.structure import nr_residues_in_chain, structure_metadata, write_single_chain_structure_file
 from protein_quest.utils import CopyMethod, copyfile
 
 logger = logging.getLogger(__name__)
@@ -129,6 +129,146 @@ class ResidueFilterStatistics:
     residue_count: int
     passed: bool
     output_file: Path | None
+
+
+@dataclass
+class ResolutionFilterStatistics:
+    """Statistics for filtering files based on ranked structure resolution.
+
+    Parameters:
+        input_file: The path to the input file.
+        uniprot_accession: UniProt accession used for grouping.
+        resolution: Resolution from the structure file.
+        total_residue_count: Total residues across the whole structure.
+        is_alphafold: Whether the structure was predicted by AlphaFold.
+        passed: Whether the file passed the ranking filter.
+        output_file: The path to the output file, if passed.
+    """
+
+    input_file: Path
+    uniprot_accession: str | None
+    resolution: float
+    total_residue_count: int
+    is_alphafold: bool
+    passed: bool
+    output_file: Path | None
+
+
+def _resolution_rank_key(stats: ResolutionFilterStatistics) -> tuple[int, float, int, str]:
+    if stats.resolution != 0.0:
+        return (0, stats.resolution, -stats.total_residue_count, stats.input_file.name)
+    if stats.is_alphafold:
+        return (1, 0.0, -stats.total_residue_count, stats.input_file.name)
+    return (2, 0.0, -stats.total_residue_count, stats.input_file.name)
+
+
+def iter_resolution_statistics(
+    input_files: Iterable[Path],
+) -> Generator[ResolutionFilterStatistics]:
+    """Load resolution statistics for each structure file.
+
+    Args:
+        input_files: Structure files to read metadata from.
+
+    Yields:
+        Statistics objects with metadata filled in; ``passed`` is always
+        ``False`` and ``output_file`` is always ``None``.
+    """
+    for input_file in tqdm(input_files, unit="file"):
+        metadata = structure_metadata(input_file)
+        yield ResolutionFilterStatistics(
+            input_file=input_file,
+            uniprot_accession=metadata.uniprot_accession,
+            resolution=metadata.resolution,
+            total_residue_count=metadata.total_residue_count,
+            is_alphafold=metadata.is_alphafold,
+            passed=False,
+            output_file=None,
+        )
+
+
+def group_resolution_statistics(
+    stats: Iterable[ResolutionFilterStatistics],
+    top: int,
+) -> list[ResolutionFilterStatistics]:
+    """Group stats by UniProt accession, rank by resolution, and mark the top N as passed.
+
+    Files with no UniProt accession are skipped with a warning and appended last.
+    Within each group, results are sorted alphabetically by filename.
+    No disk I/O is performed.
+
+    Args:
+        stats: Resolution statistics to group and rank.
+        top: Maximum number of structures to pass per UniProt accession.
+
+    Returns:
+        All statistics with ``passed`` updated; skipped entries appended last.
+    """
+    grouped: dict[str, list[ResolutionFilterStatistics]] = {}
+    skipped: list[ResolutionFilterStatistics] = []
+
+    for result in stats:
+        if result.uniprot_accession is None:
+            logger.warning("No UniProt accession found in %s, skipping.", result.input_file)
+            skipped.append(result)
+            continue
+        grouped.setdefault(result.uniprot_accession, []).append(result)
+
+    for group_results in grouped.values():
+        ranked = sorted(group_results, key=_resolution_rank_key)
+        for result in ranked[:top]:
+            result.passed = True
+
+    output: list[ResolutionFilterStatistics] = []
+    for group_results in grouped.values():
+        output.extend(sorted(group_results, key=lambda item: item.input_file.name))
+    output.extend(skipped)
+    return output
+
+
+def copy_resolution_statistics(
+    stats: Iterable[ResolutionFilterStatistics],
+    output_dir: Path,
+    copy_method: CopyMethod = "copy",
+) -> Generator[ResolutionFilterStatistics]:
+    """Copy files for passed statistics and set their ``output_file`` path.
+
+    Args:
+        stats: Statistics with ``passed`` already set.
+        output_dir: Directory where passed files will be written.
+        copy_method: How to copy passed files to output directory.
+
+    Yields:
+        Statistics with ``output_file`` set for passed entries.
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+    for result in stats:
+        if result.passed:
+            result.output_file = output_dir / result.input_file.name
+            copyfile(result.input_file, result.output_file, copy_method)
+        yield result
+
+
+def filter_files_on_resolution(
+    input_files: list[Path],
+    output_dir: Path,
+    top: int,
+    copy_method: CopyMethod = "copy",
+) -> Generator[ResolutionFilterStatistics]:
+    """Filter structure files by resolution rank per UniProt accession.
+
+    Args:
+        input_files: Structure files to rank and filter.
+        output_dir: Directory where passed files will be written.
+        top: Maximum number of files to keep per UniProt accession.
+        copy_method: How to copy passed files to output directory.
+
+    Yields:
+        Objects describing the filtering result for each input file.
+    """
+    stats = list(iter_resolution_statistics(input_files))
+    grouped = group_resolution_statistics(stats, top)
+    yield from copy_resolution_statistics(grouped, output_dir, copy_method)
 
 
 def filter_files_on_residues(

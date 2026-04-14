@@ -2,7 +2,7 @@
 
 import csv
 import os
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from cyclopts import App
 from rich.panel import Panel
@@ -20,7 +20,7 @@ from protein_quest.cli.common import (
     console,
     write_lines,
 )
-from protein_quest.filters import filter_files_on_chain, filter_files_on_residues
+from protein_quest.filters import filter_files_on_chain, filter_files_on_residues, filter_files_on_resolution
 from protein_quest.io import (
     glob_structure_files,
     locate_structure_file,
@@ -220,7 +220,65 @@ def residue(
     if write_stats:
         write_lines(write_stats, stats_lines)
     rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
-    if str(write_stats) != "-":
+    if write_stats and str(write_stats) != "-":
+        rprint(f"Statistics written to {write_stats}")
+
+
+@filter_app.command
+def resolution(
+    input_dir: InputDir,
+    output_dir: OutputDir,
+    /,
+    *,
+    group_by: Literal["uniprot_accession"] = "uniprot_accession",
+    top: int = 1_000,
+    write_stats: OutputFile | None = None,
+    cache: CacheParameter | None = None,
+    _: Common | None = None,
+) -> None:
+    """Filter structure files by top resolution per UniProt accession.
+
+    Args:
+        input_dir: Directory with already normalized structure files.
+        output_dir: Directory to write the selected structure files.
+        group_by: Grouping field.
+        top: Maximum number of files to keep per UniProt accession.
+        write_stats: Write filter statistics to file.
+            In CSV format with columns:
+            `<input_file>,<uniprot_accession>,<resolution>,<total_residue_count>,<is_alphafold>,<passed>,<output_file>`.
+            Use `-` for stdout.
+        cache: Cache options
+        _: Common CLI options.
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+    cache = cache or CacheParameter()
+
+    if write_stats and str(write_stats) != "-":
+        write_stats.parent.mkdir(parents=True, exist_ok=True)
+
+    input_files = sorted(glob_structure_files(input_dir))
+    nr_total = len(input_files)
+    rprint(f"Filtering {nr_total} files in {input_dir} directory by resolution grouped by {group_by}.")
+
+    stats_lines = ["input_file,uniprot_accession,resolution,total_residue_count,is_alphafold,passed,output_file"]
+    nr_passed = 0
+    for result in filter_files_on_resolution(
+        input_files,
+        output_dir,
+        top=top,
+        copy_method=cache.copy_method,
+    ):
+        stats_lines.append(
+            f"{result.input_file},{result.uniprot_accession or ''},{result.resolution},"
+            f"{result.total_residue_count},{result.is_alphafold},{result.passed},{result.output_file or ''}"
+        )
+        if result.passed:
+            nr_passed += 1
+
+    if write_stats:
+        write_lines(write_stats, stats_lines)
+    rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
+    if write_stats and str(write_stats) != "-":
         rprint(f"Statistics written to {write_stats}")
 
 

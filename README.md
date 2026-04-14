@@ -54,7 +54,8 @@ graph TB;
     searchaf --> |uniprot_accessions|fetchad(Retrieve AlphaFold)
     searchemdb -. emdb_ids .->fetchemdb[Retrieve EMDB]
     fetchpdbe -->|mmcif_files| chainfilter{{Filter on chain of uniprot}}
-    chainfilter --> |mmcif_files| residuefilter{{Filter on chain length}}
+    chainfilter --> |mmcif_files| resolutionfilter{{Filter on top resolution per UniProt}}
+    resolutionfilter --> |mmcif_files| residuefilter{{Filter on chain length}}
     fetchad -->|mmcif_files| confidencefilter{{Filter out low confidence}}
     confidencefilter --> |mmcif_files| ssfilter{{Filter on secondary structure}}
     residuefilter --> |mmcif_files| ssfilter
@@ -213,6 +214,15 @@ protein-quest filter residue  \
     --min-residues 100 \
     --max-residues 1000 \
     ./filtered-chains ./filtered
+```
+
+### To filter structures on top resolution per UniProt accession
+
+```shell
+protein-quest filter resolution \
+  --group-by uniprot_accession \
+  --top 3 \
+  ./filtered-chains ./filtered-resolution
 ```
 
 ### To filter on secondary structure

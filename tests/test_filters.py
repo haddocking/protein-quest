@@ -1,3 +1,5 @@
+import gzip
+import logging
 from pathlib import Path
 
 import pytest
@@ -5,10 +7,33 @@ import pytest
 from protein_quest.filters import (
     ChainFilterStatistics,
     ResidueFilterStatistics,
+    ResolutionFilterStatistics,
+    copy_resolution_statistics,
     filter_files_on_chain,
     filter_files_on_residues,
+    filter_files_on_resolution,
+    group_resolution_statistics,
+    iter_resolution_statistics,
 )
 from protein_quest.structure import ChainNotFoundError
+
+
+def _make_stats(
+    filename: str,
+    accession: str | None,
+    resolution: float,
+    total_residue_count: int = 100,
+    is_alphafold: bool = False,
+) -> ResolutionFilterStatistics:
+    return ResolutionFilterStatistics(
+        input_file=Path(f"/fake/{filename}"),
+        uniprot_accession=accession,
+        resolution=resolution,
+        total_residue_count=total_residue_count,
+        is_alphafold=is_alphafold,
+        passed=False,
+        output_file=None,
+    )
 
 
 @pytest.mark.parametrize(
@@ -52,7 +77,7 @@ def test_filter_files_on_chain_local_cluster(
     assert expected_progress_bar in stderr
 
 
-def test_filter_files_on_residues(sample_cif: Path, sample2_cif: Path, tmp_path: Path):
+def test_filter_files_on_residues_min_max_range(sample_cif: Path, sample2_cif: Path, tmp_path: Path):
     results = list(
         filter_files_on_residues(
             input_files=[sample_cif, sample2_cif],
@@ -76,3 +101,170 @@ def test_filter_files_on_residues(sample_cif: Path, sample2_cif: Path, tmp_path:
     )
 
     assert results == [expected_passed, expected_discarded]
+
+
+class TestIterResolutionStatistics:
+    def test_metadata_in_order(self, sample_cif: Path, sample2_cif: Path, af_cif: Path, nmr_cif: Path):
+        input_files = [sample_cif, sample2_cif, af_cif, nmr_cif]
+        results = list(iter_resolution_statistics(input_files))
+
+        assert results == [
+            ResolutionFilterStatistics(
+                input_file=sample_cif,
+                uniprot_accession="Q8VZS8",
+                resolution=2.05,
+                total_residue_count=173,
+                is_alphafold=False,
+                passed=False,
+                output_file=None,
+            ),
+            ResolutionFilterStatistics(
+                input_file=sample2_cif,
+                uniprot_accession="P05067",
+                resolution=2.3,
+                total_residue_count=8,
+                is_alphafold=False,
+                passed=False,
+                output_file=None,
+            ),
+            ResolutionFilterStatistics(
+                input_file=af_cif,
+                uniprot_accession="A0A0C5B5G6",
+                resolution=0.0,
+                total_residue_count=16,
+                is_alphafold=True,
+                passed=False,
+                output_file=None,
+            ),
+            ResolutionFilterStatistics(
+                input_file=nmr_cif,
+                uniprot_accession="P05067",
+                resolution=0.0,
+                total_residue_count=28,
+                is_alphafold=False,
+                passed=False,
+                output_file=None,
+            ),
+        ]
+
+    def test_empty_input(self):
+        assert list(iter_resolution_statistics([])) == []
+
+
+def test_filter_files_on_resolution_no_uniprot_does_not_pass(sample2_cif: Path, tmp_path: Path):
+    no_uniprot = tmp_path / "no-uniprot.cif.gz"
+    with gzip.open(sample2_cif, "rt", encoding="utf-8") as handle:
+        text = handle.read()
+    # Remove UniProt database entries while keeping a valid mmCIF structure.
+    no_uniprot.write_bytes(gzip.compress(text.replace("UNP", "XXX").encode("utf-8")))
+
+    output_dir = tmp_path / "output"
+    results = list(filter_files_on_resolution(input_files=[no_uniprot], output_dir=output_dir, top=1))
+
+    expected = ResolutionFilterStatistics(
+        input_file=no_uniprot,
+        uniprot_accession=None,
+        resolution=2.3,
+        total_residue_count=8,
+        is_alphafold=False,
+        passed=False,
+        output_file=None,
+    )
+    assert results == [expected]
+    assert output_dir.exists()
+    assert list(output_dir.iterdir()) == []
+
+
+class TestGroupResolutionStatistics:
+    def test_best_resolution_passes(self):
+        good = _make_stats("a.cif.gz", "P12345", resolution=1.8)
+        bad = _make_stats("b.cif.gz", "P12345", resolution=3.0)
+
+        results = group_resolution_statistics([good, bad], top=1)
+
+        passed = [r for r in results if r.passed]
+        assert passed == [good]
+
+    def test_top_limit(self):
+        a = _make_stats("a.cif.gz", "P12345", resolution=1.0)
+        b = _make_stats("b.cif.gz", "P12345", resolution=2.0)
+        c = _make_stats("c.cif.gz", "P12345", resolution=3.0)
+
+        results = group_resolution_statistics([a, b, c], top=2)
+
+        passed_names = {r.input_file.name for r in results if r.passed}
+        assert passed_names == {"a.cif.gz", "b.cif.gz"}
+
+    def test_alphafold_beats_missing_resolution(self):
+        af = _make_stats("af.cif.gz", "P12345", resolution=0.0, is_alphafold=True)
+        nmr = _make_stats("nmr.cif.gz", "P12345", resolution=0.0, is_alphafold=False)
+
+        results = group_resolution_statistics([nmr, af], top=1)
+
+        passed = [r for r in results if r.passed]
+        assert passed == [af]
+
+    def test_none_accession_is_skipped(self, caplog: pytest.LogCaptureFixture):
+        good = _make_stats("a.cif.gz", "P12345", resolution=2.0)
+        no_acc = _make_stats("z.cif.gz", None, resolution=1.0)
+
+        with caplog.at_level(logging.WARNING):
+            results = group_resolution_statistics([good, no_acc], top=10)
+
+        assert results[-1] is no_acc
+        assert not results[-1].passed
+        assert "z.cif.gz" in caplog.text
+
+    def test_results_sorted_by_filename_within_group(self):
+        c = _make_stats("c.cif.gz", "P12345", resolution=1.0)
+        a = _make_stats("a.cif.gz", "P12345", resolution=2.0)
+        b = _make_stats("b.cif.gz", "P12345", resolution=3.0)
+
+        results = group_resolution_statistics([c, a, b], top=10)
+
+        assert [r.input_file.name for r in results] == ["a.cif.gz", "b.cif.gz", "c.cif.gz"]
+
+    def test_groups_are_independent(self):
+        p1 = _make_stats("p1.cif.gz", "P11111", resolution=1.0)
+        p2 = _make_stats("p2.cif.gz", "P22222", resolution=2.0)
+
+        results = group_resolution_statistics([p1, p2], top=1)
+
+        assert all(r.passed for r in results)
+
+
+class TestCopyResolutionStatistics:
+    def test_passed_is_copied_and_output_set(self, sample2_cif: Path, tmp_path: Path):
+        stats = ResolutionFilterStatistics(
+            input_file=sample2_cif,
+            uniprot_accession="P05067",
+            resolution=2.3,
+            total_residue_count=8,
+            is_alphafold=False,
+            passed=True,
+            output_file=None,
+        )
+        output_dir = tmp_path / "output"
+
+        results = list(copy_resolution_statistics([stats], output_dir))
+
+        assert len(results) == 1
+        assert results[0].output_file == output_dir / sample2_cif.name
+        assert results[0].output_file is not None and results[0].output_file.exists()
+
+    def test_not_passed_is_unchanged(self, sample2_cif: Path, tmp_path: Path):
+        stats = ResolutionFilterStatistics(
+            input_file=sample2_cif,
+            uniprot_accession="P05067",
+            resolution=2.3,
+            total_residue_count=8,
+            is_alphafold=False,
+            passed=False,
+            output_file=None,
+        )
+        output_dir = tmp_path / "output"
+
+        results = list(copy_resolution_statistics([stats], output_dir))
+
+        assert results[0].output_file is None
+        assert not any(f for f in output_dir.iterdir() if f.is_file())
