@@ -98,8 +98,6 @@ def group_resolution_statistics(
     If resolution is the same, structures with more residues are preferred.
     If resolution is missing, those structures are undesirable.
 
-    Output order is deterministic and sorted alphabetically by filename.
-
     Args:
         stats: Resolution statistics to group and rank.
         top: Maximum number of structures to pass.
@@ -109,6 +107,7 @@ def group_resolution_statistics(
 
     Returns:
         All statistics with ``passed`` updated; skipped entries appended last.
+        The entries are sorted alphabetically by filename.
     """
     if group_by is None:
         ranked = sorted(stats, key=resolution_sort_key)
@@ -121,7 +120,6 @@ def group_resolution_statistics(
 
     for result in stats:
         if result.uniprot_accession is None:
-            logger.warning("No UniProt accession found in %s, skipping.", result.input_file)
             skipped.append(result)
             continue
         grouped.setdefault(result.uniprot_accession, []).append(result)
@@ -133,9 +131,9 @@ def group_resolution_statistics(
 
     output: list[ResolutionFilterStatistics] = []
     for group_results in grouped.values():
-        output.extend(sorted(group_results, key=lambda item: item.input_file.name))
+        output.extend(group_results)
     output.extend(skipped)
-    return output
+    return sorted(output, key=lambda item: item.input_file.name)
 
 
 def copy_resolution_statistics(

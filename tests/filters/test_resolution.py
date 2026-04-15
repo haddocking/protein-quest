@@ -195,7 +195,6 @@ class TestGroupResolutionStatistics:
 
         assert results[-1] is no_acc
         assert not results[-1].passed
-        assert "z.cif.gz" in caplog.text
 
     def test_results_sorted_by_filename_within_group(self):
         c = _make_stats("c.cif.gz", "P12345", resolution=1.0)

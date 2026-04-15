@@ -1,6 +1,5 @@
 """Filter structure files by number of residues."""
 
-import logging
 from collections.abc import Generator
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,8 +8,6 @@ from tqdm.auto import tqdm
 
 from protein_quest.structure import nr_residues_in_chain
 from protein_quest.utils import CopyMethod, copyfile
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -46,7 +43,7 @@ def filter_files_on_residues(
         min_residues: The minimum number of residues in chain.
         max_residues: The maximum number of residues in chain.
         chain: The chain to count residues of.
-        copy_method: How to copy passed files to output directory:
+        copy_method: The method used to copy passed files to the output directory.
 
     Yields:
         Objects containing information about the filtering process for each input file.
