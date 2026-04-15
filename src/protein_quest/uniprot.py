@@ -339,7 +339,6 @@ def search4uniprot(query: Query, limit: int = 10_000, timeout: int = 1_800) -> s
     sparql_query = _build_sparql_query_uniprot(query, limit)
     logger.info("Executing SPARQL query for UniProt: %s", sparql_query)
 
-    # Type assertion is needed because _execute_sparql_search returns a Union
     raw_results = execute_sparql_search(
         sparql_query=sparql_query,
         timeout=timeout,

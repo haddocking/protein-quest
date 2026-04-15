@@ -18,6 +18,9 @@ def build_sparql_generic_query(select_clause: str, where_clause: str, limit: int
         where_clause: The WHERE clause body of the SPARQL query, without the "WHERE" keyword.
         limit: The maximum number of results to return. Default is 10,000.
         groupby_clause: The GROUP BY clause of the SPARQL query, without the "GROUP BY" keyword.
+
+    Returns:
+        A string containing the complete SPARQL query.
     """
     groupby = f" GROUP BY {groupby_clause}" if groupby_clause else ""
     return dedent(f"""
@@ -81,7 +84,7 @@ def execute_sparql_search(
         timeout: Timeout for the SPARQL query in seconds. Must be less than 2700 seconds (45 minutes).
 
     Returns:
-        A list of bindings returned by the SPARQL query. Each binding is a dict mapping
+        A list of bindings returned by the SPARQL query.
     """
     if timeout > 2_700:
         msg = "Uniprot SPARQL timeout is limited to 2700 seconds (45 minutes)."
@@ -93,7 +96,7 @@ def execute_sparql_search(
     sparql.setTimeout(timeout)
 
     # Default is GET method which can be cached by the server so is preferred.
-    # Too prevent URITooLong errors, we use POST method for large queries.
+    # To prevent URITooLong errors, we use POST method for large queries.
     too_long_for_get = 5_000
     if len(sparql_query) > too_long_for_get:
         sparql.setMethod("POST")
