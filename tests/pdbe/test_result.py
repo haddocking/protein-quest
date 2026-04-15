@@ -59,39 +59,40 @@ def test_pdb_result_chain_length_invalid():
         _ = pdb_result.chain_length
 
 
-def test_filter_pdb_results_on_chain_length_unchanged():
-    pdbs = {
-        "P05067": {PdbResult(id="1AAP", method="X-Ray_Crystallography", resolution="1.5", uniprot_chains="A=287-344")},
-    }
-    result = filter_pdb_results_on_chain_length(pdbs, min_residues=None, max_residues=None)
+class TestFilterPdbResultsOnChainLength:
+    def test_unchanged(self):
+        pdbs = {
+            "P05067": {
+                PdbResult(id="1AAP", method="X-Ray_Crystallography", resolution="1.5", uniprot_chains="A=287-344")
+            },
+        }
+        result = filter_pdb_results_on_chain_length(pdbs, min_residues=None, max_residues=None)
 
-    assert result is pdbs
+        assert result is pdbs
 
+    def test_badrange(self):
+        with pytest.raises(
+            ValueError, match="Maximum number of residues \\(13\\) must be > minimum number of residues \\(42\\)"
+        ):
+            filter_pdb_results_on_chain_length({}, min_residues=42, max_residues=13)
 
-def test_filter_pdb_results_on_chain_length_badrange():
-    with pytest.raises(
-        ValueError, match="Maximum number of residues \\(13\\) must be > minimum number of residues \\(42\\)"
-    ):
-        filter_pdb_results_on_chain_length({}, min_residues=42, max_residues=13)
+    def test_filtered(self):
+        keeper = PdbResult(id="1AAP", method="X-Ray_Crystallography", resolution="1.5", uniprot_chains="A=1-100")
+        pdbs = {
+            "P05067": {
+                keeper,
+                PdbResult(id="2AAP", method="X-Ray_Crystallography", resolution="2.0", uniprot_chains="A=1-2000"),
+            },
+            "P12345": {
+                PdbResult(id="3BBB", method="X-Ray_Crystallography", resolution="4.0", uniprot_chains="A=1-50"),
+            },
+        }
+        result = filter_pdb_results_on_chain_length(pdbs, min_residues=75, max_residues=125)
 
-
-def test_filter_pdb_results_on_chain_length_filtered():
-    keeper = PdbResult(id="1AAP", method="X-Ray_Crystallography", resolution="1.5", uniprot_chains="A=1-100")
-    pdbs = {
-        "P05067": {
-            keeper,
-            PdbResult(id="2AAP", method="X-Ray_Crystallography", resolution="2.0", uniprot_chains="A=1-2000"),
-        },
-        "P12345": {
-            PdbResult(id="3BBB", method="X-Ray_Crystallography", resolution="4.0", uniprot_chains="A=1-50"),
-        },
-    }
-    result = filter_pdb_results_on_chain_length(pdbs, min_residues=75, max_residues=125)
-
-    expected = {
-        "P05067": {keeper},
-    }
-    assert result == expected
+        expected = {
+            "P05067": {keeper},
+        }
+        assert result == expected
 
 
 class TestFilterPdbResultsOnResolution:
