@@ -26,17 +26,19 @@ from protein_quest.cli.common import (
 )
 from protein_quest.converter import converter
 from protein_quest.go import Aspect, GoTerm, search_gene_ontology_term
+from protein_quest.pdbe.result import (
+    PdbChainLengthError,
+    PdbResults,
+    filter_pdb_results_on_chain_length,
+    filter_pdb_results_on_resolution,
+)
 from protein_quest.pdbe_3dbeacons.model import Provider, search_structure_provider_choices
 from protein_quest.pdbe_3dbeacons.search import PruneOptions, flatten_structure_summaries, uniprots2structures
 from protein_quest.taxonomy import SearchField, Taxon, search_taxon
 from protein_quest.uniprot import (
     ComplexPortalEntry,
-    PdbChainLengthError,
-    PdbResults,
     Query,
     UniprotDetails,
-    filter_pdb_results_on_chain_length,
-    filter_pdb_results_on_resolution,
     map_uniprot_accessions2uniprot_details,
     search4af,
     search4emdb,
