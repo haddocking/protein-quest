@@ -55,7 +55,7 @@ graph TB;
     searchemdb -. emdb_ids .->fetchemdb[Retrieve EMDB]
     fetchpdbe -->|mmcif_files| chainfilter{{Filter on chain of uniprot}}
     chainfilter --> |mmcif_files| resolutionfilter{{Filter on top resolution per UniProt}}
-    resolutionfilter --> |mmcif_files| residuefilter{{Filter on chain length}}
+    resolutionfilter --> |mmcif_files| residuefilter{{Filter on nr of residues}}
     fetchad -->|mmcif_files| confidencefilter{{Filter out low confidence}}
     confidencefilter --> |mmcif_files| ssfilter{{Filter on secondary structure}}
     residuefilter --> |mmcif_files| ssfilter
