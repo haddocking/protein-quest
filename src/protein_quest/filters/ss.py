@@ -10,6 +10,7 @@ from gemmi import Structure
 
 from protein_quest.converter import PositiveInt, Ratio, converter
 from protein_quest.io import read_structure
+from protein_quest.structure import nr_of_residues_in_total
 
 logger = logging.getLogger(__name__)
 
@@ -17,22 +18,6 @@ logger = logging.getLogger(__name__)
 # https://github.com/MonomerLibrary/monomers/wiki/Installation as --monomers dir
 # gemmi executable is in https://pypi.org/project/gemmi-program/
 # `gemmi ss` only prints secondary structure to stdout with `-v` flag.
-
-
-def nr_of_residues_in_total(structure: Structure) -> int:
-    """Count the total number of residues in the structure.
-
-    Args:
-        structure: The gemmi Structure object to analyze.
-
-    Returns:
-        The total number of residues in the structure.
-    """
-    count = 0
-    for model in structure:
-        for chain in model:
-            count += len(chain)
-    return count
 
 
 def nr_of_residues_in_helix(structure: Structure) -> int:

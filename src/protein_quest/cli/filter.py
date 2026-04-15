@@ -2,9 +2,11 @@
 
 import csv
 import os
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
-from cyclopts import App
+from cyclopts import App, Group, Parameter
+from cyclopts.types import PositiveInt
+from cyclopts.validators import mutually_exclusive
 from rich.panel import Panel
 
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
@@ -20,14 +22,13 @@ from protein_quest.cli.common import (
     console,
     write_lines,
 )
-from protein_quest.filters import filter_files_on_chain, filter_files_on_residues
+from protein_quest.filters.chain import filter_files_on_chain
+from protein_quest.filters.residues import filter_files_on_residues
+from protein_quest.filters.resolution import GroupBy, filter_files_on_resolution
+from protein_quest.filters.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
 from protein_quest.io import (
     glob_structure_files,
     locate_structure_file,
-)
-from protein_quest.ss import (
-    SecondaryStructureFilterQuery,
-    filter_files_on_secondary_structure,
 )
 from protein_quest.utils import copyfile
 
@@ -220,7 +221,105 @@ def residue(
     if write_stats:
         write_lines(write_stats, stats_lines)
     rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
-    if str(write_stats) != "-":
+    if write_stats and str(write_stats) != "-":
+        rprint(f"Statistics written to {write_stats}")
+
+
+_GROUP_BY = Group(show=False, validator=mutually_exclusive)
+
+
+def _resolution_stats_header(group_by: GroupBy) -> str:
+    if group_by is None:
+        return "input_file,resolution,total_residue_count,is_alphafold,passed,output_file"
+    return "input_file,uniprot_accession,resolution,total_residue_count,is_alphafold,passed,output_file"
+
+
+def _resolution_stats_row(result, group_by: GroupBy) -> str:
+    if group_by is None:
+        return (
+            f"{result.input_file},{result.resolution},{result.total_residue_count},"
+            f"{result.is_alphafold},{result.passed},{result.output_file or ''}"
+        )
+    return (
+        f"{result.input_file},{result.uniprot_accession or ''},{result.resolution},"
+        f"{result.total_residue_count},{result.is_alphafold},{result.passed},{result.output_file or ''}"
+    )
+
+
+def _resolution_progress_message(nr_total: int, input_dir: "Path", group_by: GroupBy) -> str:
+    if group_by is None:
+        return f"Filtering {nr_total} files in {input_dir} directory by global resolution ranking (no grouping)."
+    return f"Filtering {nr_total} files in {input_dir} directory by resolution grouped by {group_by}."
+
+
+@filter_app.command
+def resolution(
+    input_dir: InputDir,
+    output_dir: OutputDir,
+    /,
+    *,
+    group_by: Annotated[GroupBy, Parameter(group=_GROUP_BY)] = "uniprot_accession",
+    no_group_by: Annotated[bool, Parameter(name="--no-group-by", negative="", group=_GROUP_BY)] = False,
+    top: PositiveInt = 1_000,
+    write_stats: OutputFile | None = None,
+    cache: CacheParameter | None = None,
+    _: Common | None = None,
+) -> None:
+    """Filter structure files by best resolution.
+
+    AlphaFold structures are preferred over non-AlphaFold.
+    Structures with lower resolution are preferred.
+    If resolution is the same, structures with more residues are preferred.
+    If resolution is missing, those structures are undesirable.
+
+    Args:
+        input_dir: Directory structure files.
+        output_dir: Directory to write the selected structure files.
+        group_by: Pass top-N structures with best resolution per uniprot accession.
+            Structures without uniprot accession are never passed.
+            Mutually exclusive with ``no_group_by``.
+        no_group_by: Disable grouping and use global top-N ranking across all files.
+            Mutually exclusive with ``group_by``.
+        top: Maximum number of files to keep.
+        write_stats: Write filter statistics to file.
+            In CSV format. For ``--group-by=uniprot_accession`` columns are:
+            `<input_file>,<uniprot_accession>,<resolution>,<total_residue_count>,<is_alphafold>,<passed>,<output_file>`.
+            For ``--no-group-by`` columns are:
+            `<input_file>,<resolution>,<total_residue_count>,<is_alphafold>,<passed>,<output_file>`.
+            Use `-` for stdout.
+        cache: Cache options
+        _: Common CLI options.
+    """
+    if no_group_by:
+        group_by = None
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    cache = cache or CacheParameter()
+
+    if write_stats and str(write_stats) != "-":
+        write_stats.parent.mkdir(parents=True, exist_ok=True)
+
+    input_files = sorted(glob_structure_files(input_dir))
+    nr_total = len(input_files)
+    rprint(_resolution_progress_message(nr_total, input_dir, group_by))
+
+    stats_lines = [_resolution_stats_header(group_by)]
+    nr_passed = 0
+    for result in filter_files_on_resolution(
+        input_files,
+        output_dir,
+        top=top,
+        group_by=group_by,
+        copy_method=cache.copy_method,
+    ):
+        stats_lines.append(_resolution_stats_row(result, group_by))
+        if result.passed:
+            nr_passed += 1
+
+    if write_stats:
+        write_lines(write_stats, stats_lines)
+    rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
+    if write_stats and str(write_stats) != "-":
         rprint(f"Statistics written to {write_stats}")
 
 

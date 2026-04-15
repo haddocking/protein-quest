@@ -15,7 +15,7 @@ from tqdm.auto import tqdm
 from protein_quest.converter import Percentage, PositiveInt, converter
 from protein_quest.io import read_structure, write_structure
 from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
-from protein_quest.ss import nr_of_residues_in_total
+from protein_quest.structure import nr_of_residues_in_total
 from protein_quest.utils import CopyMethod, copyfile
 
 """

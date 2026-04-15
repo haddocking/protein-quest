@@ -1,10 +1,12 @@
 """Module for querying and modifying [gemmi structures][gemmi.Structure]."""
 
 import logging
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
 import gemmi
+from gemmi import Structure
 
 from protein_quest.__version__ import __version__
 from protein_quest.io import read_structure, split_name_and_extension, write_structure
@@ -67,6 +69,44 @@ def nr_residues_in_chain(file: Path, chain: str = "A") -> int:
         logger.warning("Chain %s not found in %s. Returning 0.", chain, file)
         return 0
     return len(gchain)
+
+
+@dataclass(frozen=True)
+class StructureMetadata:
+    """Metadata extracted from a structure file for ranking and grouping.
+
+    Parameters:
+        uniprot_accession: Deterministic first UniProt accession, if any.
+        resolution: Resolution from gemmi Structure. ``0.0`` means absent.
+        total_residue_count: Total number of residues across the whole structure.
+        is_alphafold: Whether the structure originates from AlphaFold.
+    """
+
+    uniprot_accession: str | None
+    resolution: float
+    total_residue_count: int
+    is_alphafold: bool
+
+
+def structure_metadata(file: Path) -> StructureMetadata:
+    """Extract metadata from structure.
+
+    Args:
+        file: Path to the structure file.
+
+    Returns:
+        Structure metadata derived from the file contents.
+    """
+    structure = read_structure(file)
+    accessions = sorted(structure2uniprot_accessions(structure))
+    software_name = structure.meta.software[0].name if structure.meta.software else ""
+    total_residue_count = nr_of_residues_in_total(structure)
+    return StructureMetadata(
+        uniprot_accession=accessions[0] if accessions else None,
+        resolution=structure.resolution,
+        total_residue_count=total_residue_count,
+        is_alphafold=software_name == "AlphaFold",
+    )
 
 
 def _dedup_helices(structure: gemmi.Structure):
@@ -254,3 +294,19 @@ def structure2uniprot_accessions(structure: gemmi.Structure) -> set[str]:
     if not uniprot_accessions:
         logger.warning("No UniProt accessions found in structure %s", structure.name)
     return uniprot_accessions
+
+
+def nr_of_residues_in_total(structure: Structure) -> int:
+    """Count the total number of residues in the structure.
+
+    Args:
+        structure: The gemmi Structure object to analyze.
+
+    Returns:
+        The total number of residues in the structure.
+    """
+    count = 0
+    for model in structure:
+        for chain in model:
+            count += len(chain)
+    return count

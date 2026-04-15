@@ -9,6 +9,7 @@ from protein_quest.io import read_structure
 from protein_quest.pdbe.fetch import sync_fetch
 from protein_quest.structure import (
     ChainNotFoundError,
+    nr_of_residues_in_total,
     nr_residues_in_chain,
     structure2uniprot_accessions,
     write_single_chain_structure_file,
@@ -186,3 +187,10 @@ def test_structure2uniprot_accessions_missing(sample_cif: Path, caplog):
 
     assert accessions == set()
     assert "No UniProt accessions found in structure 3JRSB2A" in caplog.text
+
+
+def test_nr_of_residues_in_total(sample2_cif: Path):
+    structure = read_structure(sample2_cif)
+    total_residues = nr_of_residues_in_total(structure)
+
+    assert total_residues == 8
