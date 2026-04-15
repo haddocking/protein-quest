@@ -187,7 +187,9 @@ def test_convert_many_cif_to_cifgz(sample_cif: Path, tmp_path: Path):
     uncompressed_cif_file = tmp_path / "3JRS_B2A.cif"
     gunzip_file(sample_cif, uncompressed_cif_file)
 
-    output_files = list(convert_to_cif_files([uncompressed_cif_file], tmp_path, copy_method="symlink", output_format=".cif.gz"))
+    output_files = list(
+        convert_to_cif_files([uncompressed_cif_file], tmp_path, copy_method="symlink", output_format=".cif.gz")
+    )
 
     assert len(output_files) == 1
     input_file, output_file = output_files[0]
