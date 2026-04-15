@@ -9,7 +9,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from typing import Annotated, Any, Literal, cast
 
 from cyclopts import App, Parameter
-from cyclopts.types import StdioPath
+from cyclopts.types import PositiveInt, StdioPath
 
 from protein_quest.cli.common import (
     BatchSize,
@@ -26,16 +26,19 @@ from protein_quest.cli.common import (
 )
 from protein_quest.converter import converter
 from protein_quest.go import Aspect, GoTerm, search_gene_ontology_term
+from protein_quest.pdbe.result import (
+    PdbChainLengthError,
+    PdbResults,
+    filter_pdb_results_on_chain_length,
+    filter_pdb_results_on_resolution,
+)
 from protein_quest.pdbe_3dbeacons.model import Provider, search_structure_provider_choices
 from protein_quest.pdbe_3dbeacons.search import PruneOptions, flatten_structure_summaries, uniprots2structures
 from protein_quest.taxonomy import SearchField, Taxon, search_taxon
 from protein_quest.uniprot import (
     ComplexPortalEntry,
-    PdbChainLengthError,
-    PdbResults,
     Query,
     UniprotDetails,
-    filter_pdb_results_on_chain_length,
     map_uniprot_accessions2uniprot_details,
     search4af,
     search4emdb,
@@ -239,6 +242,7 @@ def pdbe(
     min_residues: MinResidues | None = None,
     max_residues: MaxResidues | None = None,
     keep_invalid: Annotated[bool, Parameter(negative="")] = False,
+    top_resolution_per_uniprot_accession: PositiveInt | None = None,
     _: Common | None = None,
 ) -> None:
     """Search for PDB structures of given UniProt accessions.
@@ -259,6 +263,10 @@ def pdbe(
         min_residues: Minimum number of residues required in the chain mapped to the UniProt accession.
         max_residues: Maximum number of residues allowed in chain mapped to the UniProt accession.
         keep_invalid: Keep PDB results when chain length could not be determined.
+        top_resolution_per_uniprot_accession: Retain the top N PDB entries per UniProt accession,
+            ranked by best (lowest) resolution first, then by highest residue count.
+            For example use `--top-resolution-per-uniprot-accession 3` to keep
+            only the best 3 PDB entries per UniProt accession.
         _: Common CLI options.
     """
     accs = set(_read_lines(uniprot_accessions))
@@ -277,6 +285,14 @@ def pdbe(
         )
     else:
         rprint(f"Found {raw_total_pdbs} PDB entries for {raw_nr_results} uniprot accessions")
+
+    if top_resolution_per_uniprot_accession is not None:
+        results = filter_pdb_results_on_resolution(results, top=top_resolution_per_uniprot_accession)
+        total_pdbs = sum([len(v) for v in results.values()])
+        rprint(
+            f"After filtering by resolution and keeping the best {top_resolution_per_uniprot_accession} PDB entries"
+            f" for each UniProt accession, {total_pdbs} PDB entries remained "
+        )
 
     _write_pdbe_csv(output_csv, results)
     rprint(f"Written to {output_csv}")

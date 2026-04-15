@@ -2,16 +2,14 @@ from textwrap import dedent
 
 import pytest
 
+from protein_quest.pdbe.result import PdbResult
 from protein_quest.uniprot import (
     ComplexPortalEntry,
-    PdbChainLengthError,
-    PdbResult,
     Query,
     UniprotDetails,
     _append_subcellular_location_filters,
     _build_sparql_query_pdb,
     _build_sparql_query_uniprot,
-    filter_pdb_results_on_chain_length,
     map_uniprot_accessions2uniprot_details,
     search4af,
     search4emdb,
@@ -249,92 +247,6 @@ def test_append_subcellular_location_filters_invalid_go_term_in_list():
 
     with pytest.raises(ValueError, match="Subcellular location GO term must start with 'GO:'"):
         _append_subcellular_location_filters(query)
-
-
-@pytest.mark.parametrize(
-    "query,expected",
-    [
-        ("O=1-300", "O"),  #  uniprot:A8MT69 pdb:7R5S
-        ("B/D=1-81", "B"),  # uniprot:A8MT69 pdb:4E44
-        (
-            "B/D/H/L/M/N/U/V/W/X/Z/b/d/h/i/j/o/p/q/r=8-81",  # uniprot:A8MT69 pdb:4NE1
-            "B",
-        ),
-        ("A/B=2-459,A/B=520-610", "A"),  # uniprot/O00255 pdb/3U84
-        ("DD/Dd=1-1085", "DD"),  # uniprot/O00268 pdb/7ENA
-        ("A=398-459,A=74-386,A=520-584,A=1-53", "A"),  # uniprot/O00255 pdb/7O9T
-        ("A=-", "A"),  # uniprot/Q08499 pdb/1E9K
-    ],
-)
-def test_pdbresult_chain(query, expected):
-    pdb_result = PdbResult(id="DUMMY", method="DUMMY", uniprot_chains=query)
-    result = pdb_result.chain
-
-    assert result == expected
-
-
-@pytest.mark.parametrize(
-    "query,expected",
-    [
-        ("O=1-300", 300),  #  uniprot:A8MT69 pdb:7R5S
-        ("B/D=1-81", 81),  # uniprot:A8MT69 pdb:4E44
-        (
-            "B/D/H/L/M/N/U/V/W/X/Z/b/d/h/i/j/o/p/q/r=8-81",  # uniprot:A8MT69 pdb:4NE1
-            74,
-        ),
-        ("A/B=2-459,A/B=520-610", 549),  # uniprot/O00255 pdb/3U84
-        ("DD/Dd=1-1085", 1085),  # uniprot/O00268 pdb/7ENA
-        ("A=398-459,A=74-386,A=520-584,A=1-53", 493),  # uniprot/O00255 pdb/7O9T
-    ],
-)
-def test_pdb_result_chain_length(query, expected):
-    pdb_result = PdbResult(id="DUMMY", method="DUMMY", uniprot_chains=query)
-    result = pdb_result.chain_length
-
-    assert result == expected
-
-
-def test_pdb_result_chain_length_invalid():
-    # uniprot/Q9NTW7 pdb/1X5W
-    pdb_result = PdbResult(id="1X5W", method="NMR", uniprot_chains="A=-")
-
-    with pytest.raises(PdbChainLengthError, match="Could not determine chain length of '1X5W' from 'A=-'"):
-        _ = pdb_result.chain_length
-
-
-def test_filter_pdb_results_on_chain_length_unchanged():
-    pdbs = {
-        "P05067": {PdbResult(id="1AAP", method="X-Ray_Crystallography", resolution="1.5", uniprot_chains="A=287-344")},
-    }
-    result = filter_pdb_results_on_chain_length(pdbs, min_residues=None, max_residues=None)
-
-    assert result is pdbs
-
-
-def test_filter_pdb_results_on_chain_length_badrange():
-    with pytest.raises(
-        ValueError, match="Maximum number of residues \\(13\\) must be > minimum number of residues \\(42\\)"
-    ):
-        filter_pdb_results_on_chain_length({}, min_residues=42, max_residues=13)
-
-
-def test_filter_pdb_results_on_chain_length_filtered():
-    keeper = PdbResult(id="1AAP", method="X-Ray_Crystallography", resolution="1.5", uniprot_chains="A=1-100")
-    pdbs = {
-        "P05067": {
-            keeper,
-            PdbResult(id="2AAP", method="X-Ray_Crystallography", resolution="2.0", uniprot_chains="A=1-2000"),
-        },
-        "P12345": {
-            PdbResult(id="3BBB", method="X-Ray_Crystallography", resolution="4.0", uniprot_chains="A=1-50"),
-        },
-    }
-    result = filter_pdb_results_on_chain_length(pdbs, min_residues=75, max_residues=125)
-
-    expected = {
-        "P05067": {keeper},
-    }
-    assert result == expected
 
 
 @pytest.mark.vcr

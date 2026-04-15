@@ -95,6 +95,37 @@ def test_search_pdbe(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     assert "Written to " in captured.err
 
 
+@pytest.mark.default_cassette("test_search_pdbe.yaml")
+@pytest.mark.vcr
+def test_search_pdbe_top_resolution_per_accession(tmp_path: Path):
+    """Test search pdbe command with top-resolution filtering."""
+    input_text = tmp_path / "uniprot_accessions.txt"
+    input_text.write_text("P00811\n")
+    output_file = tmp_path / "pdbe_results.csv"
+    argv = [
+        "search",
+        "pdbe",
+        "--limit",
+        "150",
+        "--min-residues",
+        "360",
+        "--top-resolution-per-uniprot-accession",
+        "2",
+        str(input_text),
+        str(output_file),
+    ]
+
+    main(argv)
+
+    result = output_file.read_text()
+    expected = dedent("""\
+        uniprot_accession,pdb_id,method,resolution,uniprot_chains,chain,chain_length
+        P00811,9C6P,X-Ray_Crystallography,1.66,A/B=1-377,A,377
+        P00811,9C81,X-Ray_Crystallography,1.7,A/B=1-377,A,377
+        """)
+    assert result == expected
+
+
 @pytest.mark.default_cassette("test_search_pdbe_bad_chain_length.yaml")
 @pytest.mark.vcr
 def test_search_pdbe_bad_chain_length(tmp_path: Path, caplog: pytest.LogCaptureFixture):

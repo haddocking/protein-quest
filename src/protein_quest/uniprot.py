@@ -3,14 +3,19 @@
 import logging
 from collections.abc import Collection, Generator, Iterable
 from dataclasses import dataclass
-from functools import cached_property
 from itertools import batched
 from textwrap import dedent
 from typing import Annotated, TypedDict
 
 from cyclopts import Parameter
-from SPARQLWrapper import JSON, SPARQLWrapper
 from tqdm.auto import tqdm
+
+from protein_quest.pdbe.result import PdbResult, PdbResults
+from protein_quest.sparql import (
+    build_sparql_generic_by_uniprot_accessions_query,
+    build_sparql_generic_query,
+    execute_sparql_search,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -41,157 +46,6 @@ class Query:
     molecular_function_go: Annotated[set[str], Parameter(negative="")] | None = None
     min_sequence_length: int | None = None
     max_sequence_length: int | None = None
-
-
-def _first_chain_from_uniprot_chains(uniprot_chains: str) -> str:
-    """Extracts the first chain identifier from a UniProt chains string.
-
-    The UniProt chains string is formatted (with EBNF notation) as follows:
-
-        chain_group=range(,chain_group=range)*
-
-    where:
-        chain_group := chain_id(/chain_id)*
-        chain_id    := [A-Za-z0-9]+
-        range       := start-end
-        start, end  := integer
-
-    Args:
-        uniprot_chains: A string representing UniProt chains, For example "B/D=1-81".
-
-    Returns:
-        The first chain identifier from the UniProt chain string. For example "B".
-    """
-    chains = uniprot_chains.split("=")
-    parts = chains[0].split("/")
-    chain = parts[0]
-    try:
-        # Workaround for Q9Y2Q5 │ 5YK3 │ 1/B/G=1-124, 1 does not exist but B does
-        int(chain)
-        if len(parts) > 1:
-            return parts[1]
-    except ValueError:
-        # A letter
-        pass
-    return chain
-
-
-def _chain_length_from_uniprot_chains(uniprot_chains: str) -> int:
-    """Calculates the total length of chain from a UniProt chains string.
-
-    See `_first_chain_from_uniprot_chains` for the format of the UniProt chains string.
-
-    Args:
-        uniprot_chains: A string representing UniProt chains, For example "B/D=1-81".
-
-    Returns:
-        The length of the chain in the UniProt chain string. For example 81 for "B/D=1-81".
-    """
-    total_length = 0
-    chains = uniprot_chains.split(",")
-    for chain in chains:
-        _, rangestr = chain.split("=")
-        start, stop = rangestr.split("-")
-        # Residue positions are 1-based so + 1
-        total_length += int(stop) - int(start) + 1
-    return total_length
-
-
-class PdbChainLengthError(ValueError):
-    """Raised when a UniProt chain description does not yield a chain length."""
-
-    def __init__(self, pdb_id: str, uniprot_chains: str):
-        msg = f"Could not determine chain length of '{pdb_id}' from '{uniprot_chains}'"
-        super().__init__(msg)
-
-
-@dataclass(frozen=True)
-class PdbResult:
-    """Result of a PDB search in UniProtKB.
-
-    Parameters:
-        id: PDB ID (for example "1H3O").
-        method: Method used for the PDB entry (for example "X-ray diffraction").
-        uniprot_chains: Chains in UniProt format (for example "A/B=1-42,A/B=50-99").
-        resolution: Resolution of the PDB entry (for example "2.0" for 2.0 Å). Optional.
-    """
-
-    id: str
-    method: str
-    uniprot_chains: str
-    resolution: str | None = None
-
-    @cached_property
-    def chain(self) -> str:
-        """The first chain from the UniProt chains aka self.uniprot_chains."""
-        return _first_chain_from_uniprot_chains(self.uniprot_chains)
-
-    @cached_property
-    def chain_length(self) -> int:
-        """The length of the chain from the UniProt chains aka self.uniprot_chains."""
-        try:
-            return _chain_length_from_uniprot_chains(self.uniprot_chains)
-        except ValueError as e:
-            raise PdbChainLengthError(self.id, self.uniprot_chains) from e
-
-
-type PdbResults = dict[str, set[PdbResult]]
-"""Dictionary with uniprot accessions as keys and sets of PDB results as values."""
-
-
-def filter_pdb_results_on_chain_length(
-    pdb_results: PdbResults,
-    min_residues: int | None,
-    max_residues: int | None,
-    keep_invalid: bool = False,
-) -> PdbResults:
-    """Filter PDB results based on chain length.
-
-    Args:
-        pdb_results: Dictionary with protein IDs as keys and sets of PDB results as values.
-        min_residues: Minimum number of residues required in the chain mapped to the UniProt accession.
-            If None, no minimum is applied.
-        max_residues: Maximum number of residues allowed in chain mapped to the UniProt accession.
-            If None, no maximum is applied.
-        keep_invalid: If True, PDB results with invalid chain length (could not be determined) are kept.
-            If False, PDB results with invalid chain length are filtered out.
-            Warnings are logged when length can not be determined.
-
-    Returns:
-        Filtered dictionary with protein IDs as keys and sets of PDB results as values.
-    """
-    if min_residues is None and max_residues is None:
-        # No filtering needed
-        return pdb_results
-    if min_residues is not None and max_residues is not None and max_residues <= min_residues:
-        msg = f"Maximum number of residues ({max_residues}) must be > minimum number of residues ({min_residues})"
-        raise ValueError(msg)
-    results: PdbResults = {}
-    for uniprot_accession, pdb_entries in pdb_results.items():
-        filtered_pdb_entries = set()
-        for pdb_entry in pdb_entries:
-            try:
-                if (min_residues is None or pdb_entry.chain_length >= min_residues) and (
-                    max_residues is None or pdb_entry.chain_length <= max_residues
-                ):
-                    filtered_pdb_entries.add(pdb_entry)
-            except PdbChainLengthError:
-                if keep_invalid:
-                    logger.warning(
-                        f"Could not determine chain length of '{pdb_entry.id}' from '{pdb_entry.uniprot_chains}' "
-                        f"belonging to uniprot accession '{uniprot_accession}', "
-                        "for completeness not filtering it out"
-                    )
-                    filtered_pdb_entries.add(pdb_entry)
-                else:
-                    logger.warning(
-                        f"Filtering out PDB entry '{pdb_entry.id}' belonging to uniprot accession "
-                        f"'{uniprot_accession}' due to invalid chain length from '{pdb_entry.uniprot_chains}'"
-                    )
-        if filtered_pdb_entries:
-            # Only include uniprot_accession if there are any pdb entries left after filtering
-            results[uniprot_accession] = filtered_pdb_entries
-    return results
 
 
 def _query2dynamic_sparql_triples(query: Query):
@@ -292,48 +146,6 @@ def _append_subcellular_location_filters(query: Query) -> str:
     return subcellular_location_uniprot_part or subcellular_location_go_part
 
 
-def _build_sparql_generic_query(select_clause: str, where_clause: str, limit: int = 10_000, groupby_clause="") -> str:
-    """
-    Builds a generic SPARQL query with the given select and where clauses.
-    """
-    groupby = f" GROUP BY {groupby_clause}" if groupby_clause else ""
-    return dedent(f"""
-        PREFIX up: <http://purl.uniprot.org/core/>
-        PREFIX taxon: <http://purl.uniprot.org/taxonomy/>
-        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-        PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-        PREFIX GO:<http://purl.obolibrary.org/obo/GO_>
-
-        SELECT {select_clause}
-        WHERE {{
-            {where_clause}
-        }}
-        {groupby}
-        LIMIT {limit}
-    """)
-
-
-def _build_sparql_generic_by_uniprot_accessions_query(
-    uniprot_accs: Iterable[str], select_clause: str, where_clause: str, limit: int = 10_000, groupby_clause=""
-) -> str:
-    values = " ".join(f'("{ac}")' for ac in uniprot_accs)
-    where_clause2 = dedent(f"""
-        # --- Protein Selection ---
-        VALUES (?ac) {{ {values}}}
-        BIND (IRI(CONCAT("http://purl.uniprot.org/uniprot/",?ac)) AS ?protein)
-        ?protein a up:Protein .
-
-        {where_clause}
-    """)
-    return _build_sparql_generic_query(
-        select_clause=select_clause,
-        where_clause=where_clause2,
-        limit=limit,
-        groupby_clause=groupby_clause,
-    )
-
-
 def _build_sparql_query_uniprot(query: Query, limit=10_000) -> str:
     dynamic_triples = _query2dynamic_sparql_triples(query)
     # TODO add useful columns that have 1:1 mapping to protein
@@ -347,7 +159,7 @@ def _build_sparql_query_uniprot(query: Query, limit=10_000) -> str:
         ?protein a up:Protein .
         {dynamic_triples}
     """)
-    return _build_sparql_generic_query(select_clause, dedent(where_clause), limit)
+    return build_sparql_generic_query(select_clause, dedent(where_clause), limit)
 
 
 def _build_sparql_query_sequence_length_filter(min_length: int | None = None, max_length: int | None = None) -> str:
@@ -433,7 +245,7 @@ def _build_sparql_query_pdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
     """)
 
     groupby_clause = "?protein ?pdb_db ?pdb_method ?pdb_resolution"
-    return _build_sparql_generic_by_uniprot_accessions_query(
+    return build_sparql_generic_by_uniprot_accessions_query(
         uniprot_accs, select_clause, where_clause, limit, groupby_clause
     )
 
@@ -459,7 +271,7 @@ def _build_sparql_query_af(
             max_length=max_sequence_length,
         )
         where_clause += "\n" + length_filter
-    return _build_sparql_generic_by_uniprot_accessions_query(uniprot_accs, select_clause, dedent(where_clause), limit)
+    return build_sparql_generic_by_uniprot_accessions_query(uniprot_accs, select_clause, dedent(where_clause), limit)
 
 
 def _build_sparql_query_emdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
@@ -472,68 +284,7 @@ def _build_sparql_query_emdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
         ?protein rdfs:seeAlso ?emdb_db .
         ?emdb_db up:database <http://purl.uniprot.org/database/EMDB> .
     """)
-    return _build_sparql_generic_by_uniprot_accessions_query(uniprot_accs, select_clause, dedent(where_clause), limit)
-
-
-def _execute_sparql_search(
-    sparql_query: str,
-    timeout: int,
-) -> list:
-    """
-    Execute a SPARQL query.
-    """
-    if timeout > 2_700:
-        msg = "Uniprot SPARQL timeout is limited to 2700 seconds (45 minutes)."
-        raise ValueError(msg)
-
-    # Execute the query
-    sparql = SPARQLWrapper("https://sparql.uniprot.org/sparql")
-    sparql.setReturnFormat(JSON)
-    sparql.setTimeout(timeout)
-
-    # Default is GET method which can be cached by the server so is preferred.
-    # Too prevent URITooLong errors, we use POST method for large queries.
-    too_long_for_get = 5_000
-    if len(sparql_query) > too_long_for_get:
-        sparql.setMethod("POST")
-
-    sparql.setQuery(sparql_query)
-    rawresults = sparql.queryAndConvert()
-    if not isinstance(rawresults, dict):
-        msg = f"Expected rawresults to be a dict, but got {type(rawresults)}"
-        raise TypeError(msg)
-
-    bindings = rawresults.get("results", {}).get("bindings")
-    if not isinstance(bindings, list):
-        logger.warning("SPARQL query did not return 'bindings' list as expected.")
-        return []
-
-    logger.debug(bindings)
-    return bindings
-
-
-def _flatten_results_pdb(rawresults: Iterable) -> PdbResults:
-    pdb_entries: PdbResults = {}
-    for result in rawresults:
-        protein = result["protein"]["value"].split("/")[-1]
-        if "pdb_db" not in result:  # Should not happen with build_sparql_query_pdb
-            continue
-        pdb_id = result["pdb_db"]["value"].split("/")[-1]
-        method = result["pdb_method"]["value"].split("/")[-1]
-        uniprot_chains = result["pdb_chains"]["value"]
-        pdb = PdbResult(id=pdb_id, method=method, uniprot_chains=uniprot_chains)
-        if "pdb_resolution" in result:
-            pdb = PdbResult(
-                id=pdb_id,
-                method=method,
-                uniprot_chains=uniprot_chains,
-                resolution=result["pdb_resolution"]["value"],
-            )
-        if protein not in pdb_entries:
-            pdb_entries[protein] = set()
-        pdb_entries[protein].add(pdb)
-
-    return pdb_entries
+    return build_sparql_generic_by_uniprot_accessions_query(uniprot_accs, select_clause, dedent(where_clause), limit)
 
 
 def _flatten_results_af(rawresults: Iterable) -> dict[str, set[str]]:
@@ -560,7 +311,7 @@ def _flatten_results_emdb(rawresults: Iterable) -> dict[str, set[str]]:
     return emdb_entries
 
 
-def limit_check(what: str, limit: int, len_raw_results: int):
+def _limit_check(what: str, limit: int, len_raw_results: int):
     if len_raw_results >= limit:
         logger.warning(
             "%s returned %d results. "
@@ -588,13 +339,36 @@ def search4uniprot(query: Query, limit: int = 10_000, timeout: int = 1_800) -> s
     sparql_query = _build_sparql_query_uniprot(query, limit)
     logger.info("Executing SPARQL query for UniProt: %s", sparql_query)
 
-    # Type assertion is needed because _execute_sparql_search returns a Union
-    raw_results = _execute_sparql_search(
+    raw_results = execute_sparql_search(
         sparql_query=sparql_query,
         timeout=timeout,
     )
-    limit_check("Search for uniprot accessions", limit, len(raw_results))
+    _limit_check("Search for uniprot accessions", limit, len(raw_results))
     return {result["protein"]["value"].split("/")[-1] for result in raw_results}
+
+
+def _flatten_results_pdb(rawresults: Iterable) -> PdbResults:
+    pdb_entries: PdbResults = {}
+    for result in rawresults:
+        protein = result["protein"]["value"].split("/")[-1]
+        if "pdb_db" not in result:  # Should not happen with build_sparql_query_pdb
+            continue
+        pdb_id = result["pdb_db"]["value"].split("/")[-1]
+        method = result["pdb_method"]["value"].split("/")[-1]
+        uniprot_chains = result["pdb_chains"]["value"]
+        pdb = PdbResult(id=pdb_id, method=method, uniprot_chains=uniprot_chains)
+        if "pdb_resolution" in result:
+            pdb = PdbResult(
+                id=pdb_id,
+                method=method,
+                uniprot_chains=uniprot_chains,
+                resolution=result["pdb_resolution"]["value"],
+            )
+        if protein not in pdb_entries:
+            pdb_entries[protein] = set()
+        pdb_entries[protein].add(pdb)
+
+    return pdb_entries
 
 
 def search4pdb(
@@ -619,14 +393,14 @@ def search4pdb(
             sparql_query = _build_sparql_query_pdb(batch, limit)
             logger.info("Executing SPARQL query for PDB: %s", sparql_query)
 
-            raw_results = _execute_sparql_search(
+            raw_results = execute_sparql_search(
                 sparql_query=sparql_query,
                 timeout=timeout,
             )
             all_raw_results.extend(raw_results)
             pbar.update(len(batch))
 
-    limit_check("Search for pdbs on uniprot", limit, len(all_raw_results))
+    _limit_check("Search for pdbs on uniprot", limit, len(all_raw_results))
     return _flatten_results_pdb(all_raw_results)
 
 
@@ -659,14 +433,14 @@ def search4af(
             sparql_query = _build_sparql_query_af(batch, min_sequence_length, max_sequence_length, limit)
             logger.info("Executing SPARQL query for AlphaFold: %s", sparql_query)
 
-            raw_results = _execute_sparql_search(
+            raw_results = execute_sparql_search(
                 sparql_query=sparql_query,
                 timeout=timeout,
             )
             all_raw_results.extend(raw_results)
             pbar.update(len(batch))
 
-    limit_check("Search for alphafold entries on uniprot", limit, len(all_raw_results))
+    _limit_check("Search for alphafold entries on uniprot", limit, len(all_raw_results))
     return _flatten_results_af(all_raw_results)
 
 
@@ -685,11 +459,11 @@ def search4emdb(uniprot_accs: Iterable[str], limit: int = 10_000, timeout: int =
     sparql_query = _build_sparql_query_emdb(uniprot_accs, limit)
     logger.info("Executing SPARQL query for EMDB: %s", sparql_query)
 
-    raw_results = _execute_sparql_search(
+    raw_results = execute_sparql_search(
         sparql_query=sparql_query,
         timeout=timeout,
     )
-    limit_check("Search for EMDB entries on uniprot", limit, len(raw_results))
+    _limit_check("Search for EMDB entries on uniprot", limit, len(raw_results))
     return _flatten_results_emdb(raw_results)
 
 
@@ -751,7 +525,7 @@ def _build_complex_sparql_query(uniprot_accs: Iterable[str], limit: int) -> str:
     group_by = dedent("""
        ?protein ?cp_db ?cp_comment
     """)
-    return _build_sparql_generic_by_uniprot_accessions_query(
+    return build_sparql_generic_by_uniprot_accessions_query(
         uniprot_accs, select_clause, where_clause, limit, groupby_clause=group_by
     )
 
@@ -812,11 +586,11 @@ def search4macromolecular_complexes(
     """
     sparql_query = _build_complex_sparql_query(uniprot_accs, limit)
     logger.info("Executing SPARQL query for macromolecular complexes: %s", sparql_query)
-    raw_results = _execute_sparql_search(
+    raw_results = execute_sparql_search(
         sparql_query=sparql_query,
         timeout=timeout,
     )
-    limit_check("Search for complexes", limit, len(raw_results))
+    _limit_check("Search for complexes", limit, len(raw_results))
     return _flatten_results_complex(raw_results)
 
 
@@ -955,11 +729,11 @@ def map_uniprot_accessions2uniprot_details(
         unit="acc",
     ) as pbar:
         for batch in batched(uniprot_accessions, batch_size, strict=False):
-            sparql_query = _build_sparql_generic_by_uniprot_accessions_query(
+            sparql_query = build_sparql_generic_by_uniprot_accessions_query(
                 batch, select_clause, where_clause, limit=batch_size
             )
             logger.info("Executing SPARQL query for UniProt details: %s", sparql_query)
-            raw_results = _execute_sparql_search(
+            raw_results = execute_sparql_search(
                 sparql_query=sparql_query,
                 timeout=timeout,
             )
