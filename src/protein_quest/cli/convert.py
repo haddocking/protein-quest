@@ -1,12 +1,12 @@
 """Convert subcommands for protein-quest."""
 
-from typing import Annotated, Literal
+from typing import Annotated
 
 from cyclopts import App, Parameter
 from tqdm import tqdm
 
 from protein_quest.cli.common import CacheParameter, Common, InputDir, OutputDir, OutputFile, console, write_lines
-from protein_quest.io import convert_to_cif_files, glob_structure_files, read_structure
+from protein_quest.io import CifOutputFormat, convert_to_cif_files, glob_structure_files, read_structure
 from protein_quest.structure import structure2uniprot_accessions
 
 rprint = console.print
@@ -61,7 +61,7 @@ def structures(
     /,
     *,
     output_dir: OutputDir | None = None,
-    _format: Annotated[Literal["cif"], Parameter(name="--format")] = "cif",
+    output_format: CifOutputFormat = ".cif",
     cache: CacheParameter | None = None,
     _common: Common | None = None,
 ) -> None:
@@ -70,9 +70,12 @@ def structures(
     Convert structure files between formats.
 
     Args:
-        input_dir: Directory with structure files. Supported extensions are .cif, .cif.gz, .pdb, .pdb.gz.
-        output_dir: Directory to write converted structure files. If not given, files are written to input_dir.
-        _format: Output format to convert to.
+        input_dir: Directory with structure files.
+            Supported extensions are .pdb, .pdb.gz, .ent, .ent.gz, .cif,
+            .cif.gz, .bcif, .bcif.gz.
+        output_dir: Directory to write converted structure files.
+            If not given, files are written to input_dir.
+        output_format: Output format for converted files. Supported values are .cif and .cif.gz.
         cache: Cache options including no_cache, cache_dir, and copy_method.
         _common: Common CLI options.
     """
@@ -81,13 +84,14 @@ def structures(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     input_files = sorted(glob_structure_files(input_dir))
-    rprint(f"Converting {len(input_files)} files in {input_dir} directory to cif format.")
+    rprint(f"Converting {len(input_files)} files in {input_dir} directory to {output_format} format.")
 
     for _ in tqdm(
         convert_to_cif_files(
             input_files,
             output_dir,
             copy_method=cache.copy_method,
+            output_format=output_format,
         ),
         total=len(input_files),
         unit="file",
