@@ -93,7 +93,10 @@ def group_resolution_statistics(
     are skipped with a warning and appended last. In ``group_by=None`` mode,
     all files are ranked globally and no missing-accession warnings are emitted.
 
-    If 2 structures have the same low resolution the structure with most residues is preferred.
+    AlphaFold structures are preferred over non-AlphaFold.
+    Structures with lower resolution are preferred.
+    If resolution is the same, structures with more residues are preferred.
+    If resolution is missing, those structures are undesirable.
 
     Output order is deterministic and sorted alphabetically by filename.
 
@@ -101,7 +104,8 @@ def group_resolution_statistics(
         stats: Resolution statistics to group and rank.
         top: Maximum number of structures to pass.
         group_by: Ranking strategy. ``uniprot_accession`` applies top-N per
-            accession. ``None`` applies top-N globally.
+            accession. Structures without uniprot accession are never passed.
+            ``None`` applies top-N globally.
 
     Returns:
         All statistics with ``passed`` updated; skipped entries appended last.
@@ -166,19 +170,23 @@ def filter_files_on_resolution(
 ) -> Generator[ResolutionFilterStatistics]:
     """Filter structure files by resolution rank.
 
-    If 2 structures have the same low resolution the structure with most residues is preferred.
+    AlphaFold structures are preferred over non-AlphaFold.
+    Structures with lower resolution are preferred.
+    If resolution is the same, structures with more residues are preferred.
+    If resolution is missing, those structures are undesirable.
 
     Args:
         input_files: Structure files to rank and filter.
         output_dir: Directory where passed files will be written.
         top: Maximum number of files to keep.
         group_by: Ranking strategy. ``uniprot_accession`` applies top-N per
-            accession. ``None`` applies top-N globally.
+            accession. Structures without uniprot accession are never passed.
+            ``None`` applies top-N globally.
         copy_method: How to copy passed files to output directory.
 
     Yields:
         Objects describing the filtering result for each input file.
     """
-    stats = list(iter_resolution_statistics(input_files))
+    stats = iter_resolution_statistics(input_files)
     grouped = group_resolution_statistics(stats, top, group_by=group_by)
     yield from copy_resolution_statistics(grouped, output_dir, copy_method)

@@ -267,12 +267,17 @@ def resolution(
 ) -> None:
     """Filter structure files by best resolution.
 
-    If 2 structures have the same low resolution the structure with most residues is preferred.
+    AlphaFold structures are preferred over non-AlphaFold.
+    Structures with lower resolution are preferred.
+    If resolution is the same, structures with more residues are preferred.
+    If resolution is missing, those structures are undesirable.
 
     Args:
         input_dir: Directory structure files.
         output_dir: Directory to write the selected structure files.
         group_by: Pass top-N structures with best resolution per uniprot accession.
+            Structures without uniprot accession are never passed.
+            Mutually exclusive with ``no_group_by``.
         no_group_by: Disable grouping and use global top-N ranking across all files.
             Mutually exclusive with ``group_by``.
         top: Maximum number of files to keep.
