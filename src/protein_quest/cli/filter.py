@@ -22,14 +22,13 @@ from protein_quest.cli.common import (
     console,
     write_lines,
 )
-from protein_quest.filters import GroupBy, filter_files_on_chain, filter_files_on_residues, filter_files_on_resolution
+from protein_quest.filters.chain import filter_files_on_chain
+from protein_quest.filters.residues import filter_files_on_residues
+from protein_quest.filters.resolution import GroupBy, filter_files_on_resolution
+from protein_quest.filters.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
 from protein_quest.io import (
     glob_structure_files,
     locate_structure_file,
-)
-from protein_quest.ss import (
-    SecondaryStructureFilterQuery,
-    filter_files_on_secondary_structure,
 )
 from protein_quest.utils import copyfile
 

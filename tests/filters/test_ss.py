@@ -4,8 +4,7 @@ import gemmi
 import pytest
 
 from protein_quest.converter import converter
-from protein_quest.io import read_structure
-from protein_quest.ss import (
+from protein_quest.filters.ss import (
     SecondaryStructureFilterQuery,
     SecondaryStructureFilterResult,
     SecondaryStructureStats,
@@ -16,6 +15,7 @@ from protein_quest.ss import (
     nr_of_residues_in_sheet,
     nr_of_residues_in_total,
 )
+from protein_quest.io import read_structure
 
 
 @pytest.fixture

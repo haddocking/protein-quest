@@ -44,10 +44,10 @@ from protein_quest.alphafold.confidence import ConfidenceFilterQuery, Confidence
 from protein_quest.alphafold.fetch import AlphaFoldEntry, DownloadableFormat
 from protein_quest.alphafold.fetch import fetch_many as alphafold_fetch
 from protein_quest.emdb import fetch as emdb_fetch
+from protein_quest.filters.ss import filter_file_on_secondary_structure
 from protein_quest.go import search_gene_ontology_term
 from protein_quest.io import convert_to_cif_file, glob_structure_files, read_structure
 from protein_quest.pdbe.fetch import fetch as pdbe_fetch
-from protein_quest.ss import filter_file_on_secondary_structure
 from protein_quest.structure import (
     nr_residues_in_chain,
     structure2uniprot_accessions,
