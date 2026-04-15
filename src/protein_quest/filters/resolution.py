@@ -41,7 +41,7 @@ class ResolutionFilterStatistics:
 
 
 def resolution_sort_key(stats: ResolutionFilterStatistics) -> tuple[int, float, int, str]:
-    """Rank key for resolution-based filtering.
+    """Sort key for resolution-based filtering.
 
     AlphaFold structures are preferred over non-AlphaFold.
     Structures with lower resolution are preferred.
