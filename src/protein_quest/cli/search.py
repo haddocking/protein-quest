@@ -261,8 +261,8 @@ def pdbe(
         min_residues: Minimum number of residues required in the chain mapped to the UniProt accession.
         max_residues: Maximum number of residues allowed in chain mapped to the UniProt accession.
         keep_invalid: Keep PDB results when chain length could not be determined.
-        top_resolution_per_uniprot_accession: Maximum number of PDB entries per UniProt accession based on resolution
-            and number of residues.
+        top_resolution_per_uniprot_accession: Retain the top N PDB entries per UniProt accession,
+            ranked by best (lowest) resolution first, then by highest residue count.
         _: Common CLI options.
     """
     accs = set(_read_lines(uniprot_accessions))
