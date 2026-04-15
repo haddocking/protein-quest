@@ -265,6 +265,8 @@ def pdbe(
         keep_invalid: Keep PDB results when chain length could not be determined.
         top_resolution_per_uniprot_accession: Retain the top N PDB entries per UniProt accession,
             ranked by best (lowest) resolution first, then by highest residue count.
+            For example use `--top-resolution-per-uniprot-accession 3` to keep
+            only the best 3 PDB entries per UniProt accession.
         _: Common CLI options.
     """
     accs = set(_read_lines(uniprot_accessions))
@@ -288,8 +290,8 @@ def pdbe(
         results = filter_pdb_results_on_resolution(results, top=top_resolution_per_uniprot_accession)
         total_pdbs = sum([len(v) for v in results.values()])
         rprint(
-            f"After filtering on top resolution ({top_resolution_per_uniprot_accession}) "
-            f"remained {total_pdbs} PDB entries for {len(results)} uniprot accessions."
+            f"After filtering by resolution and keeping the best {top_resolution_per_uniprot_accession} PDB entries"
+            f" for each UniProt accession, {total_pdbs} PDB entries remained "
         )
 
     _write_pdbe_csv(output_csv, results)
