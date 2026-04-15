@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Annotated
 
 from cyclopts import App, Group, Parameter
 from cyclopts.types import PositiveInt
-from cyclopts.validators import MutuallyExclusive
+from cyclopts.validators import mutually_exclusive
 from rich.panel import Panel
 
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
@@ -39,32 +39,6 @@ rprint = console.print
 
 
 filter_app = App(name="filter", help="Filter files")
-
-_GROUP_BY = Group(show=False, validator=MutuallyExclusive())
-
-
-def _resolution_stats_header(group_by: GroupBy) -> str:
-    if group_by is None:
-        return "input_file,resolution,total_residue_count,is_alphafold,passed,output_file"
-    return "input_file,uniprot_accession,resolution,total_residue_count,is_alphafold,passed,output_file"
-
-
-def _resolution_stats_row(result, group_by: GroupBy) -> str:
-    if group_by is None:
-        return (
-            f"{result.input_file},{result.resolution},{result.total_residue_count},"
-            f"{result.is_alphafold},{result.passed},{result.output_file or ''}"
-        )
-    return (
-        f"{result.input_file},{result.uniprot_accession or ''},{result.resolution},"
-        f"{result.total_residue_count},{result.is_alphafold},{result.passed},{result.output_file or ''}"
-    )
-
-
-def _resolution_progress_message(nr_total: int, input_dir: "Path", group_by: GroupBy) -> str:
-    if group_by is None:
-        return f"Filtering {nr_total} files in {input_dir} directory by global resolution ranking (no grouping)."
-    return f"Filtering {nr_total} files in {input_dir} directory by resolution grouped by {group_by}."
 
 
 @filter_app.command
@@ -251,6 +225,33 @@ def residue(
         rprint(f"Statistics written to {write_stats}")
 
 
+_GROUP_BY = Group(show=False, validator=mutually_exclusive)
+
+
+def _resolution_stats_header(group_by: GroupBy) -> str:
+    if group_by is None:
+        return "input_file,resolution,total_residue_count,is_alphafold,passed,output_file"
+    return "input_file,uniprot_accession,resolution,total_residue_count,is_alphafold,passed,output_file"
+
+
+def _resolution_stats_row(result, group_by: GroupBy) -> str:
+    if group_by is None:
+        return (
+            f"{result.input_file},{result.resolution},{result.total_residue_count},"
+            f"{result.is_alphafold},{result.passed},{result.output_file or ''}"
+        )
+    return (
+        f"{result.input_file},{result.uniprot_accession or ''},{result.resolution},"
+        f"{result.total_residue_count},{result.is_alphafold},{result.passed},{result.output_file or ''}"
+    )
+
+
+def _resolution_progress_message(nr_total: int, input_dir: "Path", group_by: GroupBy) -> str:
+    if group_by is None:
+        return f"Filtering {nr_total} files in {input_dir} directory by global resolution ranking (no grouping)."
+    return f"Filtering {nr_total} files in {input_dir} directory by resolution grouped by {group_by}."
+
+
 @filter_app.command
 def resolution(
     input_dir: InputDir,
@@ -264,14 +265,14 @@ def resolution(
     cache: CacheParameter | None = None,
     _: Common | None = None,
 ) -> None:
-    """Filter structure files by top resolution.
+    """Filter structure files by best resolution.
 
     If 2 structures have the same low resolution the structure with most residues is preferred.
 
     Args:
         input_dir: Directory structure files.
         output_dir: Directory to write the selected structure files.
-        group_by: Grouping mode. Use ``uniprot_accession`` for top-N per accession
+        group_by: Pass top-N structures with best resolution per uniprotaccession.
         no_group_by: Disable grouping and use global top-N ranking across all files.
             Mutually exclusive with ``group_by``.
         top: Maximum number of files to keep.

@@ -395,43 +395,37 @@ class TestResolution:
         captured = capsys.readouterr()
         assert "global resolution ranking (no grouping)" in captured.err
 
-    def test_group_by_and_no_group_by_are_mutually_exclusive(self, tmp_path: Path):
-        fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
-        input_dir = tmp_path / "input"
-        input_dir.mkdir()
-        (input_dir / "2Y29.cif.gz").symlink_to(fixtures_dir / "2Y29.cif.gz")
-
-        output_dir = tmp_path / "output"
-
+    def test_group_by_and_no_group_by_are_mutually_exclusive(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
         argv = [
             "filter",
             "resolution",
-            str(input_dir),
-            str(output_dir),
+            str(tmp_path),
+            str(tmp_path),
             "--group-by",
             "uniprot_accession",
             "--no-group-by",
         ]
 
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exc_info:
             main(argv)
 
-    def test_rejects_zero_top(self, tmp_path: Path):
-        fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
-        input_dir = tmp_path / "input"
-        input_dir.mkdir()
-        (input_dir / "2Y29.cif.gz").symlink_to(fixtures_dir / "2Y29.cif.gz")
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "Mutually exclusive arguments" in captured.err
 
-        output_dir = tmp_path / "output"
-
+    def test_rejects_zero_top(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
         argv = [
             "filter",
             "resolution",
-            str(input_dir),
-            str(output_dir),
+            str(tmp_path),
+            str(tmp_path),
             "--top",
             "0",
         ]
 
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exc_info:
             main(argv)
+
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "Invalid value" in captured.err
