@@ -36,9 +36,9 @@ def _make_stats(
 def test_resolution_sort_key():
     a = _make_stats("a.cif.gz", "P12345", resolution=1.0)
     b = _make_stats("b.cif.gz", "P12345", resolution=2.0)
-    c = _make_stats("c.cif.gz", "P12345", resolution=0.0) # undesirable
-    af = _make_stats("af.cif.gz", "P12345", resolution=0.0, is_alphafold=True) # best
-    nu = _make_stats("nu.cif.gz", None, resolution=3.5) # uniprot is ignored
+    c = _make_stats("c.cif.gz", "P12345", resolution=0.0)  # undesirable
+    af = _make_stats("af.cif.gz", "P12345", resolution=0.0, is_alphafold=True)  # best
+    nu = _make_stats("nu.cif.gz", None, resolution=3.5)  # uniprot is ignored
 
     assert sorted([b, c, a, af, nu], key=resolution_sort_key) == [af, a, b, nu, c]
 
