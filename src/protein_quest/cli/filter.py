@@ -267,7 +267,7 @@ def resolution(
 ) -> None:
     """Filter structure files by top resolution.
 
-    If 2 stuctures have the same low resolution the structure with most residues is preferred.
+    If 2 structures have the same low resolution the structure with most residues is preferred.
 
     Args:
         input_dir: Directory structure files.

@@ -201,7 +201,7 @@ def group_resolution_statistics(
     are skipped with a warning and appended last. In ``group_by=None`` mode,
     all files are ranked globally and no missing-accession warnings are emitted.
 
-    If 2 stuctures have the same low resolution the structure with most residues is preferred.
+    If 2 structures have the same low resolution the structure with most residues is preferred.
 
     Output order is deterministic and sorted alphabetically by filename.
 
@@ -274,8 +274,7 @@ def filter_files_on_resolution(
 ) -> Generator[ResolutionFilterStatistics]:
     """Filter structure files by resolution rank.
 
-    If 2 stuctures have the same low resolution the structure with most residues is preferred.
-
+    If 2 structures have the same low resolution the structure with most residues is preferred.
 
     Args:
         input_files: Structure files to rank and filter.
