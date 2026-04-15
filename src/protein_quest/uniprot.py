@@ -12,9 +12,9 @@ from tqdm.auto import tqdm
 
 from protein_quest.pdbe.result import PdbResult, PdbResults
 from protein_quest.sparql import (
-    _build_sparql_generic_by_uniprot_accessions_query,
-    _build_sparql_generic_query,
-    _execute_sparql_search,
+    build_sparql_generic_by_uniprot_accessions_query,
+    build_sparql_generic_query,
+    execute_sparql_search,
 )
 
 logger = logging.getLogger(__name__)
@@ -159,7 +159,7 @@ def _build_sparql_query_uniprot(query: Query, limit=10_000) -> str:
         ?protein a up:Protein .
         {dynamic_triples}
     """)
-    return _build_sparql_generic_query(select_clause, dedent(where_clause), limit)
+    return build_sparql_generic_query(select_clause, dedent(where_clause), limit)
 
 
 def _build_sparql_query_sequence_length_filter(min_length: int | None = None, max_length: int | None = None) -> str:
@@ -245,7 +245,7 @@ def _build_sparql_query_pdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
     """)
 
     groupby_clause = "?protein ?pdb_db ?pdb_method ?pdb_resolution"
-    return _build_sparql_generic_by_uniprot_accessions_query(
+    return build_sparql_generic_by_uniprot_accessions_query(
         uniprot_accs, select_clause, where_clause, limit, groupby_clause
     )
 
@@ -271,7 +271,7 @@ def _build_sparql_query_af(
             max_length=max_sequence_length,
         )
         where_clause += "\n" + length_filter
-    return _build_sparql_generic_by_uniprot_accessions_query(uniprot_accs, select_clause, dedent(where_clause), limit)
+    return build_sparql_generic_by_uniprot_accessions_query(uniprot_accs, select_clause, dedent(where_clause), limit)
 
 
 def _build_sparql_query_emdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
@@ -284,7 +284,7 @@ def _build_sparql_query_emdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
         ?protein rdfs:seeAlso ?emdb_db .
         ?emdb_db up:database <http://purl.uniprot.org/database/EMDB> .
     """)
-    return _build_sparql_generic_by_uniprot_accessions_query(uniprot_accs, select_clause, dedent(where_clause), limit)
+    return build_sparql_generic_by_uniprot_accessions_query(uniprot_accs, select_clause, dedent(where_clause), limit)
 
 
 def _flatten_results_af(rawresults: Iterable) -> dict[str, set[str]]:
@@ -340,7 +340,7 @@ def search4uniprot(query: Query, limit: int = 10_000, timeout: int = 1_800) -> s
     logger.info("Executing SPARQL query for UniProt: %s", sparql_query)
 
     # Type assertion is needed because _execute_sparql_search returns a Union
-    raw_results = _execute_sparql_search(
+    raw_results = execute_sparql_search(
         sparql_query=sparql_query,
         timeout=timeout,
     )
@@ -394,7 +394,7 @@ def search4pdb(
             sparql_query = _build_sparql_query_pdb(batch, limit)
             logger.info("Executing SPARQL query for PDB: %s", sparql_query)
 
-            raw_results = _execute_sparql_search(
+            raw_results = execute_sparql_search(
                 sparql_query=sparql_query,
                 timeout=timeout,
             )
@@ -434,7 +434,7 @@ def search4af(
             sparql_query = _build_sparql_query_af(batch, min_sequence_length, max_sequence_length, limit)
             logger.info("Executing SPARQL query for AlphaFold: %s", sparql_query)
 
-            raw_results = _execute_sparql_search(
+            raw_results = execute_sparql_search(
                 sparql_query=sparql_query,
                 timeout=timeout,
             )
@@ -460,7 +460,7 @@ def search4emdb(uniprot_accs: Iterable[str], limit: int = 10_000, timeout: int =
     sparql_query = _build_sparql_query_emdb(uniprot_accs, limit)
     logger.info("Executing SPARQL query for EMDB: %s", sparql_query)
 
-    raw_results = _execute_sparql_search(
+    raw_results = execute_sparql_search(
         sparql_query=sparql_query,
         timeout=timeout,
     )
@@ -526,7 +526,7 @@ def _build_complex_sparql_query(uniprot_accs: Iterable[str], limit: int) -> str:
     group_by = dedent("""
        ?protein ?cp_db ?cp_comment
     """)
-    return _build_sparql_generic_by_uniprot_accessions_query(
+    return build_sparql_generic_by_uniprot_accessions_query(
         uniprot_accs, select_clause, where_clause, limit, groupby_clause=group_by
     )
 
@@ -587,7 +587,7 @@ def search4macromolecular_complexes(
     """
     sparql_query = _build_complex_sparql_query(uniprot_accs, limit)
     logger.info("Executing SPARQL query for macromolecular complexes: %s", sparql_query)
-    raw_results = _execute_sparql_search(
+    raw_results = execute_sparql_search(
         sparql_query=sparql_query,
         timeout=timeout,
     )
@@ -730,11 +730,11 @@ def map_uniprot_accessions2uniprot_details(
         unit="acc",
     ) as pbar:
         for batch in batched(uniprot_accessions, batch_size, strict=False):
-            sparql_query = _build_sparql_generic_by_uniprot_accessions_query(
+            sparql_query = build_sparql_generic_by_uniprot_accessions_query(
                 batch, select_clause, where_clause, limit=batch_size
             )
             logger.info("Executing SPARQL query for UniProt details: %s", sparql_query)
-            raw_results = _execute_sparql_search(
+            raw_results = execute_sparql_search(
                 sparql_query=sparql_query,
                 timeout=timeout,
             )

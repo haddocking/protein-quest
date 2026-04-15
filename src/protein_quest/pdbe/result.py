@@ -1,4 +1,4 @@
-"""Module for reformating/filtering PDB results from UniProtKB SPARQL."""
+"""Module for reformatting/filtering PDB results from UniProtKB SPARQL."""
 
 import logging
 from dataclasses import dataclass

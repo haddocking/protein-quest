@@ -9,9 +9,15 @@ from SPARQLWrapper import JSON, SPARQLWrapper
 logger = logging.getLogger(__name__)
 
 
-def _build_sparql_generic_query(select_clause: str, where_clause: str, limit: int = 10_000, groupby_clause="") -> str:
+def build_sparql_generic_query(select_clause: str, where_clause: str, limit: int = 10_000, groupby_clause="") -> str:
     """
     Builds a generic SPARQL query with the given select and where clauses.
+
+    Args:
+        select_clause: The SELECT clause body of the SPARQL query, without the "SELECT" keyword.
+        where_clause: The WHERE clause body of the SPARQL query, without the "WHERE" keyword.
+        limit: The maximum number of results to return. Default is 10,000.
+        groupby_clause: The GROUP BY clause of the SPARQL query, without the "GROUP BY" keyword.
     """
     groupby = f" GROUP BY {groupby_clause}" if groupby_clause else ""
     return dedent(f"""
@@ -31,9 +37,21 @@ def _build_sparql_generic_query(select_clause: str, where_clause: str, limit: in
     """)
 
 
-def _build_sparql_generic_by_uniprot_accessions_query(
+def build_sparql_generic_by_uniprot_accessions_query(
     uniprot_accs: Iterable[str], select_clause: str, where_clause: str, limit: int = 10_000, groupby_clause=""
 ) -> str:
+    """Builds a generic SPARQL query and filters by the given UniProt accessions.
+
+    Args:
+        uniprot_accs: An iterable of UniProt accessions to filter by.
+        select_clause: The SELECT clause of the SPARQL query, without the "SELECT" keyword.
+        where_clause: The WHERE clause of the SPARQL query, without the "WHERE" keyword.
+        limit: The maximum number of results to return. Default is 10,000.
+        groupby_clause: The GROUP BY clause of the SPARQL query, without the "GROUP BY" keyword.
+
+    Returns:
+        A string containing the complete SPARQL query.
+    """
     values = " ".join(f'("{ac}")' for ac in uniprot_accs)
     where_clause2 = dedent(f"""
         # --- Protein Selection ---
@@ -43,7 +61,7 @@ def _build_sparql_generic_by_uniprot_accessions_query(
 
         {where_clause}
     """)
-    return _build_sparql_generic_query(
+    return build_sparql_generic_query(
         select_clause=select_clause,
         where_clause=where_clause2,
         limit=limit,
@@ -51,12 +69,19 @@ def _build_sparql_generic_by_uniprot_accessions_query(
     )
 
 
-def _execute_sparql_search(
+def execute_sparql_search(
     sparql_query: str,
     timeout: int,
 ) -> list:
     """
     Execute a SPARQL query.
+
+    Args:
+        sparql_query: The SPARQL query to execute.
+        timeout: Timeout for the SPARQL query in seconds. Must be less than 2700 seconds (45 minutes).
+
+    Returns:
+        A list of bindings returned by the SPARQL query. Each binding is a dict mapping
     """
     if timeout > 2_700:
         msg = "Uniprot SPARQL timeout is limited to 2700 seconds (45 minutes)."
