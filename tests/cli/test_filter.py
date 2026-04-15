@@ -185,7 +185,7 @@ def test_filter_secondary_structure(
 
 
 class TestResolution:
-    def test_ranks_by_resolution_with_default_grouping(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    def test_default_grouping(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
         """Test filter resolution ranks structures per UniProt accession."""
         fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
         input_dir = tmp_path / "input"
@@ -215,7 +215,7 @@ class TestResolution:
         assert "Filtering 3 files" in captured.err
         assert "Wrote 2 files to" in captured.err
 
-    def test_uses_default_top_without_stats_message(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    def test_uses_default_top(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
         """Test filter resolution defaults to top 1000 and stays quiet about stats when unused."""
         fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
         input_dir = tmp_path / "input"
@@ -243,7 +243,7 @@ class TestResolution:
         assert "Wrote 3 files to" in captured.err
         assert "Statistics written to" not in captured.err
 
-    def test_write_stats_to_log_file(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    def test_write_stats(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
         """Test filter resolution writes CSV stats even when output file uses .log extension."""
         fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
         input_dir = tmp_path / "input"
@@ -303,7 +303,7 @@ class TestResolution:
         assert "Statistics written to" in captured.err
         assert str(stats_fn) in captured.err
 
-    def test_none_grouping_uses_global_top_and_stats_schema(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    def test_no_groupby_and_write_stats(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
         fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
         input_dir = tmp_path / "input"
         input_dir.mkdir()
@@ -366,7 +366,7 @@ class TestResolution:
         captured = capsys.readouterr()
         assert "global resolution ranking (no grouping)" in captured.err
 
-    def test_no_group_by_flag_is_alias_for_none(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    def test_no_group(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
         fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
         input_dir = tmp_path / "input"
         input_dir.mkdir()
@@ -395,7 +395,7 @@ class TestResolution:
         captured = capsys.readouterr()
         assert "global resolution ranking (no grouping)" in captured.err
 
-    def test_group_by_and_no_group_by_are_mutually_exclusive(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    def test_mutually_exclusive_groupby(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
         argv = [
             "filter",
             "resolution",

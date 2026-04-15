@@ -272,7 +272,7 @@ def resolution(
     Args:
         input_dir: Directory structure files.
         output_dir: Directory to write the selected structure files.
-        group_by: Pass top-N structures with best resolution per uniprotaccession.
+        group_by: Pass top-N structures with best resolution per uniprot accession.
         no_group_by: Disable grouping and use global top-N ranking across all files.
             Mutually exclusive with ``group_by``.
         top: Maximum number of files to keep.
