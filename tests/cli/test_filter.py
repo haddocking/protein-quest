@@ -320,7 +320,7 @@ class TestResolution:
             str(output_dir),
             "--no-group-by",
             "--top",
-            "1",
+            "2",
             "--copy-method",
             "symlink",
             "--write-stats",
@@ -330,7 +330,7 @@ class TestResolution:
         main(argv)
 
         output_files = sorted(path.name for path in output_dir.iterdir())
-        assert output_files == ["2Y29.cif.gz"]
+        assert output_files == ["2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"]
 
         with stats_fn.open() as handle:
             rows = list(csv.DictReader(handle))
@@ -357,8 +357,8 @@ class TestResolution:
                 "resolution": "0.0",
                 "total_residue_count": "16",
                 "is_alphafold": "True",
-                "passed": "False",
-                "output_file": "",
+                "passed": "True",
+                "output_file": str(output_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
             },
         ]
         assert rows == expected_rows
@@ -382,7 +382,7 @@ class TestResolution:
             str(output_dir),
             "--no-group-by",
             "--top",
-            "1",
+            "2",
             "--copy-method",
             "symlink",
         ]
@@ -390,7 +390,7 @@ class TestResolution:
         main(argv)
 
         output_files = sorted(path.name for path in output_dir.iterdir())
-        assert output_files == ["2Y29.cif.gz"]
+        assert output_files == ["2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"]
 
         captured = capsys.readouterr()
         assert "global resolution ranking (no grouping)" in captured.err
