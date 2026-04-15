@@ -194,6 +194,71 @@ def filter_pdb_results_on_chain_length(
     return results
 
 
+def _resolution_value(value: str | None) -> float:
+    """Convert a PDB resolution string to float.
+
+    Missing or non-numeric values are treated as ``0.0`` and therefore
+    ranked as undesirable by resolution-based sorting.
+    """
+    if value is None:
+        return 0.0
+    try:
+        return float(value)
+    except ValueError:
+        return 0.0
+
+
+def _chain_length_or_zero(entry: PdbResult) -> int:
+    """Return chain length or 0 when the chain length cannot be determined."""
+    try:
+        return entry.chain_length
+    except PdbChainLengthError:
+        return 0
+
+
+def _sort_resolution_key(entry: PdbResult) -> tuple[int, float, int, str]:
+    """Build a deterministic sort key for PDB resolution ranking.
+
+    Lower resolution ranks first. Entries with missing or invalid resolution are
+    undesirable and rank after entries with a real resolution. When resolution is
+    tied, entries with more residues rank first, then PDB ID breaks ties.
+    """
+    resolution = _resolution_value(entry.resolution)
+    chain_length = _chain_length_or_zero(entry)
+    if resolution != 0.0:
+        return (1, resolution, -chain_length, entry.id)
+    return (2, 0.0, -chain_length, entry.id)
+
+
+def filter_pdb_results_on_resolution(
+    pdb_results: PdbResults,
+    top: int,
+) -> PdbResults:
+    """Filter PDB results to top entries per UniProt accession by resolution.
+
+    Entries are ranked by lower resolution first, then higher chain length,
+    and finally deterministic PDB ID ordering.
+
+    Args:
+        pdb_results: Dictionary with UniProt accessions mapped to PDB entries.
+        top: Maximum number of PDB entries to keep for each accession.
+
+    Returns:
+        Filtered dictionary with top-ranked entries per accession.
+    """
+    if top <= 0:
+        msg = f"Top must be a positive integer, got {top}"
+        raise ValueError(msg)
+    results: PdbResults = {}
+    for uniprot_accession, pdb_entries in pdb_results.items():
+        ranked = sorted(pdb_entries, key=_sort_resolution_key)
+        top_entries = set(ranked[:top])
+        if top_entries:
+            results[uniprot_accession] = top_entries
+
+    return results
+
+
 def _query2dynamic_sparql_triples(query: Query):
     parts: list[str] = []
     if query.taxon_id:

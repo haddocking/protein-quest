@@ -12,6 +12,7 @@ from protein_quest.uniprot import (
     _build_sparql_query_pdb,
     _build_sparql_query_uniprot,
     filter_pdb_results_on_chain_length,
+    filter_pdb_results_on_resolution,
     map_uniprot_accessions2uniprot_details,
     search4af,
     search4emdb,
@@ -335,6 +336,104 @@ def test_filter_pdb_results_on_chain_length_filtered():
         "P05067": {keeper},
     }
     assert result == expected
+
+
+class TestFilterPdbResultsOnResolution:
+    def test_keeps_top_per_accession(self):
+        pdbs = {
+            "P05067": {
+                PdbResult(id="A", method="X-Ray_Crystallography", resolution="2.0", uniprot_chains="A=1-100"),
+                PdbResult(id="B", method="X-Ray_Crystallography", resolution="1.5", uniprot_chains="A=1-80"),
+                PdbResult(id="C", method="X-Ray_Crystallography", resolution="3.0", uniprot_chains="A=1-120"),
+            },
+            "Q8XYZ1": {
+                PdbResult(id="D", method="X-Ray_Crystallography", resolution="4.0", uniprot_chains="A=1-100"),
+                PdbResult(id="E", method="X-Ray_Crystallography", resolution="1.0", uniprot_chains="A=1-90"),
+            },
+        }
+
+        result = filter_pdb_results_on_resolution(pdbs, top=1)
+
+        expected = {
+            "P05067": {PdbResult(id="B", method="X-Ray_Crystallography", resolution="1.5", uniprot_chains="A=1-80")},
+            "Q8XYZ1": {PdbResult(id="E", method="X-Ray_Crystallography", resolution="1.0", uniprot_chains="A=1-90")},
+        }
+        assert result == expected
+
+    def test_prefers_more_residues_on_tie(self):
+        short = PdbResult(id="A", method="X-Ray_Crystallography", resolution="1.5", uniprot_chains="A=1-80")
+        long = PdbResult(id="B", method="X-Ray_Crystallography", resolution="1.5", uniprot_chains="A=1-120")
+
+        pdbs = {"P05067": {short, long}}
+
+        result = filter_pdb_results_on_resolution(pdbs, top=1)
+
+        assert result == {"P05067": {long}}
+
+    def test_tie_breaks_on_pdb_id(self):
+        a = PdbResult(id="1AAA", method="X-Ray_Crystallography", resolution="1.5", uniprot_chains="A=1-120")
+        b = PdbResult(id="2BBB", method="X-Ray_Crystallography", resolution="1.5", uniprot_chains="A=1-120")
+
+        pdbs = {"P05067": {a, b}}
+
+        result = filter_pdb_results_on_resolution(pdbs, top=1)
+
+        assert result == {"P05067": {a}}
+
+    def test_top_larger_than_group_keeps_all(self):
+        a = PdbResult(id="A", method="X-Ray_Crystallography", resolution="1.5", uniprot_chains="A=1-120")
+        b = PdbResult(id="B", method="X-Ray_Crystallography", resolution="2.5", uniprot_chains="A=1-80")
+
+        pdbs = {"P05067": {a, b}}
+
+        result = filter_pdb_results_on_resolution(pdbs, top=10)
+
+        assert result == {"P05067": {a, b}}
+
+    def test_deprioritizes_missing_resolution(self):
+        missing_resolution = PdbResult(id="2K28", method="NMR_Spectroscopy", resolution=None, uniprot_chains="A=8-65")
+        resolved = PdbResult(id="3I8Z", method="X-Ray_Crystallography", resolution="1.51", uniprot_chains="A=1-109")
+
+        pdbs = {"O00257": {missing_resolution, resolved}}
+
+        result = filter_pdb_results_on_resolution(pdbs, top=1)
+
+        assert result == {"O00257": {resolved}}
+
+    def test_deprioritizes_invalid_resolution_value(self):
+        invalid_resolution = PdbResult(
+            id="2BAD",
+            method="X-Ray_Crystallography",
+            resolution="not-a-number",
+            uniprot_chains="A=1-120",
+        )
+        valid_resolution = PdbResult(
+            id="1GOOD",
+            method="X-Ray_Crystallography",
+            resolution="1.5",
+            uniprot_chains="A=1-80",
+        )
+
+        pdbs = {"P05067": {invalid_resolution, valid_resolution}}
+
+        result = filter_pdb_results_on_resolution(pdbs, top=1)
+
+        assert result == {"P05067": {valid_resolution}}
+
+    def test_deprioritizes_invalid_chain_length_on_tie(self):
+        invalid = PdbResult(id="1X5W", method="NMR_Spectroscopy", resolution="1.5", uniprot_chains="A=-")
+        valid = PdbResult(id="2AAP", method="X-Ray_Crystallography", resolution="1.5", uniprot_chains="A=1-80")
+
+        pdbs = {"Q9NTW7": {invalid, valid}}
+
+        result = filter_pdb_results_on_resolution(pdbs, top=1)
+
+        assert result == {"Q9NTW7": {valid}}
+
+    @pytest.mark.parametrize("top", [0, -1])
+    def test_nonpositive_top_raises(self, top):
+        with pytest.raises(ValueError, match=f"Top must be a positive integer, got {top}"):
+            filter_pdb_results_on_resolution({}, top=top)
 
 
 @pytest.mark.vcr

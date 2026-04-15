@@ -9,7 +9,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from typing import Annotated, Any, Literal, cast
 
 from cyclopts import App, Parameter
-from cyclopts.types import StdioPath
+from cyclopts.types import PositiveInt, StdioPath
 
 from protein_quest.cli.common import (
     BatchSize,
@@ -36,6 +36,7 @@ from protein_quest.uniprot import (
     Query,
     UniprotDetails,
     filter_pdb_results_on_chain_length,
+    filter_pdb_results_on_resolution,
     map_uniprot_accessions2uniprot_details,
     search4af,
     search4emdb,
@@ -239,6 +240,7 @@ def pdbe(
     min_residues: MinResidues | None = None,
     max_residues: MaxResidues | None = None,
     keep_invalid: Annotated[bool, Parameter(negative="")] = False,
+    top_resolution_per_uniprot_accession: PositiveInt | None = None,
     _: Common | None = None,
 ) -> None:
     """Search for PDB structures of given UniProt accessions.
@@ -259,6 +261,8 @@ def pdbe(
         min_residues: Minimum number of residues required in the chain mapped to the UniProt accession.
         max_residues: Maximum number of residues allowed in chain mapped to the UniProt accession.
         keep_invalid: Keep PDB results when chain length could not be determined.
+        top_resolution_per_uniprot_accession: Maximum number of PDB entries per UniProt accession based on resolution
+            and number of residues.
         _: Common CLI options.
     """
     accs = set(_read_lines(uniprot_accessions))
@@ -277,6 +281,14 @@ def pdbe(
         )
     else:
         rprint(f"Found {raw_total_pdbs} PDB entries for {raw_nr_results} uniprot accessions")
+
+    if top_resolution_per_uniprot_accession is not None:
+        results = filter_pdb_results_on_resolution(results, top=top_resolution_per_uniprot_accession)
+        total_pdbs = sum([len(v) for v in results.values()])
+        rprint(
+            f"After filtering on top resolution ({top_resolution_per_uniprot_accession}) "
+            f"remained {total_pdbs} PDB entries for {len(results)} uniprot accessions."
+        )
 
     _write_pdbe_csv(output_csv, results)
     rprint(f"Written to {output_csv}")
