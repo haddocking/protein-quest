@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import gemmi
+from gemmi import Structure
 
 from protein_quest.__version__ import __version__
 from protein_quest.io import read_structure, split_name_and_extension, write_structure
@@ -293,3 +294,19 @@ def structure2uniprot_accessions(structure: gemmi.Structure) -> set[str]:
     if not uniprot_accessions:
         logger.warning("No UniProt accessions found in structure %s", structure.name)
     return uniprot_accessions
+
+
+def nr_of_residues_in_total(structure: Structure) -> int:
+    """Count the total number of residues in the structure.
+
+    Args:
+        structure: The gemmi Structure object to analyze.
+
+    Returns:
+        The total number of residues in the structure.
+    """
+    count = 0
+    for model in structure:
+        for chain in model:
+            count += len(chain)
+    return count
