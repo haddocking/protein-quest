@@ -225,7 +225,8 @@ protein-quest filter resolution \
   ./filtered-chains ./filtered-resolution
 ```
 
-Results in 3 lowest resolution structures per UniProt accession copied to `./filtered-resolution` directory.
+Results in 3 lowest resolution structures per UniProt accession copied to
+`./filtered-resolution` directory.
 
 ### To filter on secondary structure
 

@@ -1,5 +1,6 @@
 import gzip
 import logging
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,7 @@ from protein_quest.filters.resolution import (
     filter_files_on_resolution,
     group_resolution_statistics,
     iter_resolution_statistics,
+    resolution_sort_key,
 )
 
 
@@ -31,12 +33,21 @@ def _make_stats(
     )
 
 
+def test_resolution_sort_key():
+    a = _make_stats("a.cif.gz", "P12345", resolution=1.0)
+    b = _make_stats("b.cif.gz", "P12345", resolution=2.0)
+    c = _make_stats("c.cif.gz", "P12345", resolution=0.0)
+    af = _make_stats("af.cif.gz", "P12345", resolution=0.0, is_alphafold=True)
+
+    assert sorted([b, c, a, af], key=resolution_sort_key) == [af, a, b, c]
+
+
 class TestIterResolutionStatistics:
     def test_metadata_in_order(self, sample_cif: Path, sample2_cif: Path, af_cif: Path, nmr_cif: Path):
         input_files = [sample_cif, sample2_cif, af_cif, nmr_cif]
         results = list(iter_resolution_statistics(input_files))
 
-        assert results == [
+        expected = [
             ResolutionFilterStatistics(
                 input_file=sample_cif,
                 uniprot_accession="Q8VZS8",
@@ -74,6 +85,7 @@ class TestIterResolutionStatistics:
                 output_file=None,
             ),
         ]
+        assert results == expected
 
     def test_empty_input(self):
         assert list(iter_resolution_statistics([])) == []
@@ -127,14 +139,41 @@ def test_filter_files_on_resolution_no_uniprot_can_pass_when_grouping_disabled(s
 
 
 class TestGroupResolutionStatistics:
-    def test_best_resolution_passes(self):
-        good = _make_stats("a.cif.gz", "P12345", resolution=1.8)
-        bad = _make_stats("b.cif.gz", "P12345", resolution=3.0)
+    def test_groupby_accession(self):
+        a1 = _make_stats("a1.cif.gz", "P11111", resolution=1.0)
+        a2 = _make_stats("a2.cif.gz", "P11111", resolution=2.0)
+        b1 = _make_stats("b1.cif.gz", "P22222", resolution=1.5)
+        b2 = _make_stats("b2.cif.gz", "P22222", resolution=3.0)
+        # Structures without uniprot are never passed
+        c1 = _make_stats("c1.cif.gz", None, resolution=0.5)
+        c2 = _make_stats("c2.cif.gz", None, resolution=0.1)
 
-        results = group_resolution_statistics([good, bad], top=1)
+        results = group_resolution_statistics([a2, a1, b2, b1, c1, c2], top=1, group_by="uniprot_accession")
 
-        passed = [r for r in results if r.passed]
-        assert passed == [good]
+        expected = [
+            replace(a1, passed=True),
+            replace(a2, passed=False),
+            replace(b1, passed=True),
+            replace(b2, passed=False),
+            replace(c1, passed=False),
+            replace(c2, passed=False),
+        ]
+        assert results == expected
+
+    def test_groupby_none_uses_global_top(self):
+        # Same accession-based ranking key as production code; global top=1 should keep only a.cif.gz.
+        best = _make_stats("a.cif.gz", "P11111", resolution=1.0)
+        second = _make_stats("b.cif.gz", "P22222", resolution=1.5)
+        third = _make_stats("c.cif.gz", "P33333", resolution=2.0)
+
+        results = group_resolution_statistics([third, best, second], top=1, group_by=None)
+
+        expected = [
+            replace(best, passed=True),
+            replace(second, passed=False),
+            replace(third, passed=False),
+        ]
+        assert results == expected
 
     def test_top_limit(self):
         a = _make_stats("a.cif.gz", "P12345", resolution=1.0)
@@ -145,15 +184,6 @@ class TestGroupResolutionStatistics:
 
         passed_names = {r.input_file.name for r in results if r.passed}
         assert passed_names == {"a.cif.gz", "b.cif.gz"}
-
-    def test_alphafold_beats_missing_resolution(self):
-        af = _make_stats("af.cif.gz", "P12345", resolution=0.0, is_alphafold=True)
-        nmr = _make_stats("nmr.cif.gz", "P12345", resolution=0.0, is_alphafold=False)
-
-        results = group_resolution_statistics([nmr, af], top=1)
-
-        passed = [r for r in results if r.passed]
-        assert passed == [af]
 
     def test_none_accession_is_skipped(self, caplog: pytest.LogCaptureFixture):
         good = _make_stats("a.cif.gz", "P12345", resolution=2.0)

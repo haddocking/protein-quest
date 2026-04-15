@@ -40,11 +40,20 @@ class ResolutionFilterStatistics:
     output_file: Path | None
 
 
-def _resolution_rank_key(stats: ResolutionFilterStatistics) -> tuple[int, float, int, str]:
-    if stats.resolution != 0.0:
-        return (0, stats.resolution, -stats.total_residue_count, stats.input_file.name)
+def resolution_sort_key(stats: ResolutionFilterStatistics) -> tuple[int, float, int, str]:
+    """Rank key for resolution-based filtering.
+
+    AlphaFold structures are preferred over non-AlphaFold.
+    Structures with lower resolution are preferred.
+    If resolution is the same, structures with more residues are preferred.
+    If resolution is missing, those structures are undesirable.
+
+    Output is deterministic and sorted alphabetically by filename.
+    """
     if stats.is_alphafold:
-        return (1, 0.0, -stats.total_residue_count, stats.input_file.name)
+        return (0, 0.0, -stats.total_residue_count, stats.input_file.name)
+    if stats.resolution != 0.0:
+        return (1, stats.resolution, -stats.total_residue_count, stats.input_file.name)
     return (2, 0.0, -stats.total_residue_count, stats.input_file.name)
 
 
@@ -98,7 +107,7 @@ def group_resolution_statistics(
         All statistics with ``passed`` updated; skipped entries appended last.
     """
     if group_by is None:
-        ranked = sorted(stats, key=_resolution_rank_key)
+        ranked = sorted(stats, key=resolution_sort_key)
         for result in ranked[:top]:
             result.passed = True
         return sorted(ranked, key=lambda item: item.input_file.name)
@@ -114,7 +123,7 @@ def group_resolution_statistics(
         grouped.setdefault(result.uniprot_accession, []).append(result)
 
     for group_results in grouped.values():
-        ranked = sorted(group_results, key=_resolution_rank_key)
+        ranked = sorted(group_results, key=resolution_sort_key)
         for result in ranked[:top]:
             result.passed = True
 
