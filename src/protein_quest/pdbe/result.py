@@ -32,8 +32,9 @@ class PdbResult:
     def chain_length(self) -> int:
         """The length of the chain from the UniProt chains aka self.uniprot_chains.
 
-        This is different from self.uniprot_end - self.uniprot_start + 1
+        This is different from `self.uniprot_end - self.uniprot_start + 1`
         when there are multiple ranges in the UniProt chains string.
+
         This and end/start can be used to determine sequence identity
         (see 3D beacons API definition).
         """
