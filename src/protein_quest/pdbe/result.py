@@ -30,11 +30,37 @@ class PdbResult:
 
     @cached_property
     def chain_length(self) -> int:
-        """The length of the chain from the UniProt chains aka self.uniprot_chains."""
+        """The length of the chain from the UniProt chains aka self.uniprot_chains.
+
+        This is different from self.uniprot_end - self.uniprot_start + 1
+        when there are multiple ranges in the UniProt chains string.
+        This and end/start can be used to determine sequence identity
+        (see 3D beacons API definition).
+        """
         try:
             return _chain_length_from_uniprot_chains(self.uniprot_chains)
         except ValueError as e:
             raise PdbChainLengthError(self.id, self.uniprot_chains) from e
+
+    @cached_property
+    def uniprot_start(self) -> int:
+        """Lowest UniProt residue position covered by this PDB result."""
+        try:
+            start, _ = _uniprot_start_end_from_uniprot_chains(self.uniprot_chains)
+        except ValueError as e:
+            raise PdbChainLengthError(self.id, self.uniprot_chains) from e
+        else:
+            return start
+
+    @cached_property
+    def uniprot_end(self) -> int:
+        """Highest UniProt residue position covered by this PDB result."""
+        try:
+            _, end = _uniprot_start_end_from_uniprot_chains(self.uniprot_chains)
+        except ValueError as e:
+            raise PdbChainLengthError(self.id, self.uniprot_chains) from e
+        else:
+            return end
 
 
 type PdbResults = dict[str, set[PdbResult]]
@@ -115,6 +141,19 @@ def _chain_length_from_uniprot_chains(uniprot_chains: str) -> int:
         # Residue positions are 1-based so + 1
         total_length += int(stop) - int(start) + 1
     return total_length
+
+
+def _uniprot_start_end_from_uniprot_chains(uniprot_chains: str) -> tuple[int, int]:
+    """Extract minimum start and maximum end residue positions from UniProt chains."""
+    starts: list[int] = []
+    ends: list[int] = []
+    for chain in uniprot_chains.split(","):
+        _, rangestr = chain.split("=")
+        start, stop = rangestr.split("-")
+        starts.append(int(start))
+        ends.append(int(stop))
+
+    return min(starts), max(ends)
 
 
 class PdbChainLengthError(ValueError):
