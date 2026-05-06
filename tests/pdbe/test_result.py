@@ -191,3 +191,53 @@ class TestFilterPdbResultsOnResolution:
     def test_nonpositive_top_raises(self, top):
         with pytest.raises(ValueError, match=f"Top must be a positive integer, got {top}"):
             filter_pdb_results_on_resolution({}, top=top)
+
+    def test_on_sequence_domains(self):
+        # First example from https://github.com/haddocking/protein-quest/issues/102
+        # Given uniprot has length 1000
+        m1 = PdbResult(id="1AAA", method="X-Ray_Crystallography", resolution="3.6", uniprot_chains="A=1-250")
+        m2 = PdbResult(id="2BBB", method="X-Ray_Crystallography", resolution="5.4", uniprot_chains="A=1-250")
+        m3 = PdbResult(id="3CCC", method="X-Ray_Crystallography", resolution="2.1", uniprot_chains="A=1-250")
+        m4 = PdbResult(id="4DDD", method="X-Ray_Crystallography", resolution="8.1", uniprot_chains="A=200-400")
+        m5 = PdbResult(id="5EEE", method="X-Ray_Crystallography", resolution="4.6", uniprot_chains="A=200-400")
+        m6 = PdbResult(id="6FFF", method="X-Ray_Crystallography", resolution="1.3", uniprot_chains="A=500-1000")
+        m7 = PdbResult(id="7GGG", method="X-Ray_Crystallography", resolution="1.4", uniprot_chains="A=500-1000")
+        m8 = PdbResult(id="8HHH", method="X-Ray_Crystallography", resolution="1.6", uniprot_chains="A=500-1000")
+        pdbs = {
+            "P12345": {
+                m1,
+                m2,
+                m3,
+                m4,
+                m5,
+                m6,
+                m7,
+                m8,
+            }
+        }
+        results = filter_pdb_results_on_resolution(pdbs, top=3)
+
+        expected = {"P12345": {m3, m5, m6}}
+        assert results == expected
+
+    def test_on_sequence_overlaps(self):
+        # Second example from https://github.com/haddocking/protein-quest/issues/102
+        m1 = PdbResult(id="1AAA", method="X-Ray_Crystallography", resolution="3.6", uniprot_chains="A=1-250")
+        m4 = PdbResult(id="4DDD", method="X-Ray_Crystallography", resolution="8.1", uniprot_chains="A=200-400")
+        m6 = PdbResult(id="6FFF", method="X-Ray_Crystallography", resolution="1.3", uniprot_chains="A=500-1000")
+        m9 = PdbResult(id="9III", method="X-Ray_Crystallography", resolution="4.2", uniprot_chains="A=1-600")
+        m10 = PdbResult(id="10JJJ", method="X-Ray_Crystallography", resolution="1.4", uniprot_chains="A=1-1000")
+
+        pdbs = {
+            "P12345": {
+                m1,
+                m4,
+                m6,
+                m9,
+                m10,
+            }
+        }
+        results = filter_pdb_results_on_resolution(pdbs, top=3)
+
+        expected = {"P12345": {m9, m10, m6}}
+        assert results == expected
