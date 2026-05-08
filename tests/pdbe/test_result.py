@@ -72,6 +72,22 @@ def test_pdb_result_uniprot_range(query, expected_start, expected_end):
     assert pdb_result.uniprot_end == expected_end
 
 
+@pytest.mark.parametrize(
+    "query,expected",
+    [(query, length / (end - start + 1)) for query, _chain, length, start, end in COMMON_CHAIN_CASES],
+)
+def test_pdb_result_sequence_identity(query, expected):
+    pdb_result = PdbResult(id="DUMMY", method="DUMMY", uniprot_chains=query)
+
+    assert pdb_result.sequence_identity == pytest.approx(expected)
+
+
+def test_pdb_result_sequence_identity_invalid():
+    pdb_result = PdbResult(id="1X5W", method="NMR", uniprot_chains="A=-")
+
+    assert pdb_result.sequence_identity == 0.0
+
+
 def test_pdb_result_uniprot_range_invalid_raises():
     pdb_result = PdbResult(id="1X5W", method="NMR", uniprot_chains="A=-")
 

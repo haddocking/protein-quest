@@ -63,6 +63,18 @@ class PdbResult:
         else:
             return end
 
+    @cached_property
+    def sequence_identity(self) -> float:
+        """Sequence identity of the PDB entry to the UniProt sequence.
+
+        Calculated as (number of residues in the chain) / (length of the covered UniProt sequence).
+        """
+        try:
+            return self.chain_length / (self.uniprot_end - self.uniprot_start + 1)
+        except PdbChainLengthError:
+            # If chain length cannot be determined, we cannot calculate sequence identity, return 0.0
+            return 0.0
+
 
 type PdbResults = dict[str, set[PdbResult]]
 """Dictionary with uniprot accessions as keys and sets of PDB results as values."""

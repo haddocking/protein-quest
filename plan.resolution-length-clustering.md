@@ -10,11 +10,13 @@ Improve PDB result filtering so selected models are not only high quality (resol
 4. Selection objective is novelty coverage first, then quality tie-breaks.
 5. If fewer distinct regions exist than top, continue filling remaining slots up to top.
 6. Broad models may outrank nested narrow models when they add better coverage utility.
+7. Sequence identity is computed as chain_length / (uniprot_end - uniprot_start + 1). Higher is better.
 
 ## Definitions
 - Model span: [uniprot_start, uniprot_end] computed on PdbResult.
 - Covered union: the union of selected model spans.
 - Novelty: number of residues in a candidate span not yet covered by the covered union.
+- Sequence identity: chain_length / (uniprot_end - uniprot_start + 1), a float in (0, 1]. A value < 1 means the PDB chain has gaps relative to the UniProt span it covers. Returns 0.0 when chain_length or span cannot be determined.
 
 ## Selection Algorithm (Per UniProt Accession)
 1. Validate top > 0, else raise ValueError.
@@ -23,15 +25,17 @@ Improve PDB result filtering so selected models are not only high quality (resol
 4. Rank candidates by:
    1. Highest novelty first.
    2. Better resolution next (valid numeric lower is better; missing/invalid is worst).
-   3. Larger chain length next (existing behavior).
-   4. Stable deterministic PDB ID tie-break.
+   3. Higher sequence identity next (higher is better; 0.0 for invalid/error cases is worst).
+   4. Larger chain length next (existing behavior).
+   5. Stable deterministic PDB ID tie-break.
 5. Add selected model to output and update covered union with its span.
 6. Remove selected model from candidate pool and continue.
 
 ## Invalid Data Handling
 1. Invalid chain ranges (for example A=-) fail uniprot_start/uniprot_end and contribute zero novelty.
-2. Existing chain-length fallback behavior remains unchanged.
-3. Missing or invalid resolution stays deprioritized as in current logic.
+2. Sequence identity falls back to 0.0 when chain_length or start/end cannot be determined.
+3. Existing chain-length fallback behavior remains unchanged.
+4. Missing or invalid resolution stays deprioritized as in current logic.
 
 ## Implementation Scope
 - Keep function signature unchanged: filter_pdb_results_on_resolution(pdb_results, top).
@@ -42,17 +46,23 @@ Improve PDB result filtering so selected models are not only high quality (resol
 
 ## Files To Touch
 - src/protein_quest/pdbe/result.py
+  - ~~Add cached_property `sequence_identity` to PdbResult~~ — done.
+  - Add helper `_sequence_identity_or_zero(entry: PdbResult) -> float` (mirrors `_chain_length_or_zero`).
+  - Update `_sort_resolution_key` to insert `-sequence_identity` between resolution and `-chain_length`.
 - tests/pdbe/test_result.py
 
 ## Test Plan
 1. Run tests/pdbe/test_result.py as primary contract suite.
 2. Confirm issue-102-inspired domain/overlap tests pass.
 3. Add explicit test for split-range span using uniprot_start=1 and uniprot_end=584.
-4. Add tie determinism tests where novelty and resolution match.
-5. Run broader tests under tests/pdbe to catch regressions.
+4. Add tests for PdbResult.sequence_identity computed correctly (continuous range and split range).
+5. Add tie determinism tests where novelty and resolution match but identity differs.
+6. Add test: PDB with identity=0.0 (invalid chain range) ranks below any PDB with valid identity.
+7. Run broader tests under tests/pdbe to catch regressions.
 
 ## Notes
 - This plan intentionally avoids normalization by full UniProt length.
+- Sequence identity is derived from existing PdbResult fields — no SPARQL or data pipeline changes needed.
 - Novelty-driven iterative selection resolves the overlap-cluster conflict where one-component clustering would collapse useful broad models.
 
 TODO remove this file once implementation is complete and tested.
