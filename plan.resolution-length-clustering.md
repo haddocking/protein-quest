@@ -18,15 +18,13 @@ Improve PDB result filtering so selected models are not only high quality (resol
 
 ## Selection Algorithm (Per UniProt Accession)
 1. Validate top > 0, else raise ValueError.
-2. Use each PdbResult.uniprot_start and PdbResult.uniprot_end as the candidate span.
-3. Repeatedly pick one model until selected count reaches top or candidates are exhausted.
-4. Rank candidates by:
-   1. Highest novelty first.
-   2. Better resolution next (valid numeric lower is better; missing/invalid is worst).
-   3. Larger chain length next (existing behavior).
-   4. Stable deterministic PDB ID tie-break.
-5. Add selected model to output and update covered union with its span.
-6. Remove selected model from candidate pool and continue.
+2. For all pdb chains belonging to same uniprot accession
+3. Cluster them based on start/stop ranges
+4. For each cluster, order by sequence identity (highest first), resolution ascending (best first), length descending (longest first).
+5. Pick top from each cluster. For example given top 100 and 4 clusters take top 25 from each cluster
+
+Use scipy clustering
+compare function of 2 pdb result objects by how many residues two pdb chains share.
 
 ## Invalid Data Handling
 1. Invalid chain ranges (for example A=-) fail uniprot_start/uniprot_end and contribute zero novelty.

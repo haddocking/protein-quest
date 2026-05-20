@@ -46,6 +46,7 @@ dependencies = [
     "mmcif>=0.92.0",
     "rocrate-action-recorder>=0.5.1",
     "cyclopts>=4.5.4",
+    "scipy>=1.17.1",
 ]
 
 [project.urls]
