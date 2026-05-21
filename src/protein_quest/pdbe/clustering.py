@@ -51,11 +51,51 @@ def pdb_distance(a: PdbResult, b: PdbResult) -> float:
     return 1 / overlap
 
 
-def _cluster_sort_key(cluster: set[PdbResult]) -> tuple[int, int, str]:
-    return min((member.uniprot_start, member.uniprot_end, member.id) for member in cluster)
+def _cluster_sort_key(cluster: set[PdbResult]) -> tuple[int, int, int, str]:
+    # We know members have valid chain_length, so not checking for PdbChainLengthError here.
+    max_chain_length = max(member.chain_length for member in cluster)
+    start, end, pdb_id = min((member.uniprot_start, member.uniprot_end, member.id) for member in cluster)
+    return (-max_chain_length, start, end, pdb_id)
 
 
-def _cluster_many_valid_pdbs(valid_pdbs: list[PdbResult]) -> list[set[PdbResult]]:
+def _pdb_sort_key(member: PdbResult) -> tuple[float, str | None, int, str]:
+    """Return deterministic quality sort key for a cluster member.
+
+    See for [sort_cluster_members][protein_quest.pdbe.clustering.sort_cluster_members] for sort criteria.
+    """
+    try:
+        chain_length = member.chain_length
+    except PdbChainLengthError:
+        chain_length = 0
+
+    return (
+        -member.sequence_identity,
+        member.resolution,
+        -chain_length,
+        member.id,
+    )
+
+
+def sort_pdbs(pdbs: set[PdbResult]) -> list[PdbResult]:
+    """Sort pdbs by quality criteria.
+
+    1. Sequence identity descending (highest first)
+    2. Resolution ascending (lowest first)
+    3. Chain length descending (longest first)
+    4. PDB ID ascending (deterministic tie-break)
+
+    Args:
+        pdbs: PDB results to sort.
+    Returns:
+        PDB results sorted by quality criteria.
+    """
+    return sorted(
+        pdbs,
+        key=_pdb_sort_key,
+    )
+
+
+def _cluster_many_valid_pdbs(valid_pdbs: list[PdbResult]) -> list[list]:
     condensed_distances: list[float] = []
     for index, left in enumerate(valid_pdbs[:-1]):
         condensed_distances.extend(pdb_distance(left, right) for right in valid_pdbs[index + 1 :])
@@ -67,26 +107,26 @@ def _cluster_many_valid_pdbs(valid_pdbs: list[PdbResult]) -> list[set[PdbResult]
         clusters_by_id.setdefault(int(cluster_id), set()).add(pdb)
 
     return [
-        clusters_by_id[cluster_id]
+        sort_pdbs(clusters_by_id[cluster_id])
         for cluster_id in sorted(clusters_by_id, key=lambda cluster_id: _cluster_sort_key(clusters_by_id[cluster_id]))
     ]
 
 
-def _cluster_valid_pdbs(valid_pdbs: list[PdbResult]) -> list[set[PdbResult]]:
+def _cluster_valid_pdbs(valid_pdbs: list[PdbResult]) -> list[list[PdbResult]]:
     ordered_valid_pdbs = sorted(valid_pdbs, key=lambda pdb: (pdb.uniprot_start, pdb.uniprot_end, pdb.id))
     if not ordered_valid_pdbs:
         return []
     if len(ordered_valid_pdbs) == 1:
-        return [{ordered_valid_pdbs[0]}]
+        return [[ordered_valid_pdbs[0]]]
     if len(ordered_valid_pdbs) == 2:
         a, b = ordered_valid_pdbs
         if pdb_distance(a, b) <= CLUSTER_DISTANCE_THRESHOLD:
-            return [{a, b}]
-        return [{a}, {b}]
+            return [[a, b]]
+        return [[a], [b]]
     return _cluster_many_valid_pdbs(ordered_valid_pdbs)
 
 
-def _separate_valid_invalid_pdbs(pdbs: list[PdbResult]) -> tuple[set[PdbResult], list[PdbResult]]:
+def _separate_valid_invalid_pdbs(pdbs: list[PdbResult]) -> tuple[list[PdbResult], list[PdbResult]]:
     invalid_pdbs: set[PdbResult] = set()
     valid_pdbs: list[PdbResult] = []
     for pdb in pdbs:
@@ -96,27 +136,58 @@ def _separate_valid_invalid_pdbs(pdbs: list[PdbResult]) -> tuple[set[PdbResult],
             invalid_pdbs.add(pdb)
         else:
             valid_pdbs.append(pdb)
-    return invalid_pdbs, valid_pdbs
+    return sort_pdbs(invalid_pdbs), valid_pdbs
 
 
-def cluster_pdbs(pdbs: list[PdbResult]) -> list[set[PdbResult]]:
+def cluster_pdbs(pdbs: list[PdbResult]) -> tuple[list[list[PdbResult]], list[PdbResult]]:
     """Cluster PDB results by overlapping UniProt residue coverage.
 
     Results with valid chain length metadata are clustered by overlap. Results
-    with invalid chain length metadata are grouped together into an additional
-    cluster appended to the end of the result.
+    with invalid chain length metadata are returned separately.
 
     Args:
         pdbs: PDB results to cluster.
 
     Returns:
-        Ordered clusters of PDB results.
+        Tuple of ordered valid clusters and invalid PDB results.
     """
     if not pdbs:
-        return []
+        return [], []
 
     invalid_pdbs, valid_pdbs = _separate_valid_invalid_pdbs(pdbs)
-    clusters = _cluster_valid_pdbs(valid_pdbs)
-    if invalid_pdbs:
-        clusters.append(invalid_pdbs)
-    return clusters
+    valid_clusters = _cluster_valid_pdbs(valid_pdbs)
+    return valid_clusters, invalid_pdbs
+
+
+def filter_pdbs_on_clustered_resolution(pdbs: list[PdbResult], top: int) -> list[PdbResult]:
+    """Filter PDB results by resolution within clusters.
+
+    Clusters are formed by overlapping UniProt residue coverage. Within each
+    cluster, results are sorted by resolution and the top N results are
+    retained.
+
+    Args:
+        pdbs: PDB results to filter.
+        top: Number of top results to retain per cluster.
+
+    Returns:
+        Filtered list of PDB results.
+    """
+    if top <= 0:
+        msg = "Top must be a positive integer."
+        raise ValueError(msg)
+
+    valid_clusters, invalid_cluster = cluster_pdbs(pdbs)
+    filtered_pdbs: list[PdbResult] = []
+    cluster_id = 0
+    while len(filtered_pdbs) < top and any(valid_clusters):
+        members = valid_clusters[cluster_id]
+        if members:
+            filtered_pdbs.append(members.pop(0))
+        cluster_id += 1
+        if cluster_id >= len(valid_clusters):
+            cluster_id = 0
+    if invalid_cluster and len(filtered_pdbs) < top:
+        filtered_pdbs.extend(invalid_cluster[: top - len(filtered_pdbs)])
+
+    return filtered_pdbs

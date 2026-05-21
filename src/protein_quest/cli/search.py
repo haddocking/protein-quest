@@ -6,6 +6,7 @@ import csv
 import logging
 import os
 from collections.abc import Iterable, Mapping, Sequence
+import pdb
 from typing import Annotated, Any, Literal, cast
 
 from cyclopts import App, Parameter
@@ -26,6 +27,7 @@ from protein_quest.cli.common import (
 )
 from protein_quest.converter import converter
 from protein_quest.go import Aspect, GoTerm, search_gene_ontology_term
+from protein_quest.pdbe.clustering import filter_pdbs_on_clustered_resolution
 from protein_quest.pdbe.result import (
     PdbChainLengthError,
     PdbResults,
@@ -243,6 +245,7 @@ def pdbe(
     max_residues: MaxResidues | None = None,
     keep_invalid: Annotated[bool, Parameter(negative="")] = False,
     top_resolution_per_uniprot_accession: PositiveInt | None = None,
+    top_clustered_resolution_per_uniprot_accession: PositiveInt | None = None,
     _: Common | None = None,
 ) -> None:
     """Search for PDB structures of given UniProt accessions.
@@ -293,6 +296,11 @@ def pdbe(
             f"After filtering by resolution and keeping the best {top_resolution_per_uniprot_accession} PDB entries"
             f" for each UniProt accession, {total_pdbs} PDB entries remained "
         )
+    if top_clustered_resolution_per_uniprot_accession is not None:
+        for uniprot_accession, pdbs in results.items():
+            results[uniprot_accession] = set(
+                filter_pdbs_on_clustered_resolution(list(pdbs), top=top_clustered_resolution_per_uniprot_accession)
+            )
 
     _write_pdbe_csv(output_csv, results)
     rprint(f"Written to {output_csv}")
