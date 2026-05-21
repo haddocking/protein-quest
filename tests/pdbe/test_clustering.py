@@ -1,6 +1,6 @@
 import pytest
 
-from protein_quest.pdbe.clustering import cluster_pdbs, pdb_distance
+from protein_quest.pdbe.clustering import NO_OVERLAP_DISTANCE, cluster_pdbs, pdb_distance
 from protein_quest.pdbe.result import PdbResult
 
 
@@ -10,49 +10,15 @@ def make_pdb(pdb_id: str, uniprot_chains: str, resolution: float = 5.0) -> PdbRe
     )
 
 
-def case_three_domains() -> list[PdbResult]:
-    return [
-        make_pdb("1AAA", "A=1-250", 3.6),
-        make_pdb("2BBB", "A=1-250", 5.4),
-        make_pdb("3CCC", "A=1-250", 2.1),
-        make_pdb("4DDD", "A=300-400", 8.1),
-        make_pdb("5EEE", "A=300-400", 4.6),
-        make_pdb("6FFF", "A=500-1000", 1.3),
-        make_pdb("7GGG", "A=500-1000", 1.4),
-        make_pdb("8HHH", "A=500-1000", 1.6),
-    ]
-
-
-def case_nested_ranges() -> list[PdbResult]:
-    return [
-        make_pdb("1AAA", "A=1-250", 3.6),
-        make_pdb("2BBB", "A=2-249", 5.4),
-        make_pdb("3CCC", "A=3-248", 2.1),
-    ]
-
-
-def case_split_range_overlap() -> list[PdbResult]:
-    return [
-        make_pdb("1AAA", "A=1-250", 3.6),
-        make_pdb("2BBB", "A=1-250", 5.4),
-        make_pdb("3CCC", "A=1-54,A=90-250", 2.1),
-    ]
-
-
-def case_overlap_merges() -> list[PdbResult]:
-    # # Second example from https://github.com/haddocking/protein-quest/issues/102
-    return [
-        make_pdb("1AAA", "A=1-250", 3.6),
-        make_pdb("4DDD", "A=200-400", 8.1),
-        make_pdb("6FFF", "A=500-1000", 1.3),
-        make_pdb("9III", "A=1-600", 4.2),
-        make_pdb("10JJJ", "A=1-1000", 1.4),
-    ]
-
-
 @pytest.mark.parametrize(
     "a,b,expected",
     [
+        pytest.param(
+            make_pdb("1AAA", "A=1-1", 3.6),
+            make_pdb("2BBB", "A=1-1", 5.4),
+            1 / 1,
+            id="one_residue",
+        ),
         pytest.param(
             make_pdb("1AAA", "A=1-250", 3.6),
             make_pdb("2BBB", "A=1-250", 5.4),
@@ -68,7 +34,7 @@ def case_overlap_merges() -> list[PdbResult]:
         pytest.param(
             make_pdb("1AAA", "A=1-250", 3.6),
             make_pdb("4DDD", "A=300-400", 8.1),
-            float("+inf"),
+            NO_OVERLAP_DISTANCE,
             id="no_overlap",
         ),
     ],
@@ -95,12 +61,30 @@ def test_pdb_distance(a, b, expected):
             [{"1AAA", "2BBB", "3CCC"}],
             id="same_range_merges",
         ),
+        # First example from https://github.com/haddocking/protein-quest/issues/102
         pytest.param(
-            case_three_domains(),
+            [
+                make_pdb("1AAA", "A=1-250", 3.6),
+                make_pdb("2BBB", "A=1-250", 5.4),
+                make_pdb("3CCC", "A=1-250", 2.1),
+                make_pdb("4DDD", "A=300-400", 8.1),
+                make_pdb("5EEE", "A=300-400", 4.6),
+                make_pdb("6FFF", "A=500-1000", 1.3),
+                make_pdb("7GGG", "A=500-1000", 1.4),
+                make_pdb("8HHH", "A=500-1000", 1.6),
+            ],
             [{"1AAA", "2BBB", "3CCC"}, {"4DDD", "5EEE"}, {"6FFF", "7GGG", "8HHH"}],
             id="three_domains_split",
         ),
-        pytest.param(case_split_range_overlap(), [{"1AAA", "2BBB", "3CCC"}], id="split_range_merges"),
+        pytest.param(
+            [
+                make_pdb("1AAA", "A=1-250", 3.6),
+                make_pdb("2BBB", "A=1-250", 5.4),
+                make_pdb("3CCC", "A=1-54,A=90-250", 2.1),
+            ],
+            [{"1AAA", "2BBB", "3CCC"}],
+            id="split_range_merges",
+        ),
         pytest.param(
             [
                 make_pdb("1BAD", "A=-", 1.0),
@@ -142,9 +126,28 @@ def test_pdb_distance(a, b, expected):
             [{"1AAA", "2BBB"}, {"3CCC"}],
             id="complete_linkage_bridge_splits",
         ),
-        pytest.param(case_nested_ranges(), [{"1AAA", "2BBB", "3CCC"}], id="nested_ranges_merge"),
-        # TODO check clusters of case_overlap are correct
-        pytest.param(case_overlap_merges(), [{"1AAA", "4DDD", "9III", "10JJJ"}, {"6FFF"}], id="overlap_merges"),
+        pytest.param(
+            [
+                make_pdb("1AAA", "A=1-250", 3.6),
+                make_pdb("2BBB", "A=2-249", 5.4),
+                make_pdb("3CCC", "A=3-248", 2.1),
+            ],
+            [{"1AAA", "2BBB", "3CCC"}],
+            id="nested_ranges_merge",
+        ),
+        # Second example from https://github.com/haddocking/protein-quest/issues/102
+        # TODO are expected clusters what we want?
+        pytest.param(
+            [
+                make_pdb("1AAA", "A=1-250", 3.6),
+                make_pdb("4DDD", "A=200-400", 8.1),
+                make_pdb("6FFF", "A=500-1000", 1.3),
+                make_pdb("9III", "A=1-600", 4.2),
+                make_pdb("10JJJ", "A=1-1000", 1.4),
+            ],
+            [{"1AAA", "4DDD", "9III", "10JJJ"}, {"6FFF"}],
+            id="overlap_merges",
+        ),
     ],
 )
 def test_cluster_pdbs(pdbs, expected_member_ids):
