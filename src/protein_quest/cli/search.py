@@ -6,7 +6,6 @@ import csv
 import logging
 import os
 from collections.abc import Iterable, Mapping, Sequence
-import pdb
 from typing import Annotated, Any, Literal, cast
 
 from cyclopts import App, Parameter
@@ -270,6 +269,8 @@ def pdbe(
             ranked by best (lowest) resolution first, then by highest residue count.
             For example use `--top-resolution-per-uniprot-accession 3` to keep
             only the best 3 PDB entries per UniProt accession.
+        top_clustered_resolution_per_uniprot_accession: Retain the top N PDB entries per UniProt accession,
+            Uses clustering to give better coverage.
         _: Common CLI options.
     """
     accs = set(_read_lines(uniprot_accessions))
