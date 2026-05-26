@@ -275,6 +275,44 @@ def test_search_structure_all_sources(tmp_path: Path, capsys: pytest.CaptureFixt
     assert "Found 5 structures, written to" in captured.err
 
 
+@pytest.mark.default_cassette("test_search_structure_all_sources.yaml")
+@pytest.mark.vcr
+def test_search_structure_top_clustered_resolution(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    """Test search structure with --top-clustered-resolution-per-uniprot-accession.
+
+    The cassette returns two PDBe overviews for Q9NTW7 (2dmd: residues 174-254, seq_identity 100;
+    1x5w: residues 493-548, seq_identity 73). They do not overlap so each forms its own cluster.
+    With top=1, only the cluster whose best member has the largest chain_length is kept (2dmd).
+    Non-PDBe providers (SWISS-MODEL, AlphaFold DB, AlphaFill, isoform.io) are passed through.
+    """
+    input_text = tmp_path / "uniprot_accessions.txt"
+    input_text.write_text("Q9NTW7\n")
+    output_file = tmp_path / "structure_results.csv"
+    argv = [
+        "search",
+        "structure",
+        "--limit",
+        "100",
+        "--source",
+        "all",
+        "--top-clustered-resolution-per-uniprot-accession",
+        "1",
+        str(input_text),
+        str(output_file),
+    ]
+
+    main(argv)
+
+    output_content = output_file.read_text()
+    lines = output_content.strip().splitlines()
+    pdbe_lines = [line for line in lines if ",pdbe," in line]
+    assert len(pdbe_lines) == 1
+    assert ",2dmd," in pdbe_lines[0]
+    # Non-PDBe providers should not be reduced by this flag.
+    assert any(",alphafold," in line for line in lines)
+    assert any(",swissmodel," in line for line in lines)
+
+
 @pytest.mark.vcr
 def test_search_emdb(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     """Test search emdb command."""

@@ -75,6 +75,15 @@ class PdbResult:
             # If chain length cannot be determined, we cannot calculate sequence identity, return 0.0
             return 0.0
 
+    @cached_property
+    def resolution_value(self) -> float:
+        """Resolution as a float for ordering.
+
+        Missing or non-numeric resolutions become ``0.0`` so they rank as
+        undesirable by resolution-based sorting.
+        """
+        return _resolution_value(self.resolution)
+
 
 type PdbResults = dict[str, set[PdbResult]]
 """Dictionary with uniprot accessions as keys and sets of PDB results as values."""

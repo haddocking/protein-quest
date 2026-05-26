@@ -33,6 +33,7 @@ from protein_quest.pdbe.result import (
     filter_pdb_results_on_chain_length,
     filter_pdb_results_on_resolution,
 )
+from protein_quest.pdbe_3dbeacons.clustering import cluster_overviews_per_uniprot
 from protein_quest.pdbe_3dbeacons.model import Provider, search_structure_provider_choices
 from protein_quest.pdbe_3dbeacons.search import PruneOptions, flatten_structure_summaries, uniprots2structures
 from protein_quest.taxonomy import SearchField, Taxon, search_taxon
@@ -273,7 +274,7 @@ def pdbe(
             Uses clustering to give better coverage.
 
             See
-            [clustering documentation](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/pdbe/clustering.html#protein_quest.pdbe.clustering.sort_pdbs)
+            [clustering documentation](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/clustering.html#protein_quest.pdbe.clustering.filter_pdbs_on_clustered_resolution)
             for details on the clustering and ordering criteria.
         _: Common CLI options.
     """
@@ -366,6 +367,7 @@ def structure(
     limit: Limit = 10_000,
     timeout: Timeout = 1_800,
     raw: OutputFile | None = None,
+    top_clustered_resolution_per_uniprot_accession: PositiveInt | None = None,
     _: Common | None = None,
 ) -> None:
     """Search for experimentally determined and predicted structures.
@@ -386,6 +388,13 @@ def structure(
         limit: Maximum number of structures per uniprot accession per source to return.
         timeout: Maximum seconds to wait for query to complete.
         raw: Path to write raw 3D beacon summaries as JSON.
+        top_clustered_resolution_per_uniprot_accession: Retain the top N PDBe entries per UniProt accession,
+            Uses clustering to give better coverage.
+            Non-PDBe structures (e.g. AlphaFold, SWISS-MODEL) are left unchanged.
+
+            See
+            [clustering documentation](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/pdbe_3dbeacons/clustering.html#protein_quest.pdbe_3dbeacons.clustering.cluster_overviews_per_uniprot)
+            for details on the clustering and ordering criteria.
         _: Common CLI options.
     """
     nsource: set[Provider]
@@ -417,6 +426,9 @@ def structure(
     if raw:
         raw.write_bytes(converter.dumps(results))
         rprint(f"Written raw results to {raw}")
+
+    if top_clustered_resolution_per_uniprot_accession is not None:
+        results = cluster_overviews_per_uniprot(results, top=top_clustered_resolution_per_uniprot_accession)
 
     rows = flatten_structure_summaries(results)
     if not rows:

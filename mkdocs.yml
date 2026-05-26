@@ -51,6 +51,7 @@ plugins:
             - https://distributed.dask.org/en/latest/objects.inv
             - https://yarl.aio-libs.org/en/latest/objects.inv
             - https://cyclopts.readthedocs.io/en/latest/objects.inv
+            - https://docs.scipy.org/doc/scipy/reference/objects.inv
           options:
             docstring_style: google
             show_source: false
