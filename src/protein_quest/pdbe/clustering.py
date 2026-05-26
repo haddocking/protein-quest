@@ -6,9 +6,13 @@ Attributes:
     MIN_OVERLAP_RESIDUES: Minimum required overlap size for assigning entries to the same cluster.
 """
 
+import logging
+
 from scipy.cluster.hierarchy import fcluster, linkage
 
 from protein_quest.pdbe.result import PdbChainLengthError, PdbResult
+
+logger = logging.getLogger(__name__)
 
 MIN_OVERLAP_RESIDUES = 1
 CLUSTER_DISTANCE_THRESHOLD = 1 / MIN_OVERLAP_RESIDUES
@@ -73,7 +77,7 @@ def _cluster_sort_key(cluster: set[PdbResult]) -> tuple[int, int, int, str]:
     return (-max_chain_length, start, end, pdb_id)
 
 
-def _pdb_sort_key(member: PdbResult) -> tuple[float, str | None, int, str]:
+def _cluster_member_sort_key(member: PdbResult) -> tuple[float, str | None, int, str]:
     """Return deterministic quality sort key for a cluster member.
 
     See [sort_pdbs][protein_quest.pdbe.clustering.sort_pdbs] for sort criteria.
@@ -101,22 +105,38 @@ def sort_pdbs(pdbs: set[PdbResult]) -> list[PdbResult]:
 
     Args:
         pdbs: PDB results to sort.
+
     Returns:
         PDB results sorted by quality criteria.
     """
     return sorted(
         pdbs,
-        key=_pdb_sort_key,
+        key=_cluster_member_sort_key,
     )
 
 
-def _cluster_many_valid_pdbs(valid_pdbs: list[PdbResult]) -> list[list]:
-    condensed_distances: list[float] = []
-    for index, left in enumerate(valid_pdbs[:-1]):
-        condensed_distances.extend(pdb_distance(left, right) for right in valid_pdbs[index + 1 :])
+def pdb_distances(pdbs: list[PdbResult]) -> list[float]:
+    """Compute pairwise distances between PDB results.
 
+    Args:
+        pdbs: PDB results to compute distances for.
+
+    Returns:
+        Condensed distance matrix (upper triangle) of pairwise distances.
+    """
+    condensed_distances: list[float] = []
+    for index, left in enumerate(pdbs[:-1]):
+        condensed_distances.extend(pdb_distance(left, right) for right in pdbs[index + 1 :])
+    return condensed_distances
+
+
+def _cluster_many_valid_pdbs(valid_pdbs: list[PdbResult]) -> list[list[PdbResult]]:
+    condensed_distances = pdb_distances(valid_pdbs)
     linkage_matrix = linkage(condensed_distances, method="complete")
     cluster_ids = fcluster(linkage_matrix, t=CLUSTER_DISTANCE_THRESHOLD, criterion="distance")
+
+    logger.info("Formed %d clusters from %d PDBs with valid range(s)", len(set(cluster_ids)), len(valid_pdbs))
+
     clusters_by_id: dict[int, set[PdbResult]] = {}
     for pdb, cluster_id in zip(valid_pdbs, cluster_ids, strict=True):
         clusters_by_id.setdefault(int(cluster_id), set()).add(pdb)
@@ -177,9 +197,20 @@ def cluster_pdbs(pdbs: list[PdbResult]) -> tuple[list[list[PdbResult]], list[Pdb
 def filter_pdbs_on_clustered_resolution(pdbs: list[PdbResult], top: int) -> list[PdbResult]:
     """Filter PDB results by resolution within clusters.
 
-    Clusters are formed by overlapping UniProt residue coverage. Within each
-    cluster, results are sorted by resolution and the top N results are
-    retained.
+    Clusters are formed by distances between PDB results based on
+    Jaccard-like distance between two PDB residue ranges,
+    see [pdb_distance][protein_quest.pdbe.clustering.pdb_distance].
+
+    The clustering is done by complete-linkage hierarchical clustering
+    followed by flat clustering using a distance criterion.
+
+    The cluster members are sorted by [sort_pdbs][protein_quest.pdbe.clustering.sort_pdbs].
+
+    The clusters are sorted by chain length, then by start and end residue, and then by PDB ID.
+
+    The clusters are flattend to the returned list by taking the best of each cluster until clusters are exhausted.
+
+    PDB results with invalid residue range (for example `A=-`) are always placed at the end of the returned list.
 
     Args:
         pdbs: PDB results to filter.

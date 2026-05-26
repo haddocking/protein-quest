@@ -271,6 +271,10 @@ def pdbe(
             only the best 3 PDB entries per UniProt accession.
         top_clustered_resolution_per_uniprot_accession: Retain the top N PDB entries per UniProt accession,
             Uses clustering to give better coverage.
+
+            See
+            [clustering documentation](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/pdbe/clustering.html#protein_quest.pdbe.clustering.sort_pdbs)
+            for details on the clustering and ordering criteria.
         _: Common CLI options.
     """
     accs = set(_read_lines(uniprot_accessions))
