@@ -5,6 +5,7 @@ from protein_quest.pdbe.clustering import (
     cluster_pdbs,
     filter_pdbs_on_clustered_resolution,
     pdb_distance,
+    pdb_union,
     sort_pdbs,
 )
 from protein_quest.pdbe.result import PdbResult
@@ -22,20 +23,20 @@ def make_pdb(pdb_id: str, uniprot_chains: str, resolution: float = 5.0) -> PdbRe
         pytest.param(
             make_pdb("1AAA", "A=1-1", 3.6),
             make_pdb("2BBB", "A=1-1", 5.4),
-            1 / 1,
-            id="one_residue",
+            0.0,
+            id="one_residue_identical",
         ),
         pytest.param(
             make_pdb("1AAA", "A=1-250", 3.6),
             make_pdb("2BBB", "A=1-250", 5.4),
-            1 / 250,
+            0.0,
             id="identical_ranges",
         ),
         pytest.param(
             make_pdb("1AAA", "A=1-250", 3.6),
             make_pdb("3CCC", "A=1-54", 2.1),
-            1 / 54,
-            id="partial_overlap",
+            1 - 54 / 250,
+            id="partial_overlap_subset",
         ),
         pytest.param(
             make_pdb("1AAA", "A=1-250", 3.6),
@@ -43,10 +44,61 @@ def make_pdb(pdb_id: str, uniprot_chains: str, resolution: float = 5.0) -> PdbRe
             NO_OVERLAP_DISTANCE,
             id="no_overlap",
         ),
+        pytest.param(
+            make_pdb("1AAA", "A=50-100", 3.6),
+            make_pdb("3CCC", "A=1-100", 2.1),
+            1 - 51 / 100,
+            id="subset_overlap",
+        ),
+        pytest.param(
+            make_pdb("1AAA", "A=50-100", 3.6),
+            make_pdb("4DDD", "A=50-120", 8.1),
+            1 - 51 / 71,
+            id="partial_overlap",
+        ),
     ],
 )
 def test_pdb_distance(a, b, expected):
     assert pdb_distance(a, b) == expected
+
+
+@pytest.mark.parametrize(
+    "a,b,expected",
+    [
+        pytest.param(
+            make_pdb("1AAA", "A=1-1", 3.6),
+            make_pdb("2BBB", "A=1-1", 5.4),
+            1,
+            id="union_one_residue",
+        ),
+        pytest.param(
+            make_pdb("1AAA", "A=1-250", 3.6),
+            make_pdb("2BBB", "A=1-250", 5.4),
+            250,
+            id="union_identical_ranges",
+        ),
+        pytest.param(
+            make_pdb("1AAA", "A=1-250", 3.6),
+            make_pdb("3CCC", "A=1-54", 2.1),
+            250,
+            id="union_subset",
+        ),
+        pytest.param(
+            make_pdb("1AAA", "A=1-100", 3.6),
+            make_pdb("2BBB", "A=50-150", 5.4),
+            150,
+            id="union_partial_overlap",
+        ),
+        pytest.param(
+            make_pdb("1AAA", "A=1-100", 3.6),
+            make_pdb("2BBB", "A=300-400", 5.4),
+            201,
+            id="union_no_overlap",
+        ),
+    ],
+)
+def test_pdb_union(a, b, expected):
+    assert pdb_union(a, b) == expected
 
 
 @pytest.mark.parametrize(

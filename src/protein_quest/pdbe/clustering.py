@@ -30,25 +30,40 @@ def pdb_overlap(a: PdbResult, b: PdbResult) -> int:
     return len(a_range.intersection(b_range))
 
 
-def pdb_distance(a: PdbResult, b: PdbResult) -> float:
-    """Compute inverse overlap distance between two PDB residue ranges.
-
-    The distance is defined as the reciprocal of the number of overlapping
-    UniProt residues.
+def pdb_union(a: PdbResult, b: PdbResult) -> int:
+    """Compute the number of unique UniProt residues in the union of two PDB residue ranges.
 
     Args:
         a: First PDB result.
         b: Second PDB result.
 
     Returns:
-        Inverse overlap distance between the two residue ranges.
+        Number of unique UniProt residues in the union of the two residue ranges.
+    """
+    a_range = set(range(a.uniprot_start, a.uniprot_end + 1))
+    b_range = set(range(b.uniprot_start, b.uniprot_end + 1))
+    return len(a_range.union(b_range))
+
+
+def pdb_distance(a: PdbResult, b: PdbResult) -> float:
+    """Compute Jaccard-like distance between two PDB residue ranges.
+
+    The distance is defined as 1 - (overlap / union), which is the Jaccard distance.
+
+    Args:
+        a: First PDB result.
+        b: Second PDB result.
+
+    Returns:
+        Jaccard distance between the two residue ranges (0.0 for identical ranges).
         Non-overlapping ranges return NO_OVERLAP_DISTANCE sentinel value.
     """
     overlap = pdb_overlap(a, b)
     if overlap == 0:
         return NO_OVERLAP_DISTANCE
 
-    return 1 / overlap
+    union = pdb_union(a, b)
+    return 1 - (overlap / union)
 
 
 def _cluster_sort_key(cluster: set[PdbResult]) -> tuple[int, int, int, str]:
@@ -61,7 +76,7 @@ def _cluster_sort_key(cluster: set[PdbResult]) -> tuple[int, int, int, str]:
 def _pdb_sort_key(member: PdbResult) -> tuple[float, str | None, int, str]:
     """Return deterministic quality sort key for a cluster member.
 
-    See for [sort_cluster_members][protein_quest.pdbe.clustering.sort_cluster_members] for sort criteria.
+    See [sort_pdbs][protein_quest.pdbe.clustering.sort_pdbs] for sort criteria.
     """
     try:
         chain_length = member.chain_length
