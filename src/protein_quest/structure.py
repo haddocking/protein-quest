@@ -162,7 +162,7 @@ def chains_in_structure(structure: gemmi.Structure) -> set[gemmi.Chain]:
 class ChainNotFoundError(IndexError):
     """Exception raised when a chain is not found in a structure."""
 
-    def __init__(self, chain_id: str, file: Path | str, available_chains: set[str]):
+    def __init__(self, chain_id: str, file: Path | str | None, available_chains: set[str]):
         super().__init__(f"Chain {chain_id} not found in {file}. Available chains are: {available_chains}")
         self.available_chains = available_chains
         self.chain_id = chain_id
@@ -286,6 +286,9 @@ def structure2uniprot_accessions(structure: gemmi.Structure) -> set[str]:
     block = structure.make_mmcif_block(gemmi.MmcifOutputGroups(False, struct_ref=True))
     struct_ref = block.get_mmcif_category("_struct_ref.")
     uniprot_accessions: set[str] = set()
+    if not struct_ref:
+        logger.warning("No UniProt accessions found in structure %s", structure.name)
+        return uniprot_accessions
     for i, db_name in enumerate(struct_ref["db_name"]):
         if db_name != "UNP":
             continue
@@ -310,3 +313,67 @@ def nr_of_residues_in_total(structure: Structure) -> int:
         for chain in model:
             count += len(chain)
     return count
+
+
+@dataclass(frozen=True, eq=False)
+class GemmiClusterEntry:
+    """Wrapper for Gemmi structure that exposes the
+    [ClusterableStructure][protein_quest.clustering.ClusterableStructure] protocol.
+    """
+
+    structure: gemmi.Structure
+    id: str
+    uniprot_accession: str
+    uniprot_start: int
+    uniprot_end: int
+    resolution_value: float
+    sequence_identity: float
+    chain_length: int
+    path: Path | None
+
+    @classmethod
+    def from_path(cls, path: Path) -> "GemmiClusterEntry":
+        structure = read_structure(path)
+
+        return cls.from_gemmi_structure(structure, path)
+
+    @classmethod
+    def from_gemmi_structure(cls, structure: gemmi.Structure, path: Path | None = None) -> "GemmiClusterEntry":
+        uniprot_accessions = structure2uniprot_accessions(structure)
+
+        block = structure.make_mmcif_block(gemmi.MmcifOutputGroups(False, struct_ref=True))
+        struct_ref_seqs_columns = block.get_mmcif_category("_struct_ref_seq.")
+        # Convert columns `{a:[v]}` to rows `[{a:v}]`
+        struct_ref_seqs_rows = [
+            dict(zip(struct_ref_seqs_columns.keys(), vals, strict=False))
+            for vals in zip(*struct_ref_seqs_columns.values(), strict=False)
+        ]
+        for struct_ref_seq in struct_ref_seqs_rows:
+            if struct_ref_seq["pdbx_db_accession"] in uniprot_accessions:
+                selected_struct_ref_seq = struct_ref_seq
+                break
+        else:
+            msg = f"No struct_ref_seq entry with uniprot accession found in {structure.name}"
+            raise ValueError(msg)
+
+        uniprot_accession = selected_struct_ref_seq["pdbx_db_accession"]
+        uniprot_start = int(selected_struct_ref_seq["db_align_beg"])
+        uniprot_end = int(selected_struct_ref_seq["db_align_end"])
+        chain_id = selected_struct_ref_seq["pdbx_strand_id"]
+        chain = find_chain_in_structure(structure, chain_id)
+        if chain is None:
+            raise ChainNotFoundError(chain_id, path, {c.name for c in chains_in_structure(structure)})
+        chain_length = len(chain)
+        sequence_identity = chain_length / (uniprot_end - uniprot_start + 1)
+
+        return cls(
+            structure=structure,
+            uniprot_accession=uniprot_accession,
+            id=structure.name,
+            resolution_value=structure.resolution,
+            sequence_identity=sequence_identity,
+            chain_length=chain_length,
+            uniprot_start=uniprot_start,
+            uniprot_end=uniprot_end,
+            path=path,
+        )
