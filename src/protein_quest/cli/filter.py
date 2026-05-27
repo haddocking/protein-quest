@@ -4,9 +4,8 @@ import csv
 import os
 from typing import TYPE_CHECKING, Annotated
 
-from cyclopts import App, Group, Parameter
+from cyclopts import App, Parameter
 from cyclopts.types import PositiveInt
-from cyclopts.validators import mutually_exclusive
 from rich.panel import Panel
 
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
@@ -24,7 +23,7 @@ from protein_quest.cli.common import (
 )
 from protein_quest.filters.chain import filter_files_on_chain
 from protein_quest.filters.residues import filter_files_on_residues
-from protein_quest.filters.resolution import GroupBy, ResolutionFilterStatistics, filter_files_on_resolution
+from protein_quest.filters.resolution import ResolutionFilterStatistics, filter_files_on_resolution
 from protein_quest.filters.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
 from protein_quest.io import (
     glob_structure_files,
@@ -225,9 +224,6 @@ def residue(
         rprint(f"Statistics written to {write_stats}")
 
 
-_GROUP_BY = Group(show=False, validator=mutually_exclusive)
-
-
 def _resolution_stats_header() -> str:
     return (
         "input_file,id,uniprot_accession,resolution,total_residue_count,is_alphafold,"
@@ -244,10 +240,10 @@ def _resolution_stats_row(result: ResolutionFilterStatistics) -> str:
     )
 
 
-def _resolution_progress_message(nr_total: int, input_dir: "Path", group_by: GroupBy) -> str:
-    if group_by is None:
+def _resolution_progress_message(nr_total: int, input_dir: "Path", group_by: bool) -> str:
+    if not group_by:
         return f"Filtering {nr_total} files in {input_dir} directory by global resolution ranking (no grouping)."
-    return f"Filtering {nr_total} files in {input_dir} directory by resolution grouped by {group_by}."
+    return f"Filtering {nr_total} files in {input_dir} directory by resolution grouped by uniprot accession."
 
 
 @filter_app.command
@@ -256,8 +252,7 @@ def resolution(
     output_dir: OutputDir,
     /,
     *,
-    group_by: Annotated[GroupBy, Parameter(group=_GROUP_BY)] = "uniprot_accession",
-    no_group_by: Annotated[bool, Parameter(name="--no-group-by", negative="", group=_GROUP_BY)] = False,
+    no_group_by: Annotated[bool, Parameter(name="--no-group-by", negative="")] = False,
     top: PositiveInt = 1_000,
     no_coverage: Annotated[bool, Parameter(negative="")] = False,
     write_stats: OutputFile | None = None,
@@ -274,11 +269,7 @@ def resolution(
     Args:
         input_dir: Directory structure files.
         output_dir: Directory to write the selected structure files.
-        group_by: Pass top-N structures with best resolution per uniprot accession.
-            Structures without uniprot accession are never passed.
-            Mutually exclusive with ``no_group_by``.
         no_group_by: Disable grouping and use global top-N ranking across all files.
-            Mutually exclusive with ``group_by``.
         top: Maximum number of files to keep.
         no_coverage: If not set, will take top by first grouping by uniprot accession
             and then clustering files by their coverage and then take the top.
@@ -293,10 +284,8 @@ def resolution(
         cache: Cache options
         _: Common CLI options.
     """
-    if no_group_by:
-        group_by = None
-
     coverage = not no_coverage
+    group_by = not no_group_by
     output_dir.mkdir(parents=True, exist_ok=True)
     cache = cache or CacheParameter()
 

@@ -182,7 +182,7 @@ def test_filter_files_on_resolution_no_uniprot_can_pass_when_grouping_disabled(s
     no_uniprot.write_bytes(gzip.compress(text.replace("UNP", "XXX").encode("utf-8")))
 
     output_dir = tmp_path / "output"
-    results = list(filter_files_on_resolution(input_files=[no_uniprot], output_dir=output_dir, top=1, group_by=None))
+    results = list(filter_files_on_resolution(input_files=[no_uniprot], output_dir=output_dir, top=1, group_by=False))
 
     expected = ResolutionFilterStatistics(
         id="2Y29",
@@ -213,7 +213,7 @@ class TestGroupResolutionStatistics:
         c1 = _make_stats("c1.cif.gz", None, resolution=0.5)
         c2 = _make_stats("c2.cif.gz", None, resolution=0.1)
 
-        results = group_resolution_statistics([a2, a1, b2, b1, c1, c2], top=1, group_by="uniprot_accession")
+        results = group_resolution_statistics([a2, a1, b2, b1, c1, c2], top=1, group_by=True)
 
         expected = [
             replace(a1, passed=True),
@@ -231,7 +231,7 @@ class TestGroupResolutionStatistics:
         second = _make_stats("b.cif.gz", "P22222", resolution=1.5)
         third = _make_stats("c.cif.gz", "P33333", resolution=2.0)
 
-        results = group_resolution_statistics([third, best, second], top=1, group_by=None)
+        results = group_resolution_statistics([third, best, second], top=1, group_by=False)
 
         expected = [
             replace(best, passed=True),
@@ -283,7 +283,7 @@ class TestGroupResolutionStatistics:
         second = _make_stats("b.cif.gz", "P22222", resolution=1.5)
         third = _make_stats("c.cif.gz", "P33333", resolution=2.0)
 
-        results = group_resolution_statistics([third, best, second], top=1, group_by=None)
+        results = group_resolution_statistics([third, best, second], top=1, group_by=False)
 
         passed_names = {r.input_file.name for r in results if r.passed}
         assert passed_names == {"a.cif.gz"}
@@ -294,7 +294,7 @@ class TestGroupResolutionStatistics:
         no_acc = _make_stats("z.cif.gz", None, resolution=1.0)
 
         with caplog.at_level(logging.WARNING):
-            results = group_resolution_statistics([with_acc, no_acc], top=1, group_by=None)
+            results = group_resolution_statistics([with_acc, no_acc], top=1, group_by=False)
 
         assert all("No UniProt accession found" not in record.message for record in caplog.records)
         passed_names = {r.input_file.name for r in results if r.passed}
@@ -340,7 +340,7 @@ class TestCoverageGroupResolutionStatistics:
             uniprot_end=30,
         )
 
-        results = coverage_group_resolution_statistics([p2b, p1b, p2a, p1a], top=2, group_by=None)
+        results = coverage_group_resolution_statistics([p2b, p1b, p2a, p1a], top=2, group_by=False)
 
         assert [r.input_file.name for r in results] == ["p1a.cif.gz", "p2a.cif.gz", "p1b.cif.gz", "p2b.cif.gz"]
         assert {r.input_file.name for r in results if r.passed} == {"p1a.cif.gz", "p2a.cif.gz"}

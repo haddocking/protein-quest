@@ -4,7 +4,6 @@ import logging
 from collections.abc import Generator, Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
 
 from tqdm.auto import tqdm
 
@@ -13,9 +12,6 @@ from protein_quest.structure import StructureMetadata
 from protein_quest.utils import CopyMethod, copyfile
 
 logger = logging.getLogger(__name__)
-
-GroupBy = Literal["uniprot_accession"] | None
-"""Type for grouping strategy in resolution-based filtering."""
 
 
 @dataclass
@@ -108,13 +104,13 @@ def iter_resolution_statistics(
 def group_resolution_statistics(
     stats: Iterable[ResolutionFilterStatistics],
     top: int,
-    group_by: GroupBy = "uniprot_accession",
+    group_by: bool = True,
 ) -> list[ResolutionFilterStatistics]:
     """Rank stats by resolution and mark the top N as passed.
 
-    In ``group_by='uniprot_accession'`` mode, files with no UniProt accession
-    are skipped with a warning and appended last. In ``group_by=None`` mode,
-    all files are ranked globally and no missing-accession warnings are emitted.
+    In grouped mode, files with no UniProt accession are skipped with a warning
+    and appended last. In ungrouped mode, all files are ranked globally and no
+    missing-accession warnings are emitted.
 
     AlphaFold structures are preferred over non-AlphaFold.
     Structures with lower resolution are preferred.
@@ -124,15 +120,14 @@ def group_resolution_statistics(
     Args:
         stats: Resolution statistics to group and rank.
         top: Maximum number of structures to pass.
-        group_by: Ranking strategy. ``uniprot_accession`` applies top-N per
-            accession. Structures without uniprot accession are never passed.
-            ``None`` applies top-N globally.
+        group_by: ``True`` applies top-N per uniprot accession. Structures without
+            uniprot accession are never passed. ``False`` applies top-N globally.
 
     Returns:
         All statistics with ``passed`` updated; skipped entries appended last.
         The entries are sorted alphabetically by filename.
     """
-    if group_by is None:
+    if not group_by:
         ranked = sorted(stats, key=resolution_sort_key)
         for result in ranked[:top]:
             result.passed = True
@@ -182,7 +177,7 @@ def _cluster_resolution_bucket(results: list[ResolutionFilterStatistics]) -> lis
 def coverage_group_resolution_statistics(
     stats: Iterable[ResolutionFilterStatistics],
     top: int,
-    group_by: GroupBy,
+    group_by: bool,
 ) -> list[ResolutionFilterStatistics]:
     """Cluster resolution stats by UniProt coverage and mark the best members as passed.
 
@@ -191,16 +186,16 @@ def coverage_group_resolution_statistics(
     [sort_structures][protein_quest.clustering.sort_structures] and the best
     entries are selected in round-robin order.
 
-    When ``group_by`` is ``None``, the clustered groups are interleaved globally
-    and the first ``top`` results are marked as passed. Otherwise, the top
-    ``top`` members of each grouped cluster are marked as passed and all results
-    are returned in deterministic order.
+    When ``group_by`` is ``False``, the clustered groups are interleaved
+    globally and the first ``top`` results are marked as passed. Otherwise, the
+    top ``top`` members of each grouped cluster are marked as passed and all
+    results are returned in deterministic order.
 
     Args:
         stats: Resolution statistics to cluster and rank.
         top: Maximum number of entries to mark as passed.
-        group_by: Ranking strategy. ``None`` interleaves all clustered groups
-            globally; ``uniprot_accession`` keeps groups separate.
+        group_by: ``False`` interleaves all clustered groups globally;
+            ``True`` keeps groups separate.
 
     Returns:
         Clustered resolution statistics with ``passed`` updated.
@@ -218,7 +213,7 @@ def coverage_group_resolution_statistics(
     ordered_groups = sorted(accessioned_groups, key=_coverage_bucket_sort_key)
     ordered_groups.extend(sorted(accessionless_groups, key=_coverage_bucket_sort_key_for_accessionless))
 
-    if group_by is None:
+    if not group_by:
         flattened = list(interleave_longest(*ordered_groups))
         for result in flattened[:top]:
             result.passed = True
@@ -260,7 +255,7 @@ def filter_files_on_resolution(
     output_dir: Path,
     top: int,
     coverage: bool = False,
-    group_by: GroupBy = "uniprot_accession",
+    group_by: bool = True,
     copy_method: CopyMethod = "copy",
 ) -> Generator[ResolutionFilterStatistics]:
     """Filter structure files by resolution rank.
@@ -276,9 +271,8 @@ def filter_files_on_resolution(
         top: Maximum number of files to keep.
         coverage: Whether to cluster by coverage.
             See [cluster_structures][protein_quest.clustering.cluster_structures].
-        group_by: Ranking strategy. ``uniprot_accession`` applies top-N per
-            accession. Structures without uniprot accession are never passed.
-            ``None`` applies top-N globally.
+        group_by: ``True`` applies top-N per accession. Structures without
+            uniprot accession are never passed. ``False`` applies top-N globally.
         copy_method: How to copy passed files to output directory.
 
     Yields:

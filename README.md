@@ -220,7 +220,6 @@ protein-quest filter residue  \
 
 ```shell
 protein-quest filter resolution \
-  --group-by uniprot_accession \
   --top 3 \
   ./filtered-chains ./filtered-resolution
 ```
