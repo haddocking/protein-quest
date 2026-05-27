@@ -261,6 +261,7 @@ def resolution(
     group_by: Annotated[GroupBy, Parameter(group=_GROUP_BY)] = "uniprot_accession",
     no_group_by: Annotated[bool, Parameter(name="--no-group-by", negative="", group=_GROUP_BY)] = False,
     top: PositiveInt = 1_000,
+    no_coverage: Annotated[bool, Parameter(negative="")] = False,
     write_stats: OutputFile | None = None,
     cache: CacheParameter | None = None,
     _: Common | None = None,
@@ -281,6 +282,12 @@ def resolution(
         no_group_by: Disable grouping and use global top-N ranking across all files.
             Mutually exclusive with ``group_by``.
         top: Maximum number of files to keep.
+        no_coverage: If not set, will take top by first grouping by uniprot accession
+            and then clustering files by their coverage and then take the top.
+
+            See
+            [clustering documentation](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/clustering.html#protein_quest.pdbe.clustering.filter_pdbs_on_clustered_resolution)
+            for details on the clustering and ordering criteria.
         write_stats: Write filter statistics to file.
             In CSV format. For ``--group-by=uniprot_accession`` columns are:
             `<input_file>,<uniprot_accession>,<resolution>,<total_residue_count>,<is_alphafold>,<passed>,<output_file>`.
@@ -293,6 +300,7 @@ def resolution(
     if no_group_by:
         group_by = None
 
+    coverage = not no_coverage
     output_dir.mkdir(parents=True, exist_ok=True)
     cache = cache or CacheParameter()
 
@@ -309,6 +317,7 @@ def resolution(
         input_files,
         output_dir,
         top=top,
+        coverage=coverage,
         group_by=group_by,
         copy_method=cache.copy_method,
     ):

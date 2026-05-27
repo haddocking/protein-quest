@@ -163,6 +163,7 @@ def filter_files_on_resolution(
     input_files: list[Path],
     output_dir: Path,
     top: int,
+    coverage: bool = False,
     group_by: GroupBy = "uniprot_accession",
     copy_method: CopyMethod = "copy",
 ) -> Generator[ResolutionFilterStatistics]:
@@ -177,6 +178,8 @@ def filter_files_on_resolution(
         input_files: Structure files to rank and filter.
         output_dir: Directory where passed files will be written.
         top: Maximum number of files to keep.
+        coverage: Whether to cluster by coverage. 
+            See [cluster_structures][protein_quest.clustering.cluster_structures].
         group_by: Ranking strategy. ``uniprot_accession`` applies top-N per
             accession. Structures without uniprot accession are never passed.
             ``None`` applies top-N globally.
