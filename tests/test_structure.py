@@ -300,3 +300,61 @@ def test_structure_metadata_without_uniprot():
         chain_length=0,
     )
     assert_structure_metadata(result, expected)
+
+
+# TODO remove once seqeunce identity is calculated in structure_metadata correctly
+def test_sequence_identity_with_gaps():
+    # The 6O5I structure has
+    # loop_
+    # _struct_ref_seq.align_id
+    # _struct_ref_seq.ref_id
+    # _struct_ref_seq.pdbx_PDB_id_code
+    # _struct_ref_seq.pdbx_strand_id
+    # _struct_ref_seq.seq_align_beg
+    # _struct_ref_seq.pdbx_seq_align_beg_ins_code
+    # _struct_ref_seq.seq_align_end
+    # _struct_ref_seq.pdbx_seq_align_end_ins_code
+    # _struct_ref_seq.pdbx_db_accession
+    # _struct_ref_seq.db_align_beg
+    # _struct_ref_seq.pdbx_db_align_beg_ins_code
+    # _struct_ref_seq.db_align_end
+    # _struct_ref_seq.pdbx_db_align_end_ins_code
+    # _struct_ref_seq.pdbx_auth_seq_align_beg
+    # _struct_ref_seq.pdbx_auth_seq_align_end
+    # 1 1 6O5I A 6   ? 58  ? O00255 1   ? 53  ? 1   53
+    # 2 2 6O5I A 59  ? 371 ? O00255 74  ? 386 ? 74  386
+    # 3 3 6O5I A 372 ? 432 ? O00255 399 ? 459 ? 399 459
+    # 4 4 6O5I A 433 ? 489 ? O00255 537 ? 593 ? 537 593
+    # #
+    struct_ref_seqs_columns = {
+        "align_id": [1, 2, 3, 4],
+        "ref_id": [1, 2, 3, 4],
+        "pdbx_PDB_id_code": ["6O5I", "6O5I", "6O5I", "6O5I"],
+        "pdbx_strand_id": ["A", "A", "A", "A"],
+        "seq_align_beg": [6, 59, 372, 433],
+        "pdbx_seq_align_beg_ins_code": ["?", "?", "?", "?"],
+        "seq_align_end": [58, 371, 432, 489],
+        "pdbx_seq_align_end_ins_code": ["?", "?", "?", "?"],
+        "pdbx_db_accession": ["O00255", "O00255", "O00255", "O00255"],
+        "db_align_beg": [1, 74, 399, 537],
+        "pdbx_db_align_beg_ins_code": ["?", "?", "?", "?"],
+        "db_align_end": [53, 386, 459, 593],
+        "pdbx_db_align_end_ins_code": ["?", "?", "?", "?"],
+        "pdbx_auth_seq_align_beg": [1, 74, 399, 537],
+        "pdbx_auth_seq_align_end": [53, 386, 459, 593],
+    }
+    # 53 -1 + 1 + 386 -74 +1 + 459-399+1 + 593-537 +1 = 484
+    # 593 -1 = 592
+    # 484 / 592 = 0.82
+    # 0.82 fraction is returned by https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/api/uniprot/summary/O00255%20.json
+    aligned_residue_count = sum(
+        end - start + 1
+        for start, end in zip(
+            struct_ref_seqs_columns["db_align_beg"], struct_ref_seqs_columns["db_align_end"], strict=False
+        )
+    )
+    reference_span = max(struct_ref_seqs_columns["db_align_end"]) - min(struct_ref_seqs_columns["db_align_beg"])
+    sequence_identity = aligned_residue_count / reference_span
+    expected_sequence_identity = 0.82
+
+    assert expected_sequence_identity == pytest.approx(sequence_identity, rel=1e-2, abs=0.0)
