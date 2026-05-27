@@ -74,6 +74,11 @@ def test_resolution_sort_key():
     assert sorted([b, c, a, af, nu], key=resolution_sort_key) == [af, a, b, nu, c]
 
 
+def test_resolution_filter_statistics_is_hashable():
+    stats = _make_stats("a.cif.gz", "P12345", resolution=1.0)
+    assert isinstance(hash(stats), int)
+
+
 class TestIterResolutionStatistics:
     def test_metadata_in_order(self, sample_cif: Path, sample2_cif: Path, af_cif: Path, nmr_cif: Path):
         input_files = [sample_cif, sample2_cif, af_cif, nmr_cif]

@@ -13,6 +13,12 @@ def make_pdb(pdb_id: str, uniprot_chains: str, resolution: float = 5.0) -> PdbRe
     )
 
 
+def test_pdbresult_is_hashable():
+    result = make_pdb("1AAA", "A=1-250", 3.6)
+    assert isinstance(result, PdbResult)
+    assert isinstance(hash(result), int)
+
+
 @pytest.mark.parametrize(
     "pdbs, expected_clusters",
     [

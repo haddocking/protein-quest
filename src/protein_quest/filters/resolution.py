@@ -53,6 +53,9 @@ class ResolutionFilterStatistics:
     def resolution_value(self) -> float:
         return self.resolution
 
+    def __hash__(self) -> int:
+        return hash(self.input_file)
+
 
 def resolution_sort_key(stats: ResolutionFilterStatistics) -> tuple[int, float, int, str]:
     """Sort key for resolution-based filtering.

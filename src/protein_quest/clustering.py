@@ -9,7 +9,7 @@ protocol can be clustered.
 """
 
 import logging
-from collections.abc import Iterable, Iterator
+from collections.abc import Hashable, Iterable, Iterator
 from itertools import islice
 from typing import Protocol
 
@@ -25,7 +25,7 @@ NO_OVERLAP_DISTANCE = CLUSTER_DISTANCE_THRESHOLD + 1e-6
 """Finite fallback distance used when two ranges do not overlap."""
 
 
-class ClusterableStructure(Protocol):
+class ClusterableStructure(Hashable, Protocol):
     """Protocol describing the minimum interface required for clustering.
 
     Attributes:

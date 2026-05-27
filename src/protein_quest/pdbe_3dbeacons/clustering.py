@@ -18,7 +18,7 @@ PDBE_PROVIDER_RESPONSE = "PDBe"
 
 
 @dataclass(frozen=True, eq=False)
-class _OverviewClusterEntry:
+class OverviewClusterableEntry:
     """Adapter exposing the [ClusterableStructure][protein_quest.clustering.ClusterableStructure] protocol.
 
     Wraps an [Overview][protein_quest.pdbe_3dbeacons.model.Overview] so the
@@ -34,7 +34,7 @@ class _OverviewClusterEntry:
     overview: Overview
 
     @classmethod
-    def from_overview(cls, overview: Overview) -> "_OverviewClusterEntry":
+    def from_overview(cls, overview: Overview) -> "OverviewClusterableEntry":
         summary = overview.summary
         return cls(
             id=summary.model_identifier,
@@ -48,7 +48,7 @@ class _OverviewClusterEntry:
 
 
 def _filter_pdbe_overviews(overviews: list[Overview], top: int) -> list[Overview]:
-    entries = [_OverviewClusterEntry.from_overview(o) for o in overviews]
+    entries = [OverviewClusterableEntry.from_overview(o) for o in overviews]
     selected = filter_structures_on_clustered_resolution(entries, top=top)
     return [entry.overview for entry in selected]
 

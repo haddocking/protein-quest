@@ -2,7 +2,7 @@
 
 import pytest
 
-from protein_quest.pdbe_3dbeacons.clustering import cluster_overviews_per_uniprot
+from protein_quest.pdbe_3dbeacons.clustering import OverviewClusterableEntry, cluster_overviews_per_uniprot
 from protein_quest.pdbe_3dbeacons.model import (
     AppUniprotSchemaEntity,
     AppUniprotSchemaSummaryItems,
@@ -61,6 +61,12 @@ def _alphafold_overview(model_identifier: str, uniprot_start: int, uniprot_end: 
             entities=[_entity()],
         )
     )
+
+
+def test_OverviewClusterableEntry_is_hashable():
+    overview = _pdbe_overview("1aaa", 1, 250, resolution=3.6)
+    entry = OverviewClusterableEntry.from_overview(overview)
+    assert isinstance(hash(entry), int)
 
 
 def _summary(accession: str, overviews: list[Overview]) -> UniprotSummary:
