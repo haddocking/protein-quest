@@ -1,6 +1,7 @@
 """Module for querying and modifying [gemmi structures][gemmi.Structure]."""
 
 import logging
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -71,6 +72,57 @@ def nr_residues_in_chain(file: Path, chain: str = "A") -> int:
     return len(gchain)
 
 
+@dataclass(frozen=True)
+class StructRefSeq:
+    """Collapsed `_struct_ref_seq` alignment information for one chain."""
+
+    uniprot_accession: str
+    uniprot_start: int
+    uniprot_end: int
+    chain_id: str
+    sequence_identity: float
+
+
+def struct_ref_seqs_columns_to_records(struct_ref_seqs_columns: dict[str, list[str | int]]) -> list[StructRefSeq]:
+    """Convert `_struct_ref_seq` columns into collapsed alignment records.
+
+    Rows are grouped by UniProt accession and chain, then collapsed into a single
+    record per chain with sequence identity calculated from the covered span.
+    """
+
+    if not struct_ref_seqs_columns:
+        return []
+
+    struct_ref_seqs_rows = [
+        dict(zip(struct_ref_seqs_columns.keys(), vals, strict=False))
+        for vals in zip(*struct_ref_seqs_columns.values(), strict=False)
+    ]
+    grouped_rows: dict[tuple[str, str], list[dict[str, str]]] = defaultdict(list)
+    for row in struct_ref_seqs_rows:
+        grouped_rows[(row["pdbx_db_accession"], row["pdbx_strand_id"])].append(row)
+
+    records: list[StructRefSeq] = []
+    for (uniprot_accession, chain_id), rows in sorted(grouped_rows.items(), key=lambda item: (item[0][1], item[0][0])):
+        starts = [int(row["db_align_beg"]) for row in rows]
+        ends = [int(row["db_align_end"]) for row in rows]
+        uniprot_start = min(starts)
+        uniprot_end = max(ends)
+        aligned_residue_count = sum(end - start + 1 for start, end in zip(starts, ends, strict=False))
+        reference_span = max(uniprot_end - uniprot_start, 1)
+        sequence_identity = aligned_residue_count / reference_span
+        records.append(
+            StructRefSeq(
+                uniprot_accession=uniprot_accession,
+                uniprot_start=uniprot_start,
+                uniprot_end=uniprot_end,
+                chain_id=chain_id,
+                sequence_identity=sequence_identity,
+            )
+        )
+
+    return records
+
+
 def structure_metadata(
     structure: gemmi.Structure,
     *,
@@ -91,7 +143,7 @@ def structure_metadata(
         ChainNotFoundError: If the mapped chain from ``_struct_ref_seq`` is
             missing in the structure.
     """
-    accessions = sorted(structure2uniprot_accessions(structure))
+    accessions = structure2uniprot_accessions(structure)
     software_name = structure.meta.software[0].name if structure.meta.software else ""
     total_residue_count = nr_of_residues_in_total(structure)
 
@@ -110,28 +162,24 @@ def structure_metadata(
 
     block = structure.make_mmcif_block(gemmi.MmcifOutputGroups(False, struct_ref=True))
     struct_ref_seqs_columns = block.get_mmcif_category("_struct_ref_seq.")
-    # Convert columns `{a:[v]}` to rows `[{a:v}]`
-    struct_ref_seqs_rows = [
-        dict(zip(struct_ref_seqs_columns.keys(), vals, strict=False))
-        for vals in zip(*struct_ref_seqs_columns.values(), strict=False)
-    ]
-    for struct_ref_seq in struct_ref_seqs_rows:
-        if struct_ref_seq["pdbx_db_accession"] in accessions:
+    struct_ref_seqs = struct_ref_seqs_columns_to_records(struct_ref_seqs_columns)
+    for struct_ref_seq in struct_ref_seqs:
+        if struct_ref_seq.uniprot_accession in accessions:
             selected_struct_ref_seq = struct_ref_seq
             break
     else:
         msg = f"No struct_ref_seq entry with uniprot accession found in {structure.name}"
         raise ValueError(msg)
 
-    uniprot_accession = selected_struct_ref_seq["pdbx_db_accession"]
-    uniprot_start = int(selected_struct_ref_seq["db_align_beg"])
-    uniprot_end = int(selected_struct_ref_seq["db_align_end"])
-    chain_id = selected_struct_ref_seq["pdbx_strand_id"]
+    uniprot_accession = selected_struct_ref_seq.uniprot_accession
+    uniprot_start = selected_struct_ref_seq.uniprot_start
+    uniprot_end = selected_struct_ref_seq.uniprot_end
+    chain_id = selected_struct_ref_seq.chain_id
     chain = find_chain_in_structure(structure, chain_id)
     if chain is None:
         raise ChainNotFoundError(chain_id, path, {c.name for c in chains_in_structure(structure)})
     chain_length = len(chain)
-    sequence_identity = chain_length / (uniprot_end - uniprot_start + 1)
+    sequence_identity = selected_struct_ref_seq.sequence_identity
 
     return StructureMetadata(
         id=structure.name,

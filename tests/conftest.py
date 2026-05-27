@@ -28,3 +28,9 @@ def af_cif() -> Path:
 def nmr_cif() -> Path:
     """NMR structure for P05067 (1AMB, no resolution)."""
     return Path(__file__).parent / "fixtures" / "1amb_updated.cif.gz"
+
+
+@pytest.fixture
+def sample_multispan_cif() -> Path:
+    """6O5I structure with multiple `_struct_ref_seq` spans for one chain."""
+    return Path(__file__).parent / "fixtures" / "6O5I.cif.gz"

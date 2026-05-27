@@ -9,9 +9,11 @@ from protein_quest.io import read_structure
 from protein_quest.pdbe.fetch import sync_fetch
 from protein_quest.structure import (
     ChainNotFoundError,
+    StructRefSeq,
     StructureMetadata,
     nr_of_residues_in_total,
     nr_residues_in_chain,
+    struct_ref_seqs_columns_to_records,
     structure2uniprot_accessions,
     structure_metadata,
     write_single_chain_structure_file,
@@ -224,7 +226,7 @@ class TestStructureMetadata:
                     is_alphafold=False,
                     uniprot_start=8,
                     uniprot_end=211,
-                    sequence_identity=0.848,
+                    sequence_identity=1.005,
                     chain_length=173,
                 ),
                 id="3JRS_B2A",
@@ -239,7 +241,7 @@ class TestStructureMetadata:
                     is_alphafold=False,
                     uniprot_start=687,
                     uniprot_end=692,
-                    sequence_identity=1.333,
+                    sequence_identity=1.2,
                     chain_length=8,
                 ),
                 id="2Y29",
@@ -254,7 +256,7 @@ class TestStructureMetadata:
                     is_alphafold=True,
                     uniprot_start=1,
                     uniprot_end=16,
-                    sequence_identity=1.0,
+                    sequence_identity=1.067,
                     chain_length=16,
                 ),
                 id="AF-A0A0C5B5G6-F1",
@@ -269,7 +271,7 @@ class TestStructureMetadata:
                     is_alphafold=False,
                     uniprot_start=672,
                     uniprot_end=699,
-                    sequence_identity=1.0,
+                    sequence_identity=1.037,
                     chain_length=28,
                 ),
                 id="1AMB",
@@ -302,59 +304,90 @@ def test_structure_metadata_without_uniprot():
     assert_structure_metadata(result, expected)
 
 
-# TODO remove once seqeunce identity is calculated in structure_metadata correctly
-def test_sequence_identity_with_gaps():
-    # The 6O5I structure has
-    # loop_
-    # _struct_ref_seq.align_id
-    # _struct_ref_seq.ref_id
-    # _struct_ref_seq.pdbx_PDB_id_code
-    # _struct_ref_seq.pdbx_strand_id
-    # _struct_ref_seq.seq_align_beg
-    # _struct_ref_seq.pdbx_seq_align_beg_ins_code
-    # _struct_ref_seq.seq_align_end
-    # _struct_ref_seq.pdbx_seq_align_end_ins_code
-    # _struct_ref_seq.pdbx_db_accession
-    # _struct_ref_seq.db_align_beg
-    # _struct_ref_seq.pdbx_db_align_beg_ins_code
-    # _struct_ref_seq.db_align_end
-    # _struct_ref_seq.pdbx_db_align_end_ins_code
-    # _struct_ref_seq.pdbx_auth_seq_align_beg
-    # _struct_ref_seq.pdbx_auth_seq_align_end
-    # 1 1 6O5I A 6   ? 58  ? O00255 1   ? 53  ? 1   53
-    # 2 2 6O5I A 59  ? 371 ? O00255 74  ? 386 ? 74  386
-    # 3 3 6O5I A 372 ? 432 ? O00255 399 ? 459 ? 399 459
-    # 4 4 6O5I A 433 ? 489 ? O00255 537 ? 593 ? 537 593
-    # #
-    struct_ref_seqs_columns = {
-        "align_id": [1, 2, 3, 4],
-        "ref_id": [1, 2, 3, 4],
-        "pdbx_PDB_id_code": ["6O5I", "6O5I", "6O5I", "6O5I"],
-        "pdbx_strand_id": ["A", "A", "A", "A"],
-        "seq_align_beg": [6, 59, 372, 433],
-        "pdbx_seq_align_beg_ins_code": ["?", "?", "?", "?"],
-        "seq_align_end": [58, 371, 432, 489],
-        "pdbx_seq_align_end_ins_code": ["?", "?", "?", "?"],
-        "pdbx_db_accession": ["O00255", "O00255", "O00255", "O00255"],
-        "db_align_beg": [1, 74, 399, 537],
-        "pdbx_db_align_beg_ins_code": ["?", "?", "?", "?"],
-        "db_align_end": [53, 386, 459, 593],
-        "pdbx_db_align_end_ins_code": ["?", "?", "?", "?"],
-        "pdbx_auth_seq_align_beg": [1, 74, 399, 537],
-        "pdbx_auth_seq_align_end": [53, 386, 459, 593],
-    }
-    # 53 -1 + 1 + 386 -74 +1 + 459-399+1 + 593-537 +1 = 484
-    # 593 -1 = 592
-    # 484 / 592 = 0.82
-    # 0.82 fraction is returned by https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/api/uniprot/summary/O00255%20.json
-    aligned_residue_count = sum(
-        end - start + 1
-        for start, end in zip(
-            struct_ref_seqs_columns["db_align_beg"], struct_ref_seqs_columns["db_align_end"], strict=False
-        )
-    )
-    reference_span = max(struct_ref_seqs_columns["db_align_end"]) - min(struct_ref_seqs_columns["db_align_beg"])
-    sequence_identity = aligned_residue_count / reference_span
-    expected_sequence_identity = 0.82
+@pytest.mark.parametrize(
+    ("struct_ref_seqs_columns", "expected_records"),
+    [
+        pytest.param(
+            {
+                "align_id": [1],
+                "ref_id": [1],
+                "pdbx_PDB_id_code": ["1ABC"],
+                "pdbx_strand_id": ["A"],
+                "seq_align_beg": [10],
+                "pdbx_seq_align_beg_ins_code": ["?"],
+                "seq_align_end": [15],
+                "pdbx_seq_align_end_ins_code": ["?"],
+                "pdbx_db_accession": ["P12345"],
+                "db_align_beg": [10],
+                "pdbx_db_align_beg_ins_code": ["?"],
+                "db_align_end": [15],
+                "pdbx_db_align_end_ins_code": ["?"],
+                "pdbx_auth_seq_align_beg": [10],
+                "pdbx_auth_seq_align_end": [15],
+            },
+            [StructRefSeq("P12345", 10, 15, "A", 6 / 5)],
+            id="single-span",
+        ),
+        pytest.param(
+            {
+                "align_id": [1, 2],
+                "ref_id": [1, 2],
+                "pdbx_PDB_id_code": ["1ABC", "1ABC"],
+                "pdbx_strand_id": ["A", "A"],
+                "seq_align_beg": [10, 20],
+                "pdbx_seq_align_beg_ins_code": ["?", "?"],
+                "seq_align_end": [15, 24],
+                "pdbx_seq_align_end_ins_code": ["?", "?"],
+                "pdbx_db_accession": ["P12345", "P12345"],
+                "db_align_beg": [10, 20],
+                "pdbx_db_align_beg_ins_code": ["?", "?"],
+                "db_align_end": [15, 24],
+                "pdbx_db_align_end_ins_code": ["?", "?"],
+                "pdbx_auth_seq_align_beg": [10, 20],
+                "pdbx_auth_seq_align_end": [15, 24],
+            },
+            [StructRefSeq("P12345", 10, 24, "A", 11 / 14)],
+            id="multi-span-single-chain",
+        ),
+        pytest.param(
+            {
+                "align_id": [1, 2],
+                "ref_id": [1, 2],
+                "pdbx_PDB_id_code": ["1ABC", "1ABC"],
+                "pdbx_strand_id": ["A", "B"],
+                "seq_align_beg": [10, 30],
+                "pdbx_seq_align_beg_ins_code": ["?", "?"],
+                "seq_align_end": [15, 35],
+                "pdbx_seq_align_end_ins_code": ["?", "?"],
+                "pdbx_db_accession": ["P12345", "P12345"],
+                "db_align_beg": [10, 30],
+                "pdbx_db_align_beg_ins_code": ["?", "?"],
+                "db_align_end": [15, 35],
+                "pdbx_db_align_end_ins_code": ["?", "?"],
+                "pdbx_auth_seq_align_beg": [10, 30],
+                "pdbx_auth_seq_align_end": [15, 35],
+            },
+            [
+                StructRefSeq("P12345", 10, 15, "A", 6 / 5),
+                StructRefSeq("P12345", 30, 35, "B", 6 / 5),
+            ],
+            id="multi-chain",
+        ),
+    ],
+)
+def test_struct_ref_seqs_columns_to_records(
+    struct_ref_seqs_columns: dict[str, list[int | str]], expected_records: list[StructRefSeq]
+):
+    records = struct_ref_seqs_columns_to_records(struct_ref_seqs_columns)
 
-    assert expected_sequence_identity == pytest.approx(sequence_identity, rel=1e-2, abs=0.0)
+    assert records == expected_records
+
+
+def test_sequence_identity_with_gaps(sample_multispan_cif: Path):
+    result = StructureMetadata.from_path(sample_multispan_cif)
+
+    assert result.id == "6O5I"
+    assert result.uniprot_accession == "O00255"
+    assert result.uniprot_start == 1
+    assert result.uniprot_end == 593
+    assert result.sequence_identity == pytest.approx(0.82, rel=1e-2, abs=0.0)
