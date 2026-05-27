@@ -9,10 +9,11 @@ from protein_quest.io import read_structure
 from protein_quest.pdbe.fetch import sync_fetch
 from protein_quest.structure import (
     ChainNotFoundError,
-    GemmiClusterEntry,
+    StructureMetadata,
     nr_of_residues_in_total,
     nr_residues_in_chain,
     structure2uniprot_accessions,
+    structure_metadata,
     write_single_chain_structure_file,
 )
 
@@ -197,83 +198,105 @@ def test_nr_of_residues_in_total(sample2_cif: Path):
     assert total_residues == 8
 
 
-class TestGemmiClusterEntry:
+def assert_structure_metadata(result: StructureMetadata, expected: StructureMetadata) -> None:
+    assert result.id == expected.id
+    assert result.uniprot_accession == expected.uniprot_accession
+    assert result.resolution == expected.resolution
+    assert result.total_residue_count == expected.total_residue_count
+    assert result.is_alphafold == expected.is_alphafold
+    assert result.uniprot_start == expected.uniprot_start
+    assert result.uniprot_end == expected.uniprot_end
+    assert result.sequence_identity == pytest.approx(expected.sequence_identity, rel=1e-3, abs=0.0)
+    assert result.chain_length == expected.chain_length
+
+
+class TestStructureMetadata:
     @pytest.mark.parametrize(
-        "cif_fixture, expected_kwargs",
+        "cif_fixture, expected",
         [
             pytest.param(
                 "sample_cif",
-                {
-                    "id": "3JRSB2A",
-                    "uniprot_accession": "Q8VZS8",
-                    "uniprot_start": 8,
-                    "uniprot_end": 211,
-                    "resolution_value": 2.05,
-                    "sequence_identity": 0.848,
-                    "chain_length": 173,
-                },
+                StructureMetadata(
+                    id="3JRSB2A",
+                    uniprot_accession="Q8VZS8",
+                    resolution=2.05,
+                    total_residue_count=173,
+                    is_alphafold=False,
+                    uniprot_start=8,
+                    uniprot_end=211,
+                    sequence_identity=0.848,
+                    chain_length=173,
+                ),
                 id="3JRS_B2A",
             ),
             pytest.param(
                 "sample2_cif",
-                {
-                    "id": "2Y29",
-                    "uniprot_accession": "P05067",
-                    "uniprot_start": 687,
-                    "uniprot_end": 692,
-                    "resolution_value": 2.3,
-                    # unexpected sequence_identity to be >1, but these entries where chosen because they are tiny and weird
-                    "sequence_identity": 1.333,
-                    "chain_length": 8,
-                },
+                StructureMetadata(
+                    id="2Y29",
+                    uniprot_accession="P05067",
+                    resolution=2.3,
+                    total_residue_count=8,
+                    is_alphafold=False,
+                    uniprot_start=687,
+                    uniprot_end=692,
+                    sequence_identity=1.333,
+                    chain_length=8,
+                ),
                 id="2Y29",
             ),
             pytest.param(
                 "af_cif",
-                {
-                    "id": "AF-A0A0C5B5G6-F1",
-                    "uniprot_accession": "A0A0C5B5G6",
-                    "uniprot_start": 1,
-                    "uniprot_end": 16,
-                    "resolution_value": 0.0,
-                    "sequence_identity": 1.0,
-                    "chain_length": 16,
-                },
+                StructureMetadata(
+                    id="AF-A0A0C5B5G6-F1",
+                    uniprot_accession="A0A0C5B5G6",
+                    resolution=0.0,
+                    total_residue_count=16,
+                    is_alphafold=True,
+                    uniprot_start=1,
+                    uniprot_end=16,
+                    sequence_identity=1.0,
+                    chain_length=16,
+                ),
                 id="AF-A0A0C5B5G6-F1",
             ),
             pytest.param(
                 "nmr_cif",
-                {
-                    "id": "1AMB",
-                    "uniprot_accession": "P05067",
-                    "uniprot_start": 672,
-                    "uniprot_end": 699,
-                    "resolution_value": 0.0,
-                    "sequence_identity": 1.0,
-                    "chain_length": 28,
-                },
+                StructureMetadata(
+                    id="1AMB",
+                    uniprot_accession="P05067",
+                    resolution=0.0,
+                    total_residue_count=28,
+                    is_alphafold=False,
+                    uniprot_start=672,
+                    uniprot_end=699,
+                    sequence_identity=1.0,
+                    chain_length=28,
+                ),
                 id="1AMB",
             ),
         ],
     )
-    def test_from_path(self, cif_fixture: str, expected_kwargs: dict, request: pytest.FixtureRequest):
+    def test_from_path(self, cif_fixture: str, expected: StructureMetadata, request: pytest.FixtureRequest):
         path = request.getfixturevalue(cif_fixture)
+        result = StructureMetadata.from_path(path)
 
-        result = GemmiClusterEntry.from_path(path)
+        assert_structure_metadata(result, expected)
 
-        expected = GemmiClusterEntry(path=path, structure=read_structure(path), **expected_kwargs)
-        assert result.id == expected.id
-        assert result.uniprot_accession == expected.uniprot_accession
-        assert result.uniprot_start == expected.uniprot_start
-        assert result.uniprot_end == expected.uniprot_end
-        assert result.resolution_value == expected.resolution_value
-        assert result.chain_length == expected.chain_length
-        assert result.path == expected.path
-        # To prevent floating point precision issues, we use approx instead of __eq__
-        assert result.sequence_identity == pytest.approx(expected.sequence_identity, rel=1e-3, abs=0.0)
 
-    def test_from_structure_no_struct_ref(self):
-        structure = gemmi.Structure()
+def test_structure_metadata_without_uniprot():
+    structure = gemmi.Structure()
 
-        with pytest.raises(ValueError, match="No struct_ref_seq entry with uniprot accession found in "):
-            GemmiClusterEntry.from_gemmi_structure(structure)
+    result = structure_metadata(structure)
+
+    expected = StructureMetadata(
+        id="",
+        uniprot_accession=None,
+        resolution=0.0,
+        total_residue_count=0,
+        is_alphafold=False,
+        uniprot_start=0,
+        uniprot_end=0,
+        sequence_identity=0.0,
+        chain_length=0,
+    )
+    assert_structure_metadata(result, expected)

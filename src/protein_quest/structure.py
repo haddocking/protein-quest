@@ -71,42 +71,112 @@ def nr_residues_in_chain(file: Path, chain: str = "A") -> int:
     return len(gchain)
 
 
+def structure_metadata(
+    structure: gemmi.Structure,
+    *,
+    path: Path | None = None,
+) -> "StructureMetadata":
+    """Extract metadata from a Gemmi structure.
+
+    Args:
+        structure: A Gemmi structure.
+        path: Optional source path used only for error context.
+
+    Returns:
+        A ``StructureMetadata`` instance.
+
+    Raises:
+        ValueError: If UniProt accessions exist but no matching
+            ``_struct_ref_seq`` row is found.
+        ChainNotFoundError: If the mapped chain from ``_struct_ref_seq`` is
+            missing in the structure.
+    """
+    accessions = sorted(structure2uniprot_accessions(structure))
+    software_name = structure.meta.software[0].name if structure.meta.software else ""
+    total_residue_count = nr_of_residues_in_total(structure)
+
+    if not accessions:
+        return StructureMetadata(
+            id=structure.name,
+            uniprot_accession=None,
+            resolution=structure.resolution,
+            total_residue_count=total_residue_count,
+            is_alphafold=software_name == "AlphaFold",
+            uniprot_start=0,
+            uniprot_end=0,
+            sequence_identity=0.0,
+            chain_length=total_residue_count,
+        )
+
+    block = structure.make_mmcif_block(gemmi.MmcifOutputGroups(False, struct_ref=True))
+    struct_ref_seqs_columns = block.get_mmcif_category("_struct_ref_seq.")
+    # Convert columns `{a:[v]}` to rows `[{a:v}]`
+    struct_ref_seqs_rows = [
+        dict(zip(struct_ref_seqs_columns.keys(), vals, strict=False))
+        for vals in zip(*struct_ref_seqs_columns.values(), strict=False)
+    ]
+    for struct_ref_seq in struct_ref_seqs_rows:
+        if struct_ref_seq["pdbx_db_accession"] in accessions:
+            selected_struct_ref_seq = struct_ref_seq
+            break
+    else:
+        msg = f"No struct_ref_seq entry with uniprot accession found in {structure.name}"
+        raise ValueError(msg)
+
+    uniprot_accession = selected_struct_ref_seq["pdbx_db_accession"]
+    uniprot_start = int(selected_struct_ref_seq["db_align_beg"])
+    uniprot_end = int(selected_struct_ref_seq["db_align_end"])
+    chain_id = selected_struct_ref_seq["pdbx_strand_id"]
+    chain = find_chain_in_structure(structure, chain_id)
+    if chain is None:
+        raise ChainNotFoundError(chain_id, path, {c.name for c in chains_in_structure(structure)})
+    chain_length = len(chain)
+    sequence_identity = chain_length / (uniprot_end - uniprot_start + 1)
+
+    return StructureMetadata(
+        id=structure.name,
+        uniprot_accession=uniprot_accession,
+        resolution=structure.resolution,
+        total_residue_count=total_residue_count,
+        is_alphafold=software_name == "AlphaFold",
+        uniprot_start=uniprot_start,
+        uniprot_end=uniprot_end,
+        sequence_identity=sequence_identity,
+        chain_length=chain_length,
+    )
+
+
 @dataclass(frozen=True)
 class StructureMetadata:
     """Metadata extracted from a structure file for ranking and grouping.
 
     Parameters:
+        id: Identifier of the structure.
         uniprot_accession: Deterministic first UniProt accession, if any.
         resolution: Resolution from gemmi Structure. ``0.0`` means absent.
         total_residue_count: Total number of residues across the whole structure.
         is_alphafold: Whether the structure originates from AlphaFold.
+        uniprot_start: Lowest UniProt residue position covered by the mapped chain.
+        uniprot_end: Highest UniProt residue position covered by the mapped chain.
+        sequence_identity: Sequence identity of the mapped chain to UniProt.
+        chain_length: Number of residues in the mapped chain.
     """
 
+    id: str
     uniprot_accession: str | None
     resolution: float
     total_residue_count: int
     is_alphafold: bool
+    uniprot_start: int
+    uniprot_end: int
+    sequence_identity: float
+    chain_length: int
 
-
-def structure_metadata(file: Path) -> StructureMetadata:
-    """Extract metadata from structure.
-
-    Args:
-        file: Path to the structure file.
-
-    Returns:
-        Structure metadata derived from the file contents.
-    """
-    structure = read_structure(file)
-    accessions = sorted(structure2uniprot_accessions(structure))
-    software_name = structure.meta.software[0].name if structure.meta.software else ""
-    total_residue_count = nr_of_residues_in_total(structure)
-    return StructureMetadata(
-        uniprot_accession=accessions[0] if accessions else None,
-        resolution=structure.resolution,
-        total_residue_count=total_residue_count,
-        is_alphafold=software_name == "AlphaFold",
-    )
+    @classmethod
+    def from_path(cls, file: Path) -> "StructureMetadata":
+        """Extract metadata from a structure file."""
+        structure = read_structure(file)
+        return structure_metadata(structure, path=file)
 
 
 def _dedup_helices(structure: gemmi.Structure):
@@ -313,67 +383,3 @@ def nr_of_residues_in_total(structure: Structure) -> int:
         for chain in model:
             count += len(chain)
     return count
-
-
-@dataclass(frozen=True, eq=False)
-class GemmiClusterEntry:
-    """Wrapper for Gemmi structure that exposes the
-    [ClusterableStructure][protein_quest.clustering.ClusterableStructure] protocol.
-    """
-
-    structure: gemmi.Structure
-    id: str
-    uniprot_accession: str
-    uniprot_start: int
-    uniprot_end: int
-    resolution_value: float
-    sequence_identity: float
-    chain_length: int
-    path: Path | None
-
-    @classmethod
-    def from_path(cls, path: Path) -> "GemmiClusterEntry":
-        structure = read_structure(path)
-
-        return cls.from_gemmi_structure(structure, path)
-
-    @classmethod
-    def from_gemmi_structure(cls, structure: gemmi.Structure, path: Path | None = None) -> "GemmiClusterEntry":
-        uniprot_accessions = structure2uniprot_accessions(structure)
-
-        block = structure.make_mmcif_block(gemmi.MmcifOutputGroups(False, struct_ref=True))
-        struct_ref_seqs_columns = block.get_mmcif_category("_struct_ref_seq.")
-        # Convert columns `{a:[v]}` to rows `[{a:v}]`
-        struct_ref_seqs_rows = [
-            dict(zip(struct_ref_seqs_columns.keys(), vals, strict=False))
-            for vals in zip(*struct_ref_seqs_columns.values(), strict=False)
-        ]
-        for struct_ref_seq in struct_ref_seqs_rows:
-            if struct_ref_seq["pdbx_db_accession"] in uniprot_accessions:
-                selected_struct_ref_seq = struct_ref_seq
-                break
-        else:
-            msg = f"No struct_ref_seq entry with uniprot accession found in {structure.name}"
-            raise ValueError(msg)
-
-        uniprot_accession = selected_struct_ref_seq["pdbx_db_accession"]
-        uniprot_start = int(selected_struct_ref_seq["db_align_beg"])
-        uniprot_end = int(selected_struct_ref_seq["db_align_end"])
-        chain_id = selected_struct_ref_seq["pdbx_strand_id"]
-        chain = find_chain_in_structure(structure, chain_id)
-        if chain is None:
-            raise ChainNotFoundError(chain_id, path, {c.name for c in chains_in_structure(structure)})
-        chain_length = len(chain)
-        sequence_identity = chain_length / (uniprot_end - uniprot_start + 1)
-
-        return cls(
-            structure=structure,
-            uniprot_accession=uniprot_accession,
-            id=structure.name,
-            resolution_value=structure.resolution,
-            sequence_identity=sequence_identity,
-            chain_length=chain_length,
-            uniprot_start=uniprot_start,
-            uniprot_end=uniprot_end,
-            path=path,
-        )

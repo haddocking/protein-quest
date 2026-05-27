@@ -8,6 +8,7 @@ import pytest
 from protein_quest.filters.resolution import (
     ResolutionFilterStatistics,
     copy_resolution_statistics,
+    coverage_group_resolution_statistics,
     filter_files_on_resolution,
     group_resolution_statistics,
     iter_resolution_statistics,
@@ -19,18 +20,48 @@ def _make_stats(
     filename: str,
     accession: str | None,
     resolution: float,
+    pdb_id: str | None = None,
     total_residue_count: int = 100,
     is_alphafold: bool = False,
+    uniprot_start: int = 0,
+    uniprot_end: int = 0,
+    sequence_identity: float = 0.0,
+    chain_length: int = 0,
 ) -> ResolutionFilterStatistics:
+    if pdb_id is None:
+        pdb_id = filename
     return ResolutionFilterStatistics(
+        id=pdb_id,
         input_file=Path(f"/fake/{filename}"),
         uniprot_accession=accession,
         resolution=resolution,
         total_residue_count=total_residue_count,
         is_alphafold=is_alphafold,
+        uniprot_start=uniprot_start,
+        uniprot_end=uniprot_end,
+        sequence_identity=sequence_identity,
+        chain_length=chain_length,
         passed=False,
         output_file=None,
     )
+
+
+def assert_resolution_filter_statistics(
+    result: ResolutionFilterStatistics,
+    expected: ResolutionFilterStatistics,
+) -> None:
+    assert result.input_file == expected.input_file
+    assert result.id == expected.id
+    assert result.uniprot_accession == expected.uniprot_accession
+    assert result.resolution == expected.resolution
+    assert result.total_residue_count == expected.total_residue_count
+    assert result.is_alphafold == expected.is_alphafold
+    assert result.uniprot_start == expected.uniprot_start
+    assert result.uniprot_end == expected.uniprot_end
+    assert result.sequence_identity == pytest.approx(expected.sequence_identity, rel=1e-3, abs=0.0)
+    assert result.chain_length == expected.chain_length
+    assert result.passed == expected.passed
+    assert result.output_file == expected.output_file
 
 
 def test_resolution_sort_key():
@@ -50,43 +81,64 @@ class TestIterResolutionStatistics:
 
         expected = [
             ResolutionFilterStatistics(
+                id="3JRSB2A",
                 input_file=sample_cif,
                 uniprot_accession="Q8VZS8",
                 resolution=2.05,
                 total_residue_count=173,
                 is_alphafold=False,
+                uniprot_start=8,
+                uniprot_end=211,
+                sequence_identity=0.848,
+                chain_length=173,
                 passed=False,
                 output_file=None,
             ),
             ResolutionFilterStatistics(
+                id="2Y29",
                 input_file=sample2_cif,
                 uniprot_accession="P05067",
                 resolution=2.3,
                 total_residue_count=8,
                 is_alphafold=False,
+                uniprot_start=687,
+                uniprot_end=692,
+                sequence_identity=1.333,
+                chain_length=8,
                 passed=False,
                 output_file=None,
             ),
             ResolutionFilterStatistics(
+                id="AF-A0A0C5B5G6-F1",
                 input_file=af_cif,
                 uniprot_accession="A0A0C5B5G6",
                 resolution=0.0,
                 total_residue_count=16,
                 is_alphafold=True,
+                uniprot_start=1,
+                uniprot_end=16,
+                sequence_identity=1.0,
+                chain_length=16,
                 passed=False,
                 output_file=None,
             ),
             ResolutionFilterStatistics(
+                id="1AMB",
                 input_file=nmr_cif,
                 uniprot_accession="P05067",
                 resolution=0.0,
                 total_residue_count=28,
                 is_alphafold=False,
+                uniprot_start=672,
+                uniprot_end=699,
+                sequence_identity=1.0,
+                chain_length=28,
                 passed=False,
                 output_file=None,
             ),
         ]
-        assert results == expected
+        for result, expected_result in zip(results, expected, strict=True):
+            assert_resolution_filter_statistics(result, expected_result)
 
     def test_empty_input(self):
         assert list(iter_resolution_statistics([])) == []
@@ -103,15 +155,21 @@ def test_filter_files_on_resolution_no_uniprot_does_not_pass(sample2_cif: Path, 
     results = list(filter_files_on_resolution(input_files=[no_uniprot], output_dir=output_dir, top=1))
 
     expected = ResolutionFilterStatistics(
+        id="2Y29",
         input_file=no_uniprot,
         uniprot_accession=None,
         resolution=2.3,
         total_residue_count=8,
         is_alphafold=False,
+        uniprot_start=0,
+        uniprot_end=0,
+        sequence_identity=0.0,
+        chain_length=8,
         passed=False,
         output_file=None,
     )
-    assert results == [expected]
+    assert len(results) == 1
+    assert_resolution_filter_statistics(results[0], expected)
     assert output_dir.exists()
     assert list(output_dir.iterdir()) == []
 
@@ -127,15 +185,21 @@ def test_filter_files_on_resolution_no_uniprot_can_pass_when_grouping_disabled(s
     results = list(filter_files_on_resolution(input_files=[no_uniprot], output_dir=output_dir, top=1, group_by=None))
 
     expected = ResolutionFilterStatistics(
+        id="2Y29",
         input_file=no_uniprot,
         uniprot_accession=None,
         resolution=2.3,
         total_residue_count=8,
         is_alphafold=False,
+        uniprot_start=0,
+        uniprot_end=0,
+        sequence_identity=0.0,
+        chain_length=8,
         passed=True,
         output_file=output_dir / no_uniprot.name,
     )
-    assert results == [expected]
+    assert len(results) == 1
+    assert_resolution_filter_statistics(results[0], expected)
     assert results[0].output_file is not None and results[0].output_file.exists()
 
 
@@ -237,14 +301,64 @@ class TestGroupResolutionStatistics:
         assert passed_names == {"z.cif.gz"}
 
 
+class TestCoverageGroupResolutionStatistics:
+    def test_coverage_none_grouping_interleaves_clusters(self):
+        p1a = _make_stats(
+            "p1a.cif.gz",
+            "P11111",
+            resolution=1.0,
+            sequence_identity=0.95,
+            chain_length=100,
+            uniprot_start=1,
+            uniprot_end=10,
+        )
+        p1b = _make_stats(
+            "p1b.cif.gz",
+            "P11111",
+            resolution=1.5,
+            sequence_identity=0.80,
+            chain_length=80,
+            uniprot_start=20,
+            uniprot_end=30,
+        )
+        p2a = _make_stats(
+            "p2a.cif.gz",
+            "P22222",
+            resolution=1.2,
+            sequence_identity=0.90,
+            chain_length=90,
+            uniprot_start=1,
+            uniprot_end=10,
+        )
+        p2b = _make_stats(
+            "p2b.cif.gz",
+            "P22222",
+            resolution=1.7,
+            sequence_identity=0.70,
+            chain_length=70,
+            uniprot_start=20,
+            uniprot_end=30,
+        )
+
+        results = coverage_group_resolution_statistics([p2b, p1b, p2a, p1a], top=2, group_by=None)
+
+        assert [r.input_file.name for r in results] == ["p1a.cif.gz", "p2a.cif.gz", "p1b.cif.gz", "p2b.cif.gz"]
+        assert {r.input_file.name for r in results if r.passed} == {"p1a.cif.gz", "p2a.cif.gz"}
+
+
 class TestCopyResolutionStatistics:
     def test_passed_is_copied_and_output_set(self, sample2_cif: Path, tmp_path: Path):
         stats = ResolutionFilterStatistics(
+            id="2Y29",
             input_file=sample2_cif,
             uniprot_accession="P05067",
             resolution=2.3,
             total_residue_count=8,
             is_alphafold=False,
+            uniprot_start=687,
+            uniprot_end=692,
+            sequence_identity=1.3333,
+            chain_length=8,
             passed=True,
             output_file=None,
         )
@@ -258,11 +372,16 @@ class TestCopyResolutionStatistics:
 
     def test_not_passed_is_unchanged(self, sample2_cif: Path, tmp_path: Path):
         stats = ResolutionFilterStatistics(
+            id="2Y29",
             input_file=sample2_cif,
             uniprot_accession="P05067",
             resolution=2.3,
             total_residue_count=8,
             is_alphafold=False,
+            uniprot_start=687,
+            uniprot_end=692,
+            sequence_identity=1.3333,
+            chain_length=8,
             passed=False,
             output_file=None,
         )

@@ -24,7 +24,7 @@ from protein_quest.cli.common import (
 )
 from protein_quest.filters.chain import filter_files_on_chain
 from protein_quest.filters.residues import filter_files_on_residues
-from protein_quest.filters.resolution import GroupBy, filter_files_on_resolution
+from protein_quest.filters.resolution import GroupBy, ResolutionFilterStatistics, filter_files_on_resolution
 from protein_quest.filters.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
 from protein_quest.io import (
     glob_structure_files,
@@ -228,21 +228,19 @@ def residue(
 _GROUP_BY = Group(show=False, validator=mutually_exclusive)
 
 
-def _resolution_stats_header(group_by: GroupBy) -> str:
-    if group_by is None:
-        return "input_file,resolution,total_residue_count,is_alphafold,passed,output_file"
-    return "input_file,uniprot_accession,resolution,total_residue_count,is_alphafold,passed,output_file"
-
-
-def _resolution_stats_row(result, group_by: GroupBy) -> str:
-    if group_by is None:
-        return (
-            f"{result.input_file},{result.resolution},{result.total_residue_count},"
-            f"{result.is_alphafold},{result.passed},{result.output_file or ''}"
-        )
+def _resolution_stats_header() -> str:
     return (
-        f"{result.input_file},{result.uniprot_accession or ''},{result.resolution},"
-        f"{result.total_residue_count},{result.is_alphafold},{result.passed},{result.output_file or ''}"
+        "input_file,id,uniprot_accession,resolution,total_residue_count,is_alphafold,"
+        "uniprot_start,uniprot_end,sequence_identity,chain_length,passed,output_file"
+    )
+
+
+def _resolution_stats_row(result: ResolutionFilterStatistics) -> str:
+    return (
+        f"{result.input_file},{result.id},{result.uniprot_accession or ''},{result.resolution},"
+        f"{result.total_residue_count},{result.is_alphafold},{result.uniprot_start},"
+        f"{result.uniprot_end},{result.sequence_identity:.3f},{result.chain_length},"
+        f"{result.passed},{result.output_file or ''}"
     )
 
 
@@ -289,10 +287,8 @@ def resolution(
             [clustering documentation](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/clustering.html#protein_quest.pdbe.clustering.filter_pdbs_on_clustered_resolution)
             for details on the clustering and ordering criteria.
         write_stats: Write filter statistics to file.
-            In CSV format. For ``--group-by=uniprot_accession`` columns are:
-            `<input_file>,<uniprot_accession>,<resolution>,<total_residue_count>,<is_alphafold>,<passed>,<output_file>`.
-            For ``--no-group-by`` columns are:
-            `<input_file>,<resolution>,<total_residue_count>,<is_alphafold>,<passed>,<output_file>`.
+            In CSV format with columns:
+            `<input_file>,<id>,<uniprot_accession>,<resolution>,<total_residue_count>,<is_alphafold>,<uniprot_start>,<uniprot_end>,<sequence_identity>,<chain_length>,<passed>,<output_file>`.
             Use `-` for stdout.
         cache: Cache options
         _: Common CLI options.
@@ -311,7 +307,7 @@ def resolution(
     nr_total = len(input_files)
     rprint(_resolution_progress_message(nr_total, input_dir, group_by))
 
-    stats_lines = [_resolution_stats_header(group_by)]
+    stats_lines = [_resolution_stats_header()]
     nr_passed = 0
     for result in filter_files_on_resolution(
         input_files,
@@ -321,7 +317,7 @@ def resolution(
         group_by=group_by,
         copy_method=cache.copy_method,
     ):
-        stats_lines.append(_resolution_stats_row(result, group_by))
+        stats_lines.append(_resolution_stats_row(result))
         if result.passed:
             nr_passed += 1
 
