@@ -57,6 +57,9 @@ class ClusterableStructure(Protocol):
 def structure_overlap(a: ClusterableStructure, b: ClusterableStructure) -> int:
     """Number of overlapping UniProt residues between two structures.
 
+    Both arguments must satisfy
+    [ClusterableStructure][protein_quest.clustering.ClusterableStructure] protocol.
+
     Args:
         a: First structure.
         b: Second structure.
@@ -71,6 +74,9 @@ def structure_overlap(a: ClusterableStructure, b: ClusterableStructure) -> int:
 
 def structure_union(a: ClusterableStructure, b: ClusterableStructure) -> int:
     """Number of unique UniProt residues in the union of two structures.
+
+    Both arguments must satisfy
+    [ClusterableStructure][protein_quest.clustering.ClusterableStructure] protocol.
 
     Args:
         a: First structure.
@@ -88,6 +94,9 @@ def structure_distance(a: ClusterableStructure, b: ClusterableStructure) -> floa
     """Jaccard-like distance between two structures' UniProt residue ranges.
 
     Non-overlapping ranges return [NO_OVERLAP_DISTANCE][protein_quest.clustering.NO_OVERLAP_DISTANCE].
+
+    Both arguments must satisfy
+    [ClusterableStructure][protein_quest.clustering.ClusterableStructure] protocol.
 
     Args:
         a: First structure.
@@ -108,6 +117,8 @@ def structure_distances[T: ClusterableStructure](items: list[T]) -> list[float]:
 
     Args:
         items: Structures to compute distances for.
+            Each item must satisfy
+            [ClusterableStructure][protein_quest.clustering.ClusterableStructure] protocol.
 
     Returns:
         Condensed distance matrix as a flat list, suitable for input to
@@ -156,6 +167,8 @@ def sort_structures[T: ClusterableStructure](items: set[T] | list[T]) -> list[T]
 
     Args:
         items: Structures to sort.
+            Each item must satisfy
+            [ClusterableStructure][protein_quest.clustering.ClusterableStructure] protocol.
 
     Returns:
         List of structures sorted by the criteria above.
@@ -190,6 +203,8 @@ def cluster_structures[T: ClusterableStructure](items: list[T]) -> list[list[T]]
         items: Structures to cluster. All items must have valid residue ranges;
             callers responsible for filtering out structures with missing
             range information beforehand.
+            Each item must satisfy
+            [ClusterableStructure][protein_quest.clustering.ClusterableStructure] protocol.
 
     Returns:
         Ordered list of clusters; each cluster is a list of members sorted
@@ -263,6 +278,8 @@ def filter_structures_on_clustered_resolution[T: ClusterableStructure](items: li
 
     Args:
         items: Structures to filter. Must all have valid residue ranges.
+            Each item must satisfy
+            [ClusterableStructure][protein_quest.clustering.ClusterableStructure] protocol.
         top: Number of top results to retain.
 
     Returns:
