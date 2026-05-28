@@ -208,8 +208,8 @@ class TestResolution:
 
         main(argv)
 
-        output_files = sorted(path.name for path in output_dir.iterdir())
-        assert output_files == ["2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"]
+        output_files = {path.name for path in output_dir.iterdir()}
+        assert output_files == {"1amb_updated.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"}
 
         captured = capsys.readouterr()
         assert "Filtering 3 files" in captured.err
@@ -270,49 +270,51 @@ class TestResolution:
         with stats_fn.open() as handle:
             rows = list(csv.DictReader(handle))
 
-        assert len(rows) == 3
-        assert rows[0] == {
-            "input_file": str(input_dir / "2Y29.cif.gz"),
-            "id": "2Y29",
-            "uniprot_accession": "P05067",
-            "resolution": "2.3",
-            "total_residue_count": "8",
-            "is_alphafold": "False",
-            "uniprot_start": "687",
-            "uniprot_end": "692",
-            "sequence_identity": "1.200",
-            "chain_length": "8",
-            "passed": "True",
-            "output_file": str(output_dir / "2Y29.cif.gz"),
-        }
-        assert rows[1] == {
-            "input_file": str(input_dir / "1amb_updated.cif.gz"),
-            "id": "1AMB",
-            "uniprot_accession": "P05067",
-            "resolution": "0.0",
-            "total_residue_count": "28",
-            "is_alphafold": "False",
-            "uniprot_start": "672",
-            "uniprot_end": "699",
-            "sequence_identity": "1.037",
-            "chain_length": "28",
-            "passed": "True",
-            "output_file": str(output_dir / "1amb_updated.cif.gz"),
-        }
-        assert rows[2] == {
-            "input_file": str(input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
-            "id": "AF-A0A0C5B5G6-F1",
-            "uniprot_accession": "A0A0C5B5G6",
-            "resolution": "0.0",
-            "total_residue_count": "16",
-            "is_alphafold": "True",
-            "uniprot_start": "1",
-            "uniprot_end": "16",
-            "sequence_identity": "1.067",
-            "chain_length": "16",
-            "passed": "True",
-            "output_file": str(output_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
-        }
+        expected = [
+            {
+                "input_file": str(input_dir / "1amb_updated.cif.gz"),
+                "id": "1AMB",
+                "uniprot_accession": "P05067",
+                "resolution": "0.0",
+                "total_residue_count": "28",
+                "is_alphafold": "False",
+                "uniprot_start": "672",
+                "uniprot_end": "699",
+                "sequence_identity": "1.000",
+                "chain_length": "28",
+                "passed": "True",
+                "output_file": str(output_dir / "1amb_updated.cif.gz"),
+            },
+            {
+                "input_file": str(input_dir / "2Y29.cif.gz"),
+                "id": "2Y29",
+                "uniprot_accession": "P05067",
+                "resolution": "2.3",
+                "total_residue_count": "8",
+                "is_alphafold": "False",
+                "uniprot_start": "687",
+                "uniprot_end": "692",
+                "sequence_identity": "1.000",
+                "chain_length": "8",
+                "passed": "True",
+                "output_file": str(output_dir / "2Y29.cif.gz"),
+            },
+            {
+                "input_file": str(input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
+                "id": "AF-A0A0C5B5G6-F1",
+                "uniprot_accession": "A0A0C5B5G6",
+                "resolution": "0.0",
+                "total_residue_count": "16",
+                "is_alphafold": "True",
+                "uniprot_start": "1",
+                "uniprot_end": "16",
+                "sequence_identity": "1.000",
+                "chain_length": "16",
+                "passed": "True",
+                "output_file": str(output_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
+            },
+        ]
+        assert rows == expected
 
         captured = capsys.readouterr()
         assert "Statistics written to" in captured.err
@@ -344,26 +346,26 @@ class TestResolution:
 
         main(argv)
 
-        output_files = sorted(path.name for path in output_dir.iterdir())
-        assert output_files == ["2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"]
+        output_files = {path.name for path in output_dir.iterdir()}
+        assert output_files == {"1amb_updated.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"}
 
         with stats_fn.open() as handle:
             rows = list(csv.DictReader(handle))
 
         expected_rows = [
             {
-                "input_file": str(input_dir / "2Y29.cif.gz"),
-                "id": "2Y29",
+                "input_file": str(input_dir / "1amb_updated.cif.gz"),
+                "id": "1AMB",
                 "uniprot_accession": "P05067",
-                "resolution": "2.3",
-                "total_residue_count": "8",
+                "resolution": "0.0",
+                "total_residue_count": "28",
                 "is_alphafold": "False",
-                "uniprot_start": "687",
-                "uniprot_end": "692",
-                "sequence_identity": "1.200",
-                "chain_length": "8",
+                "uniprot_start": "672",
+                "uniprot_end": "699",
+                "sequence_identity": "1.000",
+                "chain_length": "28",
                 "passed": "True",
-                "output_file": str(output_dir / "2Y29.cif.gz"),
+                "output_file": str(output_dir / "1amb_updated.cif.gz"),
             },
             {
                 "input_file": str(input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
@@ -374,22 +376,22 @@ class TestResolution:
                 "is_alphafold": "True",
                 "uniprot_start": "1",
                 "uniprot_end": "16",
-                "sequence_identity": "1.067",
+                "sequence_identity": "1.000",
                 "chain_length": "16",
                 "passed": "True",
                 "output_file": str(output_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
             },
             {
-                "input_file": str(input_dir / "1amb_updated.cif.gz"),
-                "id": "1AMB",
+                "input_file": str(input_dir / "2Y29.cif.gz"),
+                "id": "2Y29",
                 "uniprot_accession": "P05067",
-                "resolution": "0.0",
-                "total_residue_count": "28",
+                "resolution": "2.3",
+                "total_residue_count": "8",
                 "is_alphafold": "False",
-                "uniprot_start": "672",
-                "uniprot_end": "699",
-                "sequence_identity": "1.037",
-                "chain_length": "28",
+                "uniprot_start": "687",
+                "uniprot_end": "692",
+                "sequence_identity": "1.000",
+                "chain_length": "8",
                 "passed": "False",
                 "output_file": "",
             },
@@ -422,8 +424,8 @@ class TestResolution:
 
         main(argv)
 
-        output_files = sorted(path.name for path in output_dir.iterdir())
-        assert output_files == ["2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"]
+        output_files = {path.name for path in output_dir.iterdir()}
+        assert output_files == {"1amb_updated.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"}
 
         captured = capsys.readouterr()
         assert "global resolution ranking (no grouping)" in captured.err
