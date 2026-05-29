@@ -266,6 +266,8 @@ def resolution(
     If resolution is the same, structures with more residues are preferred.
     If resolution is missing, those structures are undesirable.
 
+    To see how clustering was done use `protein-quest convert clusters` command.
+
     Args:
         input_dir: Directory structure files.
         output_dir: Directory to write the selected structure files.
