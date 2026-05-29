@@ -7,7 +7,11 @@ from pathlib import Path
 
 from tqdm.auto import tqdm
 
-from protein_quest.clustering import cluster_structures, interleave_longest, sort_structures, top_members_of_clusters
+from protein_quest.clustering import (
+    filter_structures_on_clustered_resolution,
+    interleave_longest,
+    structure_sort_key,
+)
 from protein_quest.structure import StructureMetadata
 from protein_quest.utils import CopyMethod, copyfile
 
@@ -157,24 +161,10 @@ def group_resolution_statistics(
     return sorted(output, key=lambda item: item.input_file.name)
 
 
-def _coverage_bucket_sort_key(results: list[ResolutionFilterStatistics]) -> tuple[int, float, float, int, str]:
-    first = results[0]
-    return (0, -first.sequence_identity, first.resolution, -first.chain_length, first.id)
-
-
-def _coverage_bucket_sort_key_for_accessionless(
-    results: list[ResolutionFilterStatistics],
-) -> tuple[int, float, float, int, str]:
-    first = results[0]
-    # Mark accessionless groups as lowest priority
-    return (1, -first.sequence_identity, first.resolution, -first.chain_length, first.id)
-
-
-def _cluster_resolution_bucket(results: list[ResolutionFilterStatistics]) -> list[ResolutionFilterStatistics]:
-    if not results:
-        return []
-    ordered_clusters = [sort_structures(cluster) for cluster in cluster_structures(results)]
-    return top_members_of_clusters(ordered_clusters, top=len(results))
+def _uniprot_group_sort_key(results: list[ResolutionFilterStatistics]) -> tuple[float, float, int, str]:
+    """Take best best member in best cluster of clusters for a uniprot accession and return its sort key."""
+    best_cluster = results[0]
+    return structure_sort_key(best_cluster)
 
 
 def coverage_group_resolution_statistics(
@@ -208,22 +198,21 @@ def coverage_group_resolution_statistics(
         grouped.setdefault(result.uniprot_accession, []).append(result)
 
     clustered_groups: list[list[ResolutionFilterStatistics]] = [
-        _cluster_resolution_bucket(group_results) for group_results in grouped.values()
+        filter_structures_on_clustered_resolution(group_results, top=len(group_results))
+        for group_results in grouped.values()
     ]
 
-    accessioned_groups = [group for group in clustered_groups if group and group[0].uniprot_accession is not None]
-    accessionless_groups = [group for group in clustered_groups if group and group[0].uniprot_accession is None]
-    ordered_groups = sorted(accessioned_groups, key=_coverage_bucket_sort_key)
-    ordered_groups.extend(sorted(accessionless_groups, key=_coverage_bucket_sort_key_for_accessionless))
+    # Reorder so clusters of best uniprot accession is first
+    sorted_clustered_groups = sorted(clustered_groups, key=_uniprot_group_sort_key)
 
     if not group_by:
-        flattened = list(interleave_longest(*ordered_groups))
+        flattened = list(interleave_longest(*sorted_clustered_groups))
         for result in flattened[:top]:
             result.passed = True
         return flattened
 
     output: list[ResolutionFilterStatistics] = []
-    for group_results in ordered_groups:
+    for group_results in sorted_clustered_groups:
         for result in group_results[:top]:
             result.passed = True
         output.extend(group_results)

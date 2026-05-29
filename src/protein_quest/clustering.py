@@ -137,14 +137,18 @@ def _cluster_sort_key[T: ClusterableStructure](cluster: set[T]) -> tuple[int, in
     return (-max_chain_length, start, end, ident)
 
 
-def _member_sort_key(member: ClusterableStructure) -> tuple[float, float, int, str]:
+def structure_sort_key(member: ClusterableStructure) -> tuple[float, float, int, str]:
     """Deterministic quality sort key for a cluster member.
+
+    1. Sequence identity descending (highest first)
+    2. Resolution ascending (lowest first; ``0.0`` is treated as missing and ranks first)
+    3. Chain length descending (longest first)
+    4. Identifier ascending (deterministic tie-break)
 
     A failing ``chain_length`` access (for example for PDB results with
     unparsable chain metadata) is treated as ``0`` so such entries can still
     be sorted alongside valid ones.
 
-    See [sort_structures][protein_quest.clustering.sort_structures] for criteria.
     """
     try:
         chain_length = member.chain_length
@@ -161,10 +165,7 @@ def _member_sort_key(member: ClusterableStructure) -> tuple[float, float, int, s
 def sort_structures[T: ClusterableStructure](structures: Iterable[T]) -> list[T]:
     """Sort structures by quality criteria.
 
-    1. Sequence identity descending (highest first)
-    2. Resolution ascending (lowest first; ``0.0`` is treated as missing and ranks first)
-    3. Chain length descending (longest first)
-    4. Identifier ascending (deterministic tie-break)
+    See [structure_sort_key][protein_quest.clustering.structure_sort_key] for sort criteria.
 
     Args:
         structures: Structures to sort.
@@ -174,7 +175,7 @@ def sort_structures[T: ClusterableStructure](structures: Iterable[T]) -> list[T]
     Returns:
         List of structures sorted by the criteria above.
     """
-    return sorted(structures, key=_member_sort_key)
+    return sorted(structures, key=structure_sort_key)
 
 
 def hierarchical_clustering(condensed_distances: list[float]) -> np.ndarray:
@@ -197,7 +198,10 @@ def flatten_hierarchical_clusters[T: ClusterableStructure](
     Wrapper around [scipy.cluster.hierarchy.fcluster][scipy.cluster.hierarchy.fcluster] with
     distance criterion and [CLUSTER_DISTANCE_THRESHOLD][protein_quest.clustering.CLUSTER_DISTANCE_THRESHOLD].
     followed by
-    mapping back to the original structures and sorting of clusters and members.
+    mapping back to the original structures and sorting of clusters and their members.
+
+    Clusters themselves are ordered by chain length descending, then by start
+    and end residue, then identifier.
 
     Args:
         linkage_matrix: Linkage matrix as returned by scipy's linkage function.
@@ -274,7 +278,7 @@ def top_members_of_clusters[T](clusters: list[list[T]], top: int) -> list[T]:
 
     Args:
         clusters: Ordered clusters whose members are also sorted.
-            First cluster and first member of each cluster are considered best.
+            First cluster and its first member is considered best.
         top: Maximum number of members to return.
 
     Returns:
@@ -289,14 +293,8 @@ def top_members_of_clusters[T](clusters: list[list[T]], top: int) -> list[T]:
 def filter_structures_on_clustered_resolution[T: ClusterableStructure](structures: list[T], top: int) -> list[T]:
     """Filter structures by resolution within residue-range clusters.
 
-    Interleaves cluster members round-robin (per
-    [interleave_longest][protein_quest.clustering.interleave_longest]),
-    taking the best remaining member of each cluster (per
-    [sort_structures][protein_quest.clustering.sort_structures]) until
-    ``top`` entries have been collected or all clusters are exhausted.
-
-    Clusters themselves are ordered by chain length descending, then by start
-    and end residue, then identifier.
+    Looks at how structures uniprot ranges overlap and clusters them by similarity of covered residue ranges.
+    Then returns up to ``top`` structures by interleaving cluster members round-robin,
 
     Args:
         structures: Structures to filter. Must all have valid residue ranges.
