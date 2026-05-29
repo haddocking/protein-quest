@@ -112,12 +112,12 @@ def structure_distance(a: ClusterableStructure, b: ClusterableStructure) -> floa
     return 1 - (overlap / union)
 
 
-def structure_distances[T: ClusterableStructure](items: list[T]) -> list[float]:
+def structure_distances[T: ClusterableStructure](structures: list[T]) -> list[float]:
     """Condensed (upper-triangle) pairwise distance matrix for a list of structures.
 
     Args:
-        items: Structures to compute distances for.
-            Each item must satisfy
+        structures: Structures to compute distances for.
+            Each structure must satisfy
             [ClusterableStructure][protein_quest.clustering.ClusterableStructure] protocol.
 
     Returns:
@@ -125,8 +125,8 @@ def structure_distances[T: ClusterableStructure](items: list[T]) -> list[float]:
             [scipy.cluster.hierarchy.linkage][scipy.cluster.hierarchy.linkage].
     """
     condensed: list[float] = []
-    for index, left in enumerate(items[:-1]):
-        condensed.extend(structure_distance(left, right) for right in items[index + 1 :])
+    for index, left in enumerate(structures[:-1]):
+        condensed.extend(structure_distance(left, right) for right in structures[index + 1 :])
     return condensed
 
 
@@ -157,7 +157,7 @@ def _member_sort_key(member: ClusterableStructure) -> tuple[float, float, int, s
     )
 
 
-def sort_structures[T: ClusterableStructure](items: set[T] | list[T]) -> list[T]:
+def sort_structures[T: ClusterableStructure](structures: Iterable[T]) -> list[T]:
     """Sort structures by quality criteria.
 
     1. Sequence identity descending (highest first)
@@ -166,61 +166,52 @@ def sort_structures[T: ClusterableStructure](items: set[T] | list[T]) -> list[T]
     4. Identifier ascending (deterministic tie-break)
 
     Args:
-        items: Structures to sort.
-            Each item must satisfy
+        structures: Structures to sort.
+            Each structure must satisfy
             [ClusterableStructure][protein_quest.clustering.ClusterableStructure] protocol.
 
     Returns:
         List of structures sorted by the criteria above.
     """
-    return sorted(items, key=_member_sort_key)
+    return sorted(structures, key=_member_sort_key)
 
 
-def _cluster_many_valid[T: ClusterableStructure](items: list[T]) -> list[list[T]]:
-    condensed_distances = structure_distances(items)
-    linkage_matrix = linkage(condensed_distances, method="complete")
-    cluster_ids = fcluster(linkage_matrix, t=CLUSTER_DISTANCE_THRESHOLD, criterion="distance")
-
-    logger.info("Formed %d clusters from %d structures", len(set(cluster_ids)), len(items))
-
-    clusters_by_id: dict[int, set[T]] = {}
-    for item, cluster_id in zip(items, cluster_ids, strict=True):
-        clusters_by_id.setdefault(int(cluster_id), set()).add(item)
-
-    return [
-        sort_structures(clusters_by_id[cluster_id])
-        for cluster_id in sorted(clusters_by_id, key=lambda cid: _cluster_sort_key(clusters_by_id[cid]))
-    ]
-
-
-def cluster_structures[T: ClusterableStructure](items: list[T]) -> list[list[T]]:
+def cluster_structures[T: ClusterableStructure](structures: list[T]) -> list[list[T]]:
     """Cluster structures by overlapping UniProt residue coverage.
 
     Clustering is done using [linkage(distances, method="complete")][scipy.cluster.hierarchy.linkage] and
     [fcluster(linkage_matrix, t=CLUSTER_DISTANCE_THRESHOLD, criterion="distance")][scipy.cluster.hierarchy.fcluster].
 
     Args:
-        items: Structures to cluster. All items must have valid residue ranges;
+        structures: Structures to cluster. All structures must have valid residue ranges;
             callers responsible for filtering out structures with missing
             range information beforehand.
-            Each item must satisfy
+            Each structure must satisfy
             [ClusterableStructure][protein_quest.clustering.ClusterableStructure] protocol.
 
     Returns:
         Ordered list of clusters; each cluster is a list of members sorted
             by [sort_structures][protein_quest.clustering.sort_structures].
     """
-    ordered = sorted(items, key=lambda item: (item.uniprot_start, item.uniprot_end, item.id))
-    if not ordered:
+    if not structures:
         return []
-    if len(ordered) == 1:
-        return [[ordered[0]]]
-    if len(ordered) == 2:
-        a, b = ordered
-        if structure_distance(a, b) <= CLUSTER_DISTANCE_THRESHOLD:
-            return [[a, b]]
-        return [[a], [b]]
-    return _cluster_many_valid(ordered)
+    if len(structures) == 1:
+        return [[structures[0]]]
+
+    condensed_distances = structure_distances(structures)
+    linkage_matrix = linkage(condensed_distances, method="complete")
+    cluster_ids = fcluster(linkage_matrix, t=CLUSTER_DISTANCE_THRESHOLD, criterion="distance")
+
+    logger.info("Formed %d clusters from %d structures", len(set(cluster_ids)), len(structures))
+
+    clusters_by_id: dict[int, set[T]] = {}
+    for structure, cluster_id in zip(structures, cluster_ids, strict=True):
+        clusters_by_id.setdefault(int(cluster_id), set()).add(structure)
+
+    return [
+        sort_structures(clusters_by_id[cluster_id])
+        for cluster_id in sorted(clusters_by_id, key=lambda cid: _cluster_sort_key(clusters_by_id[cid]))
+    ]
 
 
 def interleave_longest[T](*iterables: Iterable[T]) -> Iterator[T]:
@@ -261,10 +252,13 @@ def top_members_of_clusters[T](clusters: list[list[T]], top: int) -> list[T]:
     Returns:
         Interleaved members truncated to ``top``.
     """
+    if top <= 0:
+        msg = "Top must be a positive integer."
+        raise ValueError(msg)
     return list(islice(interleave_longest(*clusters), top))
 
 
-def filter_structures_on_clustered_resolution[T: ClusterableStructure](items: list[T], top: int) -> list[T]:
+def filter_structures_on_clustered_resolution[T: ClusterableStructure](structures: list[T], top: int) -> list[T]:
     """Filter structures by resolution within residue-range clusters.
 
     Interleaves cluster members round-robin (per
@@ -277,17 +271,13 @@ def filter_structures_on_clustered_resolution[T: ClusterableStructure](items: li
     and end residue, then identifier.
 
     Args:
-        items: Structures to filter. Must all have valid residue ranges.
-            Each item must satisfy
+        structures: Structures to filter. Must all have valid residue ranges.
+            Each structure must satisfy
             [ClusterableStructure][protein_quest.clustering.ClusterableStructure] protocol.
         top: Number of top results to retain.
 
     Returns:
         Filtered list of up to ``top`` structures.
     """
-    if top <= 0:
-        msg = "Top must be a positive integer."
-        raise ValueError(msg)
-
-    clusters = cluster_structures(items)
+    clusters = cluster_structures(structures)
     return top_members_of_clusters(clusters, top)

@@ -137,46 +137,63 @@ class TestClusterStructures:
     def test_empty_input_returns_empty_list(self):
         assert cluster_structures([]) == []
 
-    def test_single_item_returns_singleton_cluster(self):
+    def test_single_structure_returns_singleton_cluster(self):
         structure = make_structure("1AAA", 1, 100)
         assert cluster_structures([structure]) == [[structure]]
 
     @pytest.mark.parametrize(
-        "items,expected",
+        "structures,expected",
         [
             pytest.param(
                 [
-                    make_structure("2BBB", 50, 150),
+                    make_structure("2BBB", 51, 150),
                     make_structure("1AAA", 1, 100),
                 ],
                 [["1AAA", "2BBB"]],
-                id="two_items_overlap_merge",
+                id="overlap_same_length_1cluster",
             ),
             pytest.param(
                 [
-                    make_structure("2BBB", 300, 400),
+                    make_structure("2BBB", 75, 150),
+                    make_structure("1AAA", 1, 100),
+                ],
+                [["1AAA", "2BBB"]],
+                id="overlap_diff_length_1cluster",
+            ),
+            pytest.param(
+                [
+                    make_structure("2BBB", 301, 400),
                     make_structure("1AAA", 1, 100),
                 ],
                 [["1AAA"], ["2BBB"]],
-                id="two_items_no_overlap_split",
+                id="no_overlap_same_length_2clusters",
+            ),
+            pytest.param(
+                [
+                    make_structure("2BBB", 321, 400),
+                    make_structure("1AAA", 1, 100),
+                ],
+                [["1AAA"], ["2BBB"]],
+                id="no_overlap_diff_length_2clusters",
             ),
         ],
     )
-    def test_two_item_shortcut_paths(self, items, expected):
-        clusters = cluster_structures(items)
-        assert [[member.id for member in cluster] for cluster in clusters] == expected
+    def test_two_structure_shortcut_paths(self, structures, expected):
+        clusters = cluster_structures(structures)
+        cluster_ids = [[member.id for member in cluster] for cluster in clusters]
+        assert cluster_ids == expected
 
-    def test_many_items_orders_clusters_and_members(self):
+    def test_many_structures_orders_clusters_and_members(self):
         # Cluster 1: longer chains (1-200), sorted by sequence identity then resolution.
         # Cluster 2: shorter chains (300-350), sorted by quality.
-        items = [
+        structures = [
             SimpleStructure("2BBB", 1, 200, resolution_value=3.0, sequence_identity=1.0, chain_length=200),
             SimpleStructure("1AAA", 1, 200, resolution_value=2.0, sequence_identity=1.0, chain_length=200),
             SimpleStructure("4DDD", 300, 350, resolution_value=2.5, sequence_identity=0.8, chain_length=51),
             SimpleStructure("3CCC", 300, 350, resolution_value=1.5, sequence_identity=0.9, chain_length=51),
         ]
 
-        clusters = cluster_structures(items)
+        clusters = cluster_structures(structures)
 
         assert [[member.id for member in cluster] for cluster in clusters] == [
             ["1AAA", "2BBB"],
@@ -212,24 +229,24 @@ class TestFilterStructuresOnClusteredResolution:
             filter_structures_on_clustered_resolution([make_structure("1AAA", 1, 100)], top=top)
 
     def test_interleaved_cluster_order_smoke(self):
-        items = [
+        structures = [
             SimpleStructure("A1", 1, 200, resolution_value=1.0, sequence_identity=1.0, chain_length=200),
             SimpleStructure("A2", 1, 200, resolution_value=2.0, sequence_identity=0.9, chain_length=200),
             SimpleStructure("B1", 300, 360, resolution_value=1.5, sequence_identity=1.0, chain_length=61),
             SimpleStructure("B2", 300, 360, resolution_value=2.5, sequence_identity=0.9, chain_length=61),
         ]
 
-        filtered = filter_structures_on_clustered_resolution(items, top=3)
+        filtered = filter_structures_on_clustered_resolution(structures, top=3)
         assert [member.id for member in filtered] == ["A1", "B1", "A2"]
 
     def test_top_above_available_returns_all_without_duplicates(self):
-        items = [
+        structures = [
             make_structure("A1", 1, 100),
             make_structure("A2", 1, 100),
             make_structure("B1", 300, 350),
         ]
 
-        filtered = filter_structures_on_clustered_resolution(items, top=10)
+        filtered = filter_structures_on_clustered_resolution(structures, top=10)
         filtered_ids = [member.id for member in filtered]
 
         assert filtered_ids == ["A1", "B1", "A2"]
