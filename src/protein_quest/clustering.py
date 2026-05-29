@@ -13,6 +13,7 @@ from collections.abc import Hashable, Iterable, Iterator
 from itertools import islice
 from typing import Protocol
 
+import numpy as np
 from scipy.cluster.hierarchy import fcluster, linkage
 
 logger = logging.getLogger(__name__)
@@ -176,30 +177,35 @@ def sort_structures[T: ClusterableStructure](structures: Iterable[T]) -> list[T]
     return sorted(structures, key=_member_sort_key)
 
 
-def cluster_structures[T: ClusterableStructure](structures: list[T]) -> list[list[T]]:
-    """Cluster structures by overlapping UniProt residue coverage.
-
-    Clustering is done using [linkage(distances, method="complete")][scipy.cluster.hierarchy.linkage] and
-    [fcluster(linkage_matrix, t=CLUSTER_DISTANCE_THRESHOLD, criterion="distance")][scipy.cluster.hierarchy.fcluster].
+def hierarchical_clustering(condensed_distances: list[float]) -> np.ndarray:
+    """Wrapper around [scipy.cluster.hierarchy.linkage][scipy.cluster.hierarchy.linkage] with complete method.
 
     Args:
-        structures: Structures to cluster. All structures must have valid residue ranges;
-            callers responsible for filtering out structures with missing
-            range information beforehand.
-            Each structure must satisfy
-            [ClusterableStructure][protein_quest.clustering.ClusterableStructure] protocol.
+        condensed_distances: Condensed distance matrix as a flat list
 
     Returns:
-        Ordered list of clusters; each cluster is a list of members sorted
-            by [sort_structures][protein_quest.clustering.sort_structures].
+        Linkage matrix as returned by scipy's linkage function.
     """
-    if not structures:
-        return []
-    if len(structures) == 1:
-        return [[structures[0]]]
+    return linkage(condensed_distances, method="complete")
 
-    condensed_distances = structure_distances(structures)
-    linkage_matrix = linkage(condensed_distances, method="complete")
+
+def flatten_hierarchical_clusters[T: ClusterableStructure](
+    linkage_matrix: np.ndarray, structures: list[T]
+) -> list[list[T]]:
+    """Form flat clusters from a hierarchical clustering linkage matrix.
+
+    Wrapper around [scipy.cluster.hierarchy.fcluster][scipy.cluster.hierarchy.fcluster] with
+    distance criterion and [CLUSTER_DISTANCE_THRESHOLD][protein_quest.clustering.CLUSTER_DISTANCE_THRESHOLD].
+    followed by
+    mapping back to the original structures and sorting of clusters and members.
+
+    Args:
+        linkage_matrix: Linkage matrix as returned by scipy's linkage function.
+        structures: Original list of structures corresponding to the distance matrix used to compute the linkage matrix.
+
+    Returns:
+        Sorted list of clusters with members also sorted.
+    """
     cluster_ids = fcluster(linkage_matrix, t=CLUSTER_DISTANCE_THRESHOLD, criterion="distance")
 
     logger.info("Formed %d clusters from %d structures", len(set(cluster_ids)), len(structures))
@@ -212,6 +218,28 @@ def cluster_structures[T: ClusterableStructure](structures: list[T]) -> list[lis
         sort_structures(clusters_by_id[cluster_id])
         for cluster_id in sorted(clusters_by_id, key=lambda cid: _cluster_sort_key(clusters_by_id[cid]))
     ]
+
+
+def cluster_structures[T: ClusterableStructure](structures: list[T]) -> list[list[T]]:
+    """Cluster structures by overlapping UniProt residue coverage.
+
+    Args:
+        structures: Structures to cluster. All structures must have valid residue ranges;
+            callers responsible for filtering out structures with missing
+            range information beforehand.
+            Each structure must satisfy
+            [ClusterableStructure][protein_quest.clustering.ClusterableStructure] protocol.
+
+    Returns:
+        Sorted list of clusters with members also sorted.
+    """
+    if not structures:
+        return []
+    if len(structures) == 1:
+        return [[structures[0]]]
+    condensed_distances = structure_distances(structures)
+    linkage_matrix = hierarchical_clustering(condensed_distances)
+    return flatten_hierarchical_clusters(linkage_matrix, structures)
 
 
 def interleave_longest[T](*iterables: Iterable[T]) -> Iterator[T]:
