@@ -108,7 +108,7 @@ def struct_ref_seqs_columns_to_records(struct_ref_seqs_columns: dict[str, list[s
         uniprot_start = min(starts)
         uniprot_end = max(ends)
         aligned_residue_count = sum(end - start + 1 for start, end in zip(starts, ends, strict=False))
-        reference_span = max(uniprot_end - uniprot_start, 1)
+        reference_span = uniprot_end - uniprot_start + 1
         sequence_identity = aligned_residue_count / reference_span
         records.append(
             StructRefSeq(
