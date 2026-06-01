@@ -4,7 +4,10 @@ import logging
 from collections.abc import Generator, Iterable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
+from dask.distributed import Client
+from distributed.deploy.cluster import Cluster
 from tqdm.auto import tqdm
 
 from protein_quest.clustering import (
@@ -12,6 +15,7 @@ from protein_quest.clustering import (
     interleave_longest,
     structure_sort_key,
 )
+from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
 from protein_quest.structure import StructureMetadata
 from protein_quest.utils import CopyMethod, copyfile
 
@@ -76,6 +80,63 @@ def resolution_sort_key(stats: ResolutionFilterStatistics) -> tuple[int, float, 
     if stats.resolution != 0.0:
         return (1, stats.resolution, -stats.total_residue_count, stats.input_file.name)
     return (2, 0.0, -stats.total_residue_count, stats.input_file.name)
+
+
+def _load_resolution_statistics_single(input_file: Path) -> ResolutionFilterStatistics:
+    """Load resolution statistics for a single structure file.
+
+    Args:
+        input_file: Structure file to read metadata from.
+
+    Returns:
+        Statistics object with metadata filled in; ``passed`` is always
+        ``False`` and ``output_file`` is always ``None``.
+    """
+    metadata = StructureMetadata.from_path(input_file)
+    return ResolutionFilterStatistics(
+        input_file=input_file,
+        id=metadata.id,
+        uniprot_accession=metadata.uniprot_accession,
+        resolution=metadata.resolution,
+        total_residue_count=metadata.total_residue_count,
+        is_alphafold=metadata.is_alphafold,
+        uniprot_start=metadata.uniprot_start,
+        uniprot_end=metadata.uniprot_end,
+        sequence_identity=metadata.sequence_identity,
+        chain_length=metadata.chain_length,
+        passed=False,
+        output_file=None,
+    )
+
+
+def load_resolution_statistics(
+    input_files: list[Path],
+    scheduler_address: str | Cluster | Literal["sequential"] | None = None,
+) -> list[ResolutionFilterStatistics]:
+    """Load resolution statistics for structure files, optionally in parallel.
+
+    Args:
+        input_files: Structure files to read metadata from.
+        scheduler_address: Address of the Dask scheduler to connect to.
+            If not provided, will create a local cluster.
+            If set to ``sequential`` will run tasks sequentially.
+
+    Returns:
+        Statistics objects with metadata filled in; ``passed`` is always
+        ``False`` and ``output_file`` is always ``None``.
+    """
+    if scheduler_address == "sequential" or (scheduler_address is None and not input_files):
+        return list(iter_resolution_statistics(input_files))
+    if scheduler_address is None:
+        with configure_dask_scheduler(None, name="load-resolution-statistics") as cluster, Client(cluster) as client:
+            client.forward_logging()
+            return dask_map_with_progress(client, _load_resolution_statistics_single, input_files)
+    with (
+        configure_dask_scheduler(scheduler_address, name="load-resolution-statistics") as cluster,
+        Client(cluster) as client,
+    ):
+        client.forward_logging()
+        return dask_map_with_progress(client, _load_resolution_statistics_single, input_files)
 
 
 def iter_resolution_statistics(
@@ -249,6 +310,7 @@ def filter_files_on_resolution(
     coverage: bool = False,
     group_by: bool = True,
     copy_method: CopyMethod = "copy",
+    scheduler_address: str | Cluster | Literal["sequential"] | None = None,
 ) -> Generator[ResolutionFilterStatistics]:
     """Filter structure files by resolution rank.
 
@@ -266,11 +328,14 @@ def filter_files_on_resolution(
         group_by: ``True`` applies top-N per accession. Structures without
             uniprot accession are never passed. ``False`` applies top-N globally.
         copy_method: How to copy passed files to output directory.
+        scheduler_address: Address of the Dask scheduler to connect to.
+            If not provided, will create a local cluster.
+            If set to ``sequential`` will run tasks sequentially.
 
     Yields:
         Objects describing the filtering result for each input file.
     """
-    stats = iter_resolution_statistics(input_files)
+    stats = load_resolution_statistics(input_files, scheduler_address)
     if coverage:
         grouped = coverage_group_resolution_statistics(stats, top, group_by=group_by)
     else:

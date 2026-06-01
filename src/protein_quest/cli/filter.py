@@ -255,6 +255,7 @@ def resolution(
     no_group_by: Annotated[bool, Parameter(name="--no-group-by", negative="")] = False,
     top: PositiveInt = 1_000,
     no_coverage: Annotated[bool, Parameter(negative="")] = False,
+    scheduler_address: str | None = None,
     write_stats: OutputFile | None = None,
     cache: CacheParameter | None = None,
     _: Common | None = None,
@@ -279,6 +280,9 @@ def resolution(
             See
             [clustering documentation](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/clustering.html#protein_quest.pdbe.clustering.filter_pdbs_on_clustered_resolution)
             for details on the clustering and ordering criteria.
+        scheduler_address: Address of the Dask scheduler to connect to.
+            If not provided, will create a local cluster.
+            If set to `sequential` will run tasks sequentially.
         write_stats: Write filter statistics to file.
             In CSV format with columns:
             `<input_file>,<id>,<uniprot_accession>,<resolution>,<total_residue_count>,<is_alphafold>,<uniprot_start>,<uniprot_end>,<sequence_identity>,<chain_length>,<passed>,<output_file>`.
@@ -307,6 +311,7 @@ def resolution(
         coverage=coverage,
         group_by=group_by,
         copy_method=cache.copy_method,
+        scheduler_address=scheduler_address,
     ):
         stats_lines.append(_resolution_stats_row(result))
         if result.passed:

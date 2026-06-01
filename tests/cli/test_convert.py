@@ -65,7 +65,7 @@ def test_convert_clusters_writes_default_outputs(
     assert len(stats_rows) == 2
 
     captured = capsys.readouterr()
-    assert "Wrote clusters for 2 accessions" in captured.err
+    assert "Wrote clusters for 2 uniprot accessions" in captured.err
 
 
 def test_convert_clusters_optional_outputs(
@@ -93,7 +93,7 @@ def test_convert_clusters_optional_outputs(
         ]
     )
 
-    condensed_fn = output_dir / "P05067_condensed.csv"
+    condensed_fn = output_dir / "P05067_distances.csv"
     linkage_fn = output_dir / "P05067_linkage.csv"
     dendrogram_fn = output_dir / "P05067_dendrogram.nwk"
 

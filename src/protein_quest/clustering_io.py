@@ -8,8 +8,9 @@ from pathlib import Path
 
 import numpy as np
 from scipy.cluster.hierarchy import ClusterNode, to_tree
+from tqdm.auto import tqdm
 
-from protein_quest.clustering import ClusterableStructure, cluster_structures, structure_distances
+from protein_quest.clustering import ClusterableStructure, cluster_structures_with_intermediates, structure_distances
 from protein_quest.filters.resolution import ResolutionFilterStatistics
 
 logger = logging.getLogger(__name__)
@@ -20,21 +21,33 @@ class AccessionClusters:
     """Clusters for a single UniProt accession."""
 
     uniprot_accession: str
+    structures: list[ResolutionFilterStatistics]
     clusters: list[list[ResolutionFilterStatistics]]
-
-
-def accession_output_stem(accession: str) -> str:
-    """Return a filename-safe stem for an accession string."""
-    return "".join(character if character.isalnum() or character in "-._" else "_" for character in accession)
+    condensed_distances: list[float]
+    linkage_matrix: np.ndarray | None
 
 
 def flatten_accession_clusters(result: AccessionClusters) -> list[ResolutionFilterStatistics]:
-    """Flatten clustered structures in cluster/rank order."""
+    """Flatten clustered structures in cluster/rank order.
+
+    Args:
+        result: Clustered structures for one accession.
+
+    Returns:
+        Structures in cluster order, preserving rank order within each cluster.
+    """
     return [member for cluster in result.clusters for member in cluster]
 
 
 def cluster_results_by_accession(stats: Iterable[ResolutionFilterStatistics]) -> list[AccessionClusters]:
-    """Group and cluster structures by UniProt accession."""
+    """Group and cluster structures by UniProt accession.
+
+    Args:
+        stats: Structure statistics to group and cluster.
+
+    Returns:
+        Cluster results grouped by accession, sorted by accession.
+    """
     grouped: dict[str, list[ResolutionFilterStatistics]] = {}
     for stat in stats:
         if not stat.uniprot_accession:
@@ -42,14 +55,31 @@ def cluster_results_by_accession(stats: Iterable[ResolutionFilterStatistics]) ->
             continue
         grouped.setdefault(stat.uniprot_accession, []).append(stat)
 
-    return [
-        AccessionClusters(uniprot_accession=accession, clusters=cluster_structures(group_results))
-        for accession, group_results in sorted(grouped.items())
-    ]
+    results: list[AccessionClusters] = []
+    for accession, group_results in tqdm(sorted(grouped.items()), unit="acc"):
+        clusters, condensed_distances, linkage_matrix = cluster_structures_with_intermediates(group_results)
+        results.append(
+            AccessionClusters(
+                uniprot_accession=accession,
+                structures=group_results,
+                clusters=clusters,
+                condensed_distances=condensed_distances,
+                linkage_matrix=linkage_matrix,
+            )
+        )
+    return results
 
 
 def write_clusters_csv(results: list[AccessionClusters], output: Path) -> None:
-    """Write structure-level cluster assignments."""
+    """Write structure-level cluster assignments.
+
+    Args:
+        results: Cluster results to serialize.
+        output: Destination path for the CSV file.
+
+    Returns:
+        None.
+    """
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(
@@ -89,7 +119,15 @@ def write_clusters_csv(results: list[AccessionClusters], output: Path) -> None:
 
 
 def write_stats_csv(results: list[AccessionClusters], output: Path) -> None:
-    """Write accession-level clustering statistics."""
+    """Write accession-level clustering statistics.
+
+    Args:
+        results: Cluster results to summarize.
+        output: Destination path for the CSV file.
+
+    Returns:
+        None.
+    """
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(
@@ -126,10 +164,29 @@ def write_stats_csv(results: list[AccessionClusters], output: Path) -> None:
             )
 
 
-def write_condensed_distances_csv[T: ClusterableStructure](structures: list[T], output: Path) -> None:
-    """Write pairwise condensed distances in long CSV form."""
+def write_condensed_distances_csv[T: ClusterableStructure](
+    structures: list[T], output: Path, condensed_distances: list[float] | None = None
+) -> None:
+    """Write pairwise condensed distances in long CSV form.
+
+    Args:
+        structures: Structures to compute pairwise distances for.
+        output: Destination path for the CSV file.
+        condensed_distances: Optional precomputed condensed distances matching ``structures`` order.
+
+    Returns:
+        None.
+    """
     output.parent.mkdir(parents=True, exist_ok=True)
-    condensed = structure_distances(structures)
+    condensed = condensed_distances if condensed_distances is not None else structure_distances(structures)
+
+    expected_distances = (len(structures) * (len(structures) - 1)) // 2
+    if len(condensed) != expected_distances:
+        msg = (
+            "Condensed distance length does not match structure count: "
+            f"expected {expected_distances}, got {len(condensed)}."
+        )
+        raise ValueError(msg)
 
     with output.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=["structure_i", "structure_j", "distance"])
@@ -149,6 +206,15 @@ def write_condensed_distances_csv[T: ClusterableStructure](structures: list[T], 
 
 
 def _node_label[T: ClusterableStructure](node_id: int, structures: list[T]) -> str:
+    """Return a human-readable label for a linkage node id.
+
+    Args:
+        node_id: Node index from a scipy linkage matrix.
+        structures: Input structures used to build the linkage matrix.
+
+    Returns:
+        Structure id for leaf nodes, otherwise an internal node label.
+    """
     if node_id < len(structures):
         return structures[node_id].id
     return f"internal_{node_id}"
@@ -157,7 +223,16 @@ def _node_label[T: ClusterableStructure](node_id: int, structures: list[T]) -> s
 def write_linkage_matrix_csv[T: ClusterableStructure](
     linkage_matrix: np.ndarray, structures: list[T], output: Path
 ) -> None:
-    """Write a linkage matrix with human-readable node labels."""
+    """Write a linkage matrix with human-readable node labels.
+
+    Args:
+        linkage_matrix: Linkage matrix produced by hierarchical clustering.
+        structures: Structures corresponding to leaf rows in the linkage matrix.
+        output: Destination path for the CSV file.
+
+    Returns:
+        None.
+    """
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(
@@ -184,6 +259,19 @@ def write_linkage_matrix_csv[T: ClusterableStructure](
 
 
 def _to_newick[T: ClusterableStructure](node: ClusterNode, parent_distance: float, structures: list[T]) -> str:
+    """Convert a clustering node and descendants to a Newick subtree.
+
+    Args:
+        node: Current clustering node.
+        parent_distance: Distance of the parent node.
+        structures: Input structures used to build the clustering tree.
+
+    Returns:
+        Newick-formatted subtree rooted at ``node``.
+
+    Raises:
+        ValueError: If an internal node is missing either child.
+    """
     branch_length = max(parent_distance - float(node.dist), 0.0)
 
     if node.is_leaf():
@@ -201,7 +289,18 @@ def _to_newick[T: ClusterableStructure](node: ClusterNode, parent_distance: floa
 
 
 def linkage_to_newick[T: ClusterableStructure](linkage_matrix: np.ndarray, structures: list[T]) -> str:
-    """Convert a scipy linkage matrix into Newick text."""
+    """Convert a scipy linkage matrix into Newick text.
+
+    Args:
+        linkage_matrix: Linkage matrix produced by hierarchical clustering.
+        structures: Structures corresponding to leaf rows in the linkage matrix.
+
+    Returns:
+        Newick-formatted tree string.
+
+    Raises:
+        ValueError: If the root node is missing either child.
+    """
     if not structures:
         return ";"
     if len(structures) == 1:
@@ -222,6 +321,18 @@ def linkage_to_newick[T: ClusterableStructure](linkage_matrix: np.ndarray, struc
 def write_dendrogram_nwk[T: ClusterableStructure](
     linkage_matrix: np.ndarray, structures: list[T], output: Path
 ) -> None:
-    """Write a dendrogram in Newick format."""
+    """Write a dendrogram in Newick format.
+
+    Args:
+        linkage_matrix: Linkage matrix produced by hierarchical clustering.
+        structures: Structures corresponding to leaf rows in the linkage matrix.
+        output: Destination path for the Newick file.
+
+    Returns:
+        None.
+
+    Raises:
+        ValueError: If the linkage tree contains an internal node missing a child.
+    """
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(linkage_to_newick(linkage_matrix, structures), encoding="utf-8")

@@ -224,6 +224,34 @@ def flatten_hierarchical_clusters[T: ClusterableStructure](
     ]
 
 
+def cluster_structures_with_intermediates[T: ClusterableStructure](
+    structures: list[T],
+) -> tuple[list[list[T]], list[float], np.ndarray | None]:
+    """Cluster structures and return reusable intermediate artifacts.
+
+    Args:
+        structures: Structures to cluster. All structures must have valid residue ranges;
+            callers responsible for filtering out structures with missing
+            range information beforehand.
+            Each structure must satisfy
+            [ClusterableStructure][protein_quest.clustering.ClusterableStructure] protocol.
+
+    Returns:
+        Tuple of:
+        1. Sorted clusters with sorted members.
+        2. Condensed pairwise distances used for hierarchical clustering.
+        3. Linkage matrix or ``None`` when fewer than two structures are provided.
+    """
+    if not structures:
+        return [], [], None
+    if len(structures) == 1:
+        return [[structures[0]]], [], None
+
+    condensed_distances = structure_distances(structures)
+    linkage_matrix = hierarchical_clustering(condensed_distances)
+    return flatten_hierarchical_clusters(linkage_matrix, structures), condensed_distances, linkage_matrix
+
+
 def cluster_structures[T: ClusterableStructure](structures: list[T]) -> list[list[T]]:
     """Cluster structures by overlapping UniProt residue coverage.
 
@@ -237,13 +265,8 @@ def cluster_structures[T: ClusterableStructure](structures: list[T]) -> list[lis
     Returns:
         Sorted list of clusters with members also sorted.
     """
-    if not structures:
-        return []
-    if len(structures) == 1:
-        return [[structures[0]]]
-    condensed_distances = structure_distances(structures)
-    linkage_matrix = hierarchical_clustering(condensed_distances)
-    return flatten_hierarchical_clusters(linkage_matrix, structures)
+    clusters, _, _ = cluster_structures_with_intermediates(structures)
+    return clusters
 
 
 def interleave_longest[T](*iterables: Iterable[T]) -> Iterator[T]:
