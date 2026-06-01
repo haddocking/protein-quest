@@ -1,3 +1,4 @@
+import csv
 from pathlib import Path
 from textwrap import dedent
 
@@ -303,14 +304,15 @@ def test_search_structure_top_clustered_resolution(tmp_path: Path, capsys: pytes
 
     main(argv)
 
-    output_content = output_file.read_text()
-    lines = output_content.strip().splitlines()
-    pdbe_lines = [line for line in lines if ",pdbe," in line]
-    assert len(pdbe_lines) == 1
-    assert ",2dmd," in pdbe_lines[0]
+    with output_file.open(newline="") as handle:
+        rows = list(csv.DictReader(handle))
+
+    pdbe_rows = [row for row in rows if row["provider"] == "pdbe"]
+    assert len(pdbe_rows) == 1
+    assert pdbe_rows[0]["model_identifier"] == "2dmd"
     # Non-PDBe providers should not be reduced by this flag.
-    assert any(",alphafold," in line for line in lines)
-    assert any(",swissmodel," in line for line in lines)
+    assert any(row["provider"] == "alphafold" for row in rows)
+    assert any(row["provider"] == "swissmodel" for row in rows)
 
 
 @pytest.mark.vcr
