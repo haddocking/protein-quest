@@ -12,6 +12,7 @@ from protein_quest.filters.resolution import (
     filter_files_on_resolution,
     group_resolution_statistics,
     iter_resolution_statistics,
+    load_resolution_statistics,
     resolution_sort_key,
 )
 
@@ -147,6 +148,85 @@ class TestIterResolutionStatistics:
 
     def test_empty_input(self):
         assert list(iter_resolution_statistics([])) == []
+
+
+@pytest.mark.parametrize("scheduler_address", [None, "sequential"])
+def test_load_resolution_statistics_metadata_in_order(
+    sample_cif: Path,
+    sample2_cif: Path,
+    af_cif: Path,
+    nmr_cif: Path,
+    scheduler_address: str | None,
+):
+    input_files = [sample_cif, sample2_cif, af_cif, nmr_cif]
+    results = load_resolution_statistics(input_files, scheduler_address=scheduler_address)
+
+    expected = [
+        ResolutionFilterStatistics(
+            id="3JRSB2A",
+            input_file=sample_cif,
+            uniprot_accession="Q8VZS8",
+            resolution=2.05,
+            total_residue_count=173,
+            is_alphafold=False,
+            uniprot_start=8,
+            uniprot_end=211,
+            sequence_identity=1.0,
+            chain_length=173,
+            passed=False,
+            output_file=None,
+        ),
+        ResolutionFilterStatistics(
+            id="2Y29",
+            input_file=sample2_cif,
+            uniprot_accession="P05067",
+            resolution=2.3,
+            total_residue_count=8,
+            is_alphafold=False,
+            uniprot_start=687,
+            uniprot_end=692,
+            sequence_identity=1.0,
+            chain_length=8,
+            passed=False,
+            output_file=None,
+        ),
+        ResolutionFilterStatistics(
+            id="AF-A0A0C5B5G6-F1",
+            input_file=af_cif,
+            uniprot_accession="A0A0C5B5G6",
+            resolution=0.0,
+            total_residue_count=16,
+            is_alphafold=True,
+            uniprot_start=1,
+            uniprot_end=16,
+            sequence_identity=1.0,
+            chain_length=16,
+            passed=False,
+            output_file=None,
+        ),
+        ResolutionFilterStatistics(
+            id="1AMB",
+            input_file=nmr_cif,
+            uniprot_accession="P05067",
+            resolution=0.0,
+            total_residue_count=28,
+            is_alphafold=False,
+            uniprot_start=672,
+            uniprot_end=699,
+            sequence_identity=1.0,
+            chain_length=28,
+            passed=False,
+            output_file=None,
+        ),
+    ]
+
+    for result, expected_result in zip(results, expected, strict=True):
+        assert_resolution_filter_statistics(result, expected_result)
+
+
+@pytest.mark.parametrize("scheduler_address", [None, "sequential"])
+def test_load_resolution_statistics_empty_input(scheduler_address: str | None):
+    assert load_resolution_statistics([], scheduler_address=scheduler_address) == []
 
 
 def test_filter_files_on_resolution_no_uniprot_does_not_pass(sample2_cif: Path, tmp_path: Path):

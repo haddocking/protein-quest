@@ -152,21 +152,7 @@ def iter_resolution_statistics(
         ``False`` and ``output_file`` is always ``None``.
     """
     for input_file in tqdm(input_files, unit="file"):
-        metadata = StructureMetadata.from_path(input_file)
-        yield ResolutionFilterStatistics(
-            input_file=input_file,
-            id=metadata.id,
-            uniprot_accession=metadata.uniprot_accession,
-            resolution=metadata.resolution,
-            total_residue_count=metadata.total_residue_count,
-            is_alphafold=metadata.is_alphafold,
-            uniprot_start=metadata.uniprot_start,
-            uniprot_end=metadata.uniprot_end,
-            sequence_identity=metadata.sequence_identity,
-            chain_length=metadata.chain_length,
-            passed=False,
-            output_file=None,
-        )
+        yield _load_resolution_statistics_single(input_file)
 
 
 def group_resolution_statistics(
