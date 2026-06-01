@@ -34,3 +34,9 @@ def nmr_cif() -> Path:
 def sample_multispan_cif() -> Path:
     """6O5I structure with multiple `_struct_ref_seq` spans for one chain."""
     return Path(__file__).parent / "fixtures" / "6O5I.cif.gz"
+
+
+@pytest.fixture
+def multi_accession_cif() -> Path:
+    """1A02 structure with multiple UniProt accessions."""
+    return Path(__file__).parent / "fixtures" / "1a02.cif.gz"

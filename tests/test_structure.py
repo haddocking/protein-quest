@@ -285,6 +285,13 @@ class TestStructureMetadata:
         assert_structure_metadata(result, expected)
 
 
+def test_structure_metadata_from_path_multiple_accessions_raises(multi_accession_cif: Path):
+    with pytest.raises(ValueError, match="Multiple UniProt accessions found in structure") as exc_info:
+        StructureMetadata.from_path(multi_accession_cif)
+
+    assert "Source path:" in str(exc_info.value)
+
+
 def test_structure_metadata_without_uniprot():
     structure = gemmi.Structure()
 

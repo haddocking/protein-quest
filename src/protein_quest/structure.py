@@ -140,12 +140,23 @@ def structure_metadata(
     Raises:
         ValueError: If UniProt accessions exist but no matching
             ``_struct_ref_seq`` row is found.
+            Or if multiple UniProt accessions are found in the structure.
         ChainNotFoundError: If the mapped chain from ``_struct_ref_seq`` is
             missing in the structure.
     """
     accessions = structure2uniprot_accessions(structure)
     software_name = structure.meta.software[0].name if structure.meta.software else ""
     total_residue_count = nr_of_residues_in_total(structure)
+
+    if len(accessions) > 1:
+        msg = (
+            f"Multiple UniProt accessions found in structure {structure.name}: "
+            f"{accessions}. Please resolve this ambiguity before using this "
+            "structure. For example using `protein-quest filter chain` command."
+        )
+        if path is not None:
+            msg = f"{msg} Source path: {path}."
+        raise ValueError(msg)
 
     if not accessions:
         return StructureMetadata(
