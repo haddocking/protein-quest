@@ -2,6 +2,7 @@
 
 import logging
 from collections import defaultdict
+from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -83,26 +84,29 @@ class StructRefSeq:
     sequence_identity: float
 
 
-def struct_ref_seqs_columns_to_records(struct_ref_seqs_columns: dict[str, list[str | int]]) -> list[StructRefSeq]:
+def struct_ref_seqs_columns_to_records(struct_ref_seqs_columns: dict[str, list[str | int]]) -> Generator[StructRefSeq]:
     """Convert `_struct_ref_seq` columns into collapsed alignment records.
 
-    Rows are grouped by UniProt accession and chain, then collapsed into a single
-    record per chain with sequence identity calculated from the covered span.
+    Args:
+        struct_ref_seqs_columns: Struct ref seqs columns.
+            As returned by `gemmi.Structure.make_mmcif_block().get_mmcif_category("_struct_ref_seq.")`.
+
+    Yields:
+        StructRefSeq records for each unique UniProt accession and chain combination.
     """
-
-    if not struct_ref_seqs_columns:
-        return []
-
+    # Convert columns {col_name: [val1, val2, ...]} into rows [ {col_name: val1, ...}, {col_name: val2, ...}, ...]
     struct_ref_seqs_rows = [
         dict(zip(struct_ref_seqs_columns.keys(), vals, strict=False))
         for vals in zip(*struct_ref_seqs_columns.values(), strict=False)
     ]
+
+    # Group by accession and chain
     grouped_rows: dict[tuple[str, str], list[dict[str, str]]] = defaultdict(list)
     for row in struct_ref_seqs_rows:
         grouped_rows[(row["pdbx_db_accession"], row["pdbx_strand_id"])].append(row)
 
-    records: list[StructRefSeq] = []
-    for (uniprot_accession, chain_id), rows in sorted(grouped_rows.items(), key=lambda item: (item[0][1], item[0][0])):
+    # Convert grouped rows into StructRefSeq records
+    for (accession, chain_id), rows in grouped_rows.items():
         starts = [int(row["db_align_beg"]) for row in rows]
         ends = [int(row["db_align_end"]) for row in rows]
         uniprot_start = min(starts)
@@ -110,17 +114,13 @@ def struct_ref_seqs_columns_to_records(struct_ref_seqs_columns: dict[str, list[s
         aligned_residue_count = sum(end - start + 1 for start, end in zip(starts, ends, strict=False))
         reference_span = uniprot_end - uniprot_start + 1
         sequence_identity = aligned_residue_count / reference_span
-        records.append(
-            StructRefSeq(
-                uniprot_accession=uniprot_accession,
-                uniprot_start=uniprot_start,
-                uniprot_end=uniprot_end,
-                chain_id=chain_id,
-                sequence_identity=sequence_identity,
-            )
+        yield StructRefSeq(
+            uniprot_accession=accession,
+            uniprot_start=uniprot_start,
+            uniprot_end=uniprot_end,
+            chain_id=chain_id,
+            sequence_identity=sequence_identity,
         )
-
-    return records
 
 
 def structure_metadata(
@@ -179,7 +179,7 @@ def structure_metadata(
             selected_struct_ref_seq = struct_ref_seq
             break
     else:
-        msg = f"No struct_ref_seq entry with uniprot accession found in {structure.name}"
+        msg = f"No struct_ref_seq entry with any of {accessions} uniprot accessions found in {structure.name}"
         raise ValueError(msg)
 
     uniprot_accession = selected_struct_ref_seq.uniprot_accession

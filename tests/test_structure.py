@@ -398,7 +398,7 @@ def test_struct_ref_seqs_columns_to_records(
 ):
     records = struct_ref_seqs_columns_to_records(struct_ref_seqs_columns)
 
-    assert records == expected_records
+    assert list(records) == expected_records
 
 
 def test_sequence_identity_with_gaps(sample_multispan_cif: Path):
