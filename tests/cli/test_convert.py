@@ -111,3 +111,44 @@ def test_convert_clusters_optional_outputs(
 
     dendrogram_text = dendrogram_fn.read_text(encoding="utf-8")
     assert dendrogram_text.endswith(";")
+
+
+def test_convert_uniprot_ungrouped_multiple_accessions(
+    sample2_cif: Path,
+    multi_accession_cif: Path,
+    tmp_path: Path,
+):
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    (input_dir / sample2_cif.name).symlink_to(sample2_cif)
+    (input_dir / multi_accession_cif.name).symlink_to(multi_accession_cif)
+    output_file = tmp_path / "uniprot.txt"
+
+    main(["convert", "uniprot", str(input_dir), str(output_file)])
+
+    lines = output_file.read_text(encoding="utf-8").splitlines()
+    assert lines == ["P01100", "P05067", "P05412", "Q13469"]
+
+
+def test_convert_uniprot_grouped_multiple_accessions(
+    sample2_cif: Path,
+    multi_accession_cif: Path,
+    tmp_path: Path,
+):
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    local_sample2 = input_dir / sample2_cif.name
+    local_sample2.symlink_to(sample2_cif)
+    local_multi = input_dir / multi_accession_cif.name
+    local_multi.symlink_to(multi_accession_cif)
+    output_file = tmp_path / "uniprot_grouped.txt"
+
+    main(["convert", "uniprot", str(input_dir), str(output_file), "--grouped"])
+
+    lines = output_file.read_text(encoding="utf-8").splitlines()
+    assert lines == [
+        f"{local_multi},P01100",
+        f"{local_multi},P05412",
+        f"{local_multi},Q13469",
+        f"{local_sample2},P05067",
+    ]

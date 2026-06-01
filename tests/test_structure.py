@@ -179,6 +179,13 @@ def test_structure2uniprot_accessions_present(sample2_cif: Path):
     assert accessions == {"P05067"}
 
 
+def test_structure2uniprot_accessions_multiple(multi_accession_cif: Path):
+    structure = read_structure(multi_accession_cif)
+    accessions = structure2uniprot_accessions(structure)
+
+    assert accessions == {"Q13469", "P01100", "P05412"}
+
+
 def test_structure2uniprot_accessions_missing(sample_cif: Path, caplog):
     # Empty struct_ref category to simulate missing UniProt accessions
     structure_with_unp = read_structure(sample_cif)
@@ -289,7 +296,11 @@ def test_structure_metadata_from_path_multiple_accessions_raises(multi_accession
     with pytest.raises(ValueError, match="Multiple UniProt accessions found in structure") as exc_info:
         StructureMetadata.from_path(multi_accession_cif)
 
-    assert "Source path:" in str(exc_info.value)
+    message = str(exc_info.value)
+    assert "Source path:" in message
+    assert "Q13469" in message
+    assert "P01100" in message
+    assert "P05412" in message
 
 
 def test_structure_metadata_without_uniprot():

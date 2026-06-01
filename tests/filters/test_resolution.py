@@ -229,6 +229,11 @@ def test_load_resolution_statistics_empty_input(scheduler_address: str | None):
     assert load_resolution_statistics([], scheduler_address=scheduler_address) == []
 
 
+def test_load_resolution_statistics_multiple_accessions_raises(multi_accession_cif: Path):
+    with pytest.raises(ValueError, match="Multiple UniProt accessions found in structure"):
+        load_resolution_statistics([multi_accession_cif], scheduler_address="sequential")
+
+
 def test_filter_files_on_resolution_no_uniprot_does_not_pass(sample2_cif: Path, tmp_path: Path):
     no_uniprot = tmp_path / "no-uniprot.cif.gz"
     with gzip.open(sample2_cif, "rt", encoding="utf-8") as handle:

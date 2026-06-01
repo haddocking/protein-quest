@@ -1,6 +1,7 @@
 """Filter CLI tests for protein-quest."""
 
 import csv
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -30,6 +31,49 @@ def test_filter_chain_happy_path(sample2_cif: Path, tmp_path: Path, capsys: pyte
 
     captured = capsys.readouterr()
     assert "Wrote 1 single-chain PDB/mmCIF files to" in captured.err
+
+
+def test_filter_chain_multi_accession_happy_path(
+    multi_accession_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+):
+    """Test filter chain command handles multi-accession structures."""
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    local_multi = input_dir / multi_accession_cif.name
+    local_multi.symlink_to(multi_accession_cif)
+
+    chains_fn = tmp_path / "chains.csv"
+    # 1A02 maps the three UniProt accessions to chains N, F, and J.
+    chains_fn.write_text(
+        textwrap.dedent(
+            """\
+            pdb_id,chain
+            1A02,N
+            1A02,F
+            1A02,J
+            """
+        )
+    )
+
+    argv = [
+        "filter",
+        "chain",
+        str(chains_fn),
+        str(input_dir),
+        str(tmp_path),
+        "--scheduler-address",
+        "sequential",
+        "--copy-method",
+        "copy",
+    ]
+
+    main(argv)
+
+    output_files = {path.name for path in tmp_path.glob("1a02_*2A.cif.gz")}
+    assert output_files == {"1a02_N2A.cif.gz", "1a02_F2A.cif.gz", "1a02_J2A.cif.gz"}
+
+    captured = capsys.readouterr()
+    assert "Wrote 3 single-chain PDB/mmCIF files to" in captured.err
 
 
 def test_filter_chain_input_file_notfound(tmp_path: Path):
@@ -446,3 +490,21 @@ class TestResolution:
         assert exc_info.value.code == 1
         captured = capsys.readouterr()
         assert "Invalid value" in captured.err
+
+    def test_multi_accession_structure_raises(self, multi_accession_cif: Path, tmp_path: Path):
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        (input_dir / multi_accession_cif.name).symlink_to(multi_accession_cif)
+
+        output_dir = tmp_path / "output"
+        argv = [
+            "filter",
+            "resolution",
+            str(input_dir),
+            str(output_dir),
+            "--scheduler-address",
+            "sequential",
+        ]
+
+        with pytest.raises(ValueError, match="Multiple UniProt accessions found in structure"):
+            main(argv)
