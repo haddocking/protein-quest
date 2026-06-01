@@ -432,8 +432,14 @@ class TestCoverageGroupResolutionStatistics:
 
         results = coverage_group_resolution_statistics([p2b, p1b, p2a, p1a], top=2, group_by=False)
 
-        assert [r.input_file.name for r in results] == ["p1a.cif.gz", "p2a.cif.gz", "p1b.cif.gz", "p2b.cif.gz"]
-        assert {r.input_file.name for r in results if r.passed} == {"p1a.cif.gz", "p2a.cif.gz"}
+        expected = [
+            replace(p1a, passed=True),
+            replace(p2a, passed=True),
+            replace(p1b, passed=False),
+            replace(p2b, passed=False),
+        ]
+
+        assert results == expected
 
 
 class TestCopyResolutionStatistics:
