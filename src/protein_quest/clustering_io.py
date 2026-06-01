@@ -27,18 +27,6 @@ class AccessionClusters:
     linkage_matrix: np.ndarray | None
 
 
-def _flatten_accession_clusters(result: AccessionClusters) -> list[ResolutionFilterStatistics]:
-    """Flatten clustered structures in cluster/rank order.
-
-    Args:
-        result: Clustered structures for one accession.
-
-    Returns:
-        Structures in cluster order, preserving rank order within each cluster.
-    """
-    return [member for cluster in result.clusters for member in cluster]
-
-
 def cluster_results_by_accession(stats: Iterable[ResolutionFilterStatistics]) -> list[AccessionClusters]:
     """Group and cluster structures by UniProt accession.
 
@@ -147,8 +135,8 @@ def write_stats_csv(results: list[AccessionClusters], output: Path) -> None:
         writer.writeheader()
 
         for result in results:
-            members = _flatten_accession_clusters(result)
-            non_zero_resolutions = [member.resolution for member in members if member.resolution != 0.0]
+            members = [member for cluster in result.clusters for member in cluster]
+            min_resolution = min(structure.resolution for structure in members)
             writer.writerow(
                 {
                     "uniprot_accession": result.uniprot_accession,
@@ -157,7 +145,7 @@ def write_stats_csv(results: list[AccessionClusters], output: Path) -> None:
                     "min_uniprot_start": min(member.uniprot_start for member in members),
                     "max_uniprot_end": max(member.uniprot_end for member in members),
                     "max_cluster_size": max(len(cluster) for cluster in result.clusters),
-                    "min_resolution": min(non_zero_resolutions) if non_zero_resolutions else 0.0,
+                    "min_resolution": min_resolution,
                     "max_sequence_identity": max(member.sequence_identity for member in members),
                     "cluster_sizes": ";".join(str(len(cluster)) for cluster in result.clusters),
                 }
@@ -234,6 +222,18 @@ def write_linkage_matrix_csv[T: ClusterableStructure](
     Returns:
         None.
     """
+    # Sanity checks
+    expected_rows = max(len(structures) - 1, 0)
+    if linkage_matrix.ndim != 2 or linkage_matrix.shape[1] != 4:
+        msg = f"Linkage matrix must be a 2D array with four columns: got shape {linkage_matrix.shape}."
+        raise ValueError(msg)
+    if linkage_matrix.shape[0] != expected_rows:
+        msg = (
+            "Linkage matrix row count does not match structure count: "
+            f"expected {expected_rows}, got {linkage_matrix.shape[0]}."
+        )
+        raise ValueError(msg)
+
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(

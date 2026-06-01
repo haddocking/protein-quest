@@ -5,7 +5,12 @@ import numpy as np
 import pytest
 
 from protein_quest.clustering import hierarchical_clustering, structure_distances
-from protein_quest.clustering_io import cluster_results_by_accession, linkage_to_newick, write_condensed_distances_csv
+from protein_quest.clustering_io import (
+    cluster_results_by_accession,
+    linkage_to_newick,
+    write_condensed_distances_csv,
+    write_linkage_matrix_csv,
+)
 from protein_quest.filters.resolution import ResolutionFilterStatistics
 
 
@@ -124,5 +129,33 @@ def test_write_condensed_distances_csv_validates_precomputed_length(tmp_path: Pa
         make_structure("C", 20, 30),
     ]
 
-    with pytest.raises(ValueError, match="Condensed distance length"):
+    with pytest.raises(ValueError, match="Condensed distance length does not match structure count"):
         write_condensed_distances_csv([0.1], structures, output)
+
+
+def test_write_linkage_matrix_csv_validates_structure_count(tmp_path: Path):
+    output = tmp_path / "linkage.csv"
+    structures = [
+        make_structure("A", 1, 10),
+        make_structure("B", 1, 10),
+        make_structure("C", 20, 30),
+    ]
+
+    invalid_linkage = np.array([[0, 1, 0.2, 2]], dtype=float)
+
+    with pytest.raises(ValueError, match="Linkage matrix row count does not match structure count"):
+        write_linkage_matrix_csv(invalid_linkage, structures, output)
+
+
+def test_write_linkage_matrix_csv_validates_shape(tmp_path: Path):
+    output = tmp_path / "linkage.csv"
+    structures = [
+        make_structure("A", 1, 10),
+        make_structure("B", 1, 10),
+        make_structure("C", 20, 30),
+    ]
+
+    invalid_linkage = np.array([[0, 1, 0.2], [2, 3, 0.3]], dtype=float)
+
+    with pytest.raises(ValueError, match="Linkage matrix must be a 2D array with four columns"):
+        write_linkage_matrix_csv(invalid_linkage, structures, output)
