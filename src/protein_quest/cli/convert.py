@@ -169,9 +169,9 @@ def clusters(
 
             if condensed_distances:
                 write_condensed_distances_csv(
+                    result.condensed_distances,
                     structures,
                     output_dir / f"{uniprot_accession}_distances.csv",
-                    condensed_distances=result.condensed_distances,
                 )
 
             if linkage_matrix or dendrogram:

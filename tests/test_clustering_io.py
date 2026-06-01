@@ -125,4 +125,4 @@ def test_write_condensed_distances_csv_validates_precomputed_length(tmp_path: Pa
     ]
 
     with pytest.raises(ValueError, match="Condensed distance length"):
-        write_condensed_distances_csv(structures, output, condensed_distances=[0.1])
+        write_condensed_distances_csv([0.1], structures, output)

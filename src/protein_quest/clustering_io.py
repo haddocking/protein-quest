@@ -10,7 +10,7 @@ import numpy as np
 from scipy.cluster.hierarchy import ClusterNode, to_tree
 from tqdm.auto import tqdm
 
-from protein_quest.clustering import ClusterableStructure, cluster_structures_with_intermediates, structure_distances
+from protein_quest.clustering import ClusterableStructure, cluster_structures_with_intermediates
 from protein_quest.filters.resolution import ResolutionFilterStatistics
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ class AccessionClusters:
     linkage_matrix: np.ndarray | None
 
 
-def flatten_accession_clusters(result: AccessionClusters) -> list[ResolutionFilterStatistics]:
+def _flatten_accession_clusters(result: AccessionClusters) -> list[ResolutionFilterStatistics]:
     """Flatten clustered structures in cluster/rank order.
 
     Args:
@@ -147,7 +147,7 @@ def write_stats_csv(results: list[AccessionClusters], output: Path) -> None:
         writer.writeheader()
 
         for result in results:
-            members = flatten_accession_clusters(result)
+            members = _flatten_accession_clusters(result)
             non_zero_resolutions = [member.resolution for member in members if member.resolution != 0.0]
             writer.writerow(
                 {
@@ -165,26 +165,27 @@ def write_stats_csv(results: list[AccessionClusters], output: Path) -> None:
 
 
 def write_condensed_distances_csv[T: ClusterableStructure](
-    structures: list[T], output: Path, condensed_distances: list[float] | None = None
+    condensed_distances: list[float], structures: list[T], output: Path
 ) -> None:
     """Write pairwise condensed distances in long CSV form.
 
     Args:
-        structures: Structures to compute pairwise distances for.
+        condensed_distances: Precomputed condensed distances matching ``structures`` order.
+            See [protein_quest.clustering.structure_distances][] how to compute these distances.
+        structures: Structures corresponding to ``condensed_distances`` order.
         output: Destination path for the CSV file.
-        condensed_distances: Optional precomputed condensed distances matching ``structures`` order.
 
     Returns:
         None.
     """
     output.parent.mkdir(parents=True, exist_ok=True)
-    condensed = condensed_distances if condensed_distances is not None else structure_distances(structures)
 
-    expected_distances = (len(structures) * (len(structures) - 1)) // 2
-    if len(condensed) != expected_distances:
+    # Sanity check
+    expected_len_distances = (len(structures) * (len(structures) - 1)) // 2
+    if len(condensed_distances) != expected_len_distances:
         msg = (
             "Condensed distance length does not match structure count: "
-            f"expected {expected_distances}, got {len(condensed)}."
+            f"expected {expected_len_distances}, got {len(condensed_distances)}."
         )
         raise ValueError(msg)
 
@@ -199,7 +200,7 @@ def write_condensed_distances_csv[T: ClusterableStructure](
                     {
                         "structure_i": left.id,
                         "structure_j": right.id,
-                        "distance": condensed[index],
+                        "distance": condensed_distances[index],
                     }
                 )
                 index += 1
