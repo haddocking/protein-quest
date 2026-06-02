@@ -23,7 +23,10 @@ from protein_quest.cli.common import (
 )
 from protein_quest.filters.chain import filter_files_on_chain
 from protein_quest.filters.residues import filter_files_on_residues
-from protein_quest.filters.resolution import ResolutionFilterStatistics, filter_files_on_resolution
+from protein_quest.filters.resolution import (
+    ResolutionFilterStatistics,
+    filter_files_on_resolution,
+)
 from protein_quest.filters.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
 from protein_quest.io import (
     glob_structure_files,
@@ -252,7 +255,7 @@ def resolution(
     output_dir: OutputDir,
     /,
     *,
-    no_group_by: Annotated[bool, Parameter(name="--no-group-by", negative="")] = False,
+    no_group_by: Annotated[bool, Parameter(negative="")] = False,
     top: PositiveInt = 1_000,
     no_coverage: Annotated[bool, Parameter(negative="")] = False,
     scheduler_address: str | None = None,
@@ -276,10 +279,10 @@ def resolution(
         top: Maximum number of files to keep.
         no_coverage: If not set, will take top by first grouping by uniprot accession
             and then clustering files by their coverage and then take the top.
-
             See
             [clustering documentation](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/clustering.html#protein_quest.pdbe.clustering.filter_pdbs_on_clustered_resolution)
             for details on the clustering and ordering criteria.
+            If set will sort files per Uniprot accession by just their resolution.
         scheduler_address: Address of the Dask scheduler to connect to.
             If not provided, will create a local cluster.
             If set to `sequential` will run tasks sequentially.
@@ -289,6 +292,7 @@ def resolution(
             Use `-` for stdout.
         cache: Cache options
         _: Common CLI options.
+
     """
     coverage = not no_coverage
     group_by = not no_group_by

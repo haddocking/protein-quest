@@ -292,11 +292,13 @@ class TestStructureMetadata:
         assert_structure_metadata(result, expected)
 
 
-def test_structure_metadata_from_path_multiple_accessions_raises(multi_accession_cif: Path):
-    with pytest.raises(ValueError, match="Multiple UniProt accessions found in structure") as exc_info:
-        StructureMetadata.from_path(multi_accession_cif)
+def test_structure_metadata_from_path_multiple_accessions_warns(
+    multi_accession_cif: Path, caplog: pytest.LogCaptureFixture
+):
+    StructureMetadata.from_path(multi_accession_cif)
 
-    message = str(exc_info.value)
+    message = caplog.text
+    assert "Multiple UniProt accessions found in structure" in message
     assert "Source path:" in message
     assert "Q13469" in message
     assert "P01100" in message

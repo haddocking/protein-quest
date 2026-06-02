@@ -329,7 +329,9 @@ protein-quest convert uniprot ./filtered-ss uniprot_accs.filtered.txt
 Generate clusters based on UniProt protein residue overlap.
 
 ```shell
-protein-quest convert clusters ./downloads-pdbe ./cluster-output
+protein-quest convert clusters ./filtered-chains clusters.csv
+# Or for more details
+protein-quest convert clusters ./filtered-chains clusters.csv --stats stats.csv --condensed-distances distances.csv --linkage-matrix linkage.csv --dendrogram dendrograms
 ```
 
 ## Provenance

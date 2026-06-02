@@ -18,7 +18,15 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class AccessionClusters:
-    """Clusters for a single UniProt accession."""
+    """Clusters for a single UniProt accession.
+
+    Attributes:
+        uniprot_accession: UniProt accession for the clustered structures.
+        structures: Input structures that were clustered.
+        clusters: Cluster assignments for the input structures.
+        condensed_distances: Condensed pairwise distances between input structures used for clustering.
+        linkage_matrix: Linkage matrix produced by hierarchical clustering, or None if not computed.
+    """
 
     uniprot_accession: str
     structures: list[ResolutionFilterStatistics]
@@ -39,7 +47,7 @@ def cluster_results_by_accession(stats: Iterable[ResolutionFilterStatistics]) ->
     grouped: dict[str, list[ResolutionFilterStatistics]] = {}
     for stat in stats:
         if not stat.uniprot_accession:
-            logger.warning("Skipping %s because it has no UniProt accession.", stat.input_file)
+            logger.warning("Skipping %s because it has not 1 UniProt accession.", stat.input_file)
             continue
         grouped.setdefault(stat.uniprot_accession, []).append(stat)
 
@@ -168,7 +176,44 @@ def write_condensed_distances_csv[T: ClusterableStructure](
     """
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    # Sanity check
+    with output.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["structure_i", "structure_j", "distance"])
+        writer.writeheader()
+
+        for row in _iter_condensed_distance_rows(condensed_distances, structures):
+            writer.writerow(row)
+
+
+def write_condensed_distances_by_accession_csv(results: list[AccessionClusters], output: Path) -> None:
+    """Write condensed distances for all accessions into one CSV file.
+
+    Args:
+        results: Cluster results grouped by accession.
+        output: Destination path for the CSV file.
+
+    Returns:
+        None.
+    """
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=["uniprot_accession", "structure_i", "structure_j", "distance"],
+        )
+        writer.writeheader()
+
+        for result in results:
+            if len(result.structures) < 2:
+                continue
+
+            for row in _iter_condensed_distance_rows(result.condensed_distances, result.structures):
+                writer.writerow({"uniprot_accession": result.uniprot_accession, **row})
+
+
+def _iter_condensed_distance_rows[T: ClusterableStructure](
+    condensed_distances: list[float], structures: list[T]
+) -> Iterable[dict[str, str | float]]:
+    """Yield long-form rows for condensed distances after validating length."""
     expected_len_distances = (len(structures) * (len(structures) - 1)) // 2
     if len(condensed_distances) != expected_len_distances:
         msg = (
@@ -177,21 +222,15 @@ def write_condensed_distances_csv[T: ClusterableStructure](
         )
         raise ValueError(msg)
 
-    with output.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["structure_i", "structure_j", "distance"])
-        writer.writeheader()
-
-        index = 0
-        for i, left in enumerate(structures[:-1]):
-            for right in structures[i + 1 :]:
-                writer.writerow(
-                    {
-                        "structure_i": left.id,
-                        "structure_j": right.id,
-                        "distance": condensed_distances[index],
-                    }
-                )
-                index += 1
+    index = 0
+    for i, left in enumerate(structures[:-1]):
+        for right in structures[i + 1 :]:
+            yield {
+                "structure_i": left.id,
+                "structure_j": right.id,
+                "distance": condensed_distances[index],
+            }
+            index += 1
 
 
 def _node_label[T: ClusterableStructure](node_id: int, structures: list[T]) -> str:
@@ -222,7 +261,58 @@ def write_linkage_matrix_csv[T: ClusterableStructure](
     Returns:
         None.
     """
-    # Sanity checks
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=["merge_id", "left", "right", "distance", "count", "left_label", "right_label"],
+        )
+        writer.writeheader()
+
+        for row in _iter_linkage_matrix_rows(linkage_matrix, structures):
+            writer.writerow(row)
+
+
+def write_linkage_matrix_by_accession_csv(results: list[AccessionClusters], output: Path) -> None:
+    """Write linkage matrix rows for all accessions into one CSV file.
+
+    Args:
+        results: Cluster results grouped by accession.
+        output: Destination path for the CSV file.
+
+    Returns:
+        None.
+    """
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=[
+                "uniprot_accession",
+                "merge_id",
+                "left",
+                "right",
+                "distance",
+                "count",
+                "left_label",
+                "right_label",
+            ],
+        )
+        writer.writeheader()
+
+        for result in results:
+            if len(result.structures) < 2 or result.linkage_matrix is None:
+                continue
+
+            for row in _iter_linkage_matrix_rows(result.linkage_matrix, result.structures):
+                writer.writerow({"uniprot_accession": result.uniprot_accession, **row})
+
+
+def _iter_linkage_matrix_rows[T: ClusterableStructure](
+    linkage_matrix: np.ndarray,
+    structures: list[T],
+) -> Iterable[dict[str, int | float | str]]:
+    """Yield linkage rows with labels after validating matrix shape and size."""
     expected_rows = max(len(structures) - 1, 0)
     if linkage_matrix.ndim != 2 or linkage_matrix.shape[1] != 4:
         msg = f"Linkage matrix must be a 2D array with four columns: got shape {linkage_matrix.shape}."
@@ -234,29 +324,19 @@ def write_linkage_matrix_csv[T: ClusterableStructure](
         )
         raise ValueError(msg)
 
-    output.parent.mkdir(parents=True, exist_ok=True)
-    with output.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(
-            handle,
-            fieldnames=["merge_id", "left", "right", "distance", "count", "left_label", "right_label"],
-        )
-        writer.writeheader()
-
-        nr_leaves = len(structures)
-        for row_index, row in enumerate(linkage_matrix):
-            left = int(row[0])
-            right = int(row[1])
-            writer.writerow(
-                {
-                    "merge_id": nr_leaves + row_index,
-                    "left": left,
-                    "right": right,
-                    "distance": float(row[2]),
-                    "count": int(row[3]),
-                    "left_label": _node_label(left, structures),
-                    "right_label": _node_label(right, structures),
-                }
-            )
+    nr_leaves = len(structures)
+    for row_index, row in enumerate(linkage_matrix):
+        left = int(row[0])
+        right = int(row[1])
+        yield {
+            "merge_id": nr_leaves + row_index,
+            "left": left,
+            "right": right,
+            "distance": float(row[2]),
+            "count": int(row[3]),
+            "left_label": _node_label(left, structures),
+            "right_label": _node_label(right, structures),
+        }
 
 
 def _to_newick[T: ClusterableStructure](node: ClusterNode, parent_distance: float, structures: list[T]) -> str:

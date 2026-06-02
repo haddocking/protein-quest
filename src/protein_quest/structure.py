@@ -130,6 +130,10 @@ def structure_metadata(
 ) -> "StructureMetadata":
     """Extract metadata from a Gemmi structure.
 
+    Expects the structure to have one UniProt accession.
+    If multiple or zero accessions are found,
+    logs a warning and returns metadata with `uniprot_accession=None`.
+
     Args:
         structure: A Gemmi structure.
         path: Optional source path used only for error context.
@@ -140,7 +144,6 @@ def structure_metadata(
     Raises:
         ValueError: If UniProt accessions exist but no matching
             ``_struct_ref_seq`` row is found.
-            Or if multiple UniProt accessions are found in the structure.
         ChainNotFoundError: If the mapped chain from ``_struct_ref_seq`` is
             missing in the structure.
     """
@@ -148,6 +151,7 @@ def structure_metadata(
     software_name = structure.meta.software[0].name if structure.meta.software else ""
     total_residue_count = nr_of_residues_in_total(structure)
 
+    # TODO make StructureMetadata work if structure has multiple accessions?
     if len(accessions) > 1:
         msg = (
             f"Multiple UniProt accessions found in structure {structure.name}: "
@@ -156,7 +160,18 @@ def structure_metadata(
         )
         if path is not None:
             msg = f"{msg} Source path: {path}."
-        raise ValueError(msg)
+        logger.warning(msg)
+        return StructureMetadata(
+            id=structure.name,
+            uniprot_accession=None,
+            resolution=structure.resolution,
+            total_residue_count=total_residue_count,
+            is_alphafold=software_name == "AlphaFold",
+            uniprot_start=0,
+            uniprot_end=0,
+            sequence_identity=0.0,
+            chain_length=total_residue_count,
+        )
 
     if not accessions:
         return StructureMetadata(

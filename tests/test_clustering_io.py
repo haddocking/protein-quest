@@ -8,7 +8,9 @@ from protein_quest.clustering import hierarchical_clustering, structure_distance
 from protein_quest.clustering_io import (
     cluster_results_by_accession,
     linkage_to_newick,
+    write_condensed_distances_by_accession_csv,
     write_condensed_distances_csv,
+    write_linkage_matrix_by_accession_csv,
     write_linkage_matrix_csv,
 )
 from protein_quest.filters.resolution import ResolutionFilterStatistics
@@ -118,7 +120,7 @@ def test_cluster_results_by_accession_skips_missing_accession(caplog: pytest.Log
 
     assert len(results) == 1
     assert results[0].uniprot_accession == "P33333"
-    assert "has no UniProt accession" in caplog.text
+    assert "has not 1 UniProt accession" in caplog.text
 
 
 def test_write_condensed_distances_csv_validates_precomputed_length(tmp_path: Path):
@@ -159,3 +161,37 @@ def test_write_linkage_matrix_csv_validates_shape(tmp_path: Path):
 
     with pytest.raises(ValueError, match="Linkage matrix must be a 2D array with four columns"):
         write_linkage_matrix_csv(invalid_linkage, structures, output)
+
+
+def test_write_condensed_distances_by_accession_csv_includes_accession_column(tmp_path: Path):
+    structures = [
+        make_stat("A", "P11111", 1, 50),
+        make_stat("B", "P11111", 25, 75),
+        make_stat("C", "P22222", 100, 120),
+    ]
+    results = cluster_results_by_accession(structures)
+    output = tmp_path / "distances.csv"
+
+    write_condensed_distances_by_accession_csv(results, output)
+
+    rows = output.read_text(encoding="utf-8").splitlines()
+    assert rows[0] == "uniprot_accession,structure_i,structure_j,distance"
+    assert len(rows) == 2
+    assert rows[1].startswith("P11111,")
+
+
+def test_write_linkage_matrix_by_accession_csv_includes_accession_column(tmp_path: Path):
+    structures = [
+        make_stat("A", "P11111", 1, 50),
+        make_stat("B", "P11111", 25, 75),
+        make_stat("C", "P22222", 100, 120),
+    ]
+    results = cluster_results_by_accession(structures)
+    output = tmp_path / "linkage.csv"
+
+    write_linkage_matrix_by_accession_csv(results, output)
+
+    rows = output.read_text(encoding="utf-8").splitlines()
+    assert rows[0].startswith("uniprot_accession,")
+    assert len(rows) == 2
+    assert rows[1].startswith("P11111,")

@@ -491,7 +491,9 @@ class TestResolution:
         captured = capsys.readouterr()
         assert "Invalid value" in captured.err
 
-    def test_multi_accession_structure_raises(self, multi_accession_cif: Path, tmp_path: Path):
+    def test_multi_accession_structure_skipsclustering_butpasses(
+        self, multi_accession_cif: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ):
         input_dir = tmp_path / "input"
         input_dir.mkdir()
         (input_dir / multi_accession_cif.name).symlink_to(multi_accession_cif)
@@ -506,5 +508,7 @@ class TestResolution:
             "sequential",
         ]
 
-        with pytest.raises(ValueError, match="Multiple UniProt accessions found in structure"):
-            main(argv)
+        main(argv)
+
+        assert "Multiple UniProt accessions found in structure 1A02" in caplog.text
+        assert set(output_dir.iterdir()) == {output_dir / multi_accession_cif.name}

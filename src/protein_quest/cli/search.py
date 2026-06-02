@@ -270,7 +270,7 @@ def pdbe(
             ranked by best (lowest) resolution first, then by highest residue count.
             For example use `--top-resolution-per-uniprot-accession 3` to keep
             only the best 3 PDB entries per UniProt accession.
-        top_clustered_resolution_per_uniprot_accession: Retain the top N PDB entries per UniProt accession,
+        top_clustered_resolution_per_uniprot_accession: Retain the top N PDB entries per UniProt accession.
             Uses clustering to give better coverage.
 
             See
@@ -388,9 +388,9 @@ def structure(
         limit: Maximum number of structures per uniprot accession per source to return.
         timeout: Maximum seconds to wait for query to complete.
         raw: Path to write raw 3D beacon summaries as JSON.
-        top_clustered_resolution_per_uniprot_accession: Retain the top N PDBe entries per UniProt accession,
+        top_clustered_resolution_per_uniprot_accession: Retain the top N PDBe entries per UniProt accession.
             Uses clustering to give better coverage.
-            Non-PDBe structures (e.g. AlphaFold, SWISS-MODEL) are left unchanged.
+            Non-PDBe structures (e.g. AlphaFold, SWISS-MODEL) are always retained..
 
             See
             [clustering documentation](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/pdbe_3dbeacons/clustering.html#protein_quest.pdbe_3dbeacons.clustering.cluster_overviews_per_uniprot)

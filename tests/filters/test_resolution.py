@@ -229,9 +229,25 @@ def test_load_resolution_statistics_empty_input(scheduler_address: str | None):
     assert load_resolution_statistics([], scheduler_address=scheduler_address) == []
 
 
-def test_load_resolution_statistics_multiple_accessions_raises(multi_accession_cif: Path):
-    with pytest.raises(ValueError, match="Multiple UniProt accessions found in structure"):
-        load_resolution_statistics([multi_accession_cif], scheduler_address="sequential")
+def test_load_resolution_statistics_multiple_accessions_uniprotlessresult(multi_accession_cif: Path):
+    result = load_resolution_statistics([multi_accession_cif], scheduler_address="sequential")
+
+    expected = ResolutionFilterStatistics(
+        id="1A02",
+        input_file=multi_accession_cif,
+        uniprot_accession=None,
+        resolution=2.7,
+        total_residue_count=513,
+        is_alphafold=False,
+        uniprot_start=0,
+        uniprot_end=0,
+        sequence_identity=0.0,
+        chain_length=513,
+        passed=False,
+        output_file=None,
+    )
+    assert len(result) == 1
+    assert_resolution_filter_statistics(result[0], expected)
 
 
 def test_filter_files_on_resolution_no_uniprot_does_not_pass(sample2_cif: Path, tmp_path: Path):

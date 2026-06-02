@@ -9,9 +9,9 @@ from protein_quest.cli.common import CacheParameter, Common, InputDir, OutputDir
 from protein_quest.clustering_io import (
     cluster_results_by_accession,
     write_clusters_csv,
-    write_condensed_distances_csv,
+    write_condensed_distances_by_accession_csv,
     write_dendrogram_nwk,
-    write_linkage_matrix_csv,
+    write_linkage_matrix_by_accession_csv,
     write_stats_csv,
 )
 from protein_quest.filters.resolution import load_resolution_statistics
@@ -113,21 +113,22 @@ def structures(
 @convert_app.command
 def clusters(
     input_dir: InputDir,
-    output_dir: OutputDir,
+    output_file: OutputFile,
     /,
     *,
-    condensed_distances: Annotated[bool, Parameter(negative="")] = False,
-    linkage_matrix: Annotated[bool, Parameter(negative="")] = False,
-    dendrogram: Annotated[bool, Parameter(negative="")] = False,
+    stats: OutputFile | None = None,
+    condensed_distances: OutputFile | None = None,
+    linkage_matrix: OutputFile | None = None,
+    dendrogram: OutputDir | None = None,
     scheduler_address: str | None = None,
     _common: Common | None = None,
 ) -> None:
     """Cluster structures per UniProt accession and write clustering outputs.
 
-    Always writes two CSV files into ``output_dir``:
+    Always writes one CSV file:
 
-    - ``clusters.csv``: one row per structure with cluster assignment.
-    - ``stats.csv``: one row per UniProt accession with cluster summary.
+    - ``output_file``: one row per structure with cluster assignment.
+
 
     Can be used to investigate why `protein-quest filter resolution ...` or
     `protein-quest search pdbe --top_clustered_resolution_per_uniprot_accession ...` or
@@ -137,29 +138,36 @@ def clusters(
 
     Args:
         input_dir: Directory with structure files.
-        output_dir: Directory where clustering outputs are written.
-        condensed_distances: Write per-accession condensed distance CSV files.
-            Writes file per uniprot_accession with `<accession>_distances.csv` name pattern.
-        linkage_matrix: Write per-accession linkage matrix CSV files.
-            Writes file per uniprot_accession with `<accession>_linkage.csv` name pattern.
-        dendrogram: Write per-accession dendrogram files in Newick format.
-            Writes file per uniprot_accession with `<accession>_dendrogram.nwk` name pattern.
+        output_file: Output CSV file with cluster assignments.
+        stats: Optional output CSV file with per-accession cluster summary.
+            Only written when provided.
+        condensed_distances: Optional output CSV file with condensed distances from all accessions.
+            Writes a single file with ``uniprot_accession`` as first column.
+        linkage_matrix: Optional output CSV file with linkage rows from all accessions.
+            Writes a single file with ``uniprot_accession`` as first column.
+        dendrogram: Optional output directory for per-accession Newick files.
+            Writes ``<accession>_dendrogram.nwk`` files into this directory.
         scheduler_address: Address of the Dask scheduler to connect to.
             If not provided, will create a local cluster.
             If set to `sequential` will run tasks sequentially.
         _common: Common CLI options.
     """
-    output_dir.mkdir(parents=True, exist_ok=True)
     input_files = sorted(glob_structure_files(input_dir))
 
     rprint(f"Clustering {len(input_files)} files in {input_dir} directory by UniProt accession.")
-    stats = load_resolution_statistics(input_files, scheduler_address)
-    results = cluster_results_by_accession(stats)
+    resolution_stats = load_resolution_statistics(input_files, scheduler_address)
+    results = cluster_results_by_accession(resolution_stats)
 
-    write_clusters_csv(results, output_dir / "clusters.csv")
-    write_stats_csv(results, output_dir / "stats.csv")
+    write_clusters_csv(results, output_file)
+    if stats is not None:
+        write_stats_csv(results, stats)
+    if condensed_distances is not None:
+        write_condensed_distances_by_accession_csv(results, condensed_distances)
+    if linkage_matrix is not None:
+        write_linkage_matrix_by_accession_csv(results, linkage_matrix)
 
-    if condensed_distances or linkage_matrix or dendrogram:
+    if dendrogram is not None:
+        dendrogram.mkdir(parents=True, exist_ok=True)
         for result in results:
             uniprot_accession = result.uniprot_accession
 
@@ -167,25 +175,10 @@ def clusters(
             if len(structures) < 2:
                 continue
 
-            if condensed_distances:
-                write_condensed_distances_csv(
-                    result.condensed_distances,
-                    structures,
-                    output_dir / f"{uniprot_accession}_distances.csv",
-                )
+            local_linkage_matrix = result.linkage_matrix
+            if local_linkage_matrix is None:
+                continue
 
-            if linkage_matrix or dendrogram:
-                local_linkage_matrix = result.linkage_matrix
-                if local_linkage_matrix is None:
-                    continue
+            write_dendrogram_nwk(local_linkage_matrix, structures, dendrogram / f"{uniprot_accession}_dendrogram.nwk")
 
-                if linkage_matrix:
-                    write_linkage_matrix_csv(
-                        local_linkage_matrix, structures, output_dir / f"{uniprot_accession}_linkage.csv"
-                    )
-                if dendrogram:
-                    write_dendrogram_nwk(
-                        local_linkage_matrix, structures, output_dir / f"{uniprot_accession}_dendrogram.nwk"
-                    )
-
-    rprint(f"Wrote clusters for {len(results)} uniprot accessions to {output_dir}")
+    rprint(f"Wrote clusters for {len(results)} uniprot accessions to {output_file}")
