@@ -238,26 +238,81 @@ class TestResolution:
             (input_dir / fixture_name).symlink_to(fixtures_dir / fixture_name)
 
         output_dir = tmp_path / "output"
-
+        stats_fn = tmp_path / "stats.csv"
         argv = [
             "filter",
             "resolution",
             str(input_dir),
             str(output_dir),
-            "--top",
-            "1",
             "--copy-method",
             "symlink",
+            "--scheduler-address",
+            "sequential",
+            "--write-stats",
+            str(stats_fn),
         ]
 
         main(argv)
 
         output_files = {path.name for path in output_dir.iterdir()}
-        assert output_files == {"1amb_updated.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"}
+        assert output_files == {"1amb_updated.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz", "2Y29.cif.gz"}
 
         captured = capsys.readouterr()
         assert "Filtering 3 files" in captured.err
-        assert "Wrote 2 files to" in captured.err
+        assert "Wrote 3 files to" in captured.err
+
+        stats = list(csv.DictReader(stats_fn.open()))
+        expected_stats = [
+            {
+                "chain_length": "28",
+                "discard_reason": "",
+                "discard_reason_type": "",
+                "id": "1AMB",
+                "input_file": f"{input_dir / '1amb_updated.cif.gz'}",
+                "is_alphafold": "False",
+                "output_file": f"{output_dir / '1amb_updated.cif.gz'}",
+                "passed": "True",
+                "resolution": "0.0",
+                "sequence_identity": "1.000",
+                "total_residue_count": "28",
+                "uniprot_accession": "P05067",
+                "uniprot_end": "699",
+                "uniprot_start": "672",
+            },
+            {
+                "chain_length": "8",
+                "discard_reason": "",
+                "discard_reason_type": "",
+                "id": "2Y29",
+                "input_file": f"{input_dir / '2Y29.cif.gz'}",
+                "is_alphafold": "False",
+                "output_file": f"{output_dir / '2Y29.cif.gz'}",
+                "passed": "True",
+                "resolution": "2.3",
+                "sequence_identity": "1.000",
+                "total_residue_count": "8",
+                "uniprot_accession": "P05067",
+                "uniprot_end": "692",
+                "uniprot_start": "687",
+            },
+            {
+                "chain_length": "16",
+                "discard_reason": "",
+                "discard_reason_type": "",
+                "id": "AF-A0A0C5B5G6-F1",
+                "input_file": f"{input_dir / 'AF-A0A0C5B5G6-F1-model_v6.cif.gz'}",
+                "is_alphafold": "True",
+                "output_file": f"{output_dir / 'AF-A0A0C5B5G6-F1-model_v6.cif.gz'}",
+                "passed": "True",
+                "resolution": "0.0",
+                "sequence_identity": "1.000",
+                "total_residue_count": "16",
+                "uniprot_accession": "A0A0C5B5G6",
+                "uniprot_end": "16",
+                "uniprot_start": "1",
+            },
+        ]
+        assert stats == expected_stats
 
     def test_uses_default_top(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
         """Test filter resolution defaults to top 1000 and stays quiet about stats when unused."""
@@ -328,6 +383,8 @@ class TestResolution:
                 "chain_length": "28",
                 "passed": "True",
                 "output_file": str(output_dir / "1amb_updated.cif.gz"),
+                "discard_reason": "",
+                "discard_reason_type": "",
             },
             {
                 "input_file": str(input_dir / "2Y29.cif.gz"),
@@ -342,6 +399,8 @@ class TestResolution:
                 "chain_length": "8",
                 "passed": "True",
                 "output_file": str(output_dir / "2Y29.cif.gz"),
+                "discard_reason": "",
+                "discard_reason_type": "",
             },
             {
                 "input_file": str(input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
@@ -356,6 +415,8 @@ class TestResolution:
                 "chain_length": "16",
                 "passed": "True",
                 "output_file": str(output_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
+                "discard_reason": "",
+                "discard_reason_type": "",
             },
         ]
         assert rows == expected
@@ -410,6 +471,8 @@ class TestResolution:
                 "chain_length": "28",
                 "passed": "True",
                 "output_file": str(output_dir / "1amb_updated.cif.gz"),
+                "discard_reason": "",
+                "discard_reason_type": "",
             },
             {
                 "input_file": str(input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
@@ -424,6 +487,8 @@ class TestResolution:
                 "chain_length": "16",
                 "passed": "True",
                 "output_file": str(output_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
+                "discard_reason": "",
+                "discard_reason_type": "",
             },
             {
                 "input_file": str(input_dir / "2Y29.cif.gz"),
@@ -438,6 +503,8 @@ class TestResolution:
                 "chain_length": "8",
                 "passed": "False",
                 "output_file": "",
+                "discard_reason": "",
+                "discard_reason_type": "",
             },
         ]
         assert rows == expected_rows

@@ -509,3 +509,98 @@ class TestCopyResolutionStatistics:
 
         assert results[0].output_file is None
         assert not any(f for f in output_dir.iterdir() if f.is_file())
+
+
+class TestDiscardReasons:
+    def test_load_invalid_file_sets_discard_reason(self, tmp_path: Path):
+        invalid_file = tmp_path / "invalid.cif.gz"
+        invalid_file.write_text("not a valid structure file")
+
+        results = load_resolution_statistics([invalid_file], scheduler_address="sequential")
+
+        assert len(results) == 1
+        assert results[0].discard_reason is not None
+        assert results[0].passed is False
+        assert results[0].uniprot_accession is None
+
+    def test_sequence_identity_filter_sets_discard_reason(self, sample2_cif: Path, tmp_path: Path):
+        output_dir = tmp_path / "output"
+
+        results = list(
+            filter_files_on_resolution(
+                input_files=[sample2_cif],
+                output_dir=output_dir,
+                top=10,
+                min_sequence_identity=1.5,  # impossible value
+            )
+        )
+
+        assert len(results) == 1
+        assert results[0].discard_reason is not None
+        assert results[0].passed is False
+        assert "Sequence identity" in str(results[0].discard_reason)
+        assert results[0].output_file is None
+
+    def test_grouping_excludes_discarded_from_ranking(self):
+        good1 = _make_stats("good1.cif.gz", "P12345", resolution=1.0)
+        good2 = _make_stats("good2.cif.gz", "P12345", resolution=2.0)
+        discarded = replace(_make_stats("bad.cif.gz", "P12345", resolution=0.5), discard_reason=ValueError("test"))
+
+        results = group_resolution_statistics([good2, good1, discarded], top=1, group_by=True)
+
+        # good1 should pass (best resolution), discarded should not be considered for passing
+        assert results[0].input_file.name == "bad.cif.gz"  # sorted alphabetically
+        assert results[0].passed is False
+        assert results[1].input_file.name == "good1.cif.gz"
+        assert results[1].passed is True
+        assert results[2].input_file.name == "good2.cif.gz"
+        assert results[2].passed is False
+
+    def test_coverage_grouping_excludes_discarded_from_ranking(self):
+        good1 = _make_stats("good1.cif.gz", "P12345", resolution=1.0, uniprot_start=1, uniprot_end=10)
+        good2 = _make_stats("good2.cif.gz", "P12345", resolution=2.0, uniprot_start=20, uniprot_end=30)
+        discarded = replace(
+            _make_stats("bad.cif.gz", "P12345", resolution=0.5, uniprot_start=1, uniprot_end=10),
+            discard_reason=ValueError("test"),
+        )
+
+        results = coverage_group_resolution_statistics([good2, good1, discarded], top=1, group_by=True)
+
+        # good1 should pass (best resolution in its cluster), discarded should not be considered
+        passed = [r for r in results if r.passed]
+        assert len(passed) == 1
+        assert passed[0].input_file.name == "good1.cif.gz"
+        # discarded should still be in results
+        assert any(r.input_file.name == "bad.cif.gz" for r in results)
+
+    def test_coverage_grouping_appends_accessionless_in_grouped_mode(self):
+        good1 = _make_stats("good1.cif.gz", "P12345", resolution=1.0, uniprot_start=1, uniprot_end=10)
+        good2 = _make_stats("good2.cif.gz", "P12345", resolution=1.5, uniprot_start=20, uniprot_end=30)
+        no_acc = _make_stats("no_acc.cif.gz", None, resolution=0.5)
+
+        # With top=3, both good structures pass (top per group), leaving room for 1 accessionless
+        results = coverage_group_resolution_statistics([good1, good2, no_acc], top=3, group_by=True)
+
+        # Both good structures should pass (limited by available structures in group)
+        assert results[0].input_file.name == "good1.cif.gz"
+        assert results[0].passed is True
+        assert results[1].input_file.name == "good2.cif.gz"
+        assert results[1].passed is True
+        # no_acc should be appended and marked as passed to fill quota (2 passed + 1 accessionless = 3)
+        assert results[2].input_file.name == "no_acc.cif.gz"
+        assert results[2].passed is True
+
+    def test_coverage_grouping_appends_accessionless_without_passing_when_quota_full(self):
+        good1 = _make_stats("good1.cif.gz", "P12345", resolution=1.0, uniprot_start=1, uniprot_end=10)
+        good2 = _make_stats("good2.cif.gz", "P12345", resolution=1.5, uniprot_start=20, uniprot_end=30)
+        no_acc = _make_stats("no_acc.cif.gz", None, resolution=0.5)
+
+        results = coverage_group_resolution_statistics([good1, good2, no_acc], top=2, group_by=True)
+
+        # both good structures should pass
+        passed = [r for r in results if r.passed]
+        assert len(passed) == 2
+        # no_acc should still be in results but not passed
+        no_acc_result = [r for r in results if r.input_file.name == "no_acc.cif.gz"]
+        assert len(no_acc_result) == 1
+        assert no_acc_result[0].passed is False

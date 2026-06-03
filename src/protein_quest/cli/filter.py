@@ -230,16 +230,22 @@ def residue(
 def _resolution_stats_header() -> str:
     return (
         "input_file,id,uniprot_accession,resolution,total_residue_count,is_alphafold,"
-        "uniprot_start,uniprot_end,sequence_identity,chain_length,passed,output_file"
+        "uniprot_start,uniprot_end,sequence_identity,chain_length,passed,output_file,"
+        "discard_reason,discard_reason_type"
     )
 
 
 def _resolution_stats_row(result: ResolutionFilterStatistics) -> str:
+    discard_reason = str(result.discard_reason) if result.discard_reason else ""
+    discard_reason_type = type(result.discard_reason).__name__ if result.discard_reason else ""
+    # TODO make more robust with csv package
+    # Escape quotes and commas in discard_reason for CSV
+    discard_reason = discard_reason.replace('"', '""')
     return (
         f"{result.input_file},{result.id},{result.uniprot_accession or ''},{result.resolution},"
         f"{result.total_residue_count},{result.is_alphafold},{result.uniprot_start},"
         f"{result.uniprot_end},{result.sequence_identity:.3f},{result.chain_length},"
-        f"{result.passed},{result.output_file or ''}"
+        f'{result.passed},{result.output_file or ""},"{discard_reason}",{discard_reason_type}'
     )
 
 
@@ -292,7 +298,7 @@ def resolution(
             If set to `sequential` will run tasks sequentially.
         write_stats: Write filter statistics to file.
             In CSV format with columns:
-            `<input_file>,<id>,<uniprot_accession>,<resolution>,<total_residue_count>,<is_alphafold>,<uniprot_start>,<uniprot_end>,<sequence_identity>,<chain_length>,<passed>,<output_file>`.
+            `<input_file>,<id>,<uniprot_accession>,<resolution>,<total_residue_count>,<is_alphafold>,<uniprot_start>,<uniprot_end>,<sequence_identity>,<chain_length>,<passed>,<output_file>,<discard_reason>,<discard_reason_type>`.
             Use `-` for stdout.
         cache: Cache options
         _: Common CLI options.
@@ -326,11 +332,11 @@ def resolution(
         if result.passed:
             nr_passed += 1
 
+    rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
     if write_stats:
         write_lines(write_stats, stats_lines)
-    rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
-    if write_stats and str(write_stats) != "-":
-        rprint(f"Statistics written to {write_stats}")
+        if str(write_stats) != "-":
+            rprint(f"Statistics written to {write_stats}")
 
 
 @filter_app.command
