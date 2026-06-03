@@ -42,6 +42,7 @@ class ResolutionFilterStatistics:
         chain_length: Number of residues in the mapped chain.
         passed: Whether the file passed the ranking filter.
         output_file: The path to the output file, if passed.
+        discard_reason: If the file was discarded, the reason for discarding it.
     """
 
     input_file: Path
@@ -56,6 +57,7 @@ class ResolutionFilterStatistics:
     chain_length: int
     passed: bool
     output_file: Path | None
+    discard_reason: Exception | None = None
 
     @property
     def resolution_value(self) -> float:
@@ -289,13 +291,28 @@ def copy_resolution_statistics(
         yield result
 
 
+def _filter_on_sequence_identity(
+    min_sequence_identity: float, stats: Iterable[ResolutionFilterStatistics]
+) -> Generator[ResolutionFilterStatistics]:
+    for stat in stats:
+        if stat.sequence_identity < min_sequence_identity:
+            logger.warning(
+                "Discarding %s due to sequence identity %.3f below minimal sequence identity %.3f",
+                stat.input_file,
+                stat.sequence_identity,
+                min_sequence_identity,
+            )
+        yield stat
+
+
 def filter_files_on_resolution(
     input_files: list[Path],
     output_dir: Path,
     top: int,
     coverage: bool = False,
     group_by: bool = True,
-    copy_method: CopyMethod = "copy",
+    min_sequence_identity: float = 1.0,
+    copy_method: CopyMethod = "hardlink",
     scheduler_address: str | Cluster | Literal["sequential"] | None = None,
 ) -> Generator[ResolutionFilterStatistics]:
     """Filter structure files by resolution rank.
@@ -313,6 +330,9 @@ def filter_files_on_resolution(
             See [cluster_structures][protein_quest.clustering.cluster_structures].
         group_by: ``True`` applies top-N per accession. Structures without
             uniprot accession are never passed. ``False`` applies top-N globally.
+        min_sequence_identity: Minimum sequence identity ratio to the Uniprot sequence for a structure to be passed.
+            If not set then discards structures that are not fully identical to the Uniprot sequence.
+            For example if set to 0.8 then structures that have sequence identity below 0.8 are discarded.
         copy_method: How to copy passed files to output directory.
         scheduler_address: Address of the Dask scheduler to connect to.
             If not provided, will create a local cluster.
@@ -322,6 +342,7 @@ def filter_files_on_resolution(
         Objects describing the filtering result for each input file.
     """
     stats = load_resolution_statistics(input_files, scheduler_address)
+    stats = _filter_on_sequence_identity(min_sequence_identity, stats)
     if coverage:
         grouped = coverage_group_resolution_statistics(stats, top, group_by=group_by)
     else:

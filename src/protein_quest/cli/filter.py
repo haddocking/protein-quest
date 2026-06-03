@@ -5,7 +5,7 @@ import os
 from typing import TYPE_CHECKING, Annotated
 
 from cyclopts import App, Parameter
-from cyclopts.types import PositiveInt
+from cyclopts.types import NormFloat, PositiveInt
 from rich.panel import Panel
 
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
@@ -258,6 +258,7 @@ def resolution(
     no_group_by: Annotated[bool, Parameter(negative="")] = False,
     top: PositiveInt = 1_000,
     no_coverage: Annotated[bool, Parameter(negative="")] = False,
+    min_sequence_identity: NormFloat = 1.0,
     scheduler_address: str | None = None,
     write_stats: OutputFile | None = None,
     cache: CacheParameter | None = None,
@@ -283,6 +284,9 @@ def resolution(
             [clustering documentation](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/clustering.html#protein_quest.pdbe.clustering.filter_pdbs_on_clustered_resolution)
             for details on the clustering and ordering criteria.
             If set will sort files per Uniprot accession by just their resolution.
+        min_sequence_identity: Minimum sequence identity ratio to the Uniprot sequence for a structure to be passed.
+            If not set then discards structures that are not fully identical to the Uniprot sequence.
+            For example if set to 0.8 then structures that have sequence identity below 0.8 are discarded.
         scheduler_address: Address of the Dask scheduler to connect to.
             If not provided, will create a local cluster.
             If set to `sequential` will run tasks sequentially.
@@ -314,6 +318,7 @@ def resolution(
         top=top,
         coverage=coverage,
         group_by=group_by,
+        min_sequence_identity=min_sequence_identity,
         copy_method=cache.copy_method,
         scheduler_address=scheduler_address,
     ):

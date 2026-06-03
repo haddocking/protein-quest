@@ -504,6 +504,8 @@ class TestResolution:
             "resolution",
             str(input_dir),
             str(output_dir),
+            "--min-sequence-identity",
+            "0.0",
             "--scheduler-address",
             "sequential",
         ]

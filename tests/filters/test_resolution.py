@@ -258,7 +258,9 @@ def test_filter_files_on_resolution_no_uniprot_does_not_pass(sample2_cif: Path, 
     no_uniprot.write_bytes(gzip.compress(text.replace("UNP", "XXX").encode("utf-8")))
 
     output_dir = tmp_path / "output"
-    results = list(filter_files_on_resolution(input_files=[no_uniprot], output_dir=output_dir, top=1))
+    results = list(
+        filter_files_on_resolution(input_files=[no_uniprot], output_dir=output_dir, top=1, min_sequence_identity=0.0)
+    )
 
     expected = ResolutionFilterStatistics(
         id="2Y29",
@@ -288,7 +290,11 @@ def test_filter_files_on_resolution_no_uniprot_can_pass_when_grouping_disabled(s
     no_uniprot.write_bytes(gzip.compress(text.replace("UNP", "XXX").encode("utf-8")))
 
     output_dir = tmp_path / "output"
-    results = list(filter_files_on_resolution(input_files=[no_uniprot], output_dir=output_dir, top=1, group_by=False))
+    results = list(
+        filter_files_on_resolution(
+            input_files=[no_uniprot], output_dir=output_dir, top=1, group_by=False, min_sequence_identity=0.0
+        )
+    )
 
     expected = ResolutionFilterStatistics(
         id="2Y29",

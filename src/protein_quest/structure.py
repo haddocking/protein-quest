@@ -238,11 +238,12 @@ def structure_metadata(
     uniprot_start = selected_struct_ref_seq.uniprot_start
     uniprot_end = selected_struct_ref_seq.uniprot_end
     chain_id = selected_struct_ref_seq.chain_id
+    sequence_identity = selected_struct_ref_seq.sequence_identity
+
     chain = find_chain_in_structure(structure, chain_id)
     if chain is None:
         raise ChainNotFoundError(chain_id, path, {c.name for c in chains_in_structure(structure)})
     chain_length = len(chain)
-    sequence_identity = selected_struct_ref_seq.sequence_identity
 
     return StructureMetadata(
         id=structure.name,
@@ -468,7 +469,7 @@ def structure2uniprot_accessions(structure: gemmi.Structure) -> set[str]:
     struct_ref = block.get_mmcif_category("_struct_ref.")
     uniprot_accessions: set[str] = set()
     if not struct_ref:
-        logger.warning("No UniProt accessions found in structure %s", structure.name)
+        logger.warning("No struct_ref data category found in structure %s", structure.name)
         return uniprot_accessions
     for i, db_name in enumerate(struct_ref["db_name"]):
         if db_name != "UNP":
