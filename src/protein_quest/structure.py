@@ -82,6 +82,7 @@ class StructRefSeq:
     uniprot_end: int
     chain_id: str
     sequence_identity: float
+    aligned_residue_count: int
 
 
 def struct_ref_seqs_columns_to_records(struct_ref_seqs_columns: dict[str, list[str | int]]) -> Generator[StructRefSeq]:
@@ -120,7 +121,60 @@ def struct_ref_seqs_columns_to_records(struct_ref_seqs_columns: dict[str, list[s
             uniprot_end=uniprot_end,
             chain_id=chain_id,
             sequence_identity=sequence_identity,
+            aligned_residue_count=aligned_residue_count,
         )
+
+
+def _metadata_without_uniprot(
+    structure: gemmi.Structure,
+    *,
+    total_residue_count: int,
+    software_name: str,
+) -> "StructureMetadata":
+    return StructureMetadata(
+        id=structure.name,
+        uniprot_accession=None,
+        resolution=structure.resolution,
+        total_residue_count=total_residue_count,
+        is_alphafold=software_name == "AlphaFold",
+        uniprot_start=0,
+        uniprot_end=0,
+        sequence_identity=0.0,
+        chain_length=total_residue_count,
+    )
+
+
+def _build_multiple_accessions_message(structure: gemmi.Structure, accessions: set[str], path: Path | None) -> str:
+    msg = (
+        f"Multiple UniProt accessions found in structure {structure.name}: "
+        f"{accessions}. Please resolve this ambiguity before using this "
+        "structure. For example using `protein-quest filter chain` command."
+    )
+    if path is not None:
+        msg = f"{msg} Source path: {path}."
+    return msg
+
+
+def _matching_struct_ref_seqs(structure: gemmi.Structure, accessions: set[str]) -> list[StructRefSeq]:
+    block = structure.make_mmcif_block(gemmi.MmcifOutputGroups(False, struct_ref=True))
+    struct_ref_seqs_columns = block.get_mmcif_category("_struct_ref_seq.")
+    struct_ref_seqs = struct_ref_seqs_columns_to_records(struct_ref_seqs_columns)
+    return [struct_ref_seq for struct_ref_seq in struct_ref_seqs if struct_ref_seq.uniprot_accession in accessions]
+
+
+def _group_struct_ref_seqs_by_chain(struct_ref_seqs: list[StructRefSeq]) -> dict[str, list[StructRefSeq]]:
+    grouped_struct_ref_seqs: dict[str, list[StructRefSeq]] = defaultdict(list)
+    for struct_ref_seq in struct_ref_seqs:
+        grouped_struct_ref_seqs[struct_ref_seq.chain_id].append(struct_ref_seq)
+    return grouped_struct_ref_seqs
+
+
+def _select_best_struct_ref_seq(struct_ref_seqs: list[StructRefSeq]) -> StructRefSeq:
+    # Fast path: one UniProt for this chain needs no sorting.
+    if len(struct_ref_seqs) == 1:
+        return struct_ref_seqs[0]
+    # Deterministic ranking: max aligned residues, then alphabetical accession.
+    return min(struct_ref_seqs, key=lambda s: (-s.aligned_residue_count, s.uniprot_accession))
 
 
 def structure_metadata(
@@ -130,9 +184,15 @@ def structure_metadata(
 ) -> "StructureMetadata":
     """Extract metadata from a Gemmi structure.
 
-    Expects the structure to have one UniProt accession.
-    If multiple or zero accessions are found,
-    logs a warning and returns metadata with `uniprot_accession=None`.
+    If no UniProt accession is found, returns metadata with
+    `uniprot_accession=None`.
+
+    If multiple accessions are found within one chain, chooses the accession
+    with the highest aligned residue count from ``_struct_ref_seq``.
+    Ties are resolved alphabetically by accession for deterministic behavior.
+
+    If accessions map to multiple chains, logs a warning and returns metadata
+    with `uniprot_accession=None`.
 
     Args:
         structure: A Gemmi structure.
@@ -151,51 +211,28 @@ def structure_metadata(
     software_name = structure.meta.software[0].name if structure.meta.software else ""
     total_residue_count = nr_of_residues_in_total(structure)
 
-    # TODO make StructureMetadata work if structure has multiple accessions?
-    if len(accessions) > 1:
-        msg = (
-            f"Multiple UniProt accessions found in structure {structure.name}: "
-            f"{accessions}. Please resolve this ambiguity before using this "
-            "structure. For example using `protein-quest filter chain` command."
-        )
-        if path is not None:
-            msg = f"{msg} Source path: {path}."
-        logger.warning(msg)
-        return StructureMetadata(
-            id=structure.name,
-            uniprot_accession=None,
-            resolution=structure.resolution,
-            total_residue_count=total_residue_count,
-            is_alphafold=software_name == "AlphaFold",
-            uniprot_start=0,
-            uniprot_end=0,
-            sequence_identity=0.0,
-            chain_length=total_residue_count,
-        )
-
     if not accessions:
-        return StructureMetadata(
-            id=structure.name,
-            uniprot_accession=None,
-            resolution=structure.resolution,
+        return _metadata_without_uniprot(
+            structure,
             total_residue_count=total_residue_count,
-            is_alphafold=software_name == "AlphaFold",
-            uniprot_start=0,
-            uniprot_end=0,
-            sequence_identity=0.0,
-            chain_length=total_residue_count,
+            software_name=software_name,
         )
 
-    block = structure.make_mmcif_block(gemmi.MmcifOutputGroups(False, struct_ref=True))
-    struct_ref_seqs_columns = block.get_mmcif_category("_struct_ref_seq.")
-    struct_ref_seqs = struct_ref_seqs_columns_to_records(struct_ref_seqs_columns)
-    for struct_ref_seq in struct_ref_seqs:
-        if struct_ref_seq.uniprot_accession in accessions:
-            selected_struct_ref_seq = struct_ref_seq
-            break
-    else:
+    matching_struct_ref_seqs = _matching_struct_ref_seqs(structure, accessions)
+    if not matching_struct_ref_seqs:
         msg = f"No struct_ref_seq entry with any of {accessions} uniprot accessions found in {structure.name}"
         raise ValueError(msg)
+
+    struct_ref_seqs_by_chain = _group_struct_ref_seqs_by_chain(matching_struct_ref_seqs)
+    if len(struct_ref_seqs_by_chain) > 1:
+        logger.warning(_build_multiple_accessions_message(structure, accessions, path))
+        return _metadata_without_uniprot(
+            structure,
+            total_residue_count=total_residue_count,
+            software_name=software_name,
+        )
+
+    selected_struct_ref_seq = _select_best_struct_ref_seq(next(iter(struct_ref_seqs_by_chain.values())))
 
     uniprot_accession = selected_struct_ref_seq.uniprot_accession
     uniprot_start = selected_struct_ref_seq.uniprot_start

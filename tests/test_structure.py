@@ -302,25 +302,16 @@ class TestStructureMetadata:
                 "multi_accession_chain_cif",
                 StructureMetadata(
                     id="1UN5",
-                    uniprot_accession=None,
+                    uniprot_accession="P03950",
                     resolution=2.600,
                     total_residue_count=131,
                     is_alphafold=False,
-                    uniprot_start=0,
-                    uniprot_end=0,
-                    sequence_identity=0.0,
+                    uniprot_start=25,
+                    uniprot_end=147,
+                    sequence_identity=119 / 123,
                     chain_length=131,
                 ),
                 id="1UN5_multi_accession_chain",
-                # TODO remove comment once P03950 is returned
-                # 1 PDB 1UN5       1 ? ? 1UN5   ?
-                # 2 UNP ANGI_HUMAN 1 ? ? P03950 ?
-                # 3 UNP RNP_BOVIN  1 ? ? P00656 ?
-                # 1 1 1UN5 A 1  ? 1   ? 1UN5   0  ? 0   ? 0  0
-                # 2 2 1UN5 A 2  ? 38  ? P03950 25 ? 61  ? 1  37
-                # 3 3 1UN5 A 39 ? 43  ? P00656 64 ? 68  ? 38 42
-                # 4 2 1UN5 A 44 ? 125 ? P03950 66 ? 147 ? 43 124
-                # #
             ),
         ],
     )
@@ -381,7 +372,7 @@ def test_structure_metadata_without_uniprot():
                 "pdbx_auth_seq_align_beg": [10],
                 "pdbx_auth_seq_align_end": [15],
             },
-            [StructRefSeq("P12345", 10, 15, "A", 1.0)],
+            [StructRefSeq("P12345", 10, 15, "A", 1.0, 6)],
             id="single-span",
         ),
         pytest.param(
@@ -402,7 +393,7 @@ def test_structure_metadata_without_uniprot():
                 "pdbx_auth_seq_align_beg": [10, 20],
                 "pdbx_auth_seq_align_end": [15, 24],
             },
-            [StructRefSeq("P12345", 10, 24, "A", 11 / 15)],
+            [StructRefSeq("P12345", 10, 24, "A", 11 / 15, 11)],
             id="multi-span-single-chain",
         ),
         pytest.param(
@@ -424,10 +415,55 @@ def test_structure_metadata_without_uniprot():
                 "pdbx_auth_seq_align_end": [15, 35],
             },
             [
-                StructRefSeq("P12345", 10, 15, "A", 1.0),
-                StructRefSeq("P12345", 30, 35, "B", 1.0),
+                StructRefSeq("P12345", 10, 15, "A", 1.0, 6),
+                StructRefSeq("P12345", 30, 35, "B", 1.0, 6),
             ],
             id="multi-chain",
+        ),
+        pytest.param(
+            {
+                "align_id": [1, 2, 3],
+                "ref_id": [1, 1, 2],
+                "pdbx_PDB_id_code": ["1ABC", "1ABC", "1ABC"],
+                "pdbx_strand_id": ["A", "A", "A"],
+                "seq_align_beg": [10, 20, 100],
+                "pdbx_seq_align_beg_ins_code": ["?", "?", "?"],
+                "seq_align_end": [12, 22, 105],
+                "pdbx_seq_align_end_ins_code": ["?", "?", "?"],
+                "pdbx_db_accession": ["PAAAAA", "PAAAAA", "PBBBBB"],
+                "db_align_beg": [10, 20, 100],
+                "pdbx_db_align_beg_ins_code": ["?", "?", "?"],
+                "db_align_end": [12, 22, 105],
+                "pdbx_db_align_end_ins_code": ["?", "?", "?"],
+                "pdbx_auth_seq_align_beg": [10, 20, 100],
+                "pdbx_auth_seq_align_end": [12, 22, 105],
+            },
+            [
+                StructRefSeq("PAAAAA", 10, 22, "A", 6 / 13, 6),
+                StructRefSeq("PBBBBB", 100, 105, "A", 1.0, 6),
+            ],
+            id="equal-aligned-residues-same-chain",
+        ),
+        pytest.param(
+            {
+                "align_id": [1],
+                "ref_id": [1],
+                "pdbx_PDB_id_code": ["1ABC"],
+                "pdbx_strand_id": ["A"],
+                "seq_align_beg": [42],
+                "pdbx_seq_align_beg_ins_code": ["?"],
+                "seq_align_end": [42],
+                "pdbx_seq_align_end_ins_code": ["?"],
+                "pdbx_db_accession": ["P11111"],
+                "db_align_beg": [42],
+                "pdbx_db_align_beg_ins_code": ["?"],
+                "db_align_end": [42],
+                "pdbx_db_align_end_ins_code": ["?"],
+                "pdbx_auth_seq_align_beg": [42],
+                "pdbx_auth_seq_align_end": [42],
+            },
+            [StructRefSeq("P11111", 42, 42, "A", 1.0, 1)],
+            id="single-residue-inclusive-count",
         ),
     ],
 )
@@ -436,4 +472,7 @@ def test_struct_ref_seqs_columns_to_records(
 ):
     records = struct_ref_seqs_columns_to_records(struct_ref_seqs_columns)
 
-    assert list(records) == expected_records
+    assert sorted(records, key=lambda r: (r.uniprot_accession, r.chain_id)) == sorted(
+        expected_records,
+        key=lambda r: (r.uniprot_accession, r.chain_id),
+    )
