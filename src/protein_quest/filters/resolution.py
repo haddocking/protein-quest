@@ -13,6 +13,7 @@ from tqdm.auto import tqdm
 from protein_quest.clustering import (
     filter_structures_on_clustered_resolution,
     interleave_longest,
+    sort_structures,
     structure_sort_key,
 )
 from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
@@ -233,6 +234,11 @@ def coverage_group_resolution_statistics(
     top ``top`` members of each grouped cluster are marked as passed and all
     results are returned in deterministic order.
 
+    Structures with no UniProt accession are not clustered.
+    When group_by is ``False``, they are appended last in deterministic order.
+    When group_by is ``True`` and there are fewer than ``top`` passed entries,
+    they are appended last in deterministic order until the total number of passed entries reaches ``top``.
+
     Args:
         stats: Resolution statistics to cluster and rank.
         top: Maximum number of entries to mark as passed.
@@ -242,8 +248,14 @@ def coverage_group_resolution_statistics(
     Returns:
         Clustered resolution statistics with ``passed`` updated.
     """
-    grouped: dict[str | None, list[ResolutionFilterStatistics]] = {}
+    grouped: dict[str, list[ResolutionFilterStatistics]] = {}
+    accessionless: list[ResolutionFilterStatistics] = []
     for result in stats:
+        if result.uniprot_accession is None:
+            # It does not make sense to cluster chains from different proteins.
+            # will put them at bottom of output later
+            accessionless.append(result)
+            continue
         grouped.setdefault(result.uniprot_accession, []).append(result)
 
     clustered_groups: list[list[ResolutionFilterStatistics]] = [
@@ -256,6 +268,8 @@ def coverage_group_resolution_statistics(
 
     if not group_by:
         flattened = list(interleave_longest(*sorted_clustered_groups))
+        if accessionless:
+            flattened.extend(sort_structures(accessionless))
         for result in flattened[:top]:
             result.passed = True
         return flattened
@@ -265,6 +279,12 @@ def coverage_group_resolution_statistics(
         for result in group_results[:top]:
             result.passed = True
         output.extend(group_results)
+
+    if accessionless and len(output) < top:
+        for result in sort_structures(accessionless)[: top - len(output)]:
+            result.passed = True
+            output.append(result)
+
     return output
 
 

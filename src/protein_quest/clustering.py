@@ -156,6 +156,8 @@ def structure_sort_key(member: ClusterableStructure) -> tuple[float, float, int,
         chain_length = 0
     return (
         -member.sequence_identity,
+        # TODO currently member with resolution of 0.0 is treated as best/first,
+        # but they should be treated as missing or invalid or unknown
         member.resolution_value,
         -chain_length,
         member.id,
