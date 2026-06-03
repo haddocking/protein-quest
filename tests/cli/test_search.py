@@ -283,7 +283,7 @@ def test_search_structure_top_clustered_resolution(tmp_path: Path, capsys: pytes
 
     The cassette returns two PDBe overviews for Q9NTW7 (2dmd: residues 174-254, seq_identity 100;
     1x5w: residues 493-548, seq_identity 73). They do not overlap so each forms its own cluster.
-    With top=1, only the cluster whose best member has the largest chain_length is kept (2dmd).
+    With top=2, only the first of each cluster are kept (2dmd and 1x5w).
     Non-PDBe providers (SWISS-MODEL, AlphaFold DB, AlphaFill, isoform.io) are passed through.
     """
     input_text = tmp_path / "uniprot_accessions.txt"
@@ -297,7 +297,7 @@ def test_search_structure_top_clustered_resolution(tmp_path: Path, capsys: pytes
         "--source",
         "all",
         "--top-clustered-resolution-per-uniprot-accession",
-        "1",
+        "2",
         str(input_text),
         str(output_file),
     ]
@@ -308,8 +308,9 @@ def test_search_structure_top_clustered_resolution(tmp_path: Path, capsys: pytes
         rows = list(csv.DictReader(handle))
 
     pdbe_rows = [row for row in rows if row["provider"] == "pdbe"]
-    assert len(pdbe_rows) == 1
+    assert len(pdbe_rows) == 2
     assert pdbe_rows[0]["model_identifier"] == "2dmd"
+    assert pdbe_rows[1]["model_identifier"] == "1x5w"
     # Non-PDBe providers should not be reduced by this flag.
     assert any(row["provider"] == "alphafold" for row in rows)
     assert any(row["provider"] == "swissmodel" for row in rows)

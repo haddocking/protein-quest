@@ -298,6 +298,20 @@ def interleave_longest[T](*iterables: Iterable[T]) -> Iterator[T]:
         active = next_round
 
 
+class ClusterCoverageError(ValueError):
+    """Raised when not all clusters are represented in the top results."""
+
+    def __init__(self, nr_clusters: int, top: int) -> None:
+        msg = f"Not all {nr_clusters} clusters are represented in the top {top} results."
+        super().__init__(msg)
+
+
+def _is_each_cluster_represented_in_top[T](clusters: list[list[T]], top: int) -> None:
+    nr_clusters = len(clusters)
+    if nr_clusters > top:
+        raise ClusterCoverageError(nr_clusters, top)
+
+
 def top_members_of_clusters[T](clusters: list[list[T]], top: int) -> list[T]:
     """Return up to ``top`` members by interleaving cluster members round-robin.
 
@@ -308,10 +322,14 @@ def top_members_of_clusters[T](clusters: list[list[T]], top: int) -> list[T]:
 
     Returns:
         Interleaved members truncated to ``top``.
+
+    Raises:
+        ClusterCoverageError: If not all clusters are represented in the top results.
     """
     if top <= 0:
         msg = "Top must be a positive integer."
         raise ValueError(msg)
+    _is_each_cluster_represented_in_top(clusters, top)
     return list(islice(interleave_longest(*clusters), top))
 
 
@@ -329,6 +347,9 @@ def filter_structures_on_clustered_resolution[T: ClusterableStructure](structure
 
     Returns:
         Filtered list of up to ``top`` structures.
+
+    Raises:
+        ClusterCoverageError: If not all clusters are represented in the top results.
     """
     clusters = cluster_structures(structures)
     return top_members_of_clusters(clusters, top)

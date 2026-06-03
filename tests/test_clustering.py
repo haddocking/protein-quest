@@ -4,6 +4,7 @@ import pytest
 
 from protein_quest.clustering import (
     NO_OVERLAP_DISTANCE,
+    ClusterCoverageError,
     cluster_structures,
     filter_structures_on_clustered_resolution,
     sort_structures,
@@ -220,6 +221,10 @@ class TestTopMembersOfClusters:
     def test_top_truncates_result(self):
         result = top_members_of_clusters([["A1", "A2"], ["B1", "B2"]], top=3)
         assert result == ["A1", "B1", "A2"]
+
+    def test_clusters_under_represented_in_top_raises(self):
+        with pytest.raises(ClusterCoverageError, match="Not all 2 clusters are represented in the top 1 results"):
+            top_members_of_clusters([["A2"], ["B1"]], top=1)
 
 
 class TestFilterStructuresOnClusteredResolution:

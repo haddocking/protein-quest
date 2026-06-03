@@ -75,8 +75,9 @@ def _summary(accession: str, overviews: list[Overview]) -> UniprotSummary:
 
 def test_cluster_overviews_per_uniprot_keeps_top_pdbe_and_passes_alphafold_through():
     # Two PDBe overviews covering the same UniProt residue range (1-250) -> one cluster.
-    # 3CCC has the best (lowest) resolution so should be retained with top=1.
-    # 4DDD covers a non-overlapping range -> separate cluster, not selected at top=1.
+    # 3CCC has the best (lowest) resolution so should be retained with top=2.
+    # 4DDD covers a non-overlapping range -> separate cluster, selected at top=2.
+    # 1AAA is in the same cluster as 3CCC but has worse resolution, so should be pruned.
     # The AlphaFold entry must always be kept regardless of clustering.
     summary = _summary(
         "P12345",
@@ -88,14 +89,14 @@ def test_cluster_overviews_per_uniprot_keeps_top_pdbe_and_passes_alphafold_throu
         ],
     )
 
-    [pruned] = cluster_overviews_per_uniprot([summary], top=1)
+    [pruned] = cluster_overviews_per_uniprot([summary], top=2)
 
     assert pruned.uniprot_entry is not None
     assert pruned.uniprot_entry.ac == "P12345"
     assert pruned.structures is not None
     pdbe_ids = [o.summary.model_identifier for o in pruned.structures if o.summary.provider == "PDBe"]
     alphafold_ids = [o.summary.model_identifier for o in pruned.structures if o.summary.provider == "AlphaFold DB"]
-    assert pdbe_ids == ["3ccc"]
+    assert pdbe_ids == ["3ccc", "4ddd"]
     assert alphafold_ids == ["AF-P12345-F1"]
 
 
