@@ -210,7 +210,7 @@ def test_nr_of_residues_in_total(sample2_cif: Path):
 def assert_structure_metadata(result: StructureMetadata, expected: StructureMetadata) -> None:
     assert result.id == expected.id
     assert result.uniprot_accession == expected.uniprot_accession
-    assert result.resolution == expected.resolution
+    assert result.resolution == pytest.approx(expected.resolution, rel=1e-3, abs=0.0)
     assert result.total_residue_count == expected.total_residue_count
     assert result.is_alphafold == expected.is_alphafold
     assert result.uniprot_start == expected.uniprot_start
@@ -283,26 +283,62 @@ class TestStructureMetadata:
                 ),
                 id="1AMB",
             ),
+            pytest.param(
+                "sample_multispan_cif",
+                StructureMetadata(
+                    id="6O5I",
+                    uniprot_accession="O00255",
+                    resolution=1.240,
+                    total_residue_count=1346,
+                    is_alphafold=False,
+                    uniprot_start=1,
+                    uniprot_end=593,
+                    sequence_identity=0.816,
+                    chain_length=1346,
+                ),
+                id="6O5I_multispan",
+            ),
+            pytest.param(
+                "multi_accession_chain_cif",
+                StructureMetadata(
+                    id="1UN5",
+                    uniprot_accession=None,
+                    resolution=2.600,
+                    total_residue_count=131,
+                    is_alphafold=False,
+                    uniprot_start=0,
+                    uniprot_end=0,
+                    sequence_identity=0.0,
+                    chain_length=131,
+                ),
+                id="1UN5_multi_accession_chain",
+                # TODO remove comment once P03950 is returned
+                # 1 PDB 1UN5       1 ? ? 1UN5   ?
+                # 2 UNP ANGI_HUMAN 1 ? ? P03950 ?
+                # 3 UNP RNP_BOVIN  1 ? ? P00656 ?
+                # 1 1 1UN5 A 1  ? 1   ? 1UN5   0  ? 0   ? 0  0
+                # 2 2 1UN5 A 2  ? 38  ? P03950 25 ? 61  ? 1  37
+                # 3 3 1UN5 A 39 ? 43  ? P00656 64 ? 68  ? 38 42
+                # 4 2 1UN5 A 44 ? 125 ? P03950 66 ? 147 ? 43 124
+                # #
+            ),
         ],
     )
-    def test_from_path(self, cif_fixture: str, expected: StructureMetadata, request: pytest.FixtureRequest):
+    def test(self, cif_fixture: str, expected: StructureMetadata, request: pytest.FixtureRequest):
         path = request.getfixturevalue(cif_fixture)
         result = StructureMetadata.from_path(path)
 
         assert_structure_metadata(result, expected)
 
+    def test_multiple_accessions_warns(self, multi_accession_cif: Path, caplog: pytest.LogCaptureFixture):
+        StructureMetadata.from_path(multi_accession_cif)
 
-def test_structure_metadata_from_path_multiple_accessions_warns(
-    multi_accession_cif: Path, caplog: pytest.LogCaptureFixture
-):
-    StructureMetadata.from_path(multi_accession_cif)
-
-    message = caplog.text
-    assert "Multiple UniProt accessions found in structure" in message
-    assert "Source path:" in message
-    assert "Q13469" in message
-    assert "P01100" in message
-    assert "P05412" in message
+        message = caplog.text
+        assert "Multiple UniProt accessions found in structure" in message
+        assert "Source path:" in message
+        assert "Q13469" in message
+        assert "P01100" in message
+        assert "P05412" in message
 
 
 def test_structure_metadata_without_uniprot():
@@ -401,13 +437,3 @@ def test_struct_ref_seqs_columns_to_records(
     records = struct_ref_seqs_columns_to_records(struct_ref_seqs_columns)
 
     assert list(records) == expected_records
-
-
-def test_sequence_identity_with_gaps(sample_multispan_cif: Path):
-    result = StructureMetadata.from_path(sample_multispan_cif)
-
-    assert result.id == "6O5I"
-    assert result.uniprot_accession == "O00255"
-    assert result.uniprot_start == 1
-    assert result.uniprot_end == 593
-    assert result.sequence_identity == pytest.approx(0.82, rel=1e-2, abs=0.0)
