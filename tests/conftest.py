@@ -38,7 +38,7 @@ def sample_multispan_cif() -> Path:
 
 @pytest.fixture
 def multi_accession_cif() -> Path:
-    """1A02 structure with multiple UniProt accessions in seperate chains."""
+    """1A02 structure with multiple UniProt accessions in separate chains."""
     return Path(__file__).parent / "fixtures" / "1a02.cif.gz"
 
 
