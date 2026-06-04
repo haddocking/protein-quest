@@ -177,16 +177,23 @@ def iter_resolution_statistics(
         yield _load_resolution_statistics_single(input_file)
 
 
-def group_resolution_statistics(
+def _split_discarded_and_valid(
+    stats: Iterable[ResolutionFilterStatistics],
+) -> tuple[list[ResolutionFilterStatistics], list[ResolutionFilterStatistics]]:
+    stats_list = list(stats)
+    discarded = [s for s in stats_list if s.discard_reason is not None]
+    valid = [s for s in stats_list if s.discard_reason is None]
+    return discarded, valid
+
+
+def _sort_by_resolution_and_top_per_uniprot(
     stats: Iterable[ResolutionFilterStatistics],
     top: int,
-    group_by: bool = True,
 ) -> list[ResolutionFilterStatistics]:
     """Rank stats by resolution and mark the top N as passed.
 
-    In grouped mode, files with no UniProt accession are skipped with a warning
-    and appended last. In ungrouped mode, all files are ranked globally and no
-    missing-accession warnings are emitted.
+    Files with no UniProt accession are skipped with a warning
+    and appended last.
 
     Items with discard_reason set are excluded from ranking but included in output.
 
@@ -198,22 +205,13 @@ def group_resolution_statistics(
     Args:
         stats: Resolution statistics to group and rank.
         top: Maximum number of structures to pass.
-        group_by: ``True`` applies top-N per uniprot accession. Structures without
-            uniprot accession are never passed. ``False`` applies top-N globally.
 
     Returns:
         All statistics with ``passed`` updated; skipped entries appended last.
-        The entries are sorted alphabetically by filename.
+        The entries are sorted by uniprot accession and then sorted by
+        [sort_structures][protein_quest.clustering.sort_structures].
     """
-    stats_list = list(stats)
-    discarded = [s for s in stats_list if s.discard_reason is not None]
-    valid = [s for s in stats_list if s.discard_reason is None]
-
-    if not group_by:
-        ranked = sorted(valid, key=resolution_sort_key)
-        for result in ranked[:top]:
-            result.passed = True
-        return sorted(ranked + discarded, key=lambda item: item.input_file.name)
+    discarded, valid = _split_discarded_and_valid(stats)
 
     grouped: dict[str, list[ResolutionFilterStatistics]] = {}
     skipped: list[ResolutionFilterStatistics] = []
@@ -232,9 +230,43 @@ def group_resolution_statistics(
     output: list[ResolutionFilterStatistics] = []
     for group_results in grouped.values():
         output.extend(group_results)
+
+    # TODO sort output
+    # TODO sort skipped
     output.extend(skipped)
     output.extend(discarded)
-    return sorted(output, key=lambda item: item.input_file.name)
+    return output
+
+
+def _sort_by_resolution_and_global_top(
+    stats: Iterable[ResolutionFilterStatistics],
+    top: int,
+) -> list[ResolutionFilterStatistics]:
+    """Rank stats by resolution and mark the top N as passed without grouping or coverage.
+
+    Files are ranked globally and no missing-accession warnings are emitted.
+
+    Items with discard_reason set are excluded from ranking but included in output.
+
+    AlphaFold structures are preferred over non-AlphaFold.
+    Structures with lower resolution are preferred.
+    If resolution is the same, structures with more residues are preferred.
+    If resolution is missing, those structures are undesirable.
+
+    Args:
+        stats: Resolution statistics to rank.
+        top: Maximum number of structures to pass.
+
+    Returns:
+        All statistics with ``passed`` updated; the entries are sorted alphabetically by filename.
+
+    """
+    discarded, valid = _split_discarded_and_valid(stats)
+
+    ranked = sorted(valid, key=resolution_sort_key)
+    for result in ranked[:top]:
+        result.passed = True
+    return sorted(ranked + discarded, key=lambda item: item.input_file.name)
 
 
 def _uniprot_group_sort_key(results: list[ResolutionFilterStatistics]) -> tuple[float, float, int, str]:
@@ -243,43 +275,9 @@ def _uniprot_group_sort_key(results: list[ResolutionFilterStatistics]) -> tuple[
     return structure_sort_key(best_cluster)
 
 
-def coverage_group_resolution_statistics(
-    stats: Iterable[ResolutionFilterStatistics],
-    top: int,
-    group_by: bool,
-) -> list[ResolutionFilterStatistics]:
-    """Cluster resolution stats by UniProt coverage and mark the best members as passed.
-
-    The input statistics are first grouped by UniProt accession, then clustered
-    by overlapping residue ranges. Within each cluster, members are ordered by
-    [sort_structures][protein_quest.clustering.sort_structures] and the best
-    entries are selected in round-robin order.
-
-    Items with discard_reason set are excluded from clustering but included in output.
-
-    When ``group_by`` is ``False``, the clustered groups are interleaved
-    globally and the first ``top`` results are marked as passed. Otherwise, the
-    top ``top`` members of each grouped cluster are marked as passed and all
-    results are returned in deterministic order.
-
-    Structures with no UniProt accession are not clustered.
-    When group_by is ``False``, they are appended last in deterministic order.
-    When group_by is ``True``, they are appended last in deterministic order,
-    and marked as passed until the total number of passed entries reaches ``top``.
-
-    Args:
-        stats: Resolution statistics to cluster and rank.
-        top: Maximum number of entries to mark as passed.
-        group_by: ``False`` interleaves all clustered groups globally;
-            ``True`` keeps groups separate per uniprot accession.
-
-    Returns:
-        Clustered resolution statistics with ``passed`` updated.
-    """
-    stats_list = list(stats)
-    discarded = [s for s in stats_list if s.discard_reason is not None]
-    valid = [s for s in stats_list if s.discard_reason is None]
-
+def _cluster_resolution_stats_by_accession(
+    valid: Iterable[ResolutionFilterStatistics],
+) -> tuple[list[ResolutionFilterStatistics], list[list[ResolutionFilterStatistics]]]:
     per_accession_groups: dict[str, list[ResolutionFilterStatistics]] = {}
     accessionless: list[ResolutionFilterStatistics] = []
     for result in valid:
@@ -297,16 +295,78 @@ def coverage_group_resolution_statistics(
 
     # Reorder so clusters of best uniprot accession is first
     sorted_clustered_groups = sorted(clustered_groups, key=_uniprot_group_sort_key)
+    return accessionless, sorted_clustered_groups
 
-    if not group_by:
-        flattened = list(interleave_longest(*sorted_clustered_groups))
-        if accessionless:
-            flattened.extend(sort_structures(accessionless))
-        for result in flattened[:top]:
-            result.passed = True
-        return flattened + discarded
+
+def _sort_by_coverage_and_top_per_uniprot(
+    stats: Iterable[ResolutionFilterStatistics],
+    top: int,
+) -> list[ResolutionFilterStatistics]:
+    """Cluster resolution stats by UniProt coverage and mark the best members as passed.
+
+    The input statistics are first grouped by UniProt accession, then clustered
+    by overlapping residue ranges. Within each cluster, members are ordered by
+    [sort_structures][protein_quest.clustering.sort_structures] and the best
+    entries are selected in round-robin order.
+
+    Items with discard_reason set are excluded from clustering but included in output.
+
+    The top ``top`` members of each grouped cluster are marked as passed and all
+    results are returned in deterministic order.
+
+    Structures with no UniProt accession are not clustered
+    they are appended last in deterministic order,
+    and marked as passed until the total number of passed entries reaches ``top``.
+
+    Args:
+        stats: Resolution statistics to cluster and rank.
+        top: Maximum number of entries to mark as passed.
+
+    Returns:
+        Clustered resolution statistics with ``passed`` updated.
+    """
+    discarded, valid = _split_discarded_and_valid(stats)
+
+    accessionless, sorted_clustered_groups = _cluster_resolution_stats_by_accession(valid)
 
     return _pick_top_from_clusters(sorted_clustered_groups, top, discarded, accessionless)
+
+
+def _sort_by_coverage_and_global_top(
+    stats: Iterable[ResolutionFilterStatistics],
+    top: int,
+) -> list[ResolutionFilterStatistics]:
+    """Cluster resolution stats by UniProt coverage and mark the best members as passed and flatten groups.
+
+    The input statistics are clustered by overlapping residue ranges. Within each
+    cluster, members are ordered by
+    [sort_structures][protein_quest.clustering.sort_structures] and the best
+    entries are selected in round-robin order.
+
+    Items with discard_reason set are excluded from clustering but included in output.
+
+    The clustered groups are interleaved globally and the first ``top`` results
+    are marked as passed.
+
+    Structures with no UniProt accession are not clustered and appended last in deterministic order.
+
+    Args:
+        stats: Resolution statistics to cluster and rank.
+        top: Maximum number of entries to mark as passed.
+
+    Returns:
+        Clustered resolution statistics with ``passed`` updated.
+    """
+    discarded, valid = _split_discarded_and_valid(stats)
+
+    accessionless, sorted_clustered_groups = _cluster_resolution_stats_by_accession(valid)
+
+    flattened = list(interleave_longest(*sorted_clustered_groups))
+    if accessionless:
+        flattened.extend(sort_structures(accessionless))
+    for result in flattened[:top]:
+        result.passed = True
+    return flattened + discarded
 
 
 def _pick_top_from_clusters(
@@ -374,10 +434,45 @@ def _filter_on_sequence_identity(
         yield stat
 
 
+def sort_resolution_statistics(
+    stats: Iterable[ResolutionFilterStatistics],
+    top: int,
+    *,
+    coverage: bool = False,
+    # TODO Rename group_by to per_uniprot_top
+    group_by: bool = True,
+) -> list[ResolutionFilterStatistics]:
+    """Sort resolution statistics and mark the top N as passed based on the specified criteria.
+
+    Args:
+        stats: Resolution statistics to sort.
+        top: Maximum number of entries to mark as passed.
+        coverage: Whether to cluster by coverage.
+            See [cluster_structures][protein_quest.clustering.cluster_structures].
+        group_by: ``True`` applies top-N per accession. ``False`` applies top-N globally.
+            Structures without uniprot accession are never passed.
+
+    Returns:
+        Resolution statistics with ``passed`` updated.
+    """
+    if coverage:
+        if group_by:
+            sorted_stats = _sort_by_coverage_and_top_per_uniprot(stats, top)
+        else:
+            sorted_stats = _sort_by_coverage_and_global_top(stats, top)
+    else:
+        if group_by:
+            sorted_stats = _sort_by_resolution_and_top_per_uniprot(stats, top)
+        else:
+            sorted_stats = _sort_by_resolution_and_global_top(stats, top)
+    return sorted_stats
+
+
 def filter_files_on_resolution(
     input_files: list[Path],
     output_dir: Path,
     top: int,
+    *,
     coverage: bool = False,
     group_by: bool = True,
     min_sequence_identity: float = 1.0,
@@ -412,8 +507,5 @@ def filter_files_on_resolution(
     """
     stats = load_resolution_statistics(input_files, scheduler_address)
     stats = _filter_on_sequence_identity(min_sequence_identity, stats)
-    if coverage:
-        grouped = coverage_group_resolution_statistics(stats, top, group_by=group_by)
-    else:
-        grouped = group_resolution_statistics(stats, top, group_by=group_by)
-    yield from copy_resolution_statistics(grouped, output_dir, copy_method)
+    sorted_stats = sort_resolution_statistics(stats, top, coverage=coverage, group_by=group_by)
+    yield from copy_resolution_statistics(sorted_stats, output_dir, copy_method)

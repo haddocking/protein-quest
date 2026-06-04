@@ -2,18 +2,18 @@ import gzip
 import logging
 from dataclasses import replace
 from pathlib import Path
+from pprint import pprint
 
 import pytest
 
 from protein_quest.filters.resolution import (
     ResolutionFilterStatistics,
     copy_resolution_statistics,
-    coverage_group_resolution_statistics,
     filter_files_on_resolution,
-    group_resolution_statistics,
     iter_resolution_statistics,
     load_resolution_statistics,
     resolution_sort_key,
+    sort_resolution_statistics,
 )
 
 
@@ -315,17 +315,19 @@ def test_filter_files_on_resolution_no_uniprot_can_pass_when_grouping_disabled(s
     assert results[0].output_file is not None and results[0].output_file.exists()
 
 
-class TestGroupResolutionStatistics:
+class TestSortResolutionStatistics:
     def test_groupby_accession(self):
         a1 = _make_stats("a1.cif.gz", "P11111", resolution=1.0)
         a2 = _make_stats("a2.cif.gz", "P11111", resolution=2.0)
         b1 = _make_stats("b1.cif.gz", "P22222", resolution=1.5)
         b2 = _make_stats("b2.cif.gz", "P22222", resolution=3.0)
-        # Structures without uniprot are never passed
+        # Structures without uniprot always at bottom
         c1 = _make_stats("c1.cif.gz", None, resolution=0.5)
         c2 = _make_stats("c2.cif.gz", None, resolution=0.1)
 
-        results = group_resolution_statistics([a2, a1, b2, b1, c1, c2], top=1, group_by=True)
+        results = sort_resolution_statistics([a2, a1, b2, b1, c1, c2], top=1, coverage=False, group_by=True)
+
+        pprint(results)
 
         expected = [
             replace(a1, passed=True),
@@ -343,7 +345,7 @@ class TestGroupResolutionStatistics:
         second = _make_stats("b.cif.gz", "P22222", resolution=1.5)
         third = _make_stats("c.cif.gz", "P33333", resolution=2.0)
 
-        results = group_resolution_statistics([third, best, second], top=1, group_by=False)
+        results = sort_resolution_statistics([third, best, second], top=1, coverage=False, group_by=False)
 
         expected = [
             replace(best, passed=True),
@@ -357,7 +359,7 @@ class TestGroupResolutionStatistics:
         b = _make_stats("b.cif.gz", "P12345", resolution=2.0)
         c = _make_stats("c.cif.gz", "P12345", resolution=3.0)
 
-        results = group_resolution_statistics([a, b, c], top=2)
+        results = sort_resolution_statistics([a, b, c], top=2, coverage=False, group_by=True)
 
         passed_names = {r.input_file.name for r in results if r.passed}
         assert passed_names == {"a.cif.gz", "b.cif.gz"}
@@ -367,7 +369,7 @@ class TestGroupResolutionStatistics:
         no_acc = _make_stats("z.cif.gz", None, resolution=1.0)
 
         with caplog.at_level(logging.WARNING):
-            results = group_resolution_statistics([good, no_acc], top=10)
+            results = sort_resolution_statistics([good, no_acc], top=10, coverage=False, group_by=True)
 
         assert results[-1] is no_acc
         assert not results[-1].passed
@@ -377,7 +379,7 @@ class TestGroupResolutionStatistics:
         a = _make_stats("a.cif.gz", "P12345", resolution=2.0)
         b = _make_stats("b.cif.gz", "P12345", resolution=3.0)
 
-        results = group_resolution_statistics([c, a, b], top=10)
+        results = sort_resolution_statistics([c, a, b], top=10, coverage=False, group_by=True)
 
         assert [r.input_file.name for r in results] == ["a.cif.gz", "b.cif.gz", "c.cif.gz"]
 
@@ -385,7 +387,7 @@ class TestGroupResolutionStatistics:
         p1 = _make_stats("p1.cif.gz", "P11111", resolution=1.0)
         p2 = _make_stats("p2.cif.gz", "P22222", resolution=2.0)
 
-        results = group_resolution_statistics([p1, p2], top=1)
+        results = sort_resolution_statistics([p1, p2], top=1, coverage=False, group_by=True)
 
         assert all(r.passed for r in results)
 
@@ -395,7 +397,7 @@ class TestGroupResolutionStatistics:
         second = _make_stats("b.cif.gz", "P22222", resolution=1.5)
         third = _make_stats("c.cif.gz", "P33333", resolution=2.0)
 
-        results = group_resolution_statistics([third, best, second], top=1, group_by=False)
+        results = sort_resolution_statistics([third, best, second], top=1, coverage=False, group_by=False)
 
         passed_names = {r.input_file.name for r in results if r.passed}
         assert passed_names == {"a.cif.gz"}
@@ -406,7 +408,7 @@ class TestGroupResolutionStatistics:
         no_acc = _make_stats("z.cif.gz", None, resolution=1.0)
 
         with caplog.at_level(logging.WARNING):
-            results = group_resolution_statistics([with_acc, no_acc], top=1, group_by=False)
+            results = sort_resolution_statistics([with_acc, no_acc], top=1, coverage=False, group_by=False)
 
         assert all("No UniProt accession found" not in record.message for record in caplog.records)
         passed_names = {r.input_file.name for r in results if r.passed}
@@ -452,7 +454,7 @@ class TestCoverageGroupResolutionStatistics:
             uniprot_end=30,
         )
 
-        results = coverage_group_resolution_statistics([p2b, p1b, p2a, p1a], top=2, group_by=False)
+        results = sort_resolution_statistics([p2b, p1b, p2a, p1a], top=2, coverage=True, group_by=False)
 
         expected = [
             replace(p1a, passed=True),
@@ -546,7 +548,7 @@ class TestDiscardReasons:
         good2 = _make_stats("good2.cif.gz", "P12345", resolution=2.0)
         discarded = replace(_make_stats("bad.cif.gz", "P12345", resolution=0.5), discard_reason=ValueError("test"))
 
-        results = group_resolution_statistics([good2, good1, discarded], top=1, group_by=True)
+        results = sort_resolution_statistics([good2, good1, discarded], top=1, coverage=False, group_by=True)
 
         # good1 should pass (best resolution), discarded should not be considered for passing
         assert results[0].input_file.name == "bad.cif.gz"  # sorted alphabetically
@@ -564,7 +566,7 @@ class TestDiscardReasons:
             discard_reason=ValueError("test"),
         )
 
-        results = coverage_group_resolution_statistics([good2, good1, discarded], top=1, group_by=True)
+        results = sort_resolution_statistics([good2, good1, discarded], top=1, coverage=True, group_by=False)
 
         # good1 should pass (best resolution in its cluster), discarded should not be considered
         passed = [r for r in results if r.passed]
@@ -579,7 +581,7 @@ class TestDiscardReasons:
         no_acc = _make_stats("no_acc.cif.gz", None, resolution=0.5)
 
         # With top=3, both good structures pass (top per group), leaving room for 1 accessionless
-        results = coverage_group_resolution_statistics([good1, good2, no_acc], top=3, group_by=True)
+        results = sort_resolution_statistics([good1, good2, no_acc], top=3, coverage=True, group_by=False)
 
         # Both good structures should pass (limited by available structures in group)
         assert results[0].input_file.name == "good1.cif.gz"
@@ -595,7 +597,7 @@ class TestDiscardReasons:
         good2 = _make_stats("good2.cif.gz", "P12345", resolution=1.5, uniprot_start=20, uniprot_end=30)
         no_acc = _make_stats("no_acc.cif.gz", None, resolution=0.5)
 
-        results = coverage_group_resolution_statistics([good1, good2, no_acc], top=2, group_by=True)
+        results = sort_resolution_statistics([good1, good2, no_acc], top=2, coverage=True, group_by=False)
 
         # both good structures should pass
         passed = [r for r in results if r.passed]
