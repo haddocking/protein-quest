@@ -12,9 +12,9 @@ from tqdm.auto import tqdm
 
 from protein_quest.clustering import (
     filter_structures_on_clustered_resolution,
-    interleave_longest,
     sort_structures,
     structure_sort_key,
+    top_members_of_clusters,
 )
 from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
 from protein_quest.structure import StructureMetadata
@@ -222,18 +222,14 @@ def _sort_by_resolution_and_top_per_uniprot(
             continue
         grouped.setdefault(result.uniprot_accession, []).append(result)
 
+    output: list[ResolutionFilterStatistics] = []
     for group_results in grouped.values():
         ranked = sorted(group_results, key=resolution_sort_key)
         for result in ranked[:top]:
             result.passed = True
+        output.extend(ranked)
 
-    output: list[ResolutionFilterStatistics] = []
-    for group_results in grouped.values():
-        output.extend(group_results)
-
-    # TODO sort output
-    # TODO sort skipped
-    output.extend(skipped)
+    output.extend(sorted(skipped, key=resolution_sort_key))
     output.extend(discarded)
     return output
 
@@ -242,31 +238,27 @@ def _sort_by_resolution_and_global_top(
     stats: Iterable[ResolutionFilterStatistics],
     top: int,
 ) -> list[ResolutionFilterStatistics]:
-    """Rank stats by resolution and mark the top N as passed without grouping or coverage.
+    """Rank stats by resolution and mark the top N as passed
 
-    Files are ranked globally and no missing-accession warnings are emitted.
-
-    Items with discard_reason set are excluded from ranking but included in output.
-
-    AlphaFold structures are preferred over non-AlphaFold.
-    Structures with lower resolution are preferred.
-    If resolution is the same, structures with more residues are preferred.
-    If resolution is missing, those structures are undesirable.
+    Items with discard_reason set are excluded from ranking but are appended in returned list.
 
     Args:
         stats: Resolution statistics to rank.
         top: Maximum number of structures to pass.
 
     Returns:
-        All statistics with ``passed`` updated; the entries are sorted alphabetically by filename.
+        All statistics with ``passed`` updated; the entries are sorted by resolution.
+          See [resolution_sort_key][protein_quest.filters.resolution.resolution_sort_key].
 
     """
     discarded, valid = _split_discarded_and_valid(stats)
 
     ranked = sorted(valid, key=resolution_sort_key)
+
     for result in ranked[:top]:
         result.passed = True
-    return sorted(ranked + discarded, key=lambda item: item.input_file.name)
+
+    return ranked + discarded
 
 
 def _uniprot_group_sort_key(results: list[ResolutionFilterStatistics]) -> tuple[float, float, int, str]:
@@ -361,7 +353,7 @@ def _sort_by_coverage_and_global_top(
 
     accessionless, sorted_clustered_groups = _cluster_resolution_stats_by_accession(valid)
 
-    flattened = list(interleave_longest(*sorted_clustered_groups))
+    flattened = top_members_of_clusters(sorted_clustered_groups, top=len(valid))
     if accessionless:
         flattened.extend(sort_structures(accessionless))
     for result in flattened[:top]:
@@ -439,7 +431,6 @@ def sort_resolution_statistics(
     top: int,
     *,
     coverage: bool = False,
-    # TODO Rename group_by to per_uniprot_top
     group_by: bool = True,
 ) -> list[ResolutionFilterStatistics]:
     """Sort resolution statistics and mark the top N as passed based on the specified criteria.

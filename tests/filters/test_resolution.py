@@ -1,8 +1,6 @@
 import gzip
-import logging
 from dataclasses import replace
 from pathlib import Path
-from pprint import pprint
 
 import pytest
 
@@ -28,6 +26,7 @@ def _make_stats(
     uniprot_end: int = 0,
     sequence_identity: float = 0.0,
     chain_length: int = 0,
+    discard_reason: Exception | None = None,
 ) -> ResolutionFilterStatistics:
     if pdb_id is None:
         pdb_id = filename
@@ -44,6 +43,7 @@ def _make_stats(
         chain_length=chain_length,
         passed=False,
         output_file=None,
+        discard_reason=discard_reason,
     )
 
 
@@ -68,7 +68,7 @@ def assert_resolution_filter_statistics(
 def test_resolution_sort_key():
     a = _make_stats("a.cif.gz", "P12345", resolution=1.0)
     b = _make_stats("b.cif.gz", "P12345", resolution=2.0)
-    c = _make_stats("c.cif.gz", "P12345", resolution=0.0)  # undesirable
+    c = _make_stats("c.cif.gz", "P12345", resolution=0.0)  # undesirable like nmr
     af = _make_stats("af.cif.gz", "P12345", resolution=0.0, is_alphafold=True)  # best
     nu = _make_stats("nu.cif.gz", None, resolution=3.5)  # uniprot is ignored
 
@@ -150,172 +150,173 @@ class TestIterResolutionStatistics:
         assert list(iter_resolution_statistics([])) == []
 
 
-@pytest.mark.parametrize("scheduler_address", [None, "sequential"])
-def test_load_resolution_statistics_metadata_in_order(
-    sample_cif: Path,
-    sample2_cif: Path,
-    af_cif: Path,
-    nmr_cif: Path,
-    scheduler_address: str | None,
-):
-    input_files = [sample_cif, sample2_cif, af_cif, nmr_cif]
-    results = load_resolution_statistics(input_files, scheduler_address=scheduler_address)
+class TestLoadResolutionStatistics:
+    @pytest.mark.parametrize("scheduler_address", [None, "sequential"])
+    def test_metadata_in_order(
+        self,
+        sample_cif: Path,
+        sample2_cif: Path,
+        af_cif: Path,
+        nmr_cif: Path,
+        scheduler_address: str | None,
+    ):
+        input_files = [sample_cif, sample2_cif, af_cif, nmr_cif]
+        results = load_resolution_statistics(input_files, scheduler_address=scheduler_address)
 
-    expected = [
-        ResolutionFilterStatistics(
-            id="3JRSB2A",
-            input_file=sample_cif,
-            uniprot_accession="Q8VZS8",
-            resolution=2.05,
-            total_residue_count=173,
+        expected = [
+            ResolutionFilterStatistics(
+                id="3JRSB2A",
+                input_file=sample_cif,
+                uniprot_accession="Q8VZS8",
+                resolution=2.05,
+                total_residue_count=173,
+                is_alphafold=False,
+                uniprot_start=8,
+                uniprot_end=211,
+                sequence_identity=1.0,
+                chain_length=173,
+                passed=False,
+                output_file=None,
+            ),
+            ResolutionFilterStatistics(
+                id="2Y29",
+                input_file=sample2_cif,
+                uniprot_accession="P05067",
+                resolution=2.3,
+                total_residue_count=8,
+                is_alphafold=False,
+                uniprot_start=687,
+                uniprot_end=692,
+                sequence_identity=1.0,
+                chain_length=8,
+                passed=False,
+                output_file=None,
+            ),
+            ResolutionFilterStatistics(
+                id="AF-A0A0C5B5G6-F1",
+                input_file=af_cif,
+                uniprot_accession="A0A0C5B5G6",
+                resolution=0.0,
+                total_residue_count=16,
+                is_alphafold=True,
+                uniprot_start=1,
+                uniprot_end=16,
+                sequence_identity=1.0,
+                chain_length=16,
+                passed=False,
+                output_file=None,
+            ),
+            ResolutionFilterStatistics(
+                id="1AMB",
+                input_file=nmr_cif,
+                uniprot_accession="P05067",
+                resolution=0.0,
+                total_residue_count=28,
+                is_alphafold=False,
+                uniprot_start=672,
+                uniprot_end=699,
+                sequence_identity=1.0,
+                chain_length=28,
+                passed=False,
+                output_file=None,
+            ),
+        ]
+
+        for result, expected_result in zip(results, expected, strict=True):
+            assert_resolution_filter_statistics(result, expected_result)
+
+    def test_empty_input(self):
+        assert load_resolution_statistics([], scheduler_address="sequential") == []
+
+    def test_multiple_accessions_uniprotlessresult(self, multi_accession_cif: Path):
+        result = load_resolution_statistics([multi_accession_cif], scheduler_address="sequential")
+
+        expected = ResolutionFilterStatistics(
+            id="1A02",
+            input_file=multi_accession_cif,
+            uniprot_accession=None,
+            resolution=2.7,
+            total_residue_count=513,
             is_alphafold=False,
-            uniprot_start=8,
-            uniprot_end=211,
-            sequence_identity=1.0,
-            chain_length=173,
+            uniprot_start=0,
+            uniprot_end=0,
+            sequence_identity=0.0,
+            chain_length=513,
             passed=False,
             output_file=None,
-        ),
-        ResolutionFilterStatistics(
+        )
+        assert len(result) == 1
+        assert_resolution_filter_statistics(result[0], expected)
+
+
+class TestFilterFilesOnResolution:
+    def test_no_uniprot_does_not_pass(self, sample2_cif: Path, tmp_path: Path):
+        no_uniprot = tmp_path / "no-uniprot.cif.gz"
+        with gzip.open(sample2_cif, "rt", encoding="utf-8") as handle:
+            text = handle.read()
+        # Remove UniProt database entries while keeping a valid mmCIF structure.
+        no_uniprot.write_bytes(gzip.compress(text.replace("UNP", "XXX").encode("utf-8")))
+
+        output_dir = tmp_path / "output"
+        results = list(
+            filter_files_on_resolution(
+                input_files=[no_uniprot], output_dir=output_dir, top=1, min_sequence_identity=0.0
+            )
+        )
+
+        expected = ResolutionFilterStatistics(
             id="2Y29",
-            input_file=sample2_cif,
-            uniprot_accession="P05067",
+            input_file=no_uniprot,
+            uniprot_accession=None,
             resolution=2.3,
             total_residue_count=8,
             is_alphafold=False,
-            uniprot_start=687,
-            uniprot_end=692,
-            sequence_identity=1.0,
+            uniprot_start=0,
+            uniprot_end=0,
+            sequence_identity=0.0,
             chain_length=8,
             passed=False,
             output_file=None,
-        ),
-        ResolutionFilterStatistics(
-            id="AF-A0A0C5B5G6-F1",
-            input_file=af_cif,
-            uniprot_accession="A0A0C5B5G6",
-            resolution=0.0,
-            total_residue_count=16,
-            is_alphafold=True,
-            uniprot_start=1,
-            uniprot_end=16,
-            sequence_identity=1.0,
-            chain_length=16,
-            passed=False,
-            output_file=None,
-        ),
-        ResolutionFilterStatistics(
-            id="1AMB",
-            input_file=nmr_cif,
-            uniprot_accession="P05067",
-            resolution=0.0,
-            total_residue_count=28,
-            is_alphafold=False,
-            uniprot_start=672,
-            uniprot_end=699,
-            sequence_identity=1.0,
-            chain_length=28,
-            passed=False,
-            output_file=None,
-        ),
-    ]
-
-    for result, expected_result in zip(results, expected, strict=True):
-        assert_resolution_filter_statistics(result, expected_result)
-
-
-@pytest.mark.parametrize("scheduler_address", [None, "sequential"])
-def test_load_resolution_statistics_empty_input(scheduler_address: str | None):
-    assert load_resolution_statistics([], scheduler_address=scheduler_address) == []
-
-
-def test_load_resolution_statistics_multiple_accessions_uniprotlessresult(multi_accession_cif: Path):
-    result = load_resolution_statistics([multi_accession_cif], scheduler_address="sequential")
-
-    expected = ResolutionFilterStatistics(
-        id="1A02",
-        input_file=multi_accession_cif,
-        uniprot_accession=None,
-        resolution=2.7,
-        total_residue_count=513,
-        is_alphafold=False,
-        uniprot_start=0,
-        uniprot_end=0,
-        sequence_identity=0.0,
-        chain_length=513,
-        passed=False,
-        output_file=None,
-    )
-    assert len(result) == 1
-    assert_resolution_filter_statistics(result[0], expected)
-
-
-def test_filter_files_on_resolution_no_uniprot_does_not_pass(sample2_cif: Path, tmp_path: Path):
-    no_uniprot = tmp_path / "no-uniprot.cif.gz"
-    with gzip.open(sample2_cif, "rt", encoding="utf-8") as handle:
-        text = handle.read()
-    # Remove UniProt database entries while keeping a valid mmCIF structure.
-    no_uniprot.write_bytes(gzip.compress(text.replace("UNP", "XXX").encode("utf-8")))
-
-    output_dir = tmp_path / "output"
-    results = list(
-        filter_files_on_resolution(input_files=[no_uniprot], output_dir=output_dir, top=1, min_sequence_identity=0.0)
-    )
-
-    expected = ResolutionFilterStatistics(
-        id="2Y29",
-        input_file=no_uniprot,
-        uniprot_accession=None,
-        resolution=2.3,
-        total_residue_count=8,
-        is_alphafold=False,
-        uniprot_start=0,
-        uniprot_end=0,
-        sequence_identity=0.0,
-        chain_length=8,
-        passed=False,
-        output_file=None,
-    )
-    assert len(results) == 1
-    assert_resolution_filter_statistics(results[0], expected)
-    assert output_dir.exists()
-    assert list(output_dir.iterdir()) == []
-
-
-def test_filter_files_on_resolution_no_uniprot_can_pass_when_grouping_disabled(sample2_cif: Path, tmp_path: Path):
-    no_uniprot = tmp_path / "no-uniprot.cif.gz"
-    with gzip.open(sample2_cif, "rt", encoding="utf-8") as handle:
-        text = handle.read()
-    # Remove UniProt database entries while keeping a valid mmCIF structure.
-    no_uniprot.write_bytes(gzip.compress(text.replace("UNP", "XXX").encode("utf-8")))
-
-    output_dir = tmp_path / "output"
-    results = list(
-        filter_files_on_resolution(
-            input_files=[no_uniprot], output_dir=output_dir, top=1, group_by=False, min_sequence_identity=0.0
         )
-    )
+        assert len(results) == 1
+        assert_resolution_filter_statistics(results[0], expected)
+        assert output_dir.exists()
+        assert list(output_dir.iterdir()) == []
 
-    expected = ResolutionFilterStatistics(
-        id="2Y29",
-        input_file=no_uniprot,
-        uniprot_accession=None,
-        resolution=2.3,
-        total_residue_count=8,
-        is_alphafold=False,
-        uniprot_start=0,
-        uniprot_end=0,
-        sequence_identity=0.0,
-        chain_length=8,
-        passed=True,
-        output_file=output_dir / no_uniprot.name,
-    )
-    assert len(results) == 1
-    assert_resolution_filter_statistics(results[0], expected)
-    assert results[0].output_file is not None and results[0].output_file.exists()
+    def test_no_uniprot_can_pass_when_grouping_disabled(self, sample2_cif: Path, tmp_path: Path):
+        no_uniprot = tmp_path / "no-uniprot.cif.gz"
+        with gzip.open(sample2_cif, "rt", encoding="utf-8") as handle:
+            text = handle.read()
+        # Remove UniProt database entries while keeping a valid mmCIF structure.
+        no_uniprot.write_bytes(gzip.compress(text.replace("UNP", "XXX").encode("utf-8")))
+
+        output_dir = tmp_path / "output"
+        results = list(
+            filter_files_on_resolution(
+                input_files=[no_uniprot], output_dir=output_dir, top=1, group_by=False, min_sequence_identity=0.0
+            )
+        )
+
+        expected = ResolutionFilterStatistics(
+            id="2Y29",
+            input_file=no_uniprot,
+            uniprot_accession=None,
+            resolution=2.3,
+            total_residue_count=8,
+            is_alphafold=False,
+            uniprot_start=0,
+            uniprot_end=0,
+            sequence_identity=0.0,
+            chain_length=8,
+            passed=True,
+            output_file=output_dir / no_uniprot.name,
+        )
+        assert len(results) == 1
+        assert_resolution_filter_statistics(results[0], expected)
+        assert results[0].output_file is not None and results[0].output_file.exists()
 
 
-class TestSortResolutionStatistics:
+class TestSortResolutionStatisticsYesGroupByNoCoverage:
     def test_groupby_accession(self):
         a1 = _make_stats("a1.cif.gz", "P11111", resolution=1.0)
         a2 = _make_stats("a2.cif.gz", "P11111", resolution=2.0)
@@ -327,30 +328,13 @@ class TestSortResolutionStatistics:
 
         results = sort_resolution_statistics([a2, a1, b2, b1, c1, c2], top=1, coverage=False, group_by=True)
 
-        pprint(results)
-
         expected = [
             replace(a1, passed=True),
             replace(a2, passed=False),
             replace(b1, passed=True),
             replace(b2, passed=False),
-            replace(c1, passed=False),
             replace(c2, passed=False),
-        ]
-        assert results == expected
-
-    def test_groupby_none_uses_global_top(self):
-        # Same accession-based ranking key as production code; global top=1 should keep only a.cif.gz.
-        best = _make_stats("a.cif.gz", "P11111", resolution=1.0)
-        second = _make_stats("b.cif.gz", "P22222", resolution=1.5)
-        third = _make_stats("c.cif.gz", "P33333", resolution=2.0)
-
-        results = sort_resolution_statistics([third, best, second], top=1, coverage=False, group_by=False)
-
-        expected = [
-            replace(best, passed=True),
-            replace(second, passed=False),
-            replace(third, passed=False),
+            replace(c1, passed=False),
         ]
         assert results == expected
 
@@ -364,59 +348,70 @@ class TestSortResolutionStatistics:
         passed_names = {r.input_file.name for r in results if r.passed}
         assert passed_names == {"a.cif.gz", "b.cif.gz"}
 
-    def test_none_accession_is_skipped(self, caplog: pytest.LogCaptureFixture):
+    def test_none_accession_is_skipped(self):
         good = _make_stats("a.cif.gz", "P12345", resolution=2.0)
         no_acc = _make_stats("z.cif.gz", None, resolution=1.0)
 
-        with caplog.at_level(logging.WARNING):
-            results = sort_resolution_statistics([good, no_acc], top=10, coverage=False, group_by=True)
+        results = sort_resolution_statistics([good, no_acc], top=10, coverage=False, group_by=True)
 
-        assert results[-1] is no_acc
-        assert not results[-1].passed
+        expected = [
+            replace(good, passed=True),
+            replace(no_acc, passed=False),
+        ]
+        assert results == expected
 
-    def test_results_sorted_by_filename_within_group(self):
-        c = _make_stats("c.cif.gz", "P12345", resolution=1.0)
+    def test_results_sorted_by_resolution_within_group(self):
         a = _make_stats("a.cif.gz", "P12345", resolution=2.0)
         b = _make_stats("b.cif.gz", "P12345", resolution=3.0)
+        c = _make_stats("c.cif.gz", "P12345", resolution=1.0)
 
-        results = sort_resolution_statistics([c, a, b], top=10, coverage=False, group_by=True)
+        results = sort_resolution_statistics([a, b, c], top=10, coverage=False, group_by=True)
 
-        assert [r.input_file.name for r in results] == ["a.cif.gz", "b.cif.gz", "c.cif.gz"]
+        assert [r.input_file.name for r in results] == ["c.cif.gz", "a.cif.gz", "b.cif.gz"]
 
-    def test_groups_are_independent(self):
-        p1 = _make_stats("p1.cif.gz", "P11111", resolution=1.0)
-        p2 = _make_stats("p2.cif.gz", "P22222", resolution=2.0)
 
-        results = sort_resolution_statistics([p1, p2], top=1, coverage=False, group_by=True)
+class TestSortResolutionStatisticsNoGroupbyNoCoverage:
+    def test_groupby_none_uses_global_top(self):
+        a = _make_stats("a.cif.gz", "P11111", resolution=1.0)  # best
+        b = _make_stats("b.cif.gz", "P22222", resolution=1.5)
+        c = _make_stats("c.cif.gz", "P33333", resolution=2.0)  # worst
 
-        assert all(r.passed for r in results)
+        results = sort_resolution_statistics([c, a, b], top=1, coverage=False, group_by=False)
 
-    def test_none_grouping_uses_global_top(self):
-        # Same accession-based ranking key as production code; global top=1 should keep only a.cif.gz.
-        best = _make_stats("a.cif.gz", "P11111", resolution=1.0)
-        second = _make_stats("b.cif.gz", "P22222", resolution=1.5)
-        third = _make_stats("c.cif.gz", "P33333", resolution=2.0)
+        expected = [
+            replace(a, passed=True),
+            replace(b, passed=False),
+            replace(c, passed=False),
+        ]
+        assert results == expected
 
-        results = sort_resolution_statistics([third, best, second], top=1, coverage=False, group_by=False)
-
-        passed_names = {r.input_file.name for r in results if r.passed}
-        assert passed_names == {"a.cif.gz"}
-        assert [r.input_file.name for r in results] == ["a.cif.gz", "b.cif.gz", "c.cif.gz"]
-
-    def test_none_grouping_does_not_warn_for_missing_accession(self, caplog: pytest.LogCaptureFixture):
+    def test_missing_accession_ignored(self):
         with_acc = _make_stats("a.cif.gz", "P12345", resolution=2.0)
-        no_acc = _make_stats("z.cif.gz", None, resolution=1.0)
+        no_acc = _make_stats("z.cif.gz", None, resolution=1.0)  # best
 
-        with caplog.at_level(logging.WARNING):
-            results = sort_resolution_statistics([with_acc, no_acc], top=1, coverage=False, group_by=False)
+        results = sort_resolution_statistics([with_acc, no_acc], top=1, coverage=False, group_by=False)
 
-        assert all("No UniProt accession found" not in record.message for record in caplog.records)
-        passed_names = {r.input_file.name for r in results if r.passed}
-        assert passed_names == {"z.cif.gz"}
+        expected = [
+            replace(no_acc, passed=True),
+            replace(with_acc, passed=False),
+        ]
+        assert results == expected
+
+    def test_discarded_last(self):
+        good = _make_stats("a.cif.gz", "P12345", resolution=1.0)
+        discarded = _make_stats("b.cif.gz", "P12345", resolution=0.5, discard_reason=ValueError("reason1"))
+
+        results = sort_resolution_statistics([discarded, good], top=1, coverage=False, group_by=False)
+
+        expected = [
+            replace(good, passed=True),
+            replace(discarded, passed=False),
+        ]
+        assert results == expected
 
 
-class TestCoverageGroupResolutionStatistics:
-    def test_coverage_none_grouping_interleaves_clusters(self):
+class TestSortResolutionStatisticsNoGroupbyYesCoverage:
+    def test_kitchensink(self):
         p1a = _make_stats(
             "p1a.cif.gz",
             "P11111",
@@ -453,14 +448,136 @@ class TestCoverageGroupResolutionStatistics:
             uniprot_start=20,
             uniprot_end=30,
         )
+        n1 = _make_stats(
+            "n1.cif.gz",
+            None,
+            resolution=0.5,
+            chain_length=50,
+        )  # without accession, between with accession and discarded
+        d1 = _make_stats(
+            "d1.cif.gz",
+            "P33333",
+            resolution=0.8,
+            discard_reason=ValueError("reason1"),
+        )  # baddest
 
-        results = sort_resolution_statistics([p2b, p1b, p2a, p1a], top=2, coverage=True, group_by=False)
+        results = sort_resolution_statistics([p2b, n1, p1b, d1, p2a, p1a], top=2, coverage=True, group_by=False)
 
         expected = [
             replace(p1a, passed=True),
             replace(p2a, passed=True),
             replace(p1b, passed=False),
             replace(p2b, passed=False),
+            replace(n1, passed=False),
+            replace(d1, passed=False),
+        ]
+
+        assert results == expected
+
+
+class TestSortResolutionStatisticsYesGroupbyYesCoverage:
+    def test_kitchensink(self):
+        p1a = _make_stats(
+            "p1a.cif.gz",
+            "P11111",
+            resolution=1.0,
+            sequence_identity=1.00,
+            chain_length=100,
+            uniprot_start=1,
+            uniprot_end=100,
+        )
+        p1b = _make_stats(
+            "p1b.cif.gz",
+            "P11111",
+            resolution=1.5,
+            sequence_identity=1.00,
+            chain_length=80,
+            uniprot_start=1,
+            uniprot_end=100,
+        )
+        p1c = _make_stats(
+            "p1c.cif.gz",
+            "P11111",
+            resolution=1.8,  # worst resolution of P11111, last in group
+            sequence_identity=1.00,
+            chain_length=100,
+            uniprot_start=1,
+            uniprot_end=100,
+        )
+        p2a = _make_stats(
+            "p2a.cif.gz",
+            "P22222",
+            resolution=1.2,
+            sequence_identity=1.00,
+            chain_length=100,
+            uniprot_start=1,
+            uniprot_end=100,
+        )
+        p2b = _make_stats(
+            "p2b.cif.gz",
+            "P22222",
+            resolution=1.7,
+            sequence_identity=1.00,
+            chain_length=100,
+            uniprot_start=1,
+            uniprot_end=100,
+        )
+        n1 = _make_stats(
+            "n1.cif.gz",
+            None,
+            resolution=0.5,
+            chain_length=100,
+        )  # without accession, between with accession and discarded
+        d1 = _make_stats(
+            "d1.cif.gz",
+            "P33333",
+            resolution=0.8,
+            discard_reason=ValueError("reason1"),
+        )  # baddest
+
+        results = sort_resolution_statistics([p2b, n1, p1b, p1c, d1, p2a, p1a], top=2, coverage=True, group_by=True)
+
+        expected = [
+            replace(p1a, passed=True),
+            replace(p1b, passed=True),
+            replace(p1c, passed=False),
+            replace(p2a, passed=True),
+            replace(p2b, passed=True),
+            replace(n1, passed=False),  # not passed because top filled by uniprot groups
+            replace(d1, passed=False),
+        ]
+
+        assert results == expected
+
+    def test_top_filled_with_accessionless(self):
+        p1a = _make_stats(
+            "p1a.cif.gz",
+            "P11111",
+            resolution=1.0,
+            sequence_identity=1.00,
+            chain_length=100,
+            uniprot_start=1,
+            uniprot_end=100,
+        )
+        n1 = _make_stats(
+            "n1.cif.gz",
+            None,
+            resolution=0.5,
+            chain_length=100,
+        )  # without accession, best resolution
+        n2 = _make_stats(
+            "n2.cif.gz",
+            None,
+            resolution=0.6,
+            chain_length=100,
+        )  # without accession, second best resolution
+
+        results = sort_resolution_statistics([n1, n2, p1a], top=2, coverage=True, group_by=True)
+
+        expected = [
+            replace(p1a, passed=True),
+            replace(n1, passed=True),
+            replace(n2, passed=False),
         ]
 
         assert results == expected
@@ -548,14 +665,14 @@ class TestDiscardReasons:
         good2 = _make_stats("good2.cif.gz", "P12345", resolution=2.0)
         discarded = replace(_make_stats("bad.cif.gz", "P12345", resolution=0.5), discard_reason=ValueError("test"))
 
-        results = sort_resolution_statistics([good2, good1, discarded], top=1, coverage=False, group_by=True)
+        results = sort_resolution_statistics([discarded, good2, good1], top=1, coverage=False, group_by=True)
 
         # good1 should pass (best resolution), discarded should not be considered for passing
-        assert results[0].input_file.name == "bad.cif.gz"  # sorted alphabetically
-        assert results[0].passed is False
-        assert results[1].input_file.name == "good1.cif.gz"
-        assert results[1].passed is True
-        assert results[2].input_file.name == "good2.cif.gz"
+        assert results[0].input_file.name == "good1.cif.gz"
+        assert results[0].passed is True
+        assert results[1].input_file.name == "good2.cif.gz"
+        assert results[1].passed is False
+        assert results[2].input_file.name == "bad.cif.gz"
         assert results[2].passed is False
 
     def test_coverage_grouping_excludes_discarded_from_ranking(self):
