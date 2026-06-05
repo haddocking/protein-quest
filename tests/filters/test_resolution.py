@@ -10,7 +10,6 @@ from protein_quest.filters.resolution import (
     filter_files_on_resolution,
     iter_resolution_statistics,
     load_resolution_statistics,
-    resolution_sort_key,
     sort_resolution_statistics,
 )
 
@@ -63,16 +62,6 @@ def assert_resolution_filter_statistics(
     assert result.chain_length == expected.chain_length
     assert result.passed == expected.passed
     assert result.output_file == expected.output_file
-
-
-def test_resolution_sort_key():
-    a = _make_stats("a.cif.gz", "P12345", resolution=1.0)
-    b = _make_stats("b.cif.gz", "P12345", resolution=2.0)
-    c = _make_stats("c.cif.gz", "P12345", resolution=0.0)  # undesirable like nmr
-    af = _make_stats("af.cif.gz", "P12345", resolution=0.0, is_alphafold=True)  # best
-    nu = _make_stats("nu.cif.gz", None, resolution=3.5)  # uniprot is ignored
-
-    assert sorted([b, c, a, af, nu], key=resolution_sort_key) == [af, a, b, nu, c]
 
 
 def test_resolution_filter_statistics_is_hashable():
@@ -314,6 +303,26 @@ class TestFilterFilesOnResolution:
         assert len(results) == 1
         assert_resolution_filter_statistics(results[0], expected)
         assert results[0].output_file is not None and results[0].output_file.exists()
+
+
+@pytest.mark.parametrize("group_by, coverage", [(False, False), (True, False), (False, True), (True, True)])
+def test_sort_resolution_statistics_order_alphafold_xray_nmr(group_by: bool, coverage: bool):
+    shared = {
+        "accession": "P12345",
+        "sequence_identity": 1.0,
+        "uniprot_start": 1,
+        "uniprot_end": 100,
+        "chain_length": 100,
+    }
+    af = _make_stats("af.cif.gz", resolution=0.0, is_alphafold=True, **shared)
+    xray = _make_stats("xray.cif.gz", resolution=1.0, **shared)
+    nmr = _make_stats("nmr.cif.gz", resolution=0.0, **shared)
+
+    results = sort_resolution_statistics([xray, nmr, af], top=3, coverage=coverage, group_by=group_by)
+
+    # any coverage/groupby combi should give same order
+    expected = [af, xray, nmr]
+    assert results == expected
 
 
 class TestSortResolutionStatisticsYesGroupByNoCoverage:

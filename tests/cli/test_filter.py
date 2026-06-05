@@ -22,6 +22,8 @@ def test_filter_chain_happy_path(sample2_cif: Path, tmp_path: Path, capsys: pyte
         str(tmp_path),
         "--copy-method",
         "copy",
+        "--scheduler-address",
+        "sequential",
     ]
 
     main(argv)
@@ -264,20 +266,20 @@ class TestResolution:
         stats = list(csv.DictReader(stats_fn.open()))
         expected_stats = [
             {
-                "chain_length": "28",
+                "chain_length": "16",
                 "discard_reason": "",
                 "discard_reason_type": "",
-                "id": "1AMB",
-                "input_file": f"{input_dir / '1amb_updated.cif.gz'}",
-                "is_alphafold": "False",
-                "output_file": f"{output_dir / '1amb_updated.cif.gz'}",
+                "id": "AF-A0A0C5B5G6-F1",
+                "input_file": f"{input_dir / 'AF-A0A0C5B5G6-F1-model_v6.cif.gz'}",
+                "is_alphafold": "True",
+                "output_file": f"{output_dir / 'AF-A0A0C5B5G6-F1-model_v6.cif.gz'}",
                 "passed": "True",
                 "resolution": "0.0",
                 "sequence_identity": "1.000",
-                "total_residue_count": "28",
-                "uniprot_accession": "P05067",
-                "uniprot_end": "699",
-                "uniprot_start": "672",
+                "total_residue_count": "16",
+                "uniprot_accession": "A0A0C5B5G6",
+                "uniprot_end": "16",
+                "uniprot_start": "1",
             },
             {
                 "chain_length": "8",
@@ -296,20 +298,20 @@ class TestResolution:
                 "uniprot_start": "687",
             },
             {
-                "chain_length": "16",
+                "chain_length": "28",
                 "discard_reason": "",
                 "discard_reason_type": "",
-                "id": "AF-A0A0C5B5G6-F1",
-                "input_file": f"{input_dir / 'AF-A0A0C5B5G6-F1-model_v6.cif.gz'}",
-                "is_alphafold": "True",
-                "output_file": f"{output_dir / 'AF-A0A0C5B5G6-F1-model_v6.cif.gz'}",
+                "id": "1AMB",
+                "input_file": f"{input_dir / '1amb_updated.cif.gz'}",
+                "is_alphafold": "False",
+                "output_file": f"{output_dir / '1amb_updated.cif.gz'}",
                 "passed": "True",
                 "resolution": "0.0",
                 "sequence_identity": "1.000",
-                "total_residue_count": "16",
-                "uniprot_accession": "A0A0C5B5G6",
-                "uniprot_end": "16",
-                "uniprot_start": "1",
+                "total_residue_count": "28",
+                "uniprot_accession": "P05067",
+                "uniprot_end": "699",
+                "uniprot_start": "672",
             },
         ]
         assert stats == expected_stats
@@ -331,6 +333,8 @@ class TestResolution:
             str(output_dir),
             "--copy-method",
             "symlink",
+            "--scheduler-address",
+            "sequential",
         ]
 
         main(argv)
@@ -360,6 +364,8 @@ class TestResolution:
             str(output_dir),
             "--copy-method",
             "symlink",
+            "--scheduler-address",
+            "sequential",
             "--write-stats",
             str(stats_fn),
         ]
@@ -371,18 +377,18 @@ class TestResolution:
 
         expected = [
             {
-                "input_file": str(input_dir / "1amb_updated.cif.gz"),
-                "id": "1AMB",
-                "uniprot_accession": "P05067",
+                "input_file": str(input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
+                "id": "AF-A0A0C5B5G6-F1",
+                "uniprot_accession": "A0A0C5B5G6",
                 "resolution": "0.0",
-                "total_residue_count": "28",
-                "is_alphafold": "False",
-                "uniprot_start": "672",
-                "uniprot_end": "699",
+                "total_residue_count": "16",
+                "is_alphafold": "True",
+                "uniprot_start": "1",
+                "uniprot_end": "16",
                 "sequence_identity": "1.000",
-                "chain_length": "28",
+                "chain_length": "16",
                 "passed": "True",
-                "output_file": str(output_dir / "1amb_updated.cif.gz"),
+                "output_file": str(output_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
                 "discard_reason": "",
                 "discard_reason_type": "",
             },
@@ -403,18 +409,18 @@ class TestResolution:
                 "discard_reason_type": "",
             },
             {
-                "input_file": str(input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
-                "id": "AF-A0A0C5B5G6-F1",
-                "uniprot_accession": "A0A0C5B5G6",
+                "input_file": str(input_dir / "1amb_updated.cif.gz"),
+                "id": "1AMB",
+                "uniprot_accession": "P05067",
                 "resolution": "0.0",
-                "total_residue_count": "16",
-                "is_alphafold": "True",
-                "uniprot_start": "1",
-                "uniprot_end": "16",
+                "total_residue_count": "28",
+                "is_alphafold": "False",
+                "uniprot_start": "672",
+                "uniprot_end": "699",
                 "sequence_identity": "1.000",
-                "chain_length": "16",
+                "chain_length": "28",
                 "passed": "True",
-                "output_file": str(output_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
+                "output_file": str(output_dir / "1amb_updated.cif.gz"),
                 "discard_reason": "",
                 "discard_reason_type": "",
             },
@@ -445,6 +451,8 @@ class TestResolution:
             "2",
             "--copy-method",
             "symlink",
+            "--scheduler-address",
+            "sequential",
             "--write-stats",
             str(stats_fn),
         ]
@@ -452,28 +460,12 @@ class TestResolution:
         main(argv)
 
         output_files = {path.name for path in output_dir.iterdir()}
-        assert output_files == {"1amb_updated.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"}
+        assert output_files == {"2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"}
 
         with stats_fn.open() as handle:
             rows = list(csv.DictReader(handle))
 
         expected_rows = [
-            {
-                "input_file": str(input_dir / "1amb_updated.cif.gz"),
-                "id": "1AMB",
-                "uniprot_accession": "P05067",
-                "resolution": "0.0",
-                "total_residue_count": "28",
-                "is_alphafold": "False",
-                "uniprot_start": "672",
-                "uniprot_end": "699",
-                "sequence_identity": "1.000",
-                "chain_length": "28",
-                "passed": "True",
-                "output_file": str(output_dir / "1amb_updated.cif.gz"),
-                "discard_reason": "",
-                "discard_reason_type": "",
-            },
             {
                 "input_file": str(input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
                 "id": "AF-A0A0C5B5G6-F1",
@@ -501,6 +493,22 @@ class TestResolution:
                 "uniprot_end": "692",
                 "sequence_identity": "1.000",
                 "chain_length": "8",
+                "passed": "True",
+                "output_file": str(output_dir / "2Y29.cif.gz"),
+                "discard_reason": "",
+                "discard_reason_type": "",
+            },
+            {
+                "input_file": str(input_dir / "1amb_updated.cif.gz"),
+                "id": "1AMB",
+                "uniprot_accession": "P05067",
+                "resolution": "0.0",
+                "total_residue_count": "28",
+                "is_alphafold": "False",
+                "uniprot_start": "672",
+                "uniprot_end": "699",
+                "sequence_identity": "1.000",
+                "chain_length": "28",
                 "passed": "False",
                 "output_file": "",
                 "discard_reason": "",
@@ -531,12 +539,14 @@ class TestResolution:
             "2",
             "--copy-method",
             "symlink",
+            "--scheduler-address",
+            "sequential",
         ]
 
         main(argv)
 
         output_files = {path.name for path in output_dir.iterdir()}
-        assert output_files == {"1amb_updated.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"}
+        assert output_files == {"2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"}
 
         captured = capsys.readouterr()
         assert "global resolution ranking (no grouping)" in captured.err

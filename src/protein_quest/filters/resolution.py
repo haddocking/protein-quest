@@ -68,23 +68,6 @@ class ResolutionFilterStatistics:
         return hash(self.input_file)
 
 
-def resolution_sort_key(stats: ResolutionFilterStatistics) -> tuple[int, float, int, str]:
-    """Sort key for resolution-based filtering.
-
-    AlphaFold structures are preferred over non-AlphaFold.
-    Structures with lower resolution are preferred.
-    If resolution is the same, structures with more residues are preferred.
-    If resolution is missing, those structures are undesirable.
-
-    Output is deterministic and sorted alphabetically by filename.
-    """
-    if stats.is_alphafold:
-        return (0, 0.0, -stats.total_residue_count, stats.input_file.name)
-    if stats.resolution != 0.0:
-        return (1, stats.resolution, -stats.total_residue_count, stats.input_file.name)
-    return (2, 0.0, -stats.total_residue_count, stats.input_file.name)
-
-
 def _load_resolution_statistics_single(input_file: Path) -> ResolutionFilterStatistics:
     """Load resolution statistics for a single structure file.
 
@@ -224,12 +207,12 @@ def _sort_by_resolution_and_top_per_uniprot(
 
     output: list[ResolutionFilterStatistics] = []
     for group_results in grouped.values():
-        ranked = sorted(group_results, key=resolution_sort_key)
+        ranked = sorted(group_results, key=structure_sort_key)
         for result in ranked[:top]:
             result.passed = True
         output.extend(ranked)
 
-    output.extend(sorted(skipped, key=resolution_sort_key))
+    output.extend(sorted(skipped, key=structure_sort_key))
     output.extend(discarded)
     return output
 
@@ -248,12 +231,12 @@ def _sort_by_resolution_and_global_top(
 
     Returns:
         All statistics with ``passed`` updated; the entries are sorted by resolution.
-          See [resolution_sort_key][protein_quest.filters.resolution.resolution_sort_key].
+          See [structure_sort_key][protein_quest.filters.clustering.structure_sort_key].
 
     """
     discarded, valid = _split_discarded_and_valid(stats)
 
-    ranked = sorted(valid, key=resolution_sort_key)
+    ranked = sorted(valid, key=structure_sort_key)
 
     for result in ranked[:top]:
         result.passed = True
@@ -261,7 +244,7 @@ def _sort_by_resolution_and_global_top(
     return ranked + discarded
 
 
-def _uniprot_group_sort_key(results: list[ResolutionFilterStatistics]) -> tuple[float, float, int, str]:
+def _uniprot_group_sort_key(results: list[ResolutionFilterStatistics]) -> tuple[float, int, float, int, str]:
     """Take best best member in best cluster of clusters for a uniprot accession and return its sort key."""
     best_cluster = results[0]
     return structure_sort_key(best_cluster)

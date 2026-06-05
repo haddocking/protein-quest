@@ -24,6 +24,7 @@ class SimpleStructure:
     resolution_value: float = 0.0
     sequence_identity: float = 1.0
     chain_length: int = 0
+    is_alphafold: bool = False
 
 
 def make_structure(ident: str, start: int, end: int) -> SimpleStructure:
@@ -37,6 +38,7 @@ class BrokenChainLengthStructure:
     uniprot_end: int
     resolution_value: float = 0.0
     sequence_identity: float = 1.0
+    is_alphafold: bool = False
 
     @property
     def chain_length(self) -> int:

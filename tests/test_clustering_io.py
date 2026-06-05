@@ -24,6 +24,7 @@ class SimpleStructure:
     resolution_value: float = 0.0
     sequence_identity: float = 1.0
     chain_length: int = 0
+    is_alphafold: bool = False
 
 
 def make_structure(ident: str, start: int, end: int) -> SimpleStructure:

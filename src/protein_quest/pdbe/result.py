@@ -22,6 +22,7 @@ class PdbResult:
     method: str
     uniprot_chains: str
     resolution: str | None = None
+    is_alphafold: bool = False
 
     @cached_property
     def chain(self) -> str:
