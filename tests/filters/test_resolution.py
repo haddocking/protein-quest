@@ -8,6 +8,7 @@ from protein_quest.filters.resolution import (
     ResolutionFilterStatistics,
     copy_resolution_statistics,
     filter_files_on_resolution,
+    filter_on_sequence_identity,
     iter_resolution_statistics,
     load_resolution_statistics,
     sort_resolution_statistics,
@@ -732,3 +733,22 @@ class TestDiscardReasons:
         no_acc_result = [r for r in results if r.input_file.name == "no_acc.cif.gz"]
         assert len(no_acc_result) == 1
         assert no_acc_result[0].passed is False
+
+
+def test_filter_on_sequence_identity(caplog: pytest.LogCaptureFixture):
+    good = _make_stats("good.cif.gz", "P12345", resolution=1.0, sequence_identity=0.95)
+    bad = _make_stats("bad.cif.gz", "P12345", resolution=1.0, sequence_identity=0.5)
+
+    results = list(filter_on_sequence_identity(0.9, [good, bad]))
+
+    expected = [
+        replace(good, passed=False, discard_reason=None),
+        replace(bad, passed=False, discard_reason=ValueError("Sequence identity 0.500 below minimal 0.900")),
+    ]
+    for result, expected_result in zip(results, expected, strict=True):
+        assert_resolution_filter_statistics(result, expected_result)
+
+    assert (
+        "Discarding /fake/bad.cif.gz due to sequence identity 0.500 below minimal sequence identity 0.900"
+        in caplog.text
+    )

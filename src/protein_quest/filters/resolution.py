@@ -231,7 +231,7 @@ def _sort_by_resolution_and_global_top(
 
     Returns:
         All statistics with ``passed`` updated; the entries are sorted by resolution.
-          See [structure_sort_key][protein_quest.filters.clustering.structure_sort_key].
+          See [structure_sort_key][protein_quest.clustering.structure_sort_key].
 
     """
     discarded, valid = _split_discarded_and_valid(stats)
@@ -391,9 +391,21 @@ def copy_resolution_statistics(
         yield result
 
 
-def _filter_on_sequence_identity(
+def filter_on_sequence_identity(
     min_sequence_identity: float, stats: Iterable[ResolutionFilterStatistics]
 ) -> Generator[ResolutionFilterStatistics]:
+    """Discard statistics with sequence identity below the specified threshold.
+
+    Args:
+        min_sequence_identity: Minimum sequence identity ratio to the Uniprot sequence for a structure to be passed.
+            If not set then discards structures that are not fully identical to the Uniprot sequence.
+            For example if set to 0.8 then structures that have sequence identity below 0.8 are discarded.
+        stats: Resolution statistics to filter.
+
+    Yields:
+        Statistics with ``passed`` set to ``False`` and ``discard_reason`` set for entries
+
+    """
     for stat in stats:
         if stat.discard_reason is None and stat.sequence_identity < min_sequence_identity:
             logger.warning(
@@ -480,6 +492,6 @@ def filter_files_on_resolution(
         Objects describing the filtering result for each input file.
     """
     stats = load_resolution_statistics(input_files, scheduler_address)
-    stats = _filter_on_sequence_identity(min_sequence_identity, stats)
+    stats = filter_on_sequence_identity(min_sequence_identity, stats)
     sorted_stats = sort_resolution_statistics(stats, top, coverage=coverage, group_by=group_by)
     yield from copy_resolution_statistics(sorted_stats, output_dir, copy_method)
