@@ -299,6 +299,21 @@ class TestStructureMetadata:
                 id="6O5I_multispan",
             ),
             pytest.param(
+                "multi_accession_cif",
+                StructureMetadata(
+                    id="1A02",
+                    uniprot_accession=None,
+                    resolution=2.7,
+                    total_residue_count=513,
+                    is_alphafold=False,
+                    uniprot_start=0,
+                    uniprot_end=0,
+                    sequence_identity=0.0,
+                    chain_length=513,
+                ),
+                id="1A02_multi_accessions separate_chains",
+            ),
+            pytest.param(
                 "multi_accession_chain_cif",
                 StructureMetadata(
                     id="1UN5",
@@ -315,7 +330,7 @@ class TestStructureMetadata:
             ),
         ],
     )
-    def test(self, cif_fixture: str, expected: StructureMetadata, request: pytest.FixtureRequest):
+    def test_fixtures(self, cif_fixture: str, expected: StructureMetadata, request: pytest.FixtureRequest):
         path = request.getfixturevalue(cif_fixture)
         result = StructureMetadata.from_path(path)
 
