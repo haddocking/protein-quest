@@ -1,8 +1,10 @@
+import csv
 import gzip
 from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from cyclopts.types import StdioPath
 
 from protein_quest.filters.resolution import (
     ResolutionFilterStatistics,
@@ -12,6 +14,7 @@ from protein_quest.filters.resolution import (
     iter_resolution_statistics,
     load_resolution_statistics,
     sort_resolution_statistics,
+    write_resolution_stats,
 )
 
 
@@ -27,6 +30,8 @@ def _make_stats(
     sequence_identity: float = 0.0,
     chain_length: int = 0,
     discard_reason: Exception | None = None,
+    passed: bool = False,
+    output_file: Path | None = None,
 ) -> ResolutionFilterStatistics:
     if pdb_id is None:
         pdb_id = filename
@@ -41,8 +46,8 @@ def _make_stats(
         uniprot_end=uniprot_end,
         sequence_identity=sequence_identity,
         chain_length=chain_length,
-        passed=False,
-        output_file=None,
+        passed=passed,
+        output_file=output_file,
         discard_reason=discard_reason,
     )
 
@@ -752,3 +757,128 @@ def test_filter_on_sequence_identity(caplog: pytest.LogCaptureFixture):
         "Discarding /fake/bad.cif.gz due to sequence identity 0.500 below minimal sequence identity 0.900"
         in caplog.text
     )
+
+
+def test_write_stats_with_edge_cases(tmp_path: StdioPath):
+    """Test writing stats with various edge cases in discard_reason."""
+    stats = [
+        _make_stats("a.cif.gz", "P12345", resolution=1.0, passed=True),
+        _make_stats(
+            "b.cif.gz",
+            "P12345",
+            resolution=2.0,
+            passed=False,
+            discard_reason=ValueError('Message with "quotes" inside'),
+        ),
+        _make_stats(
+            "c.cif.gz",
+            "P12345",
+            resolution=3.0,
+            passed=False,
+            discard_reason=ValueError("Line 1\nLine 2"),
+        ),
+        _make_stats(
+            "d.cif.gz",
+            "P12345",
+            resolution=4.0,
+            passed=False,
+            discard_reason=ValueError("value1, value2, value3"),
+        ),
+        _make_stats(
+            "e.cif.gz",
+            "P12345",
+            resolution=5.0,
+            passed=False,
+            discard_reason=ValueError('Error: "invalid" data\nat line 42'),
+        ),
+    ]
+    output = tmp_path / "stats.csv"
+
+    write_resolution_stats(stats, output)
+
+    with output.open() as f:
+        rows = list(csv.DictReader(f))
+
+    expected = [
+        {
+            "input_file": "/fake/a.cif.gz",
+            "id": "a.cif.gz",
+            "uniprot_accession": "P12345",
+            "resolution": "1.0",
+            "total_residue_count": "100",
+            "is_alphafold": "False",
+            "uniprot_start": "0",
+            "uniprot_end": "0",
+            "sequence_identity": "0.000",
+            "chain_length": "0",
+            "passed": "True",
+            "output_file": "",
+            "discard_reason": "",
+            "discard_reason_type": "",
+        },
+        {
+            "input_file": "/fake/b.cif.gz",
+            "id": "b.cif.gz",
+            "uniprot_accession": "P12345",
+            "resolution": "2.0",
+            "total_residue_count": "100",
+            "is_alphafold": "False",
+            "uniprot_start": "0",
+            "uniprot_end": "0",
+            "sequence_identity": "0.000",
+            "chain_length": "0",
+            "passed": "False",
+            "output_file": "",
+            "discard_reason": 'Message with "quotes" inside',
+            "discard_reason_type": "ValueError",
+        },
+        {
+            "input_file": "/fake/c.cif.gz",
+            "id": "c.cif.gz",
+            "uniprot_accession": "P12345",
+            "resolution": "3.0",
+            "total_residue_count": "100",
+            "is_alphafold": "False",
+            "uniprot_start": "0",
+            "uniprot_end": "0",
+            "sequence_identity": "0.000",
+            "chain_length": "0",
+            "passed": "False",
+            "output_file": "",
+            "discard_reason": "Line 1\nLine 2",
+            "discard_reason_type": "ValueError",
+        },
+        {
+            "input_file": "/fake/d.cif.gz",
+            "id": "d.cif.gz",
+            "uniprot_accession": "P12345",
+            "resolution": "4.0",
+            "total_residue_count": "100",
+            "is_alphafold": "False",
+            "uniprot_start": "0",
+            "uniprot_end": "0",
+            "sequence_identity": "0.000",
+            "chain_length": "0",
+            "passed": "False",
+            "output_file": "",
+            "discard_reason": "value1, value2, value3",
+            "discard_reason_type": "ValueError",
+        },
+        {
+            "input_file": "/fake/e.cif.gz",
+            "id": "e.cif.gz",
+            "uniprot_accession": "P12345",
+            "resolution": "5.0",
+            "total_residue_count": "100",
+            "is_alphafold": "False",
+            "uniprot_start": "0",
+            "uniprot_end": "0",
+            "sequence_identity": "0.000",
+            "chain_length": "0",
+            "passed": "False",
+            "output_file": "",
+            "discard_reason": 'Error: "invalid" data\nat line 42',
+            "discard_reason_type": "ValueError",
+        },
+    ]
+    assert rows == expected

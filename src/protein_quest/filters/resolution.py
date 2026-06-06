@@ -1,11 +1,13 @@
 """Filter structure files by resolution rank."""
 
+import csv
 import logging
 from collections.abc import Generator, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from cyclopts.types import StdioPath
 from dask.distributed import Client
 from distributed.deploy.cluster import Cluster
 from tqdm.auto import tqdm
@@ -495,3 +497,52 @@ def filter_files_on_resolution(
     stats = filter_on_sequence_identity(min_sequence_identity, stats)
     sorted_stats = sort_resolution_statistics(stats, top, coverage=coverage, group_by=group_by)
     yield from copy_resolution_statistics(sorted_stats, output_dir, copy_method)
+
+
+def write_resolution_stats(stats: Iterable[ResolutionFilterStatistics], output: StdioPath) -> None:
+    """Write resolution filter statistics to a CSV file.
+
+    Args:
+        stats: Resolution filter statistics to write.
+        output: Output file path or "-" for stdout.
+    """
+    fieldnames = [
+        "input_file",
+        "id",
+        "uniprot_accession",
+        "resolution",
+        "total_residue_count",
+        "is_alphafold",
+        "uniprot_start",
+        "uniprot_end",
+        "sequence_identity",
+        "chain_length",
+        "passed",
+        "output_file",
+        "discard_reason",
+        "discard_reason_type",
+    ]
+
+    output_path = Path(output) if isinstance(output, str) else output
+    with output_path.open("w", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames, lineterminator="\n")
+        writer.writeheader()
+        for stat in stats:
+            writer.writerow(
+                {
+                    "input_file": stat.input_file,
+                    "id": stat.id,
+                    "uniprot_accession": stat.uniprot_accession or "",
+                    "resolution": stat.resolution,
+                    "total_residue_count": stat.total_residue_count,
+                    "is_alphafold": stat.is_alphafold,
+                    "uniprot_start": stat.uniprot_start,
+                    "uniprot_end": stat.uniprot_end,
+                    "sequence_identity": f"{stat.sequence_identity:.3f}",
+                    "chain_length": stat.chain_length,
+                    "passed": stat.passed,
+                    "output_file": stat.output_file or "",
+                    "discard_reason": str(stat.discard_reason) if stat.discard_reason else "",
+                    "discard_reason_type": type(stat.discard_reason).__name__ if stat.discard_reason else "",
+                }
+            )

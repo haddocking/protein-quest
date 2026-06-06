@@ -24,8 +24,8 @@ from protein_quest.cli.common import (
 from protein_quest.filters.chain import filter_files_on_chain
 from protein_quest.filters.residues import filter_files_on_residues
 from protein_quest.filters.resolution import (
-    ResolutionFilterStatistics,
     filter_files_on_resolution,
+    write_resolution_stats,
 )
 from protein_quest.filters.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
 from protein_quest.io import (
@@ -227,28 +227,6 @@ def residue(
         rprint(f"Statistics written to {write_stats}")
 
 
-def _resolution_stats_header() -> str:
-    return (
-        "input_file,id,uniprot_accession,resolution,total_residue_count,is_alphafold,"
-        "uniprot_start,uniprot_end,sequence_identity,chain_length,passed,output_file,"
-        "discard_reason,discard_reason_type"
-    )
-
-
-def _resolution_stats_row(result: ResolutionFilterStatistics) -> str:
-    discard_reason = str(result.discard_reason) if result.discard_reason else ""
-    discard_reason_type = type(result.discard_reason).__name__ if result.discard_reason else ""
-    # TODO make more robust with csv package
-    # Escape quotes and commas in discard_reason for CSV
-    discard_reason = discard_reason.replace('"', '""')
-    return (
-        f"{result.input_file},{result.id},{result.uniprot_accession or ''},{result.resolution},"
-        f"{result.total_residue_count},{result.is_alphafold},{result.uniprot_start},"
-        f"{result.uniprot_end},{result.sequence_identity:.3f},{result.chain_length},"
-        f'{result.passed},{result.output_file or ""},"{discard_reason}",{discard_reason_type}'
-    )
-
-
 def _resolution_progress_message(nr_total: int, input_dir: "Path", group_by: bool) -> str:
     if not group_by:
         return f"Filtering {nr_total} files in {input_dir} directory by global resolution ranking (no grouping)."
@@ -316,25 +294,23 @@ def resolution(
     nr_total = len(input_files)
     rprint(_resolution_progress_message(nr_total, input_dir, group_by))
 
-    stats_lines = [_resolution_stats_header()]
-    nr_passed = 0
-    for result in filter_files_on_resolution(
-        input_files,
-        output_dir,
-        top=top,
-        coverage=coverage,
-        group_by=group_by,
-        min_sequence_identity=min_sequence_identity,
-        copy_method=cache.copy_method,
-        scheduler_address=scheduler_address,
-    ):
-        stats_lines.append(_resolution_stats_row(result))
-        if result.passed:
-            nr_passed += 1
+    results = list(
+        filter_files_on_resolution(
+            input_files,
+            output_dir,
+            top=top,
+            coverage=coverage,
+            group_by=group_by,
+            min_sequence_identity=min_sequence_identity,
+            copy_method=cache.copy_method,
+            scheduler_address=scheduler_address,
+        )
+    )
 
+    nr_passed = sum(1 for r in results if r.passed)
     rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
     if write_stats:
-        write_lines(write_stats, stats_lines)
+        write_resolution_stats(results, write_stats)
         if str(write_stats) != "-":
             rprint(f"Statistics written to {write_stats}")
 
