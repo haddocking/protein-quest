@@ -511,8 +511,8 @@ class TestResolution:
                 "chain_length": "28",
                 "passed": "False",
                 "output_file": "",
-                "discard_reason": "",
-                "discard_reason_type": "",
+                "discard_reason": "Rank 3 > top 2",
+                "discard_reason_type": "OutsideTopError",
             },
         ]
         assert rows == expected_rows
