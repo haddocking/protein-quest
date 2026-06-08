@@ -523,8 +523,7 @@ def write_resolution_stats(stats: Iterable[ResolutionFilterStatistics], output: 
         "discard_reason_type",
     ]
 
-    output_path = Path(output) if isinstance(output, str) else output
-    with output_path.open("w", encoding="utf-8") as f:
+    with output.open("w", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames, lineterminator="\n")
         writer.writeheader()
         for stat in stats:
