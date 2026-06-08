@@ -67,7 +67,44 @@ class ResolutionFilterStatistics:
         return self.resolution
 
     def __hash__(self) -> int:
-        return hash(self.input_file)
+        return hash(
+            (
+                self.input_file,
+                self.id,
+                self.uniprot_accession,
+                self.resolution,
+                self.total_residue_count,
+                self.is_alphafold,
+                self.uniprot_start,
+                self.uniprot_end,
+                self.sequence_identity,
+                self.chain_length,
+                self.passed,
+                self.output_file,
+                # Make Exceptions hashable by their string
+                str(self.discard_reason) if self.discard_reason else None,
+            )
+        )
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ResolutionFilterStatistics):
+            return NotImplemented
+        return (
+            self.input_file == other.input_file
+            and self.id == other.id
+            and self.uniprot_accession == other.uniprot_accession
+            and round(self.resolution, 3) == round(other.resolution, 3)
+            and self.total_residue_count == other.total_residue_count
+            and self.is_alphafold == other.is_alphafold
+            and self.uniprot_start == other.uniprot_start
+            and self.uniprot_end == other.uniprot_end
+            and round(self.sequence_identity, 3) == round(other.sequence_identity, 3)
+            and self.chain_length == other.chain_length
+            and self.passed == other.passed
+            and self.output_file == other.output_file
+            # Make Exceptions comparable by their string
+            and str(self.discard_reason) == str(other.discard_reason)
+        )
 
 
 def _load_resolution_statistics_single(input_file: Path) -> ResolutionFilterStatistics:
@@ -171,6 +208,38 @@ def _split_discarded_and_valid(
     return discarded, valid
 
 
+class OutsideTopError(ValueError):
+    """Indicates that a structure was ranked outside the top N."""
+
+    def __init__(self, *, top: int, rank: int) -> None:
+        super().__init__(f"Rank {rank} > top {top}")
+        self.top = top
+        self.rank = rank
+
+    def __hash__(self) -> int:
+        return hash((self.top, self.rank))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, OutsideTopError):
+            return NotImplemented
+        return self.top == other.top and self.rank == other.rank
+
+
+class NoUniProtAccessionError(ValueError):
+    """Indicates that a structure has no UniProt accession for grouping."""
+
+    def __init__(self) -> None:
+        super().__init__("No UniProt accession for grouping")
+
+    def __hash__(self) -> int:
+        return hash(())
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, NoUniProtAccessionError):
+            return NotImplemented
+        return True
+
+
 def _sort_by_resolution_and_top_per_uniprot(
     stats: Iterable[ResolutionFilterStatistics],
     top: int,
@@ -192,9 +261,11 @@ def _sort_by_resolution_and_top_per_uniprot(
         top: Maximum number of structures to pass.
 
     Returns:
-        All statistics with ``passed`` updated; skipped entries appended last.
+        All statistics with ``passed`` updated.
         The entries are sorted by uniprot accession and then sorted by
         [sort_structures][protein_quest.clustering.sort_structures].
+        Entries with no uniprot accession are appended last
+        as discarded before entries already given as discarded.
     """
     discarded, valid = _split_discarded_and_valid(stats)
 
@@ -203,6 +274,8 @@ def _sort_by_resolution_and_top_per_uniprot(
 
     for result in valid:
         if result.uniprot_accession is None:
+            result.passed = False
+            result.discard_reason = NoUniProtAccessionError()
             skipped.append(result)
             continue
         grouped.setdefault(result.uniprot_accession, []).append(result)
@@ -210,8 +283,12 @@ def _sort_by_resolution_and_top_per_uniprot(
     output: list[ResolutionFilterStatistics] = []
     for group_results in grouped.values():
         ranked = sorted(group_results, key=structure_sort_key)
-        for result in ranked[:top]:
-            result.passed = True
+        for i, result in enumerate(ranked, 1):
+            if i <= top:
+                result.passed = True
+            else:
+                result.passed = False
+                result.discard_reason = OutsideTopError(top=top, rank=i)
         output.extend(ranked)
 
     output.extend(sorted(skipped, key=structure_sort_key))
@@ -240,8 +317,12 @@ def _sort_by_resolution_and_global_top(
 
     ranked = sorted(valid, key=structure_sort_key)
 
-    for result in ranked[:top]:
-        result.passed = True
+    for i, result in enumerate(ranked, 1):
+        if i <= top:
+            result.passed = True
+        else:
+            result.passed = False
+            result.discard_reason = OutsideTopError(top=top, rank=i)
 
     return ranked + discarded
 
@@ -341,8 +422,12 @@ def _sort_by_coverage_and_global_top(
     flattened = top_members_of_clusters(sorted_clustered_groups, top=len(valid))
     if accessionless:
         flattened.extend(sort_structures(accessionless))
-    for result in flattened[:top]:
-        result.passed = True
+    for i, result in enumerate(flattened, 1):
+        if i <= top:
+            result.passed = True
+        else:
+            result.passed = False
+            result.discard_reason = OutsideTopError(top=top, rank=i)
     return flattened + discarded
 
 
@@ -354,16 +439,22 @@ def _pick_top_from_clusters(
 ) -> list[ResolutionFilterStatistics]:
     output: list[ResolutionFilterStatistics] = []
     for group_results in sorted_clustered_groups:
-        for result in group_results[:top]:
-            result.passed = True
+        for i, result in enumerate(group_results, 1):
+            if i <= top:
+                result.passed = True
+            else:
+                result.passed = False
+                result.discard_reason = OutsideTopError(top=top, rank=i)
         output.extend(group_results)
 
     if accessionless:
         sorted_accessionless = sort_structures(accessionless)
-        passed_count = sum(1 for r in output if r.passed)
-        if passed_count < top:
-            for result in sorted_accessionless[: top - passed_count]:
+        for i, result in enumerate(sorted_accessionless, 1):
+            if i <= top:
                 result.passed = True
+            else:
+                result.passed = False
+                result.discard_reason = OutsideTopError(top=top, rank=i)
         output.extend(sorted_accessionless)
 
     output.extend(discarded)
