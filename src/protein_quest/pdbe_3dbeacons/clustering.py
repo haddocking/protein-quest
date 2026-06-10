@@ -17,7 +17,6 @@ from protein_quest.clustering import filter_structures_on_clustered_resolution
 from protein_quest.pdbe_3dbeacons.model import Overview, UniprotSummary
 
 PDBE_PROVIDER_RESPONSE = "PDBe"
-ALPHAFOLD_PROVIDER_RESPONSE = "AlphaFold DB"
 
 
 @dataclass(frozen=True, eq=False)
@@ -35,7 +34,6 @@ class OverviewClusterableEntry:
     sequence_identity: float
     chain_length: int
     overview: Overview
-    is_alphafold: bool = False
 
     @classmethod
     def from_overview(cls, overview: Overview) -> "OverviewClusterableEntry":
@@ -48,7 +46,6 @@ class OverviewClusterableEntry:
             sequence_identity=summary.sequence_identity,
             chain_length=summary.uniprot_end - summary.uniprot_start + 1,
             overview=overview,
-            is_alphafold=summary.provider == ALPHAFOLD_PROVIDER_RESPONSE,
         )
 
 

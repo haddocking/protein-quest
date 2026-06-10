@@ -39,8 +39,6 @@ class ClusterableStructure(Hashable, Protocol):
             sequence in range ``[0, 1]``.
             For example gaps or mutations in structure versus UniProt sequence will lower this value.
         chain_length: Number of residues in the chain mapped to the UniProt sequence.
-        is_alphafold: Whether the structure is an AlphaFold model.
-            Used to order cluster members. AlphaFold first, then by resolution>0.0 and lastly resolution==0.0
     """
 
     @property
@@ -55,8 +53,6 @@ class ClusterableStructure(Hashable, Protocol):
     def sequence_identity(self) -> float: ...
     @property
     def chain_length(self) -> int: ...
-    @property
-    def is_alphafold(self) -> bool: ...
 
 
 def structure_overlap(a: ClusterableStructure, b: ClusterableStructure) -> int:
@@ -145,29 +141,25 @@ def structure_sort_key(member: ClusterableStructure) -> tuple[float, int, float,
     """Deterministic quality sort key for a cluster member.
 
     1. Sequence identity descending (highest first)
-    2. AlphaFold first, then by resolution>0.0 and lastly resolution==0.0
-    3. Resolution ascending (lowest first)
-    4. Chain length descending (longest first)
-    5. Identifier ascending (deterministic tie-break)
+    2. Resolution ascending (lowest first)
+    3. Chain length descending (longest first)
+    4. Identifier ascending (deterministic tie-break)
 
     A failing ``chain_length`` access (for example for PDB results with
     unparsable chain metadata) is treated as ``0`` so such entries can still
     be sorted alongside valid ones.
 
-    AlphaFold structures are preferred over non-AlphaFold.
     Structures with lower resolution are preferred.
-     If resolution is missing aka 0.0, those structures are undesirable.
+    If resolution is missing aka 0.0, those structures are undesirable.
 
     """
     try:
         chain_length = member.chain_length
     except Exception:  # noqa: BLE001 - sort-key fallback for adapters that derive chain_length lazily
         chain_length = 0
-    resolution_kind = 1  # default for non-Alphafold with resolution>0.0
-    if member.is_alphafold:
-        resolution_kind = 0
-    elif member.resolution_value == 0.0:
-        resolution_kind = 2
+    resolution_kind = 0
+    if member.resolution_value == 0.0:
+        resolution_kind = 1
     return (
         -member.sequence_identity,
         resolution_kind,
