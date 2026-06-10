@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from textwrap import dedent
 
 import gemmi
 import pytest
@@ -16,7 +17,6 @@ from protein_quest.structure import (
     struct_ref_seqs_columns_to_records,
     structure2uniprot_accessions,
     structure_metadata,
-    _structure_method,
     write_single_chain_structure_file,
 )
 
@@ -218,6 +218,7 @@ def assert_structure_metadata(result: StructureMetadata, expected: StructureMeta
     assert result.uniprot_end == expected.uniprot_end
     assert result.sequence_identity == pytest.approx(expected.sequence_identity, rel=1e-3, abs=0.0)
     assert result.chain_length == expected.chain_length
+    assert result.method == expected.method
 
 
 class TestStructureMetadata:
@@ -338,7 +339,7 @@ class TestStructureMetadata:
             ),
         ],
     )
-    def test_fixtures(self, cif_fixture: str, expected: StructureMetadata, request: pytest.FixtureRequest):
+    def test_cif_fixtures(self, cif_fixture: str, expected: StructureMetadata, request: pytest.FixtureRequest):
         path = request.getfixturevalue(cif_fixture)
         result = StructureMetadata.from_path(path)
 
@@ -354,24 +355,87 @@ class TestStructureMetadata:
         assert "P01100" in message
         assert "P05412" in message
 
+    def test_without_uniprot(self):
+        structure = gemmi.Structure()
 
-def test_structure_metadata_without_uniprot():
-    structure = gemmi.Structure()
+        result = structure_metadata(structure)
 
-    result = structure_metadata(structure)
+        expected = StructureMetadata(
+            id="",
+            uniprot_accession=None,
+            resolution=0.0,
+            total_residue_count=0,
+            is_alphafold=False,
+            uniprot_start=0,
+            uniprot_end=0,
+            sequence_identity=0.0,
+            chain_length=0,
+            method="Other",
+        )
+        assert_structure_metadata(result, expected)
 
-    expected = StructureMetadata(
-        id="",
-        uniprot_accession=None,
-        resolution=0.0,
-        total_residue_count=0,
-        is_alphafold=False,
-        uniprot_start=0,
-        uniprot_end=0,
-        sequence_identity=0.0,
-        chain_length=0,
-    )
-    assert_structure_metadata(result, expected)
+    @pytest.fixture
+    def fake_em_structure(self) -> gemmi.Structure:
+        structure = gemmi.Structure()
+        structure.resolution = 3.0
+        structure.info["_exptl.method"] = "ELECTRON MICROSCOPY"
+        return structure
+
+    def test_em(self, fake_em_structure: gemmi.Structure):
+        result = structure_metadata(fake_em_structure)
+
+        expected = StructureMetadata(
+            id="",
+            uniprot_accession=None,
+            resolution=3.0,
+            total_residue_count=0,
+            is_alphafold=False,
+            uniprot_start=0,
+            uniprot_end=0,
+            sequence_identity=0.0,
+            chain_length=0,
+            method="EM",
+        )
+        assert_structure_metadata(result, expected)
+
+    @pytest.fixture
+    def fake_alphafill_structure(self) -> gemmi.Structure:
+        block = dedent("""\
+            data_AF-P38634-F1
+            #
+            _entry.id   AF-P38634-F1
+                    loop_
+            _software.classification
+            _software.date
+            _software.description
+            _software.name
+            _software.pdbx_ordinal
+            _software.type
+            _software.version
+            other              ?                    'Structure prediction' AlphaFold 1 package v2.0
+            other              ?                    'Secondary structure'  dssp      2 library 4
+            'model annotation' 2023-11-22T07:49:00Z ?                      alphafill 3 ?       2.1.0
+            #
+            """)
+        doc = gemmi.cif.read_string(block)
+        return gemmi.make_structure_from_block(doc.sole_block())
+
+    def test_alphafill(self, fake_alphafill_structure: gemmi.Structure):
+        result = structure_metadata(fake_alphafill_structure)
+
+        expected = StructureMetadata(
+            id="AF-P38634-F1",
+            uniprot_accession=None,
+            resolution=0.0,
+            total_residue_count=0,
+            is_alphafold=False,
+            uniprot_start=0,
+            uniprot_end=0,
+            sequence_identity=0.0,
+            chain_length=0,
+            method="Predicted",
+        )
+        assert_structure_metadata(result, expected)
 
 
 @pytest.mark.parametrize(

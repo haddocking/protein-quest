@@ -6,7 +6,7 @@ from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal, get_args
+from typing import Literal
 
 import gemmi
 from gemmi import Structure
@@ -130,18 +130,18 @@ def _metadata_without_uniprot(
     structure: gemmi.Structure,
     *,
     total_residue_count: int,
-    software_name: str,
 ) -> "StructureMetadata":
     return StructureMetadata(
         id=structure.name,
         uniprot_accession=None,
         resolution=structure.resolution,
         total_residue_count=total_residue_count,
-        is_alphafold=software_name == "AlphaFold",
+        is_alphafold=_source_is_alphafold(structure),
         uniprot_start=0,
         uniprot_end=0,
         sequence_identity=0.0,
         chain_length=total_residue_count,
+        method=_structure_method(structure),
     )
 
 
@@ -178,8 +178,10 @@ def _select_best_struct_ref_seq(struct_ref_seqs: list[StructRefSeq]) -> StructRe
     return min(struct_ref_seqs, key=lambda s: (-s.aligned_residue_count, s.uniprot_accession))
 
 
-StructureMethod = Literal["EM", "Modeling", "NMR", "Predicted", "X-ray"]
-"""Represents the method used to determine the structure. Modelled after method filter in Uniprot structure table."""
+StructureMethod = Literal["EM", "NMR", "Predicted", "X-ray", "Other"]
+"""Represents the method used to determine the structure.
+Inspired by the method filter in [Uniprot structure table](https://www.uniprot.org/uniprotkb/P05067/entry#structure).
+"""
 
 
 @dataclass(frozen=True)
@@ -196,6 +198,7 @@ class StructureMetadata:
         uniprot_end: Highest UniProt residue position covered by the mapped chain.
         sequence_identity: Sequence identity of the mapped chain to UniProt.
         chain_length: Number of residues in the mapped chain.
+        method: The method used to determine the structure.
     """
 
     id: str
@@ -207,7 +210,7 @@ class StructureMetadata:
     uniprot_end: int
     sequence_identity: float
     chain_length: int
-    method: StructureMethod | None = None
+    method: StructureMethod
 
     @classmethod
     def from_path(cls, file: Path) -> "StructureMetadata":
@@ -223,13 +226,22 @@ def _experimental_method(structure: gemmi.Structure) -> str | None:
         return None
 
 
+def _software_names(structure: gemmi.Structure) -> set[str]:
+    return {s.name for s in structure.meta.software}
+
+
 def _is_prediction_software(structure: gemmi.Structure) -> bool:
-    software_names = {s.name for s in structure.meta.software}
+    software_names = _software_names(structure)
     prediction_software_names = {"AlphaFold", "alphafill"}
     return software_names.intersection(prediction_software_names) != set()
 
 
-def _structure_method(structure: Structure) -> StructureMethod | None:
+def _source_is_alphafold(structure: gemmi.Structure) -> bool:
+    software_names = _software_names(structure)
+    return "AlphaFold" in software_names and "alphafill" not in software_names
+
+
+def _structure_method(structure: Structure) -> StructureMethod:
     has_resolution = structure.resolution > 0.0
     exp_method1 = _experimental_method(structure)
     prediction_software = _is_prediction_software(structure)
@@ -244,8 +256,7 @@ def _structure_method(structure: Structure) -> StructureMethod | None:
             return "NMR"
         if prediction_software:
             return "Predicted"
-        return "Modeling"
-    return None
+    return "Other"
 
 
 def structure_metadata(
@@ -279,14 +290,12 @@ def structure_metadata(
             missing in the structure.
     """
     accessions = structure2uniprot_accessions(structure)
-    software_name = structure.meta.software[0].name if structure.meta.software else ""
     total_residue_count = nr_of_residues_in_total(structure)
 
     if not accessions:
         return _metadata_without_uniprot(
             structure,
             total_residue_count=total_residue_count,
-            software_name=software_name,
         )
 
     matching_struct_ref_seqs = _matching_struct_ref_seqs(structure, accessions)
@@ -300,7 +309,6 @@ def structure_metadata(
         return _metadata_without_uniprot(
             structure,
             total_residue_count=total_residue_count,
-            software_name=software_name,
         )
 
     selected_struct_ref_seq = _select_best_struct_ref_seq(next(iter(struct_ref_seqs_by_chain.values())))
@@ -321,7 +329,7 @@ def structure_metadata(
         uniprot_accession=uniprot_accession,
         resolution=structure.resolution,
         total_residue_count=total_residue_count,
-        is_alphafold=software_name == "AlphaFold",
+        is_alphafold=_source_is_alphafold(structure),
         uniprot_start=uniprot_start,
         uniprot_end=uniprot_end,
         sequence_identity=sequence_identity,
@@ -534,5 +542,3 @@ def nr_of_residues_in_total(structure: Structure) -> int:
         for chain in model:
             count += len(chain)
     return count
-
-
