@@ -6,6 +6,7 @@ from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal, get_args
 
 import gemmi
 from gemmi import Structure
@@ -177,6 +178,76 @@ def _select_best_struct_ref_seq(struct_ref_seqs: list[StructRefSeq]) -> StructRe
     return min(struct_ref_seqs, key=lambda s: (-s.aligned_residue_count, s.uniprot_accession))
 
 
+StructureMethod = Literal["EM", "Modeling", "NMR", "Predicted", "X-ray"]
+"""Represents the method used to determine the structure. Modelled after method filter in Uniprot structure table."""
+
+
+@dataclass(frozen=True)
+class StructureMetadata:
+    """Metadata extracted from a structure file for ranking and grouping.
+
+    Parameters:
+        id: Identifier of the structure.
+        uniprot_accession: Deterministic first UniProt accession, if any.
+        resolution: Resolution from gemmi Structure. ``0.0`` means absent.
+        total_residue_count: Total number of residues across the whole structure.
+        is_alphafold: Whether the structure originates from AlphaFold.
+        uniprot_start: Lowest UniProt residue position covered by the mapped chain.
+        uniprot_end: Highest UniProt residue position covered by the mapped chain.
+        sequence_identity: Sequence identity of the mapped chain to UniProt.
+        chain_length: Number of residues in the mapped chain.
+    """
+
+    id: str
+    uniprot_accession: str | None
+    resolution: float
+    total_residue_count: int
+    is_alphafold: bool
+    uniprot_start: int
+    uniprot_end: int
+    sequence_identity: float
+    chain_length: int
+    method: StructureMethod | None = None
+
+    @classmethod
+    def from_path(cls, file: Path) -> "StructureMetadata":
+        """Extract metadata from a structure file."""
+        structure = read_structure(file)
+        return structure_metadata(structure, path=file)
+
+
+def _experimental_method(structure: gemmi.Structure) -> str | None:
+    try:
+        return structure.info["_exptl.method"]
+    except KeyError:
+        return None
+
+
+def _is_prediction_software(structure: gemmi.Structure) -> bool:
+    software_names = {s.name for s in structure.meta.software}
+    prediction_software_names = {"AlphaFold", "alphafill"}
+    return software_names.intersection(prediction_software_names) != set()
+
+
+def _structure_method(structure: Structure) -> StructureMethod | None:
+    has_resolution = structure.resolution > 0.0
+    exp_method1 = _experimental_method(structure)
+    prediction_software = _is_prediction_software(structure)
+
+    if has_resolution:
+        if exp_method1 and "X-RAY" in exp_method1:
+            return "X-ray"
+        if exp_method1 and "ELECTRON MICROSCOPY" in exp_method1:
+            return "EM"
+    else:
+        if exp_method1 and "NMR" in exp_method1:
+            return "NMR"
+        if prediction_software:
+            return "Predicted"
+        return "Modeling"
+    return None
+
+
 def structure_metadata(
     structure: gemmi.Structure,
     *,
@@ -255,40 +326,8 @@ def structure_metadata(
         uniprot_end=uniprot_end,
         sequence_identity=sequence_identity,
         chain_length=chain_length,
+        method=_structure_method(structure),
     )
-
-
-@dataclass(frozen=True)
-class StructureMetadata:
-    """Metadata extracted from a structure file for ranking and grouping.
-
-    Parameters:
-        id: Identifier of the structure.
-        uniprot_accession: Deterministic first UniProt accession, if any.
-        resolution: Resolution from gemmi Structure. ``0.0`` means absent.
-        total_residue_count: Total number of residues across the whole structure.
-        is_alphafold: Whether the structure originates from AlphaFold.
-        uniprot_start: Lowest UniProt residue position covered by the mapped chain.
-        uniprot_end: Highest UniProt residue position covered by the mapped chain.
-        sequence_identity: Sequence identity of the mapped chain to UniProt.
-        chain_length: Number of residues in the mapped chain.
-    """
-
-    id: str
-    uniprot_accession: str | None
-    resolution: float
-    total_residue_count: int
-    is_alphafold: bool
-    uniprot_start: int
-    uniprot_end: int
-    sequence_identity: float
-    chain_length: int
-
-    @classmethod
-    def from_path(cls, file: Path) -> "StructureMetadata":
-        """Extract metadata from a structure file."""
-        structure = read_structure(file)
-        return structure_metadata(structure, path=file)
 
 
 def _dedup_helices(structure: gemmi.Structure):
@@ -495,3 +534,5 @@ def nr_of_residues_in_total(structure: Structure) -> int:
         for chain in model:
             count += len(chain)
     return count
+
+
