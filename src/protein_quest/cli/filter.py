@@ -24,6 +24,8 @@ from protein_quest.cli.common import (
 from protein_quest.filters.chain import filter_files_on_chain
 from protein_quest.filters.residues import filter_files_on_residues
 from protein_quest.filters.resolution import (
+    OutsideTopError,
+    SequenceIdentityBelowThresholdError,
     filter_files_on_resolution,
     write_resolution_stats,
 )
@@ -243,6 +245,7 @@ def resolution(
     top: PositiveInt = 1_000,
     no_coverage: Annotated[bool, Parameter(negative="")] = False,
     min_sequence_identity: NormFloat = 1.0,
+    lax: Annotated[bool, Parameter(negative="")] = False,
     scheduler_address: str | None = None,
     write_stats: OutputFile | None = None,
     cache: CacheParameter | None = None,
@@ -271,6 +274,8 @@ def resolution(
         min_sequence_identity: Minimum sequence identity ratio to the Uniprot sequence for a structure to be passed.
             If not set then discards structures that are not fully identical to the Uniprot sequence.
             For example if set to 0.8 then structures that have sequence identity below 0.8 are discarded.
+        lax: If set will passthrough files that do not have valid resolution, regardless of other flags like --top.
+            By default filter is applied strictly and those files are discarded.
         scheduler_address: Address of the Dask scheduler to connect to.
             If not provided, will create a local cluster.
             If set to `sequential` will run tasks sequentially.
@@ -302,13 +307,25 @@ def resolution(
             coverage=coverage,
             group_by=group_by,
             min_sequence_identity=min_sequence_identity,
+            lax=lax,
             copy_method=cache.copy_method,
             scheduler_address=scheduler_address,
         )
     )
 
     nr_passed = sum(1 for r in results if r.passed)
-    rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
+    if lax:
+        filter_errors = {SequenceIdentityBelowThresholdError, OutsideTopError}
+        nr_passed_due_to_lax = sum(
+            1
+            for r in results
+            if r.passed and r.discard_reason is not None and type(r.discard_reason) not in filter_errors
+        )
+        rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
+        rprint(f"Additionally wrote {nr_passed_due_to_lax} files to {output_dir} directory due to lax mode.")
+    else:
+        rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
+
     if write_stats:
         write_resolution_stats(results, write_stats)
         if str(write_stats) != "-":

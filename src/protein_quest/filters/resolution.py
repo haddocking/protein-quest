@@ -4,6 +4,7 @@ import csv
 import logging
 from collections.abc import Generator, Iterable
 from dataclasses import dataclass
+from itertools import tee
 from pathlib import Path
 from typing import Literal
 
@@ -14,7 +15,6 @@ from tqdm.auto import tqdm
 
 from protein_quest.clustering import (
     filter_structures_on_clustered_resolution,
-    sort_structures,
     structure_sort_key,
     top_members_of_clusters,
 )
@@ -199,13 +199,13 @@ def iter_resolution_statistics(
         yield _load_resolution_statistics_single(input_file)
 
 
-def _split_discarded_and_valid(
+def _split_on_reason(
     stats: Iterable[ResolutionFilterStatistics],
 ) -> tuple[list[ResolutionFilterStatistics], list[ResolutionFilterStatistics]]:
-    stats_list = list(stats)
-    discarded = [s for s in stats_list if s.discard_reason is not None]
-    valid = [s for s in stats_list if s.discard_reason is None]
-    return discarded, valid
+    stats_list1, stats_list2 = tee(stats)
+    discarded = [s for s in stats_list1 if s.discard_reason is not None]
+    valid = [s for s in stats_list2 if s.discard_reason is None]
+    return valid, discarded
 
 
 class OutsideTopError(ValueError):
@@ -226,18 +226,35 @@ class OutsideTopError(ValueError):
 
 
 class NoUniProtAccessionError(ValueError):
-    """Indicates that a structure has no UniProt accession for grouping."""
+    """Indicates that a structure has no UniProt accession."""
 
-    def __init__(self) -> None:
-        super().__init__("No UniProt accession for grouping")
+    def __init__(self, input_file: Path) -> None:
+        super().__init__(f"No UniProt accession or multiple UniProt accessions found for {input_file}")
+        self.input_file = input_file
 
     def __hash__(self) -> int:
-        return hash(())
+        return hash((self.input_file,))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, NoUniProtAccessionError):
             return NotImplemented
-        return True
+        return self.input_file == other.input_file
+
+
+class ResolutionUnsetError(ValueError):
+    """Indicates that a structure has no resolution set."""
+
+    def __init__(self, input_file: Path) -> None:
+        super().__init__(f"Resolution is unset for {input_file}")
+        self.input_file = input_file
+
+    def __hash__(self) -> int:
+        return hash((self.input_file,))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ResolutionUnsetError):
+            return NotImplemented
+        return self.input_file == other.input_file
 
 
 def _sort_by_resolution_and_top_per_uniprot(
@@ -246,15 +263,8 @@ def _sort_by_resolution_and_top_per_uniprot(
 ) -> list[ResolutionFilterStatistics]:
     """Rank stats by resolution and mark the top N as passed.
 
-    Files with no UniProt accession are skipped with a warning
-    and appended last.
-
-    Items with discard_reason set are excluded from ranking but included in output.
-
-    AlphaFold structures are preferred over non-AlphaFold.
     Structures with lower resolution are preferred.
     If resolution is the same, structures with more residues are preferred.
-    If resolution is missing, those structures are undesirable.
 
     Args:
         stats: Resolution statistics to group and rank.
@@ -264,35 +274,24 @@ def _sort_by_resolution_and_top_per_uniprot(
         All statistics with ``passed`` updated.
         The entries are sorted by uniprot accession and then sorted by
         [sort_structures][protein_quest.clustering.sort_structures].
-        Entries with no uniprot accession are appended last
-        as discarded before entries already given as discarded.
     """
-    discarded, valid = _split_discarded_and_valid(stats)
-
     grouped: dict[str, list[ResolutionFilterStatistics]] = {}
-    skipped: list[ResolutionFilterStatistics] = []
-
-    for result in valid:
-        if result.uniprot_accession is None:
-            result.passed = False
-            result.discard_reason = NoUniProtAccessionError()
-            skipped.append(result)
-            continue
-        grouped.setdefault(result.uniprot_accession, []).append(result)
+    for stat in stats:
+        if stat.uniprot_accession is None:
+            raise NoUniProtAccessionError(stat.input_file)
+        grouped.setdefault(stat.uniprot_accession, []).append(stat)
 
     output: list[ResolutionFilterStatistics] = []
     for group_results in grouped.values():
         ranked = sorted(group_results, key=structure_sort_key)
-        for i, result in enumerate(ranked, 1):
+        for i, stat in enumerate(ranked, 1):
             if i <= top:
-                result.passed = True
+                stat.passed = True
             else:
-                result.passed = False
-                result.discard_reason = OutsideTopError(top=top, rank=i)
+                stat.passed = False
+                stat.discard_reason = OutsideTopError(top=top, rank=i)
         output.extend(ranked)
 
-    output.extend(sorted(skipped, key=structure_sort_key))
-    output.extend(discarded)
     return output
 
 
@@ -301,8 +300,6 @@ def _sort_by_resolution_and_global_top(
     top: int,
 ) -> list[ResolutionFilterStatistics]:
     """Rank stats by resolution and mark the top N as passed
-
-    Items with discard_reason set are excluded from ranking but are appended in returned list.
 
     Args:
         stats: Resolution statistics to rank.
@@ -313,9 +310,7 @@ def _sort_by_resolution_and_global_top(
           See [structure_sort_key][protein_quest.clustering.structure_sort_key].
 
     """
-    discarded, valid = _split_discarded_and_valid(stats)
-
-    ranked = sorted(valid, key=structure_sort_key)
+    ranked = sorted(stats, key=structure_sort_key)
 
     for i, result in enumerate(ranked, 1):
         if i <= top:
@@ -324,7 +319,7 @@ def _sort_by_resolution_and_global_top(
             result.passed = False
             result.discard_reason = OutsideTopError(top=top, rank=i)
 
-    return ranked + discarded
+    return ranked
 
 
 def _uniprot_group_sort_key(results: list[ResolutionFilterStatistics]) -> tuple[float, int, float, int, str]:
@@ -334,17 +329,13 @@ def _uniprot_group_sort_key(results: list[ResolutionFilterStatistics]) -> tuple[
 
 
 def _cluster_resolution_stats_by_accession(
-    valid: Iterable[ResolutionFilterStatistics],
-) -> tuple[list[ResolutionFilterStatistics], list[list[ResolutionFilterStatistics]]]:
+    stats: Iterable[ResolutionFilterStatistics],
+) -> list[list[ResolutionFilterStatistics]]:
     per_accession_groups: dict[str, list[ResolutionFilterStatistics]] = {}
-    accessionless: list[ResolutionFilterStatistics] = []
-    for result in valid:
-        if result.uniprot_accession is None:
-            # It does not make sense to cluster chains from different unknown residues.
-            # will put them at bottom of output later
-            accessionless.append(result)
-            continue
-        per_accession_groups.setdefault(result.uniprot_accession, []).append(result)
+    for stat in stats:
+        if stat.uniprot_accession is None:
+            raise NoUniProtAccessionError(stat.input_file)
+        per_accession_groups.setdefault(stat.uniprot_accession, []).append(stat)
 
     clustered_groups: list[list[ResolutionFilterStatistics]] = [
         filter_structures_on_clustered_resolution(per_accession_group, top=len(per_accession_group))
@@ -352,8 +343,7 @@ def _cluster_resolution_stats_by_accession(
     ]
 
     # Reorder so clusters of best uniprot accession is first
-    sorted_clustered_groups = sorted(clustered_groups, key=_uniprot_group_sort_key)
-    return accessionless, sorted_clustered_groups
+    return sorted(clustered_groups, key=_uniprot_group_sort_key)
 
 
 def _sort_by_coverage_and_top_per_uniprot(
@@ -383,11 +373,9 @@ def _sort_by_coverage_and_top_per_uniprot(
     Returns:
         Clustered resolution statistics with ``passed`` updated.
     """
-    discarded, valid = _split_discarded_and_valid(stats)
+    sorted_clustered_groups = _cluster_resolution_stats_by_accession(stats)
 
-    accessionless, sorted_clustered_groups = _cluster_resolution_stats_by_accession(valid)
-
-    return _pick_top_from_clusters(sorted_clustered_groups, top, discarded, accessionless)
+    return _pick_top_from_clusters(sorted_clustered_groups, top)
 
 
 def _sort_by_coverage_and_global_top(
@@ -401,12 +389,8 @@ def _sort_by_coverage_and_global_top(
     [sort_structures][protein_quest.clustering.sort_structures] and the best
     entries are selected in round-robin order.
 
-    Items with discard_reason set are excluded from clustering but included in output.
-
     The clustered groups are interleaved globally and the first ``top`` results
     are marked as passed.
-
-    Structures with no UniProt accession are not clustered and appended last in deterministic order.
 
     Args:
         stats: Resolution statistics to cluster and rank.
@@ -415,27 +399,22 @@ def _sort_by_coverage_and_global_top(
     Returns:
         Clustered resolution statistics with ``passed`` updated.
     """
-    discarded, valid = _split_discarded_and_valid(stats)
+    listed_stats = list(stats)
+    sorted_clustered_groups = _cluster_resolution_stats_by_accession(listed_stats)
 
-    accessionless, sorted_clustered_groups = _cluster_resolution_stats_by_accession(valid)
-
-    flattened = top_members_of_clusters(sorted_clustered_groups, top=len(valid))
-    if accessionless:
-        flattened.extend(sort_structures(accessionless))
+    flattened = top_members_of_clusters(sorted_clustered_groups, top=len(listed_stats))
     for i, result in enumerate(flattened, 1):
         if i <= top:
             result.passed = True
         else:
             result.passed = False
             result.discard_reason = OutsideTopError(top=top, rank=i)
-    return flattened + discarded
+    return flattened
 
 
 def _pick_top_from_clusters(
     sorted_clustered_groups: list[list[ResolutionFilterStatistics]],
     top: int,
-    discarded: list[ResolutionFilterStatistics],
-    accessionless: list[ResolutionFilterStatistics],
 ) -> list[ResolutionFilterStatistics]:
     output: list[ResolutionFilterStatistics] = []
     for group_results in sorted_clustered_groups:
@@ -446,18 +425,6 @@ def _pick_top_from_clusters(
                 result.passed = False
                 result.discard_reason = OutsideTopError(top=top, rank=i)
         output.extend(group_results)
-
-    if accessionless:
-        sorted_accessionless = sort_structures(accessionless)
-        for i, result in enumerate(sorted_accessionless, 1):
-            if i <= top:
-                result.passed = True
-            else:
-                result.passed = False
-                result.discard_reason = OutsideTopError(top=top, rank=i)
-        output.extend(sorted_accessionless)
-
-    output.extend(discarded)
     return output
 
 
@@ -484,6 +451,28 @@ def copy_resolution_statistics(
         yield result
 
 
+class SequenceIdentityBelowThresholdError(ValueError):
+    """Indicates that a structure has sequence identity below the specified threshold."""
+
+    def __init__(self, input_file: Path, sequence_identity: float, threshold: float) -> None:
+        super().__init__(f"Sequence identity {sequence_identity:.3f} below minimal {threshold:.3f} for {input_file}")
+        self.input_file = input_file
+        self.sequence_identity = sequence_identity
+        self.threshold = threshold
+
+    def __hash__(self) -> int:
+        return hash((self.input_file, self.sequence_identity, self.threshold))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SequenceIdentityBelowThresholdError):
+            return NotImplemented
+        return (
+            self.input_file == other.input_file
+            and round(self.sequence_identity, 3) == round(other.sequence_identity, 3)
+            and round(self.threshold, 3) == round(other.threshold, 3)
+        )
+
+
 def filter_on_sequence_identity(
     min_sequence_identity: float, stats: Iterable[ResolutionFilterStatistics]
 ) -> Generator[ResolutionFilterStatistics]:
@@ -507,8 +496,8 @@ def filter_on_sequence_identity(
                 stat.sequence_identity,
                 min_sequence_identity,
             )
-            stat.discard_reason = ValueError(
-                f"Sequence identity {stat.sequence_identity:.3f} below minimal {min_sequence_identity:.3f}"
+            stat.discard_reason = SequenceIdentityBelowThresholdError(
+                stat.input_file, stat.sequence_identity, min_sequence_identity
             )
             stat.passed = False
         yield stat
@@ -525,6 +514,8 @@ def sort_resolution_statistics(
 
     Args:
         stats: Resolution statistics to sort.
+            Each stat should have resolution and when group_by is True then should also have an uniprot_accession.
+            Also the stat.discard_reason should be None.
         top: Maximum number of entries to mark as passed.
         coverage: Whether to cluster by coverage.
             See [cluster_structures][protein_quest.clustering.cluster_structures].
@@ -547,6 +538,22 @@ def sort_resolution_statistics(
     return sorted_stats
 
 
+def _mark_as_resolution_filter_non_applicable(
+    stats: Iterable[ResolutionFilterStatistics],
+    *,
+    group_by: bool,
+    lax: bool,
+) -> Generator[ResolutionFilterStatistics]:
+    for stat in stats:
+        if stat.resolution == 0.0:
+            stat.discard_reason = ResolutionUnsetError(stat.input_file)
+        if group_by and stat.uniprot_accession is None:
+            stat.discard_reason = NoUniProtAccessionError(stat.input_file)
+        if stat.discard_reason is not None and lax:
+            stat.passed = True
+        yield stat
+
+
 def filter_files_on_resolution(
     input_files: list[Path],
     output_dir: Path,
@@ -555,15 +562,11 @@ def filter_files_on_resolution(
     coverage: bool = False,
     group_by: bool = True,
     min_sequence_identity: float = 1.0,
+    lax: bool = False,
     copy_method: CopyMethod = "hardlink",
     scheduler_address: str | Cluster | Literal["sequential"] | None = None,
 ) -> Generator[ResolutionFilterStatistics]:
     """Filter structure files by resolution rank.
-
-    AlphaFold structures are preferred over non-AlphaFold.
-    Structures with lower resolution are preferred.
-    If resolution is the same, structures with more residues are preferred.
-    If resolution is missing, those structures are undesirable.
 
     Args:
         input_files: Structure files to rank and filter.
@@ -571,11 +574,14 @@ def filter_files_on_resolution(
         top: Maximum number of files to keep.
         coverage: Whether to cluster by coverage.
             See [cluster_structures][protein_quest.clustering.cluster_structures].
-        group_by: ``True`` applies top-N per accession. Structures without
-            uniprot accession are never passed. ``False`` applies top-N globally.
+        group_by: ``True`` applies top-N per accession. ``False`` applies top-N globally.
         min_sequence_identity: Minimum sequence identity ratio to the Uniprot sequence for a structure to be passed.
             If not set then discards structures that are not fully identical to the Uniprot sequence.
             For example if set to 0.8 then structures that have sequence identity below 0.8 are discarded.
+        lax: Whether to be lax in filtering. If ``True``, files that fail to load or without resolution
+            will be marked as passed instead of being discarded.
+            When ``group_by`` is ``True``, files without uniprot accessions will
+            also be marked as passed instead of being discarded.
         copy_method: How to copy passed files to output directory.
         scheduler_address: Address of the Dask scheduler to connect to.
             If not provided, will create a local cluster.
@@ -585,9 +591,21 @@ def filter_files_on_resolution(
         Objects describing the filtering result for each input file.
     """
     stats = load_resolution_statistics(input_files, scheduler_address)
-    stats = filter_on_sequence_identity(min_sequence_identity, stats)
-    sorted_stats = sort_resolution_statistics(stats, top, coverage=coverage, group_by=group_by)
+
+    stats_with_reason = _mark_as_resolution_filter_non_applicable(stats, group_by=group_by, lax=lax)
+    applicable_stats, non_applicable_stats = _split_on_reason(stats_with_reason)
+
+    seqind_stats = filter_on_sequence_identity(min_sequence_identity, applicable_stats)
+    seqind_applicable_stats, seqind_non_applicable_stats = _split_on_reason(seqind_stats)
+
+    sorted_stats = sort_resolution_statistics(seqind_applicable_stats, top, coverage=coverage, group_by=group_by)
+
     yield from copy_resolution_statistics(sorted_stats, output_dir, copy_method)
+    yield from copy_resolution_statistics(seqind_non_applicable_stats, output_dir, copy_method)
+    if lax:
+        yield from copy_resolution_statistics(non_applicable_stats, output_dir, copy_method)
+    else:
+        yield from non_applicable_stats
 
 
 def write_resolution_stats(stats: Iterable[ResolutionFilterStatistics], output: StdioPath) -> None:

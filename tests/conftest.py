@@ -46,3 +46,23 @@ def multi_accession_cif() -> Path:
 def multi_accession_chain_cif() -> Path:
     """1UN5 structure with multiple UniProt accessions in the same chain."""
     return Path(__file__).parent / "fixtures" / "1un5.cif.gz"
+
+
+@pytest.fixture
+def all_cifs(
+    sample_cif: Path,
+    sample2_cif: Path,
+    sample_multispan_cif: Path,
+    multi_accession_chain_cif: Path,
+    af_cif: Path,
+    nmr_cif: Path,
+) -> list[Path]:
+    """List of all CIF fixtures except multi_accession_cif as it raises an error."""
+    return [
+        sample_cif,
+        sample2_cif,
+        sample_multispan_cif,
+        multi_accession_chain_cif,
+        af_cif,
+        nmr_cif,
+    ]

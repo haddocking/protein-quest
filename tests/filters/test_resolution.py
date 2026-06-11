@@ -10,6 +10,7 @@ from protein_quest.filters.resolution import (
     NoUniProtAccessionError,
     OutsideTopError,
     ResolutionFilterStatistics,
+    SequenceIdentityBelowThresholdError,
     copy_resolution_statistics,
     filter_files_on_resolution,
     filter_on_sequence_identity,
@@ -318,7 +319,7 @@ class TestLoadResolutionStatistics:
 
 
 class TestFilterFilesOnResolution:
-    def test_no_uniprot_does_not_pass(self, sample2_cif: Path, tmp_path: Path):
+    def test_strict_no_uniprot_does_not_pass(self, sample2_cif: Path, tmp_path: Path):
         no_uniprot = tmp_path / "no-uniprot.cif.gz"
         with gzip.open(sample2_cif, "rt", encoding="utf-8") as handle:
             text = handle.read()
@@ -328,7 +329,12 @@ class TestFilterFilesOnResolution:
         output_dir = tmp_path / "output"
         results = list(
             filter_files_on_resolution(
-                input_files=[no_uniprot], output_dir=output_dir, top=1, min_sequence_identity=0.0
+                input_files=[no_uniprot],
+                output_dir=output_dir,
+                top=1,
+                min_sequence_identity=0.0,
+                scheduler_address="sequential",
+                lax=False,
             )
         )
 
@@ -345,7 +351,7 @@ class TestFilterFilesOnResolution:
             chain_length=8,
             passed=False,
             output_file=None,
-            discard_reason=NoUniProtAccessionError(),
+            discard_reason=NoUniProtAccessionError(no_uniprot),
         )
         assert results == [expected]
         assert output_dir.exists()
@@ -383,45 +389,20 @@ class TestFilterFilesOnResolution:
         assert results[0].output_file is not None and results[0].output_file.exists()
 
 
-@pytest.mark.parametrize("group_by, coverage", [(False, False), (True, False), (False, True), (True, True)])
-def test_sort_resolution_statistics_order_alphafold_xray_nmr(group_by: bool, coverage: bool):
-    shared = {
-        "accession": "P12345",
-        "sequence_identity": 1.0,
-        "uniprot_start": 1,
-        "uniprot_end": 100,
-        "chain_length": 100,
-    }
-    af = _make_stats("af.cif.gz", resolution=0.0, is_alphafold=True, **shared)
-    xray = _make_stats("xray.cif.gz", resolution=1.0, **shared)
-    nmr = _make_stats("nmr.cif.gz", resolution=0.0, **shared)
-    # any coverage/groupby combi should give same order
-    expected = [replace(af, passed=True), replace(xray, passed=True), replace(nmr, passed=True)]
-
-    results = sort_resolution_statistics([xray, nmr, af], top=3, coverage=coverage, group_by=group_by)
-
-    assert results == expected
-
-
 class TestSortResolutionStatisticsYesGroupByNoCoverage:
     def test_groupby_accession(self):
         a1 = _make_stats("a1.cif.gz", "P11111", resolution=1.0)
         a2 = _make_stats("a2.cif.gz", "P11111", resolution=2.0)
         b1 = _make_stats("b1.cif.gz", "P22222", resolution=1.5)
         b2 = _make_stats("b2.cif.gz", "P22222", resolution=3.0)
-        # Structures without uniprot always at bottom
-        c1 = _make_stats("c1.cif.gz", None, resolution=0.5)
-        c2 = _make_stats("c2.cif.gz", None, resolution=0.1)
         expected = [
             replace(a1, passed=True),
             replace(a2, passed=False, discard_reason=OutsideTopError(top=1, rank=2)),
             replace(b1, passed=True),
             replace(b2, passed=False, discard_reason=OutsideTopError(top=1, rank=2)),
-            replace(c2, passed=False, discard_reason=NoUniProtAccessionError()),
-            replace(c1, passed=False, discard_reason=NoUniProtAccessionError()),
         ]
 
-        results = sort_resolution_statistics([a2, a1, b2, b1, c1, c2], top=1, coverage=False, group_by=True)
+        results = sort_resolution_statistics([a2, a1, b2, b1], top=1, coverage=False, group_by=True)
 
         assert results == expected
 
@@ -434,18 +415,6 @@ class TestSortResolutionStatisticsYesGroupByNoCoverage:
 
         passed_names = {r.input_file.name for r in results if r.passed}
         assert passed_names == {"a.cif.gz", "b.cif.gz"}
-
-    def test_none_accession_is_skipped(self):
-        good = _make_stats("a.cif.gz", "P12345", resolution=2.0)
-        no_acc = _make_stats("z.cif.gz", None, resolution=1.0)
-        expected = [
-            replace(good, passed=True),
-            replace(no_acc, passed=False, discard_reason=NoUniProtAccessionError()),
-        ]
-
-        results = sort_resolution_statistics([good, no_acc], top=10, coverage=False, group_by=True)
-
-        assert results == expected
 
     def test_results_sorted_by_resolution_within_group(self):
         a = _make_stats("a.cif.gz", "P12345", resolution=2.0)
@@ -481,18 +450,6 @@ class TestSortResolutionStatisticsNoGroupbyNoCoverage:
         ]
 
         results = sort_resolution_statistics([with_acc, no_acc], top=1, coverage=False, group_by=False)
-
-        assert results == expected
-
-    def test_discarded_last(self):
-        good = _make_stats("a.cif.gz", "P12345", resolution=1.0)
-        discarded = _make_stats("b.cif.gz", "P12345", resolution=0.5, discard_reason=ValueError("reason1"))
-        expected = [
-            replace(good, passed=True),
-            replace(discarded, passed=False, discard_reason=ValueError("reason1")),
-        ]
-
-        results = sort_resolution_statistics([discarded, good], top=1, coverage=False, group_by=False)
 
         assert results == expected
 
@@ -535,28 +492,14 @@ class TestSortResolutionStatisticsNoGroupbyYesCoverage:
             uniprot_start=20,
             uniprot_end=30,
         )
-        n1 = _make_stats(
-            "n1.cif.gz",
-            None,
-            resolution=0.5,
-            chain_length=50,
-        )  # without accession, between with accession and discarded
-        d1 = _make_stats(
-            "d1.cif.gz",
-            "P33333",
-            resolution=0.8,
-            discard_reason=ValueError("reason1"),
-        )  # baddest
         expected = [
             replace(p1a, passed=True),
             replace(p2a, passed=True),
             replace(p1b, passed=False, discard_reason=OutsideTopError(top=2, rank=3)),
             replace(p2b, passed=False, discard_reason=OutsideTopError(top=2, rank=4)),
-            replace(n1, passed=False, discard_reason=OutsideTopError(top=2, rank=5)),
-            replace(d1, passed=False, discard_reason=ValueError("reason1")),
         ]
 
-        results = sort_resolution_statistics([p2b, n1, p1b, d1, p2a, p1a], top=2, coverage=True, group_by=False)
+        results = sort_resolution_statistics([p2b, p1b, p2a, p1a], top=2, coverage=True, group_by=False)
 
         assert results == expected
 
@@ -608,61 +551,15 @@ class TestSortResolutionStatisticsYesGroupbyYesCoverage:
             uniprot_start=1,
             uniprot_end=100,
         )
-        n1 = _make_stats(
-            "n1.cif.gz",
-            None,
-            resolution=0.5,
-            chain_length=100,
-        )  # without accession, between with accession and baddest
-        d1 = _make_stats(
-            "d1.cif.gz",
-            "P33333",
-            resolution=0.8,
-            discard_reason=ValueError("reason1"),
-        )  # baddest
         expected = [
             replace(p1a, passed=True),
             replace(p1b, passed=True),
             replace(p1c, passed=False, discard_reason=OutsideTopError(top=2, rank=3)),
             replace(p2a, passed=True),
             replace(p2b, passed=True),
-            replace(n1, passed=True),  # passed as best in accesionless group
-            replace(d1, passed=False, discard_reason=ValueError("reason1")),
         ]
 
-        results = sort_resolution_statistics([p2b, n1, p1b, p1c, d1, p2a, p1a], top=2, coverage=True, group_by=True)
-
-        assert results == expected
-
-    def test_top_of_accessionless(self):
-        p1a = _make_stats(
-            "p1a.cif.gz",
-            "P11111",
-            resolution=1.0,
-            sequence_identity=1.00,
-            chain_length=100,
-            uniprot_start=1,
-            uniprot_end=100,
-        )
-        n1 = _make_stats(
-            "n1.cif.gz",
-            None,
-            resolution=0.5,
-            chain_length=100,
-        )  # without accession, best resolution
-        n2 = _make_stats(
-            "n2.cif.gz",
-            None,
-            resolution=0.6,
-            chain_length=100,
-        )  # without accession, second best resolution
-        expected = [
-            replace(p1a, passed=True),
-            replace(n1, passed=True),
-            replace(n2, passed=False, discard_reason=OutsideTopError(top=1, rank=2)),
-        ]
-
-        results = sort_resolution_statistics([n1, n2, p1a], top=1, coverage=True, group_by=True)
+        results = sort_resolution_statistics([p2b, p1b, p1c, p2a, p1a], top=2, coverage=True, group_by=True)
 
         assert results == expected
 
@@ -719,7 +616,11 @@ def test_filter_on_sequence_identity(caplog: pytest.LogCaptureFixture):
     bad = _make_stats("bad.cif.gz", "P12345", resolution=1.0, sequence_identity=0.5)
     expected = [
         replace(good, passed=False, discard_reason=None),
-        replace(bad, passed=False, discard_reason=ValueError("Sequence identity 0.500 below minimal 0.900")),
+        replace(
+            bad,
+            passed=False,
+            discard_reason=SequenceIdentityBelowThresholdError(bad.input_file, bad.sequence_identity, 0.9),
+        ),
     ]
 
     results = list(filter_on_sequence_identity(0.9, [good, bad]))
