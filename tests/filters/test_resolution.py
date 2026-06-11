@@ -10,14 +10,15 @@ from protein_quest.filters.resolution import (
     NoUniProtAccessionError,
     OutsideTopError,
     ResolutionFilterStatistics,
+    ResolutionUnsetError,
     SequenceIdentityBelowThresholdError,
     copy_resolution_statistics,
     filter_files_on_resolution,
     filter_on_sequence_identity,
-    iter_resolution_statistics,
     load_resolution_statistics,
     sort_resolution_statistics,
     write_resolution_stats,
+    yield_resolution_statistics,
 )
 
 
@@ -129,10 +130,10 @@ class TestResolutionFilterStatistics:
         assert hash(stats1) == hash(stats2)
 
 
-class TestIterResolutionStatistics:
+class TestYieldResolutionStatistics:
     def test_metadata_in_order(self, sample_cif: Path, sample2_cif: Path, af_cif: Path, nmr_cif: Path):
         input_files = [sample_cif, sample2_cif, af_cif, nmr_cif]
-        results = list(iter_resolution_statistics(input_files))
+        results = list(yield_resolution_statistics(input_files))
 
         expected = [
             ResolutionFilterStatistics(
@@ -195,7 +196,7 @@ class TestIterResolutionStatistics:
         assert results == expected
 
     def test_empty_input(self):
-        assert list(iter_resolution_statistics([])) == []
+        assert list(yield_resolution_statistics([])) == []
 
 
 class TestLoadResolutionStatistics:
@@ -384,6 +385,54 @@ class TestFilterFilesOnResolution:
             chain_length=8,
             passed=True,
             output_file=output_dir / no_uniprot.name,
+        )
+        assert results == [expected]
+        assert results[0].output_file is not None and results[0].output_file.exists()
+
+    def test_lax_mode_passes_structure_without_resolution(self, af_cif: Path, tmp_path: Path):
+        output_dir = tmp_path / "output"
+        results = list(filter_files_on_resolution(input_files=[af_cif], output_dir=output_dir, top=1, lax=True))
+
+        expected = ResolutionFilterStatistics(
+            id="AF-A0A0C5B5G6-F1",
+            input_file=af_cif,
+            uniprot_accession="A0A0C5B5G6",
+            resolution=0.0,
+            total_residue_count=16,
+            is_alphafold=True,
+            uniprot_start=1,
+            uniprot_end=16,
+            sequence_identity=1.0,
+            chain_length=16,
+            passed=True,
+            output_file=output_dir / af_cif.name,
+            discard_reason=ResolutionUnsetError(af_cif),
+        )
+        assert results == [expected]
+        assert results[0].output_file is not None and results[0].output_file.exists()
+
+    def test_lax_mode_passes_structure_without_uniprot_accession(self, no_uniprot_cif: Path):
+        output_dir = no_uniprot_cif.parent / "output"
+        results = list(
+            filter_files_on_resolution(
+                input_files=[no_uniprot_cif], output_dir=output_dir, top=1, lax=True, min_sequence_identity=0.0
+            )
+        )
+
+        expected = ResolutionFilterStatistics(
+            id="2Y29",
+            input_file=no_uniprot_cif,
+            uniprot_accession=None,
+            resolution=2.3,
+            total_residue_count=8,
+            is_alphafold=False,
+            uniprot_start=0,
+            uniprot_end=0,
+            sequence_identity=0.0,
+            chain_length=8,
+            passed=True,
+            output_file=output_dir / no_uniprot_cif.name,
+            discard_reason=NoUniProtAccessionError(no_uniprot_cif),
         )
         assert results == [expected]
         assert results[0].output_file is not None and results[0].output_file.exists()

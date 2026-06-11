@@ -24,8 +24,6 @@ from protein_quest.cli.common import (
 from protein_quest.filters.chain import filter_files_on_chain
 from protein_quest.filters.residues import filter_files_on_residues
 from protein_quest.filters.resolution import (
-    OutsideTopError,
-    SequenceIdentityBelowThresholdError,
     filter_files_on_resolution,
     write_resolution_stats,
 )
@@ -315,14 +313,14 @@ def resolution(
 
     nr_passed = sum(1 for r in results if r.passed)
     if lax:
-        filter_errors = {SequenceIdentityBelowThresholdError, OutsideTopError}
-        nr_passed_due_to_lax = sum(
-            1
-            for r in results
-            if r.passed and r.discard_reason is not None and type(r.discard_reason) not in filter_errors
-        )
+        nr_passed_due_to_lax = sum(1 for r in results if r.passed and r.discard_reason is not None)
         rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
         rprint(f"Additionally wrote {nr_passed_due_to_lax} files to {output_dir} directory due to lax mode.")
+        if not write_stats:
+            rprint(
+                "[yellow]Note: You can use --write-stats to see which files were passed due to lax mode "
+                "and their discard reasons.[/yellow]"
+            )
     else:
         rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
 

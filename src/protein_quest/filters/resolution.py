@@ -170,7 +170,7 @@ def load_resolution_statistics(
         ``False`` and ``output_file`` is always ``None``.
     """
     if scheduler_address == "sequential" or (scheduler_address is None and not input_files):
-        return list(iter_resolution_statistics(input_files))
+        return list(yield_resolution_statistics(input_files))
     if scheduler_address is None:
         with configure_dask_scheduler(None, name="load-resolution-statistics") as cluster, Client(cluster) as client:
             client.forward_logging()
@@ -183,7 +183,7 @@ def load_resolution_statistics(
         return dask_map_with_progress(client, _load_resolution_statistics_single, input_files)
 
 
-def iter_resolution_statistics(
+def yield_resolution_statistics(
     input_files: Iterable[Path],
 ) -> Generator[ResolutionFilterStatistics]:
     """Load resolution statistics for each structure file.

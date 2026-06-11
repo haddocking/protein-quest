@@ -1,6 +1,9 @@
 from pathlib import Path
 
+import gemmi
 import pytest
+
+from protein_quest.io import read_structure, write_structure
 
 
 @pytest.fixture
@@ -46,6 +49,18 @@ def multi_accession_cif() -> Path:
 def multi_accession_chain_cif() -> Path:
     """1UN5 structure with multiple UniProt accessions in the same chain."""
     return Path(__file__).parent / "fixtures" / "1un5.cif.gz"
+
+
+@pytest.fixture
+def no_uniprot_cif(sample2_cif: Path, tmp_path: Path) -> Path:
+    """2Y29 structure with no UniProt accession."""
+    structure_with_unp = read_structure(sample2_cif)
+    block_without_struct_ref = structure_with_unp.make_mmcif_block(
+        gemmi.MmcifOutputGroups(True, chem_comp=False, struct_ref=False)
+    )
+    structure = gemmi.make_structure_from_block(block_without_struct_ref)
+    write_structure(structure, tmp_path / "no_uniprot.cif")
+    return tmp_path / "no_uniprot.cif"
 
 
 @pytest.fixture
