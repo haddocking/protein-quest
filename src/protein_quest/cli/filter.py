@@ -251,17 +251,18 @@ def resolution(
 ) -> None:
     """Filter structure files by best resolution.
 
-    AlphaFold structures are preferred over non-AlphaFold.
+    Structures with no resolution and no Uniprot accession are discarded.
     Structures with lower resolution are preferred.
     If resolution is the same, structures with more residues are preferred.
     If resolution is missing, those structures are undesirable.
+    Structures with low sequence identity (smaller than 1) are undesirable.
 
     To see how clustering was done use `protein-quest convert clusters` command.
 
     Args:
         input_dir: Directory structure files.
         output_dir: Directory to write the selected structure files.
-        no_group_by: Disable grouping and use global top-N ranking across all files.
+        no_group_by: Disable grouping by Uniprot accession and use global top-N ranking across all files.
         top: Maximum number of files to keep.
         no_coverage: If not set, will take top by first grouping by uniprot accession
             and then clustering files by their coverage and then take the top.
@@ -274,6 +275,8 @@ def resolution(
             For example if set to 0.8 then structures that have sequence identity below 0.8 are discarded.
         lax: If set will passthrough files that do not have valid resolution, regardless of other flags like --top.
             By default filter is applied strictly and those files are discarded.
+            Useful if you have a directory with files from different sources/methods and
+            want to call multiple filters sequentially to discard files gradually.
         scheduler_address: Address of the Dask scheduler to connect to.
             If not provided, will create a local cluster.
             If set to `sequential` will run tasks sequentially.
