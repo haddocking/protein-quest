@@ -227,12 +227,6 @@ def residue(
         rprint(f"Statistics written to {write_stats}")
 
 
-def _resolution_progress_message(nr_total: int, input_dir: "Path", group_by: bool) -> str:
-    if not group_by:
-        return f"Filtering {nr_total} files in {input_dir} directory by global resolution ranking (no grouping)."
-    return f"Filtering {nr_total} files in {input_dir} directory by resolution grouped by uniprot accession."
-
-
 @filter_app.command
 def resolution(
     input_dir: InputDir,
@@ -298,7 +292,10 @@ def resolution(
 
     input_files = sorted(glob_structure_files(input_dir))
     nr_total = len(input_files)
-    rprint(_resolution_progress_message(nr_total, input_dir, group_by))
+    if not group_by:
+        rprint(f"Filtering {nr_total} files in {input_dir} directory by global resolution ranking (no grouping).")
+    else:
+        rprint(f"Filtering {nr_total} files in {input_dir} directory by resolution grouped by uniprot accession.")
 
     results = list(
         filter_files_on_resolution(
