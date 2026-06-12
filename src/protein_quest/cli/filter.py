@@ -258,7 +258,8 @@ def resolution(
     Args:
         input_dir: Directory structure files.
         output_dir: Directory to write the selected structure files.
-        no_group_by_uniprot_accession: Disable grouping by Uniprot accession and use global top-N ranking across all files.
+        no_group_by_uniprot_accession: Disable grouping by Uniprot accession
+            and use global top-N ranking across all files.
         top: Maximum number of files to keep.
         no_coverage: If not set, will take top by first grouping by uniprot accession
             and then clustering files by their coverage and then take the top.
