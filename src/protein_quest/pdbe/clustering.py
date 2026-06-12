@@ -6,12 +6,22 @@ length metadata (these cannot participate in residue-range clustering and
 are returned/appended separately).
 """
 
+import logging
+
 from protein_quest.clustering import (
-    cluster_structures,
     filter_structures_on_clustered_resolution,
     sort_structures,
 )
+from protein_quest.errors import ResolutionUnsetError
 from protein_quest.pdbe.result import PdbChainLengthError, PdbResult
+
+logging = logging.getLogger(__name__)
+
+
+def _is_valid_pdb(pdb: PdbResult):
+    _ = pdb.uniprot_start
+    if pdb.resolution is None:
+        raise ResolutionUnsetError(pdb.id)
 
 
 def _separate_valid_invalid_pdbs(pdbs: list[PdbResult]) -> tuple[list[PdbResult], list[PdbResult]]:
@@ -19,32 +29,13 @@ def _separate_valid_invalid_pdbs(pdbs: list[PdbResult]) -> tuple[list[PdbResult]
     valid_pdbs: list[PdbResult] = []
     for pdb in pdbs:
         try:
-            _ = pdb.uniprot_start
-        except PdbChainLengthError:
+            _is_valid_pdb(pdb)
+        except (PdbChainLengthError, ResolutionUnsetError) as e:
+            logging.info(f"PDB {pdb.id} is invalid, placing last: {e}")
             invalid_pdbs.append(pdb)
         else:
             valid_pdbs.append(pdb)
     return sort_structures(invalid_pdbs), valid_pdbs
-
-
-def cluster_pdbs(pdbs: list[PdbResult]) -> tuple[list[list[PdbResult]], list[PdbResult]]:
-    """Cluster PDB results by overlapping UniProt residue coverage.
-
-    Results with valid chain length metadata are clustered by overlap. Results
-    with invalid chain length metadata are returned separately.
-
-    Args:
-        pdbs: PDB results to cluster.
-
-    Returns:
-        Tuple of ordered valid clusters and invalid PDB results.
-    """
-    if not pdbs:
-        return [], []
-
-    invalid_pdbs, valid_pdbs = _separate_valid_invalid_pdbs(pdbs)
-    valid_clusters = cluster_structures(valid_pdbs)
-    return valid_clusters, invalid_pdbs
 
 
 def filter_pdbs_on_clustered_resolution(pdbs: list[PdbResult], top: int) -> list[PdbResult]:
@@ -63,7 +54,8 @@ def filter_pdbs_on_clustered_resolution(pdbs: list[PdbResult], top: int) -> list
 
     The clusters are flattened to the returned list by taking the best of each cluster until clusters are exhausted.
 
-    PDB results with invalid residue range (for example `A=-`) are always placed at the end of the returned list.
+    PDB results with invalid residue range (for example `A=-`) or unset resolution are
+    always placed at the end of the returned list.
 
     Args:
         pdbs: PDB results to filter.

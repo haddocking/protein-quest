@@ -59,150 +59,171 @@ def test_search_uniprot_with_provenance(tmp_path: Path, monkeypatch: pytest.Monk
     assert body.count("uniprot_accessions.txt") >= 4
 
 
-@pytest.mark.vcr
-def test_search_pdbe(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
-    """Test search pdbe command."""
-    input_text = tmp_path / "uniprot_accessions.txt"
-    input_text.write_text("P00811\n")
-    output_file = tmp_path / "pdbe_results.csv"
-    argv = [
-        "search",
-        "pdbe",
-        "--limit",
-        "150",
-        "--min-residues",
-        "360",  # P00811 has 377 residues and 5 full PDB entries
-        str(input_text),
-        str(output_file),
-    ]
+class TestPdbe:
+    @pytest.mark.default_cassette("test_search_pdbe.yaml")
+    @pytest.mark.vcr
+    def test_min_residues(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+        """Test search pdbe command."""
+        input_text = tmp_path / "uniprot_accessions.txt"
+        input_text.write_text("P00811\n")
+        output_file = tmp_path / "pdbe_results.csv"
+        argv = [
+            "search",
+            "pdbe",
+            "--limit",
+            "150",
+            "--min-residues",
+            "360",  # P00811 has 377 residues and 5 full PDB entries
+            str(input_text),
+            str(output_file),
+        ]
 
-    main(argv)
+        main(argv)
 
-    result = output_file.read_text()
-    expected = dedent("""\
-        uniprot_accession,pdb_id,method,resolution,uniprot_chains,chain,chain_length
-        P00811,9C6P,X-Ray_Crystallography,1.66,A/B=1-377,A,377
-        P00811,9C81,X-Ray_Crystallography,1.7,A/B=1-377,A,377
-        P00811,9C83,X-Ray_Crystallography,2.9,A/B=1-377,A,377
-        P00811,9C84,X-Ray_Crystallography,1.7,A/B=1-377,A,377
-        P00811,9DHL,X-Ray_Crystallography,1.88,A/B=1-377,A,377
-        """)
-    assert result == expected
+        result = output_file.read_text()
+        expected = dedent("""\
+            uniprot_accession,pdb_id,method,resolution,uniprot_chains,chain,chain_length
+            P00811,9C6P,X-Ray_Crystallography,1.66,A/B=1-377,A,377
+            P00811,9C81,X-Ray_Crystallography,1.7,A/B=1-377,A,377
+            P00811,9C83,X-Ray_Crystallography,2.9,A/B=1-377,A,377
+            P00811,9C84,X-Ray_Crystallography,1.7,A/B=1-377,A,377
+            P00811,9DHL,X-Ray_Crystallography,1.88,A/B=1-377,A,377
+            """)
+        assert result == expected
 
-    captured = capsys.readouterr()
-    assert "Finding PDB entries for 1 uniprot accessions" in captured.err
-    assert "Before filtering found 120 PDB entries for 1 uniprot accessions." in captured.err
-    assert "After filtering on chain length (360, None) remained 5 PDB entries for 1 uniprot" in captured.err
-    assert "Written to " in captured.err
+        captured = capsys.readouterr()
+        assert "Finding PDB entries for 1 uniprot accessions" in captured.err
+        assert "Before filtering found 120 PDB entries for 1 uniprot accessions." in captured.err
+        assert "After filtering on chain length (360, None) remained 5 PDB entries for 1 uniprot" in captured.err
+        assert "Written to " in captured.err
 
+    @pytest.mark.default_cassette("test_search_pdbe.yaml")
+    @pytest.mark.vcr
+    def test_top_resolution_per_accession(self, tmp_path: Path):
+        """Test search pdbe command with top-resolution filtering."""
+        input_text = tmp_path / "uniprot_accessions.txt"
+        input_text.write_text("P00811\n")
+        output_file = tmp_path / "pdbe_results.csv"
+        argv = [
+            "search",
+            "pdbe",
+            "--limit",
+            "150",
+            "--min-residues",
+            "360",
+            "--top-resolution-per-uniprot-accession",
+            "2",
+            str(input_text),
+            str(output_file),
+        ]
 
-@pytest.mark.default_cassette("test_search_pdbe.yaml")
-@pytest.mark.vcr
-def test_search_pdbe_top_resolution_per_accession(tmp_path: Path):
-    """Test search pdbe command with top-resolution filtering."""
-    input_text = tmp_path / "uniprot_accessions.txt"
-    input_text.write_text("P00811\n")
-    output_file = tmp_path / "pdbe_results.csv"
-    argv = [
-        "search",
-        "pdbe",
-        "--limit",
-        "150",
-        "--min-residues",
-        "360",
-        "--top-resolution-per-uniprot-accession",
-        "2",
-        str(input_text),
-        str(output_file),
-    ]
+        main(argv)
 
-    main(argv)
+        result = output_file.read_text()
+        expected = dedent("""\
+            uniprot_accession,pdb_id,method,resolution,uniprot_chains,chain,chain_length
+            P00811,9C6P,X-Ray_Crystallography,1.66,A/B=1-377,A,377
+            P00811,9C81,X-Ray_Crystallography,1.7,A/B=1-377,A,377
+            """)
+        assert result == expected
 
-    result = output_file.read_text()
-    expected = dedent("""\
-        uniprot_accession,pdb_id,method,resolution,uniprot_chains,chain,chain_length
-        P00811,9C6P,X-Ray_Crystallography,1.66,A/B=1-377,A,377
-        P00811,9C81,X-Ray_Crystallography,1.7,A/B=1-377,A,377
-        """)
-    assert result == expected
+    @pytest.mark.default_cassette("test_search_pdbe_bad_chain_length.yaml")
+    @pytest.mark.vcr
+    def test_bad_chain_length(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
+        """Test search pdbe with bad chain length."""
+        input_text = tmp_path / "uniprot_accessions.txt"
+        input_text.write_text("Q9NTW7\n")
+        output_file = tmp_path / "pdbe_results.csv"
+        argv = [
+            "search",
+            "pdbe",
+            str(input_text),
+            str(output_file),
+        ]
 
+        main(argv)
 
-@pytest.mark.default_cassette("test_search_pdbe_bad_chain_length.yaml")
-@pytest.mark.vcr
-def test_search_pdbe_bad_chain_length(tmp_path: Path, caplog: pytest.LogCaptureFixture):
-    """Test search pdbe with bad chain length."""
-    input_text = tmp_path / "uniprot_accessions.txt"
-    input_text.write_text("Q9NTW7\n")
-    output_file = tmp_path / "pdbe_results.csv"
-    argv = [
-        "search",
-        "pdbe",
-        str(input_text),
-        str(output_file),
-    ]
+        assert len(output_file.read_text()) == 159
 
-    main(argv)
+        assert "Could not determine chain length for " in caplog.text
+        assert "Q9NTW7 / 1X5W chain A from 'A=-'" in caplog.text
+        assert "No chain length for this entry." in caplog.text
 
-    assert len(output_file.read_text()) == 159
+    @pytest.mark.default_cassette("test_search_pdbe_bad_chain_length.yaml")
+    @pytest.mark.vcr
+    def test_bad_chain_length_with_min_nokeep(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
+        """Test search pdbe with bad chain length and min residues without keep."""
+        input_text = tmp_path / "uniprot_accessions.txt"
+        input_text.write_text("Q9NTW7\n")
+        output_file = tmp_path / "pdbe_results.csv"
+        argv = [
+            "search",
+            "pdbe",
+            "--min-residues",
+            "42",
+            str(input_text),
+            str(output_file),
+        ]
 
-    assert "Could not determine chain length for " in caplog.text
-    assert "Q9NTW7 / 1X5W chain A from 'A=-'" in caplog.text
-    assert "No chain length for this entry." in caplog.text
+        main(argv)
 
+        assert len(output_file.read_text()) == 122
 
-@pytest.mark.default_cassette("test_search_pdbe_bad_chain_length.yaml")
-@pytest.mark.vcr
-def test_search_pdbe_bad_chain_length_with_min_nokeep(tmp_path: Path, caplog: pytest.LogCaptureFixture):
-    """Test search pdbe with bad chain length and min residues without keep."""
-    input_text = tmp_path / "uniprot_accessions.txt"
-    input_text.write_text("Q9NTW7\n")
-    output_file = tmp_path / "pdbe_results.csv"
-    argv = [
-        "search",
-        "pdbe",
-        "--min-residues",
-        "42",
-        str(input_text),
-        str(output_file),
-    ]
+        log = caplog.text
+        assert (
+            "Filtering out PDB entry '1X5W' belonging to uniprot accession 'Q9NTW7' due to invalid chain length from 'A=-'"
+            in log
+        )
 
-    main(argv)
+    @pytest.mark.default_cassette("test_search_pdbe_bad_chain_length.yaml")
+    @pytest.mark.vcr
+    def test_bad_chain_length_with_min_keep(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
+        """Test search pdbe with bad chain length and min residues with keep."""
+        input_text = tmp_path / "uniprot_accessions.txt"
+        input_text.write_text("Q9NTW7\n")
+        output_file = tmp_path / "pdbe_results.csv"
+        argv = [
+            "search",
+            "pdbe",
+            "--keep-invalid",
+            "--min-residues",
+            "42",
+            str(input_text),
+            str(output_file),
+        ]
 
-    assert len(output_file.read_text()) == 122
+        main(argv)
 
-    log = caplog.text
-    assert (
-        "Filtering out PDB entry '1X5W' belonging to uniprot accession 'Q9NTW7' due to invalid chain length from 'A=-'"
-        in log
-    )
+        assert len(output_file.read_text()) == 159
 
+        log = caplog.text
+        assert "for completeness not filtering it out" in log
+        assert "Could not determine chain length for " in log
+        assert "Q9NTW7 / 1X5W chain A from 'A=-'" in log
+        assert "No chain length for this entry." in log
 
-@pytest.mark.default_cassette("test_search_pdbe_bad_chain_length.yaml")
-@pytest.mark.vcr
-def test_search_pdbe_bad_chain_length_with_min_keep(tmp_path: Path, caplog: pytest.LogCaptureFixture):
-    """Test search pdbe with bad chain length and min residues with keep."""
-    input_text = tmp_path / "uniprot_accessions.txt"
-    input_text.write_text("Q9NTW7\n")
-    output_file = tmp_path / "pdbe_results.csv"
-    argv = [
-        "search",
-        "pdbe",
-        "--keep-invalid",
-        "--min-residues",
-        "42",
-        str(input_text),
-        str(output_file),
-    ]
+    @pytest.mark.default_cassette("test_search_pdbe_bad_chain_length.yaml")
+    @pytest.mark.vcr
+    def test_top_clustered_resolution_per_uniprot_accession(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
+        """Test search pdbe with top-clustered-resolution-per-uniprot-accession."""
+        input_text = tmp_path / "uniprot_accessions.txt"
+        input_text.write_text("Q9NTW7\n")
+        output_file = tmp_path / "pdbe_results.csv"
+        argv = [
+            "search",
+            "pdbe",
+            "--top-clustered-resolution-per-uniprot-accession",
+            "2",
+            str(input_text),
+            str(output_file),
+        ]
 
-    main(argv)
+        main(argv)
 
-    assert len(output_file.read_text()) == 159
+        assert len(output_file.read_text()) == 159
 
-    log = caplog.text
-    assert "for completeness not filtering it out" in log
-    assert "Could not determine chain length for " in log
-    assert "Q9NTW7 / 1X5W chain A from 'A=-'" in log
-    assert "No chain length for this entry." in log
+        log = caplog.text
+        assert "Could not determine chain length for Q9NTW7 / 1X5W chain A" in log
 
 
 @pytest.mark.vcr

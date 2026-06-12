@@ -6,11 +6,11 @@ from pathlib import Path
 import pytest
 from cyclopts.types import StdioPath
 
+from protein_quest.errors import ResolutionUnsetError
 from protein_quest.filters.resolution import (
     NoUniProtAccessionError,
     OutsideTopError,
     ResolutionFilterStatistics,
-    ResolutionUnsetError,
     SequenceIdentityBelowThresholdError,
     copy_resolution_statistics,
     filter_files_on_resolution,

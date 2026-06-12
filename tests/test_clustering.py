@@ -117,6 +117,14 @@ class TestSortStructures:
                 ["1AAA", "2BBB"],
                 id="sort_by_id_tiebreak",
             ),
+            pytest.param(
+                {
+                    SimpleStructure("2BBB", 1, 250, resolution_value=0.0, chain_length=250),
+                    SimpleStructure("3CCC", 1, 250, resolution_value=2.1, chain_length=250),
+                },
+                ["3CCC", "2BBB"],
+                id="sort_by_resolution_unset_last",
+            ),
         ],
     )
     def test_sort_order(self, structures, expected_order):
@@ -134,72 +142,135 @@ class TestSortStructures:
         assert sorted_ids == ["1AAA", "2BBB"]
 
 
-class TestClusterStructures:
-    def test_empty_input_returns_empty_list(self):
-        assert cluster_structures([]) == []
-
-    def test_single_structure_returns_singleton_cluster(self):
-        structure = make_structure("1AAA", 1, 100)
-        assert cluster_structures([structure]) == [[structure]]
-
-    @pytest.mark.parametrize(
-        "structures,expected",
-        [
-            pytest.param(
+@pytest.mark.parametrize(
+    "structures,expected",
+    [
+        pytest.param([], [], id="empty_input_returns_empty_list"),
+        pytest.param(
+            [make_structure("1AAA", 1, 100)],
+            [["1AAA"]],
+            id="single_structure_returns_singleton_cluster",
+        ),
+        pytest.param(
+            [
+                make_structure("2BBB", 51, 150),
+                make_structure("1AAA", 1, 100),
+            ],
+            [["1AAA", "2BBB"]],
+            id="overlap_same_length_1cluster",
+        ),
+        pytest.param(
+            [
+                make_structure("2BBB", 75, 150),
+                make_structure("1AAA", 1, 100),
+            ],
+            [["1AAA", "2BBB"]],
+            id="overlap_diff_length_1cluster",
+        ),
+        pytest.param(
+            [
+                make_structure("2BBB", 301, 400),
+                make_structure("1AAA", 1, 100),
+            ],
+            [["1AAA"], ["2BBB"]],
+            id="no_overlap_same_length_2clusters",
+        ),
+        pytest.param(
+            [
+                make_structure("2BBB", 321, 400),
+                make_structure("1AAA", 1, 100),
+            ],
+            [["1AAA"], ["2BBB"]],
+            id="no_overlap_diff_length_2clusters",
+        ),
+        pytest.param(
+            [
+                SimpleStructure("2BBB", 1, 200, resolution_value=3.0, sequence_identity=1.0, chain_length=200),
+                SimpleStructure("1AAA", 1, 200, resolution_value=2.0, sequence_identity=1.0, chain_length=200),
+                SimpleStructure("4DDD", 300, 350, resolution_value=2.5, sequence_identity=0.8, chain_length=51),
+                SimpleStructure("3CCC", 300, 350, resolution_value=1.5, sequence_identity=0.9, chain_length=51),
+            ],
+            [["1AAA", "2BBB"], ["3CCC", "4DDD"]],
+            id="many_structures_orders_clusters_and_members",
+        ),
+        # First example from https://github.com/haddocking/protein-quest/issues/102
+        pytest.param(
+            [
+                SimpleStructure("2BBB", 1, 250, resolution_value=3.7, sequence_identity=1.0, chain_length=250),
+                SimpleStructure("1AAA", 1, 250, resolution_value=3.6, sequence_identity=1.0, chain_length=250),
+                SimpleStructure("3CCC", 1, 250, resolution_value=2.1, sequence_identity=1.0, chain_length=250),
+                SimpleStructure("4DDD", 300, 400, resolution_value=8.1, sequence_identity=1.0, chain_length=101),
+                SimpleStructure("5EEE", 300, 400, resolution_value=4.6, sequence_identity=1.0, chain_length=101),
+                SimpleStructure("6FFF", 500, 1000, resolution_value=1.3, sequence_identity=1.0, chain_length=501),
+                SimpleStructure("7GGG", 500, 1000, resolution_value=1.4, sequence_identity=1.0, chain_length=501),
+                SimpleStructure("8HHH", 500, 1000, resolution_value=1.6, sequence_identity=1.0, chain_length=501),
+            ],
+            [
+                ["6FFF", "7GGG", "8HHH"],
                 [
-                    make_structure("2BBB", 51, 150),
-                    make_structure("1AAA", 1, 100),
+                    "3CCC",
+                    "1AAA",
+                    "2BBB",
                 ],
-                [["1AAA", "2BBB"]],
-                id="overlap_same_length_1cluster",
-            ),
-            pytest.param(
                 [
-                    make_structure("2BBB", 75, 150),
-                    make_structure("1AAA", 1, 100),
+                    "5EEE",
+                    "4DDD",
                 ],
-                [["1AAA", "2BBB"]],
-                id="overlap_diff_length_1cluster",
-            ),
-            pytest.param(
-                [
-                    make_structure("2BBB", 301, 400),
-                    make_structure("1AAA", 1, 100),
-                ],
-                [["1AAA"], ["2BBB"]],
-                id="no_overlap_same_length_2clusters",
-            ),
-            pytest.param(
-                [
-                    make_structure("2BBB", 321, 400),
-                    make_structure("1AAA", 1, 100),
-                ],
-                [["1AAA"], ["2BBB"]],
-                id="no_overlap_diff_length_2clusters",
-            ),
-        ],
-    )
-    def test_two_structure_shortcut_paths(self, structures, expected):
-        clusters = cluster_structures(structures)
-        cluster_ids = [[member.id for member in cluster] for cluster in clusters]
-        assert cluster_ids == expected
-
-    def test_many_structures_orders_clusters_and_members(self):
-        # Cluster 1: longer chains (1-200), sorted by sequence identity then resolution.
-        # Cluster 2: shorter chains (300-350), sorted by quality.
-        structures = [
-            SimpleStructure("2BBB", 1, 200, resolution_value=3.0, sequence_identity=1.0, chain_length=200),
-            SimpleStructure("1AAA", 1, 200, resolution_value=2.0, sequence_identity=1.0, chain_length=200),
-            SimpleStructure("4DDD", 300, 350, resolution_value=2.5, sequence_identity=0.8, chain_length=51),
-            SimpleStructure("3CCC", 300, 350, resolution_value=1.5, sequence_identity=0.9, chain_length=51),
-        ]
-
-        clusters = cluster_structures(structures)
-
-        assert [[member.id for member in cluster] for cluster in clusters] == [
-            ["1AAA", "2BBB"],
-            ["3CCC", "4DDD"],
-        ]
+            ],
+            id="three_domains_split",
+        ),
+        # Second example from https://github.com/haddocking/protein-quest/issues/102
+        pytest.param(
+            [
+                SimpleStructure("1AAA", 1, 250, resolution_value=3.6, sequence_identity=1.0, chain_length=250),
+                SimpleStructure("4DDD", 200, 400, resolution_value=8.1, sequence_identity=1.0, chain_length=201),
+                SimpleStructure("6FFF", 500, 1000, resolution_value=1.3, sequence_identity=1.0, chain_length=501),
+                SimpleStructure("9III", 1, 600, resolution_value=4.2, sequence_identity=1.0, chain_length=600),
+                SimpleStructure("10JJJ", 1, 1000, resolution_value=1.4, sequence_identity=1.0, chain_length=1000),
+            ],
+            [["10JJJ", "1AAA", "9III", "4DDD"], ["6FFF"]],
+            id="overlap_merges",
+        ),
+        pytest.param(
+            [
+                SimpleStructure("1AAA", 1, 100, resolution_value=1.0, sequence_identity=1.0, chain_length=100),
+                SimpleStructure("2BBB", 100, 200, resolution_value=2.0, sequence_identity=1.0, chain_length=100),
+            ],
+            [["1AAA", "2BBB"]],
+            id="boundary_overlap_merges",
+        ),
+        pytest.param(
+            [
+                SimpleStructure("1AAA", 1, 100, resolution_value=1.0, sequence_identity=1.0, chain_length=100),
+                SimpleStructure("2BBB", 101, 200, resolution_value=2.0, sequence_identity=1.0, chain_length=100),
+            ],
+            [["1AAA"], ["2BBB"]],
+            id="adjacent_no_overlap_separates",
+        ),
+        pytest.param(
+            [
+                SimpleStructure("1AAA", 1, 100, resolution_value=1.0, sequence_identity=1.0, chain_length=100),
+                SimpleStructure("2BBB", 50, 150, resolution_value=2.0, sequence_identity=1.0, chain_length=101),
+                SimpleStructure("3CCC", 120, 200, resolution_value=3.0, sequence_identity=1.0, chain_length=81),
+            ],
+            [["1AAA", "2BBB"], ["3CCC"]],
+            id="complete_linkage_bridge_splits",
+        ),
+        pytest.param(
+            [
+                SimpleStructure("1AAA", 1, 250, resolution_value=3.6, sequence_identity=1.0, chain_length=250),
+                SimpleStructure("2BBB", 2, 249, resolution_value=5.4, sequence_identity=1.0, chain_length=248),
+                SimpleStructure("3CCC", 3, 248, resolution_value=2.1, sequence_identity=1.0, chain_length=246),
+            ],
+            [["3CCC", "1AAA", "2BBB"]],
+            id="complete_linkage_bridge_splits",
+        ),
+    ],
+)
+def test_cluster_structures(structures, expected):
+    clusters = cluster_structures(structures)
+    cluster_ids = [[member.id for member in cluster] for cluster in clusters]
+    assert cluster_ids == expected
 
 
 class TestTopMembersOfClusters:

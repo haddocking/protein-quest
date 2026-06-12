@@ -18,6 +18,7 @@ from protein_quest.clustering import (
     structure_sort_key,
     top_members_of_clusters,
 )
+from protein_quest.errors import ResolutionUnsetError
 from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
 from protein_quest.structure import StructureMetadata
 from protein_quest.utils import CopyMethod, copyfile
@@ -237,22 +238,6 @@ class NoUniProtAccessionError(ValueError):
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, NoUniProtAccessionError):
-            return NotImplemented
-        return self.input_file == other.input_file
-
-
-class ResolutionUnsetError(ValueError):
-    """Indicates that a structure has no resolution set."""
-
-    def __init__(self, input_file: Path) -> None:
-        super().__init__(f"Resolution is unset for {input_file}")
-        self.input_file = input_file
-
-    def __hash__(self) -> int:
-        return hash((self.input_file,))
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, ResolutionUnsetError):
             return NotImplemented
         return self.input_file == other.input_file
 

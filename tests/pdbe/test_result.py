@@ -98,6 +98,12 @@ def test_pdb_result_uniprot_range_invalid_raises():
         _ = pdb_result.uniprot_end
 
 
+def test_pdbresult_is_hashable():
+    result = PdbResult(id="1AAA", method="X-Ray_Crystallography", resolution="3.6", uniprot_chains="A=1-250")
+    assert isinstance(result, PdbResult)
+    assert isinstance(hash(result), int)
+
+
 class TestFilterPdbResultsOnChainLength:
     def test_unchanged(self):
         pdbs = {
