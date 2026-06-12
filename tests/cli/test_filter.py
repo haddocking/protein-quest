@@ -337,6 +337,7 @@ class TestResolution:
             str(stats_fn),
             "--top",
             "2",
+            "--no-group-by-uniprot-accession",
             "--no-coverage",
             "--min-sequence-identity",
             "0.9",
@@ -348,7 +349,6 @@ class TestResolution:
         output_files = {path.name for path in output_dir.iterdir()}
         assert output_files == {
             "1amb_updated.cif.gz",
-            "1un5.cif.gz",
             "2Y29.cif.gz",
             "3JRS_B2A.cif.gz",
             "AF-A0A0C5B5G6-F1-model_v6.cif.gz",
@@ -356,26 +356,26 @@ class TestResolution:
 
         captured = capsys.readouterr()
         assert "Filtering 6 files" in captured.err
-        assert "Wrote 5 files to" in captured.err
+        assert "Wrote 4 files to" in captured.err
         assert "Additionally wrote 2 files to" in captured.err
 
         stats = list(csv.DictReader(stats_fn.open()))
         expected_stats = [
             {
-                "chain_length": "131",
+                "chain_length": "173",
                 "discard_reason": "",
                 "discard_reason_type": "",
-                "id": "1UN5",
-                "input_file": str(input_dir / "1un5.cif.gz"),
+                "id": "3JRSB2A",
+                "input_file": str(input_dir / "3JRS_B2A.cif.gz"),
                 "is_alphafold": "False",
-                "output_file": str(output_dir / "1un5.cif.gz"),
+                "output_file": str(output_dir / "3JRS_B2A.cif.gz"),
                 "passed": "True",
-                "resolution": "2.6",
-                "sequence_identity": "0.967",
-                "total_residue_count": "131",
-                "uniprot_accession": "P03950",
-                "uniprot_end": "147",
-                "uniprot_start": "25",
+                "resolution": "2.05",
+                "sequence_identity": "1.000",
+                "total_residue_count": "173",
+                "uniprot_accession": "Q8VZS8",
+                "uniprot_end": "211",
+                "uniprot_start": "8",
             },
             {
                 "chain_length": "8",
@@ -394,20 +394,20 @@ class TestResolution:
                 "uniprot_start": "687",
             },
             {
-                "chain_length": "173",
-                "discard_reason": "",
-                "discard_reason_type": "",
-                "id": "3JRSB2A",
-                "input_file": str(input_dir / "3JRS_B2A.cif.gz"),
+                "chain_length": "131",
+                "discard_reason": "Rank 3 > top 2",
+                "discard_reason_type": "OutsideTopError",
+                "id": "1UN5",
+                "input_file": str(input_dir / "1un5.cif.gz"),
                 "is_alphafold": "False",
-                "output_file": str(output_dir / "3JRS_B2A.cif.gz"),
-                "passed": "True",
-                "resolution": "2.05",
-                "sequence_identity": "1.000",
-                "total_residue_count": "173",
-                "uniprot_accession": "Q8VZS8",
-                "uniprot_end": "211",
-                "uniprot_start": "8",
+                "output_file": "",
+                "passed": "False",
+                "resolution": "2.6",
+                "sequence_identity": "0.967",
+                "total_residue_count": "131",
+                "uniprot_accession": "P03950",
+                "uniprot_end": "147",
+                "uniprot_start": "25",
             },
             {
                 "chain_length": "1346",

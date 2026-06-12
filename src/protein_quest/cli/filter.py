@@ -233,7 +233,7 @@ def resolution(
     output_dir: OutputDir,
     /,
     *,
-    no_group_by: Annotated[bool, Parameter(negative="")] = False,
+    no_group_by_uniprot_accession: Annotated[bool, Parameter(negative="")] = False,
     top: PositiveInt = 1_000,
     no_coverage: Annotated[bool, Parameter(negative="")] = False,
     min_sequence_identity: NormFloat = 1.0,
@@ -245,18 +245,20 @@ def resolution(
 ) -> None:
     """Filter structure files by best resolution.
 
-    Structures with no resolution and no Uniprot accession are discarded.
-    Structures with lower resolution are preferred.
-    If resolution is the same, structures with more residues are preferred.
-    If resolution is missing, those structures are undesirable.
-    Structures with low sequence identity (smaller than 1) are undesirable.
+    * Structures with no resolution and no Uniprot accession are discarded.
+    * Structures with lower resolution are preferred.
+    * If resolution is the same, structures with more residues are preferred.
+    * If resolution is missing, those structures are undesirable.
+    * Structures with low sequence identity (smaller than 1) are undesirable.
+    * Structures are grouped by Uniprot accession and then clustered by their coverage of the Uniprot sequence
+      (can be disabled with `--no-group-by` and `--no-coverage`).
 
     To see how clustering was done use `protein-quest convert clusters` command.
 
     Args:
         input_dir: Directory structure files.
         output_dir: Directory to write the selected structure files.
-        no_group_by: Disable grouping by Uniprot accession and use global top-N ranking across all files.
+        no_group_by_uniprot_accession: Disable grouping by Uniprot accession and use global top-N ranking across all files.
         top: Maximum number of files to keep.
         no_coverage: If not set, will take top by first grouping by uniprot accession
             and then clustering files by their coverage and then take the top.
@@ -283,7 +285,7 @@ def resolution(
 
     """
     coverage = not no_coverage
-    group_by = not no_group_by
+    group_by = not no_group_by_uniprot_accession
     output_dir.mkdir(parents=True, exist_ok=True)
     cache = cache or CacheParameter()
 
