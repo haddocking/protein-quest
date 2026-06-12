@@ -15,7 +15,7 @@ from protein_quest.clustering import (
 from protein_quest.errors import ResolutionUnsetError
 from protein_quest.pdbe.result import PdbChainLengthError, PdbResult
 
-logging = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def _is_valid_pdb(pdb: PdbResult):
@@ -31,7 +31,7 @@ def _separate_valid_invalid_pdbs(pdbs: list[PdbResult]) -> tuple[list[PdbResult]
         try:
             _is_valid_pdb(pdb)
         except (PdbChainLengthError, ResolutionUnsetError) as e:
-            logging.info(f"PDB {pdb.id} is invalid, placing last: {e}")
+            logger.info(f"PDB {pdb.id} is invalid, placing last: {e}")
             invalid_pdbs.append(pdb)
         else:
             valid_pdbs.append(pdb)

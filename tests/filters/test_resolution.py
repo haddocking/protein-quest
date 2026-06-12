@@ -358,23 +358,17 @@ class TestFilterFilesOnResolution:
         assert output_dir.exists()
         assert list(output_dir.iterdir()) == []
 
-    def test_no_uniprot_can_pass_when_grouping_disabled(self, sample2_cif: Path, tmp_path: Path):
-        no_uniprot = tmp_path / "no-uniprot.cif.gz"
-        with gzip.open(sample2_cif, "rt", encoding="utf-8") as handle:
-            text = handle.read()
-        # Remove UniProt database entries while keeping a valid mmCIF structure.
-        no_uniprot.write_bytes(gzip.compress(text.replace("UNP", "XXX").encode("utf-8")))
-
+    def test_no_uniprot_can_pass_when_grouping_disabled(self, no_uniprot_cif: Path, tmp_path: Path):
         output_dir = tmp_path / "output"
         results = list(
             filter_files_on_resolution(
-                input_files=[no_uniprot], output_dir=output_dir, top=1, group_by=False, min_sequence_identity=0.0
+                input_files=[no_uniprot_cif], output_dir=output_dir, top=1, group_by=False, min_sequence_identity=0.0
             )
         )
 
         expected = ResolutionFilterStatistics(
             id="2Y29",
-            input_file=no_uniprot,
+            input_file=no_uniprot_cif,
             uniprot_accession=None,
             resolution=2.3,
             total_residue_count=8,
@@ -384,7 +378,7 @@ class TestFilterFilesOnResolution:
             sequence_identity=0.0,
             chain_length=8,
             passed=True,
-            output_file=output_dir / no_uniprot.name,
+            output_file=output_dir / no_uniprot_cif.name,
         )
         assert results == [expected]
         assert results[0].output_file is not None and results[0].output_file.exists()

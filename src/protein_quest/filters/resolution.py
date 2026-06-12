@@ -526,13 +526,15 @@ def sort_resolution_statistics(
 def _mark_as_resolution_filter_non_applicable(
     stats: Iterable[ResolutionFilterStatistics],
     *,
+    coverage: bool,
     group_by: bool,
     lax: bool,
 ) -> Generator[ResolutionFilterStatistics]:
+    needs_uniprot = group_by or coverage
     for stat in stats:
         if stat.resolution == 0.0:
             stat.discard_reason = ResolutionUnsetError(stat.input_file)
-        if group_by and stat.uniprot_accession is None:
+        if needs_uniprot and stat.uniprot_accession is None:
             stat.discard_reason = NoUniProtAccessionError(stat.input_file)
         if stat.discard_reason is not None and lax:
             stat.passed = True
@@ -577,7 +579,7 @@ def filter_files_on_resolution(
     """
     stats = load_resolution_statistics(input_files, scheduler_address)
 
-    stats_with_reason = _mark_as_resolution_filter_non_applicable(stats, group_by=group_by, lax=lax)
+    stats_with_reason = _mark_as_resolution_filter_non_applicable(stats, coverage=coverage, group_by=group_by, lax=lax)
     applicable_stats, non_applicable_stats = _split_on_reason(stats_with_reason)
 
     seqind_stats = filter_on_sequence_identity(min_sequence_identity, applicable_stats)

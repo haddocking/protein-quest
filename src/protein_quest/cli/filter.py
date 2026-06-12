@@ -251,7 +251,7 @@ def resolution(
     * If resolution is missing, those structures are undesirable.
     * Structures with low sequence identity (smaller than 1) are undesirable.
     * Structures are grouped by Uniprot accession and then clustered by their coverage of the Uniprot sequence
-      (can be disabled with `--no-group-by` and `--no-coverage`).
+      (can be disabled with `--no-group-by-uniprot-accession` and `--no-coverage`).
 
     To see how clustering was done use `protein-quest convert clusters` command.
 
