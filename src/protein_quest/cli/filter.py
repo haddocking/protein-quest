@@ -369,7 +369,6 @@ def pdbe_quality(
         try:
             input_file = locate_structure_file(input_dir, pdb_id)
         except FileNotFoundError:
-
             rprint(f"[red]Discarded[/red] {pdb_id} (structure file not found)")
             continue
         if score.geometry_quality is None:
