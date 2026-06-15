@@ -27,12 +27,14 @@ from protein_quest.cli.common import (
 from protein_quest.converter import converter
 from protein_quest.go import Aspect, GoTerm, search_gene_ontology_term
 from protein_quest.pdbe.clustering import filter_pdbs_on_clustered_resolution
+from protein_quest.pdbe.fetch import read_pdb_ids_from_csv
 from protein_quest.pdbe.result import (
     PdbChainLengthError,
     PdbResults,
     filter_pdb_results_on_chain_length,
     filter_pdb_results_on_resolution,
 )
+from protein_quest.pdbe.ws import fetch_summary_quality_scores_in_batches
 from protein_quest.pdbe_3dbeacons.clustering import cluster_overviews_per_uniprot
 from protein_quest.pdbe_3dbeacons.model import Provider, search_structure_provider_choices
 from protein_quest.pdbe_3dbeacons.search import PruneOptions, flatten_structure_summaries, uniprots2structures
@@ -310,6 +312,38 @@ def pdbe(
 
     _write_pdbe_csv(output_csv, results)
     rprint(f"Written to {output_csv}")
+
+
+@search_app.command
+def pdbe_quality(
+    pdbe_csv: InputFile,
+    quality_json: OutputFile,
+    /,
+    *,
+    batch_size: BatchSize = 100,
+    timeout: Timeout = 1_800,
+    _: Common | None = None,
+):
+    """Search for quality scores of PDBe entries.
+
+    Search for validation summary quality scores of PDBe entries in the PDBe REST API.
+
+    Args:
+        pdbe_csv: CSV file with a `pdb_id` column, or with `model_provider` and
+            `model_identifier` columns. When using `model_provider`, only rows
+            with `model_provider == 'pdbe'` are used. Single-column CSV files
+            are also accepted, and the first row is treated as an ID. Use `-` for stdin.
+        quality_json: Output JSON file with quality scores for PDBe entries. Use `-` for stdout.
+        batch_size: Number of PDB IDs to query in each batch request to the PDBe REST API.
+        timeout: Maximum seconds to wait for single batch request.
+
+    """
+    pdb_ids = read_pdb_ids_from_csv(pdbe_csv)
+
+    scores = asyncio.run(fetch_summary_quality_scores_in_batches(pdb_ids, batch_size=batch_size, timeout=timeout))
+
+    quality_json.write_bytes(converter.dumps(scores))
+    rprint(f"Written quality scores for {len(scores)} PDBe entries to {quality_json}")
 
 
 @search_app.command

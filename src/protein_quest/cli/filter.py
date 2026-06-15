@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Annotated
 from cyclopts import App, Parameter
 from cyclopts.types import NormFloat, PositiveInt
 from rich.panel import Panel
+from tqdm.rich import tqdm
 
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
 from protein_quest.cli.common import (
@@ -21,6 +22,7 @@ from protein_quest.cli.common import (
     console,
     write_lines,
 )
+from protein_quest.converter import converter
 from protein_quest.filters.chain import filter_files_on_chain
 from protein_quest.filters.residues import filter_files_on_residues
 from protein_quest.filters.resolution import (
@@ -32,6 +34,7 @@ from protein_quest.io import (
     glob_structure_files,
     locate_structure_file,
 )
+from protein_quest.pdbe.ws import Scores
 from protein_quest.utils import copyfile
 
 if TYPE_CHECKING:
@@ -331,6 +334,60 @@ def resolution(
         write_resolution_stats(results, write_stats)
         if str(write_stats) != "-":
             rprint(f"Statistics written to {write_stats}")
+
+
+@filter_app.command
+def pdbe_quality(
+    input_dir: InputDir,
+    quality_json: InputFile,
+    output_dir: OutputDir,
+    /,
+    *,
+    minimal_geometry_quality: float = 50.0,
+    cache: CacheParameter | None = None,
+    _: Common | None = None,
+):
+    """Filter PDB/mmCIF files by PDBe quality scores.
+
+    Args:
+        input_dir: Directory with PDB/mmCIF files.
+        quality_json: JSON file with PDBe quality scores.
+            Can be made with `protein-quest search pdbe-quality` command.
+        output_dir: Directory to write filtered PDB/mmCIF files. Files are copied without modification.
+        minimal_geometry_quality: Minimal geometry quality score to pass the filter.
+        cache: Cache options including no_cache, cache_dir, and copy_method.
+        _: Common CLI options.
+
+    """
+    cache = cache or CacheParameter()
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    with quality_json.open("r", encoding="utf-8") as f:
+        scores = converter.loads(f.read(), dict[str, Scores])
+
+    for pdb_id, score in tqdm(scores.items(), desc="Filtering on PDBe quality", unit="file"):
+        try:
+            input_file = locate_structure_file(input_dir, pdb_id)
+        except FileNotFoundError:
+
+            rprint(f"[red]Discarded[/red] {pdb_id} (structure file not found)")
+            continue
+        if score.geometry_quality is None:
+            rprint(f"[red]Discarded[/red] {pdb_id} (no geometry quality)")
+            continue
+        if score.geometry_quality >= minimal_geometry_quality:
+            output_file = output_dir / input_file.name
+            copyfile(input_file, output_file, cache.copy_method)
+            rprint(f"[green]Passed[/green] {pdb_id} ({score.geometry_quality})")
+        else:
+            rprint(f"[red]Discarded[/red] {pdb_id} ({score.geometry_quality})")
+
+    # TODO add --pass-if-resolution-is-set
+    # TODO add --write-stats, replaces rprints
+    # TODO add --top N?
+    # TODO print summary at the end like "Passed X out of Y files with geometry quality >= Z"
+    # TODO tests
+    # TODO print which files are in input_dir but not in quality_json
 
 
 @filter_app.command

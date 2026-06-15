@@ -48,11 +48,13 @@ graph TB;
     searchuniprot -. uniprot_accessions .-> searchuniprotdetails[/Search UniProt details/]
     searchintactionpartners[/Search interaction partners/] -.-x |uniprot_accessions|searchuniprot
     searchcomplexes[/Search complexes/]
+    searchpdbe -. pdb_ids .-> searchpdbequality[Search PDBe quality]
     searchpdbe -->|pdb_ids|fetchpdbe[Retrieve PDBe]
     searchstructures -. pdb_ids .-> fetchpdbe
     searchstructures -. af_ids .-> fetchad
     searchaf --> |uniprot_accessions|fetchad(Retrieve AlphaFold)
     searchemdb -. emdb_ids .->fetchemdb[Retrieve EMDB]
+    fetchpdbe -->|mmcif_files| filterquality
     fetchpdbe -->|mmcif_files| chainfilter{{Filter on chain of uniprot}}
     chainfilter --> |mmcif_files| resolutionfilter{{Filter on best resolution per UniProt}}
     resolutionfilter --> |mmcif_files| residuefilter{{Filter on nr of residues}}
@@ -62,6 +64,8 @@ graph TB;
     ssfilter -. mmcif_files .-> convert2cif([Convert to cif])
     ssfilter -. mmcif_files .-> convert2uniprot_accessions([Convert to UniProt accessions])
     ssfilter -. mmcif_files .-> convert2clusters([Convert to clusters by UniProt overlap])
+    searchpdbequality -. pdb_ids .-> filterquality{{Filter on quality}}
+    filterquality --> |mmcif_files| chainfilter
     classDef dashedBorder stroke-dasharray: 5 5;
     goterm:::dashedBorder
     taxonomy:::dashedBorder
@@ -71,6 +75,8 @@ graph TB;
     searchintactionpartners:::dashedBorder
     searchcomplexes:::dashedBorder
     searchuniprotdetails:::dashedBorder
+    searchpdbequality:::dashedBorder
+    filterquality:::dashedBorder
     convert2cif:::dashedBorder
     convert2uniprot_accessions:::dashedBorder
     convert2clusters:::dashedBorder
@@ -304,6 +310,17 @@ The `uniprot_details.csv` looks like:
 ```csv
 uniprot_accession,uniprot_id,sequence_length,reviewed,protein_name,taxon_id,taxon_name
 A0A087WUV0,ZN892_HUMAN,522,True,Zinc finger protein 892,9606,Homo sapiens
+```
+
+### Search and filter for PDBe quality scores
+
+The `protein-quest filter resolution` commands does not work on structures without an resolution like those made using NMR.
+With `protein-quest search pdbe-quality` we can fetch the quality scores from the wwPDB validation reports and
+then we can filter on quality with `protein-quest filter quality`.
+
+```shell
+protein-quest search pdbe-quality ./pdbe.csv ./pdbe.quality.json
+protein-quest filter quality ./filter-quality.stats.json ./filtered-chains ./pdbe.quality.json ./filtered-quality
 ```
 
 ### Convert structure files to .cif format
