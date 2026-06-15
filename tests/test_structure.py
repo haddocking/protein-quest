@@ -208,19 +208,6 @@ def test_nr_of_residues_in_total(sample2_cif: Path):
     assert total_residues == 8
 
 
-def assert_structure_metadata(result: StructureMetadata, expected: StructureMetadata) -> None:
-    assert result.id == expected.id
-    assert result.uniprot_accession == expected.uniprot_accession
-    assert result.resolution == pytest.approx(expected.resolution, rel=1e-3, abs=0.0)
-    assert result.total_residue_count == expected.total_residue_count
-    assert result.is_alphafold == expected.is_alphafold
-    assert result.uniprot_start == expected.uniprot_start
-    assert result.uniprot_end == expected.uniprot_end
-    assert result.sequence_identity == pytest.approx(expected.sequence_identity, rel=1e-3, abs=0.0)
-    assert result.chain_length == expected.chain_length
-    assert result.method == expected.method
-
-
 class TestStructureMetadata:
     @pytest.mark.parametrize(
         "cif_fixture, expected",
@@ -343,7 +330,7 @@ class TestStructureMetadata:
         path = request.getfixturevalue(cif_fixture)
         result = StructureMetadata.from_path(path)
 
-        assert_structure_metadata(result, expected)
+        assert result == expected
 
     def test_multiple_accessions_warns(self, multi_accession_cif: Path, caplog: pytest.LogCaptureFixture):
         StructureMetadata.from_path(multi_accession_cif)
@@ -372,7 +359,7 @@ class TestStructureMetadata:
             chain_length=0,
             method="Other",
         )
-        assert_structure_metadata(result, expected)
+        assert result == expected
 
     @pytest.fixture
     def fake_em_structure(self) -> gemmi.Structure:
@@ -396,7 +383,7 @@ class TestStructureMetadata:
             chain_length=0,
             method="EM",
         )
-        assert_structure_metadata(result, expected)
+        assert result == expected
 
     @pytest.fixture
     def fake_alphafill_structure(self) -> gemmi.Structure:
@@ -435,7 +422,7 @@ class TestStructureMetadata:
             chain_length=0,
             method="Predicted",
         )
-        assert_structure_metadata(result, expected)
+        assert result == expected
 
 
 @pytest.mark.parametrize(

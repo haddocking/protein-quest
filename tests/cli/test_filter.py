@@ -418,7 +418,7 @@ class TestResolution:
                 "is_alphafold": "False",
                 "output_file": "",
                 "passed": "False",
-                "resolution": "1.24025624626",
+                "resolution": "1.24",
                 "sequence_identity": "0.816",
                 "total_residue_count": "1346",
                 "uniprot_accession": "O00255",

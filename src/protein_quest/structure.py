@@ -192,11 +192,13 @@ class StructureMetadata:
         id: Identifier of the structure.
         uniprot_accession: Deterministic first UniProt accession, if any.
         resolution: Resolution from gemmi Structure. ``0.0`` means absent.
+            Rounded to 3 decimals.
         total_residue_count: Total number of residues across the whole structure.
         is_alphafold: Whether the structure originates from AlphaFold.
         uniprot_start: Lowest UniProt residue position covered by the mapped chain.
         uniprot_end: Highest UniProt residue position covered by the mapped chain.
         sequence_identity: Sequence identity of the mapped chain to UniProt.
+            Rounded to 3 decimals.
         chain_length: Number of residues in the mapped chain.
         method: The method used to determine the structure.
     """
@@ -211,6 +213,10 @@ class StructureMetadata:
     sequence_identity: float
     chain_length: int
     method: StructureMethod
+
+    def __post_init__(self):
+        object.__setattr__(self, "resolution", round(self.resolution, 3))
+        object.__setattr__(self, "sequence_identity", round(self.sequence_identity, 3))
 
     @classmethod
     def from_path(cls, file: Path) -> "StructureMetadata":
