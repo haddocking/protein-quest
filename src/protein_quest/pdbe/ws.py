@@ -13,7 +13,7 @@ from protein_quest.utils import RetryClient, friendly_session
 
 @dataclass(frozen=True, slots=True)
 class Scores:
-    """Scores
+    """PDBe validation summary quality scores
 
     These scores are harmonic means of percentile-based quality metrics for macromolecular structures:
 

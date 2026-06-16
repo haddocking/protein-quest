@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Annotated
 from cyclopts import App, Parameter
 from cyclopts.types import NormFloat, PositiveInt
 from rich.panel import Panel
-from tqdm.rich import tqdm
 
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
 from protein_quest.cli.common import (
@@ -24,6 +23,7 @@ from protein_quest.cli.common import (
 )
 from protein_quest.converter import converter
 from protein_quest.filters.chain import filter_files_on_chain
+from protein_quest.filters.quality import filter_by_pdbe_quality, write_quality_stats_csv
 from protein_quest.filters.residues import filter_files_on_residues
 from protein_quest.filters.resolution import (
     filter_files_on_resolution,
@@ -33,6 +33,7 @@ from protein_quest.filters.ss import SecondaryStructureFilterQuery, filter_files
 from protein_quest.io import (
     glob_structure_files,
     locate_structure_file,
+    locate_structure_files_by_id,
 )
 from protein_quest.pdbe.ws import Scores
 from protein_quest.utils import copyfile
@@ -344,6 +345,9 @@ def pdbe_quality(
     /,
     *,
     minimal_geometry_quality: float = 50.0,
+    top: PositiveInt | None = None,
+    pass_given_resolution: Annotated[bool, Parameter(negative="")] = False,
+    write_stats: OutputFile | None = None,
     cache: CacheParameter | None = None,
     _: Common | None = None,
 ):
@@ -355,6 +359,12 @@ def pdbe_quality(
             Can be made with `protein-quest search pdbe-quality` command.
         output_dir: Directory to write filtered PDB/mmCIF files. Files are copied without modification.
         minimal_geometry_quality: Minimal geometry quality score to pass the filter.
+        top: Maximum number of files to keep. If not given, top is same as number of files that pass the filter.
+        pass_given_resolution: If set will passthrough files that have a valid resolution.
+        write_stats: Write filter statistics to file.
+            In CSV format with columns:
+            `<pdb_id>,<input_file>,<geometry_quality>,<passed>,<output_file>,<discard_reason>`.
+            Use `-` for stdout.
         cache: Cache options including no_cache, cache_dir, and copy_method.
         _: Common CLI options.
 
@@ -365,28 +375,27 @@ def pdbe_quality(
     with quality_json.open("r", encoding="utf-8") as f:
         scores = converter.loads(f.read(), dict[str, Scores])
 
-    for pdb_id, score in tqdm(scores.items(), desc="Filtering on PDBe quality", unit="file"):
-        try:
-            input_file = locate_structure_file(input_dir, pdb_id)
-        except FileNotFoundError:
-            rprint(f"[red]Discarded[/red] {pdb_id} (structure file not found)")
-            continue
-        if score.geometry_quality is None:
-            rprint(f"[red]Discarded[/red] {pdb_id} (no geometry quality)")
-            continue
-        if score.geometry_quality >= minimal_geometry_quality:
-            output_file = output_dir / input_file.name
-            copyfile(input_file, output_file, cache.copy_method)
-            rprint(f"[green]Passed[/green] {pdb_id} ({score.geometry_quality})")
-        else:
-            rprint(f"[red]Discarded[/red] {pdb_id} ({score.geometry_quality})")
+    located_ids = locate_structure_files_by_id(set(scores.keys()), input_dir)
 
-    # TODO add --pass-if-resolution-is-set
-    # TODO add --write-stats, replaces rprints
-    # TODO add --top N?
-    # TODO print summary at the end like "Passed X out of Y files with geometry quality >= Z"
-    # TODO tests
-    # TODO print which files are in input_dir but not in quality_json
+    results = filter_by_pdbe_quality(
+        scores,
+        located_ids,
+        minimal_geometry_quality=minimal_geometry_quality,
+        top=top,
+        pass_given_resolution=pass_given_resolution,
+    )
+
+    for result in results:
+        if result.passed and result.input_file is not None:
+            copyfile(result.input_file, output_dir / result.input_file.name, cache.copy_method)
+
+    rprint(f"Wrote {len([r for r in results if r.passed])} files to {output_dir} directory.")
+    rprint(f"Discarded {len([r for r in results if not r.passed])} files due to any reason.")
+    rprint(f"Discarded {len(located_ids.extras)} files in {input_dir} directory that were not in {quality_json}.")
+
+    if write_stats:
+        write_quality_stats_csv(results, write_stats, output_dir)
+        rprint(f"Statistics written to {write_stats}")
 
 
 @filter_app.command

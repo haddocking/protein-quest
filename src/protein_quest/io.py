@@ -5,6 +5,7 @@ import logging
 import shutil
 import tempfile
 from collections.abc import Generator, Iterable
+from dataclasses import dataclass, field
 from io import StringIO
 from pathlib import Path
 from typing import Literal, get_args
@@ -386,3 +387,52 @@ def glob_structure_files(input_dir: Path) -> Generator[Path]:
     """
     for ext in valid_structure_file_extensions:
         yield from input_dir.glob(f"*{ext}")
+
+
+@dataclass(frozen=True, slots=True)
+class LocateStructureFilesByIdResult:
+    """Result of locating structure files by PDB ID.
+
+    Attributes:
+        found: A mapping of PDB IDs to their located structure file paths.
+           An PDB ID may be associated with multiple structure files and
+           an structure file may be associated with multiple PDB ID.
+        not_found: A set of PDB IDs that could not be located.
+        extras: A set of structure files in the input directory that were not associated with any of the provided IDs.
+    """
+
+    found: set[tuple[str, Path]] = field(default_factory=set)
+    not_found: set[str] = field(default_factory=set)
+    extras: set[Path] = field(default_factory=set)
+
+
+def locate_structure_files_by_id(ids: set[str], input_dir: Path) -> LocateStructureFilesByIdResult:
+    """Locate structure files for a set of PDB IDs in the specified directory.
+
+    Use presences of ID in filename to associate files with IDs.
+
+    Args:
+        ids: A set of PDB IDs to locate.
+        input_dir: The directory to search for structure files.
+
+    Returns:
+        A LocateStructureFilesByIdResult containing found files, not found IDs, and extra files found.
+    """
+    all_files = list(glob_structure_files(input_dir))
+    # nested loop is not very efficient, but works and is readable
+    ids_lower = {pdb_id.lower(): pdb_id for pdb_id in ids}
+    found = set()
+    for file in all_files:
+        file_name_lower = file.name.lower()
+        for pdb_id_lower, pdb_id in ids_lower.items():
+            if pdb_id_lower in file_name_lower:
+                found.add((pdb_id, file))
+                continue
+
+    not_found = ids - {pdb_id for pdb_id, _ in found}
+    extras = set(all_files) - {file for _, file in found}
+    return LocateStructureFilesByIdResult(
+        found=found,
+        not_found=not_found,
+        extras=extras,
+    )

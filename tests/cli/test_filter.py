@@ -1,6 +1,7 @@
 """Filter CLI tests for protein-quest."""
 
 import csv
+import json
 import textwrap
 from pathlib import Path
 
@@ -156,7 +157,7 @@ def test_filter_residue(sample_cif: Path, sample2_cif: Path, tmp_path: Path, cap
 
     # Check captured output
     captured = capsys.readouterr()
-    assert "by number of residues in chain A" in captured.err
+    assert "by number of residues in chain A" in captured.err.replace("\n", " ")
     assert "Wrote 1 files to" in captured.err
     assert "Statistics written to" in captured.err
 
@@ -476,3 +477,135 @@ class TestResolution:
         assert exc_info.value.code == 1
         captured = capsys.readouterr()
         assert "Invalid value" in captured.err
+
+
+def test_pdbe_quality(
+    tmp_path: Path,
+    all_cifs: list[Path],
+):
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    for fixture_name in all_cifs:
+        (input_dir / fixture_name.name).symlink_to(fixture_name)
+
+    # Fetched using `protein-quest search pdbe-quality ./cif_fixture.ids ./cif_fixture.qual.json`
+    quality_json = tmp_path / "quality.json"
+    quality_json.write_text(
+        json.dumps(
+            {
+                "1un5": {
+                    "geometry_quality": 45.23,
+                    "data_quality": None,
+                    "overall_quality": 45.23,
+                    "experiment_data_available": False,
+                },
+                "1a02": {
+                    "geometry_quality": 6.15,
+                    "data_quality": 7.84,
+                    "overall_quality": 6.73,
+                    "experiment_data_available": True,
+                },
+                "2y29": {
+                    "geometry_quality": 55.9,
+                    "data_quality": 81.09,
+                    "overall_quality": 63.83,
+                    "experiment_data_available": True,
+                },
+                "3jrs": {
+                    "geometry_quality": 31.58,
+                    "data_quality": 22.4,
+                    "overall_quality": 27.13,
+                    "experiment_data_available": True,
+                },
+                "1amb": {
+                    "geometry_quality": None,
+                    "data_quality": None,
+                    "overall_quality": None,
+                    "experiment_data_available": "unknown",
+                },
+                "6o5i": {
+                    "geometry_quality": 64.38,
+                    "data_quality": 61.45,
+                    "overall_quality": 63.17,
+                    "experiment_data_available": True,
+                },
+            }
+        )
+    )
+    output_dir = tmp_path / "output"
+    stats_csv = tmp_path / "stats.csv"
+
+    argv = [
+        "filter",
+        "pdbe-quality",
+        str(input_dir),
+        str(quality_json),
+        str(output_dir),
+        "--write-stats",
+        str(stats_csv),
+    ]
+    main(argv)
+
+    assert output_dir.exists()
+    assert stats_csv.exists()
+
+    stats = list(csv.DictReader(stats_csv.open()))
+    expected_stats = [
+        {
+            "pdb_id": "6o5i",
+            "input_file": str(input_dir / "6O5I.cif.gz"),
+            "geometry_quality": "64.38",
+            "passed": "True",
+            "output_file": str(output_dir / "6O5I.cif.gz"),
+            "reason": "",
+        },
+        {
+            "pdb_id": "2y29",
+            "input_file": str(input_dir / "2Y29.cif.gz"),
+            "geometry_quality": "55.9",
+            "passed": "True",
+            "output_file": str(output_dir / "2Y29.cif.gz"),
+            "reason": "",
+        },
+        {
+            "pdb_id": "1un5",
+            "input_file": str(input_dir / "1un5.cif.gz"),
+            "geometry_quality": "45.23",
+            "passed": "False",
+            "output_file": "",
+            "reason": "Geometry quality score 45.23 < 50.0",
+        },
+        {
+            "pdb_id": "3jrs",
+            "input_file": str(input_dir / "3JRS_B2A.cif.gz"),
+            "geometry_quality": "31.58",
+            "passed": "False",
+            "output_file": "",
+            "reason": "Geometry quality score 31.58 < 50.0",
+        },
+        {
+            "pdb_id": "1amb",
+            "input_file": str(input_dir / "1amb_updated.cif.gz"),
+            "geometry_quality": "",
+            "passed": "False",
+            "output_file": "",
+            "reason": "No geometry quality score",
+        },
+        {
+            "pdb_id": "1a02",
+            "input_file": "",
+            "geometry_quality": "6.15",
+            "passed": "False",
+            "output_file": "",
+            "reason": "File not found",
+        },
+        {
+            "pdb_id": "",
+            "input_file": str(input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
+            "geometry_quality": "",
+            "passed": "False",
+            "output_file": "",
+            "reason": "File not found in quality scores",
+        },
+    ]
+    assert stats == expected_stats
