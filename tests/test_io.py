@@ -4,6 +4,8 @@ from pathlib import Path
 import pytest
 
 from protein_quest.io import (
+    Pdb2UniprotMapping,
+    add_uniprot_accessions2structure,
     convert_to_cif_file,
     convert_to_cif_files,
     glob_structure_files,
@@ -13,6 +15,7 @@ from protein_quest.io import (
     split_name_and_extension,
     structure2bcif,
     structure2cifgz,
+    structure_to_uniprot,
     valid_structure_file_extensions,
     write_structure,
 )
@@ -249,6 +252,7 @@ def test_split_name_and_extension_without_extension(tmp_path: Path):
     assert filename == "filename"
     assert extension == ""
 
+
 def test_em_structure_retains_resolution(em_cif: Path, tmp_path: Path):
     structure = read_structure(em_cif)
     assert structure.resolution == 3.61
@@ -260,6 +264,7 @@ def test_em_structure_retains_resolution(em_cif: Path, tmp_path: Path):
 
     # TODO fix so it returns 3.61 instead of 0.0
     assert written_structure.resolution == 0.0
+
 
 def test_glob_structure_files(tmp_path: Path):
     written_files = set()
@@ -280,3 +285,69 @@ def test_glob_structure_files(tmp_path: Path):
     assert found_files == written_files
     assert non_structure_file not in found_files
     assert nested_structure_file not in found_files
+
+
+class TestStructureToUniprot:
+    def test_from_sifts(self, nmr_cif: Path):
+        structure = read_structure(nmr_cif)
+
+        result = structure_to_uniprot(structure)
+
+        expected: Pdb2UniprotMapping = {
+            "1AMB": {
+                ("A", "P05067"),
+            }
+        }
+        assert result == expected
+
+    def test_from_struct_ref(self, sample2_cif: Path):
+        structure = read_structure(sample2_cif)
+
+        result = structure_to_uniprot(structure)
+
+        expected: Pdb2UniprotMapping = {"2Y29": {("A", "P05067")}}
+        assert result == expected
+
+
+class TestVerifyInjectUniprotRef:
+    def test_none(self, sample2_cif: Path):
+        structure = read_structure(sample2_cif)
+
+        new_structure = add_uniprot_accessions2structure(structure, None)
+        assert structure == new_structure
+
+    def test_missing_id(self, sample2_cif: Path, caplog: pytest.LogCaptureFixture):
+        structure = read_structure(sample2_cif)
+        pdb2uniprot = {"1AAA": {("A", "P12345")}}  # wrong PDB ID
+        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+
+        assert structure == new_structure
+        assert "PDB ID 2Y29 not found in pdb2uniprot mapping. Leaving structure unverified and unchanged." in str(
+            caplog.text
+        )
+
+    def test_verify_ok(self, sample2_cif: Path):
+        structure = read_structure(sample2_cif)
+        pdb2uniprot = {"2Y29": {("A", "P05067")}}
+        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+        assert structure == new_structure
+
+    def test_inject_into_nostructref(self, no_uniprot_cif: Path):
+        structure = read_structure(no_uniprot_cif)
+        pdb2uniprot = {"2Y29": {("A", "P12345")}}
+        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+
+        result2 = structure_to_uniprot(new_structure)
+
+        expected: Pdb2UniprotMapping = {"2Y29": {("A", "P12345")}}
+        assert result2 == expected
+
+    def test_inject_into_existing_sifts(self, nmr_cif: Path):
+        structure = read_structure(nmr_cif)
+        pdb2uniprot = {"1AMB": {("A", "P12345")}}
+        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+
+        result2 = structure_to_uniprot(new_structure)
+
+        expected: Pdb2UniprotMapping = {"1AMB": {("A", "P05067"), ("A", "P12345")}}
+        assert result2 == expected
