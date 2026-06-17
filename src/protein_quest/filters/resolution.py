@@ -230,7 +230,12 @@ class NoUniProtAccessionError(ValueError):
     """Indicates that a structure has no UniProt accession."""
 
     def __init__(self, input_file: Path) -> None:
-        super().__init__(f"No UniProt accession or multiple UniProt accessions found for {input_file}")
+        msg = (
+            f"No UniProt accession or multiple UniProt accessions in {input_file}. "
+            "Use `protein-quest convert structures --uniprot-ref pdbe.csv .` "
+            "to inject UniProt accessions into files."
+        )
+        super().__init__(msg)
         self.input_file = input_file
 
     def __hash__(self) -> int:

@@ -34,6 +34,12 @@ def nmr_cif() -> Path:
 
 
 @pytest.fixture
+def em_cif() -> Path:
+    """EM structure for P0ABE7 (8w77, resolution in weird place)."""
+    return Path(__file__).parent / "fixtures" / "8w77_updated.cif.gz"
+
+
+@pytest.fixture
 def sample_multispan_cif() -> Path:
     """6O5I structure with multiple `_struct_ref_seq` spans for one chain."""
     return Path(__file__).parent / "fixtures" / "6O5I.cif.gz"

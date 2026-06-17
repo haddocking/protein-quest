@@ -1,11 +1,22 @@
 """Convert subcommands for protein-quest."""
 
+import csv
+from pathlib import Path
 from typing import Annotated
 
 from cyclopts import App, Parameter
 from tqdm import tqdm
 
-from protein_quest.cli.common import CacheParameter, Common, InputDir, OutputDir, OutputFile, console, write_lines
+from protein_quest.cli.common import (
+    CacheParameter,
+    Common,
+    InputDir,
+    InputFile,
+    OutputDir,
+    OutputFile,
+    console,
+    write_lines,
+)
 from protein_quest.clustering_io import (
     cluster_results_by_accession,
     write_clusters_csv,
@@ -15,7 +26,13 @@ from protein_quest.clustering_io import (
     write_stats_csv,
 )
 from protein_quest.filters.resolution import load_resolution_statistics
-from protein_quest.io import CifOutputFormat, convert_to_cif_files, glob_structure_files, read_structure
+from protein_quest.io import (
+    CifOutputFormat,
+    Pdb2UniprotMapping,
+    convert_to_cif_files,
+    glob_structure_files,
+    read_structure,
+)
 from protein_quest.structure import structure2uniprot_accessions
 
 rprint = console.print
@@ -64,13 +81,43 @@ def uniprot(
         write_lines(output, sorted(uniprot_accessions))
 
 
+def _read_pdb2uniprot_csv(uniprot_ref: Path | None) -> Pdb2UniprotMapping:
+    """Read CSV file with PDB id to chain/UniProt mappings.
+
+    Expects 3 columns: `pdb_id,chain,uniprot_accession`.
+
+    Args:
+        uniprot_ref: CSV file with PDB to UniProt mappings. If None, returns empty dictionary.
+
+    Returns:
+        Dictionary mapping PDB ID to set of tuples containing chain and UniProt accession.
+    """
+    uniprot_ref_dict: Pdb2UniprotMapping = {}
+    if uniprot_ref is None:
+        return uniprot_ref_dict
+
+    with uniprot_ref.open("r", encoding="utf-8") as f:
+        reader = csv.DictReader(f, fieldnames=["pdb_id", "chain", "uniprot_accession"])
+        for row in reader:
+            pdb_id = row["pdb_id"]
+            chain = row["chain"]
+            uniprot_accession = row["uniprot_accession"]
+            if pdb_id and chain and uniprot_accession:
+                if pdb_id not in uniprot_ref_dict:
+                    uniprot_ref_dict[pdb_id] = set()
+                uniprot_ref_dict[pdb_id].add((chain, uniprot_accession))
+    return uniprot_ref_dict
+
+
 @convert_app.command
 def structures(
     input_dir: InputDir,
     /,
     *,
     output_dir: OutputDir | None = None,
-    output_format: CifOutputFormat = ".cif",
+    output_format: CifOutputFormat = ".cif.gz",
+    # TODO find better name for uniprot_ref
+    uniprot_ref: InputFile | None = None,
     cache: CacheParameter | None = None,
     _common: Common | None = None,
 ) -> None:
@@ -84,6 +131,9 @@ def structures(
             .cif.gz, .bcif, .bcif.gz.
         output_dir: Directory to write converted structure files.
             If not given, files are written to input_dir.
+        uniprot_ref: Supply Uniprot to chain and PDB id mappings.
+            Adds UniProt accessions to structures that are missing them based on the provided mapping.
+            The supplied file must be in CSV format with 3 columns: `pdb_id,chain,uniprot_accession`.
         output_format: Output format for converted files. Supported values are .cif and .cif.gz.
         cache: Cache options including no_cache, cache_dir, and copy_method.
         _common: Common CLI options.
@@ -95,12 +145,16 @@ def structures(
     input_files = sorted(glob_structure_files(input_dir))
     rprint(f"Converting {len(input_files)} files in {input_dir} directory to {output_format} format.")
 
+    # TODO find better name for pdb2uniprot
+    pdb2uniprot = _read_pdb2uniprot_csv(uniprot_ref)
+
     for _ in tqdm(
         convert_to_cif_files(
             input_files,
             output_dir,
             copy_method=cache.copy_method,
             output_format=output_format,
+            pdb2uniprot=pdb2uniprot,
         ),
         total=len(input_files),
         unit="file",

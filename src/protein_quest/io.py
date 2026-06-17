@@ -229,11 +229,21 @@ def structure2bcifgz(structure: gemmi.Structure, bcif_gz_file: Path):
             shutil.copyfileobj(f_in, f_out)
 
 
+Pdb2UniprotMapping = dict[str, set[tuple[str, str]]]
+"""Dictionary mapping PDB ID to set of tuples containing chain and UniProt accession.
+
+For example, `{'1abc': {('A', 'P12345'), ('B', 'Q67890')}}`.
+
+As mapping can be fetched from Uniprot SPARQL API, which uses uppercase PDB IDs, the keys are lowercase.
+"""
+
+
 def convert_to_cif_files(
     input_files: Iterable[Path],
     output_dir: Path,
     copy_method: CopyMethod,
     output_format: CifOutputFormat = ".cif",
+    pdb2uniprot: Pdb2UniprotMapping | None = None,
 ) -> Generator[tuple[Path, Path]]:
     """Convert structure files to CIF format.
 
@@ -242,13 +252,130 @@ def convert_to_cif_files(
         output_dir: Directory to save the converted files.
         copy_method: How to copy when no changes are needed to output file.
         output_format: Output file format to write.
+        pdb2uniprot: Optional dictionary mapping PDB ID to set of tuples containing chain and UniProt accession.
+            If provided, will be used to inject UniProt accessions into structures that lack them.
 
     Yields:
         A tuple of the input file and the output file.
     """
     for input_file in input_files:
-        output_file = convert_to_cif_file(input_file, output_dir, copy_method, output_format=output_format)
+        output_file = convert_to_cif_file(
+            input_file, output_dir, copy_method, output_format=output_format, pdb2uniprot=pdb2uniprot
+        )
         yield input_file, output_file
+
+
+def structure_to_uniprot(structure: gemmi.Structure) -> Pdb2UniprotMapping:
+    # Via sifts_unp_acc
+    chain_uniprots: set[tuple[str, str]] = set()
+    for entity in structure.entities:
+        uniprots = entity.sifts_unp_acc
+        subchains = entity.subchains
+        for subchain in subchains:
+            for uniprot in uniprots:
+                chain_uniprots.add((subchain, uniprot))
+
+    # Gemmi python does not expose entity->dbrefs so we have to go through the mmCIF block
+    # Via struct_ref + struct_ref_seq mmcif blocks
+    block = structure.make_mmcif_block(gemmi.MmcifOutputGroups(False, struct_ref=True))
+    struct_ref = block.get_mmcif_category("_struct_ref.")
+    db_name_unp_idx = [i for i, db_name in enumerate(struct_ref["db_name"]) if db_name == "UNP"]
+    uniprot_accessions = [struct_ref["pdbx_db_accession"][i] for i in db_name_unp_idx]
+    struct_ref_seq = block.get_mmcif_category("_struct_ref_seq.")
+    for i, u in enumerate(struct_ref_seq["pdbx_db_accession"]):
+        if u in uniprot_accessions:
+            chain_uniprots.add((struct_ref_seq["pdbx_strand_id"][i], u))
+
+    return {structure.name: chain_uniprots}
+
+
+def _append_uniprot_to_structure(
+    structure: gemmi.Structure, chain_uniprot_pairs: set[tuple[str, str]]
+) -> gemmi.Structure:
+    if not chain_uniprot_pairs:
+        return structure
+    # sifts_unp_acc is read-only, so we have to inject using mmcif blocks
+    block = structure.make_mmcif_block()
+    struct_ref = block.get_mmcif_category("_struct_ref.")
+    struct_ref_seq = block.get_mmcif_category("_struct_ref_seq.")
+    chain2entity_id: dict[str, str] = {
+        chain: entity.name for entity in structure.entities for chain in entity.subchains
+    }
+    # TODO in chain_uniprot_pairs also include uniprot residues that match aka `A=112-210`
+    # so db_align_beg and db_align_end are set so sequence identity can be computed
+    fillable_struct_ref_seq_cols = {"align_id", "ref_id", "pdbx_strand_id", "pdbx_db_accession"}
+    for chain, uniprot_accession in chain_uniprot_pairs:
+        entity_id = chain2entity_id[chain]
+        new_id = str(len(struct_ref["id"]) + 1)
+        struct_ref["id"].append(new_id)
+        struct_ref["entity_id"].append(entity_id)
+        struct_ref["db_name"].append("UNP")
+        # do not have uniprot id so use None
+        struct_ref["db_code"].append(None)
+        struct_ref["pdbx_db_accession"].append(uniprot_accession)
+        struct_ref["pdbx_db_isoform"].append(None)
+
+        new_seq_id = len(struct_ref_seq["align_id"]) + 1
+        struct_ref_seq["align_id"].append(new_seq_id)
+        struct_ref_seq["ref_id"].append(new_seq_id)
+        struct_ref_seq["pdbx_strand_id"].append(chain)
+        struct_ref_seq["pdbx_db_accession"].append(uniprot_accession)
+        for col in struct_ref_seq:
+            if col not in fillable_struct_ref_seq_cols:
+                struct_ref_seq[col].append(None)
+
+    block.set_mmcif_category("_struct_ref.", struct_ref)
+    block.set_mmcif_category("_struct_ref_seq.", struct_ref_seq)
+    return gemmi.make_structure_from_block(block)
+
+
+# TODO move to structure.py
+def add_uniprot_accessions2structure(
+    structure: gemmi.Structure, pdb2uniprot: Pdb2UniprotMapping | None
+) -> gemmi.Structure:
+    """Add UniProt accessions to a structure if they are missing, based on the provided pdb2uniprot mapping.
+
+    If structure has uniprot accesion that is not in `pdb2uniprot`, it will be left unchanged.
+
+    Args:
+        structure: The gemmi Structure object to add UniProt accessions to.
+        pdb2uniprot: Dictionary mapping PDB ID to set of tuples containing chain and UniProt accession.
+            If provided, will be used to inject UniProt accessions into the structure if they are missing.
+            If None, the structure is returned unchanged.
+
+    Returns:
+        A gemmi Structure object with UniProt accessions added if they were missing
+        or the structure unchanged if all accessions were already present.
+    """
+    if not pdb2uniprot:
+        return structure
+    pdb_id = structure.name
+    if pdb_id not in pdb2uniprot:
+        logger.warning(
+            "PDB ID %s not found in pdb2uniprot mapping. Leaving structure unverified and unchanged.", pdb_id
+        )
+        return structure
+
+    known = structure_to_uniprot(structure)
+    missing = pdb2uniprot[pdb_id] - known[pdb_id]
+    if not missing:
+        # Items in pdb2uniprot are already in structure -> no changes needed
+        return structure
+
+    if not missing:
+        return structure
+    if known[pdb_id]:
+        logger.warning(
+            "Structure %s has some UniProt accessions that do not match the provided mapping. "
+            "Existing: %s, Expected: %s, Missing: %s. Injecting missing accessions.",
+            pdb_id,
+            known[pdb_id],
+            pdb2uniprot[pdb_id],
+            missing,
+        )
+    else:
+        logger.info("Injecting UniProt accessions into structure %s: %s", structure.name, missing)
+    return _append_uniprot_to_structure(structure, missing)
 
 
 def convert_to_cif_file(
@@ -256,6 +383,7 @@ def convert_to_cif_file(
     output_dir: Path,
     copy_method: CopyMethod,
     output_format: CifOutputFormat = ".cif",
+    pdb2uniprot: Pdb2UniprotMapping | None = None,
 ) -> Path:
     """Convert a single structure file to CIF format.
 
@@ -266,6 +394,10 @@ def convert_to_cif_file(
         output_dir: Directory to save the converted file.
         copy_method: How to copy when no changes are needed to output file.
         output_format: Output file format to write.
+        pdb2uniprot: Optional dictionary mapping PDB ID to set of tuples containing chain and UniProt accession.
+            If provided, will not use any shortcuts for copying files and
+            will always read and write the structure to ensure UniProt accessions
+            are verified and injected if necessary.
 
     Returns:
         Path to the converted file.
@@ -281,9 +413,10 @@ def convert_to_cif_file(
     output_file = output_dir / f"{name}{output_format}"
     if output_file.exists():
         logger.info("Output file %s already exists for input file %s. Skipping.", output_file, input_file)
-    elif extension in {".pdb", ".pdb.gz", ".ent", ".ent.gz"}:
+    elif pdb2uniprot or extension in {".pdb", ".pdb.gz", ".ent", ".ent.gz"}:
         structure = read_structure(input_file)
-        write_structure(structure, output_file)
+        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+        write_structure(new_structure, output_file)
     elif extension == ".cif":
         if output_format == ".cif":
             logger.info("File %s is already in .cif format, copying to %s", input_file, output_dir)

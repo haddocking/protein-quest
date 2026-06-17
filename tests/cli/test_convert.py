@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from protein_quest.cli import main
+from protein_quest.io import read_structure, structure_to_uniprot
 
 
 def test_convert_structures_to_cifgz(sample_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
@@ -30,6 +31,43 @@ def test_convert_structures_to_cifgz(sample_cif: Path, tmp_path: Path, capsys: p
     assert (output_dir / "3JRS_B2A.cif.gz").exists()
     captured = capsys.readouterr()
     assert ".cif.gz" in captured.err
+
+
+def test_convert_structures_with_injected_uniprot(no_uniprot_cif: Path, tmp_path: Path):
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    (input_dir / no_uniprot_cif.name).symlink_to(no_uniprot_cif)
+    output_dir = tmp_path / "output"
+    pdb2uniprotcsv = tmp_path / "pdb2uniprot.csv"
+    with pdb2uniprotcsv.open("w", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["pdb_id", "chain", "uniprot_accession"])
+        writer.writeheader()
+        writer.writerows(
+            [
+                {"pdb_id": "2Y29", "chain": "A", "uniprot_accession": "P01100"},
+            ]
+        )
+
+    main(
+        [
+            "convert",
+            "structures",
+            str(input_dir),
+            "--output-dir",
+            str(output_dir),
+            "--output-format",
+            ".cif.gz",
+            "--uniprot-ref",
+            str(pdb2uniprotcsv),
+        ]
+    )
+
+    output_file = output_dir / (no_uniprot_cif.name + ".gz")
+    assert output_file.exists()
+    structure = read_structure(output_file)
+    injected_uniprot = structure_to_uniprot(structure)
+    expected = {"2Y29": {("A", "P01100")}}
+    assert injected_uniprot == expected
 
 
 def test_convert_clusters_writes_clusters_output(
