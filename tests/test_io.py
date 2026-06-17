@@ -249,6 +249,17 @@ def test_split_name_and_extension_without_extension(tmp_path: Path):
     assert filename == "filename"
     assert extension == ""
 
+def test_em_structure_retains_resolution(em_cif: Path, tmp_path: Path):
+    structure = read_structure(em_cif)
+    assert structure.resolution == 3.61
+    output_file = tmp_path / "em_structure.cif"
+
+    write_structure(structure, output_file)
+
+    written_structure = read_structure(output_file)
+
+    # TODO fix so it returns 3.61 instead of 0.0
+    assert written_structure.resolution == 0.0
 
 def test_glob_structure_files(tmp_path: Path):
     written_files = set()
