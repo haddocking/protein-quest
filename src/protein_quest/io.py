@@ -33,6 +33,26 @@ cif_output_formats: set[str] = set(get_args(CifOutputFormat))
 """Set of valid CIF conversion output formats."""
 
 
+def _make_mmcif_document(structure: gemmi.Structure) -> gemmi.cif.Document:
+    """Create an mmCIF document and preserve EM resolution metadata when needed."""
+    # do not write chem_comp so it is viewable by molstar
+    # see https://github.com/project-gemmi/gemmi/discussions/362
+    doc = structure.make_mmcif_document(gemmi.MmcifOutputGroups(True, chem_comp=False))
+    # Gemmi reads EM resolution into Structure.resolution from
+    # _em_3d_reconstruction.resolution, but does not emit that category again.
+    try:
+        experimental_method = structure.info["_exptl.method"]
+    except KeyError:
+        experimental_method = None
+    if structure.resolution > 0 and experimental_method == "Electron Microscopy":
+        block = doc.sole_block()
+        if not block.find_value("_em_3d_reconstruction.resolution"):
+            block.set_pair("_em_3d_reconstruction.entry_id", structure.name)
+            block.set_pair("_em_3d_reconstruction.id", "1")
+            block.set_pair("_em_3d_reconstruction.resolution", str(structure.resolution))
+    return doc
+
+
 def write_structure(structure: gemmi.Structure, path: Path):
     """Write a gemmi structure to a file.
 
@@ -54,9 +74,7 @@ def write_structure(structure: gemmi.Structure, path: Path):
         with gzip.open(path, "wt") as f:
             f.write(body)
     elif path.name.endswith(".cif"):
-        # do not write chem_comp so it is viewable by molstar
-        # see https://github.com/project-gemmi/gemmi/discussions/362
-        doc = structure.make_mmcif_document(gemmi.MmcifOutputGroups(True, chem_comp=False))
+        doc = _make_mmcif_document(structure)
         doc.write_file(str(path))
     elif path.name.endswith(".cif.gz"):
         path.write_bytes(structure2cifgz(structure))
@@ -162,7 +180,7 @@ def structure2bcif(structure: gemmi.Structure, bcif_file: Path):
         structure: The gemmi Structure object to write.
         bcif_file: Path to the output binary CIF file.
     """
-    doc = structure.make_mmcif_document(gemmi.MmcifOutputGroups(True, chem_comp=False))
+    doc = _make_mmcif_document(structure)
     containers = []
     with StringIO(doc.as_string()) as sio:
         reader = PdbxReader(sio)
@@ -181,7 +199,7 @@ def structure2cifgz(structure: gemmi.Structure) -> bytes:
     Returns:
         Gzipped mmCIF bytes.
     """
-    doc = structure.make_mmcif_document(gemmi.MmcifOutputGroups(True, chem_comp=False))
+    doc = _make_mmcif_document(structure)
     return gzip.compress(doc.as_string().encode("utf-8"))
 
 

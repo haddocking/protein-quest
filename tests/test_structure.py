@@ -277,6 +277,22 @@ class TestStructureMetadata:
                 id="1AMB",
             ),
             pytest.param(
+                "em_cif",
+                StructureMetadata(
+                    id="8W77",
+                    uniprot_accession="P0ABE7",
+                    resolution=3.61,
+                    total_residue_count=260,
+                    is_alphafold=False,
+                    uniprot_start=23,
+                    uniprot_end=127,
+                    sequence_identity=1.0,
+                    chain_length=260,
+                    method="EM",
+                ),
+                id="8W77",
+            ),
+            pytest.param(
                 "sample_multispan_cif",
                 StructureMetadata(
                     id="6O5I",
@@ -358,30 +374,6 @@ class TestStructureMetadata:
             sequence_identity=0.0,
             chain_length=0,
             method="Other",
-        )
-        assert result == expected
-
-    @pytest.fixture
-    def fake_em_structure(self) -> gemmi.Structure:
-        structure = gemmi.Structure()
-        structure.resolution = 3.0
-        structure.info["_exptl.method"] = "ELECTRON MICROSCOPY"
-        return structure
-
-    def test_em(self, fake_em_structure: gemmi.Structure):
-        result = structure_metadata(fake_em_structure)
-
-        expected = StructureMetadata(
-            id="",
-            uniprot_accession=None,
-            resolution=3.0,
-            total_residue_count=0,
-            is_alphafold=False,
-            uniprot_start=0,
-            uniprot_end=0,
-            sequence_identity=0.0,
-            chain_length=0,
-            method="EM",
         )
         assert result == expected
 

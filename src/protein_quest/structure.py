@@ -255,7 +255,7 @@ def _structure_method(structure: Structure) -> StructureMethod:
     if has_resolution:
         if exp_method1 and "X-RAY" in exp_method1:
             return "X-ray"
-        if exp_method1 and "ELECTRON MICROSCOPY" in exp_method1:
+        if exp_method1 and "Electron Microscopy" in exp_method1:
             return "EM"
     else:
         if exp_method1 and "NMR" in exp_method1:
