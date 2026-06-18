@@ -20,7 +20,7 @@ COMMON_CHAIN_CASES: list[tuple[str, str, int, int, int]] = [
     ("A/B=2-459,A/B=520-610", "A", 549, 2, 610),  # uniprot/O00255 pdb/3U84
     ("DD/Dd=1-1085", "DD", 1085, 1, 1085),  # uniprot/O00268 pdb/7ENA
     ("A=398-459,A=74-386,A=520-584,A=1-53", "A", 493, 1, 584),  # uniprot/O00255 pdb/7O9T
-    ("A/B=268-443,C=268-373", "A", 282, 268, 443), # uniprot/O00255 pdb/7O9T protein split over 2 chains
+    ("A/B=268-443,C=268-373", "A", 282, 268, 443),  # uniprot/O00255 pdb/7O9T protein split over 2 chains
 ]
 """Format is
 1. uniprot_chains string
