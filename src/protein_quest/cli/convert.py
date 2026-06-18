@@ -134,6 +134,7 @@ def structures(
         uniprot_ref: Supply Uniprot to chain and PDB id mappings.
             Adds UniProt accessions to structures that are missing them based on the provided mapping.
             The supplied file must be in CSV format with 3 columns: `pdb_id,chain,uniprot_accession`.
+            This CSV file can be generated with `protein-quest search pdbe ...`.
         output_format: Output format for converted files. Supported values are .cif and .cif.gz.
         cache: Cache options including no_cache, cache_dir, and copy_method.
         _common: Common CLI options.
