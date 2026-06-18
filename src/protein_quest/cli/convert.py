@@ -81,22 +81,22 @@ def uniprot(
         write_lines(output, sorted(uniprot_accessions))
 
 
-def _read_pdb2uniprot_csv(uniprot_ref: Path | None) -> Pdb2UniprotMapping:
+def _read_pdb2uniprot_csv(uniprots: Path | None) -> Pdb2UniprotMapping:
     """Read CSV file with PDB id to chain/UniProt mappings.
 
     Expects 3 columns: `pdb_id,chain,uniprot_accession`.
 
     Args:
-        uniprot_ref: CSV file with PDB to UniProt mappings. If None, returns empty dictionary.
+        uniprots: CSV file with PDB to UniProt mappings. If None, returns empty dictionary.
 
     Returns:
         Dictionary mapping PDB ID to set of tuples containing chain and UniProt accession.
     """
     uniprot_ref_dict: Pdb2UniprotMapping = {}
-    if uniprot_ref is None:
+    if uniprots is None:
         return uniprot_ref_dict
 
-    with uniprot_ref.open("r", encoding="utf-8") as f:
+    with uniprots.open("r", encoding="utf-8") as f:
         reader = csv.DictReader(f, fieldnames=["pdb_id", "chain", "uniprot_accession"])
         for row in reader:
             pdb_id = row["pdb_id"]
@@ -116,8 +116,7 @@ def structures(
     *,
     output_dir: OutputDir | None = None,
     output_format: CifOutputFormat = ".cif.gz",
-    # TODO find better name for uniprot_ref
-    uniprot_ref: InputFile | None = None,
+    uniprots: InputFile | None = None,
     cache: CacheParameter | None = None,
     _common: Common | None = None,
 ) -> None:
@@ -131,7 +130,7 @@ def structures(
             .cif.gz, .bcif, .bcif.gz.
         output_dir: Directory to write converted structure files.
             If not given, files are written to input_dir.
-        uniprot_ref: Supply Uniprot to chain and PDB id mappings.
+        uniprots: Supply Uniprot to chain and PDB id mappings.
             Adds UniProt accessions to structures that are missing them based on the provided mapping.
             The supplied file must be in CSV format with 3 columns: `pdb_id,chain,uniprot_accession`.
             This CSV file can be generated with `protein-quest search pdbe ...`.
@@ -147,7 +146,7 @@ def structures(
     rprint(f"Converting {len(input_files)} files in {input_dir} directory to {output_format} format.")
 
     # TODO find better name for pdb2uniprot
-    pdb2uniprot = _read_pdb2uniprot_csv(uniprot_ref)
+    pdb2uniprot = _read_pdb2uniprot_csv(uniprots)
 
     for _ in tqdm(
         convert_to_cif_files(
