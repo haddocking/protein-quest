@@ -4,6 +4,7 @@ import pytest
 
 from protein_quest.clustering import (
     NO_OVERLAP_DISTANCE,
+    ClusterableStructure,
     ClusterCoverageError,
     cluster_structures,
     filter_structures_on_clustered_resolution,
@@ -63,7 +64,7 @@ class BrokenChainLengthStructure:
         ),
     ],
 )
-def test_structure_distance(a, b, expected):
+def test_structure_distance(a: ClusterableStructure, b: ClusterableStructure, expected: float):
     assert structure_distance(a, b) == expected
 
 
@@ -77,7 +78,7 @@ def test_structure_distance(a, b, expected):
         pytest.param(make_structure("1AAA", 1, 100), make_structure("2BBB", 300, 400), 201, id="union_no_overlap"),
     ],
 )
-def test_structure_union(a, b, expected):
+def test_structure_union(a: ClusterableStructure, b: ClusterableStructure, expected: int):
     assert structure_union(a, b) == expected
 
 
@@ -127,7 +128,7 @@ class TestSortStructures:
             ),
         ],
     )
-    def test_sort_order(self, structures, expected_order):
+    def test_sort_order(self, structures: list[ClusterableStructure], expected_order: list[str]):
         sorted_members = sort_structures(structures)
         sorted_ids = [member.id for member in sorted_members]
         assert sorted_ids == expected_order
@@ -267,7 +268,7 @@ class TestSortStructures:
         ),
     ],
 )
-def test_cluster_structures(structures, expected):
+def test_cluster_structures(structures: list[ClusterableStructure], expected: list[list[str]]):
     clusters = cluster_structures(structures)
     cluster_ids = [[member.id for member in cluster] for cluster in clusters]
     assert cluster_ids == expected
@@ -300,7 +301,7 @@ class TestTopMembersOfClusters:
 
 class TestFilterStructuresOnClusteredResolution:
     @pytest.mark.parametrize("top", [0, -1])
-    def test_non_positive_top_raises(self, top):
+    def test_non_positive_top_raises(self, top: int):
         with pytest.raises(ValueError, match="Top must be a positive integer"):
             filter_structures_on_clustered_resolution([make_structure("1AAA", 1, 100)], top=top)
 

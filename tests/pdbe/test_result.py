@@ -36,7 +36,7 @@ COMMON_CHAIN_CASES: list[tuple[str, str, int, int, int]] = [
     [(query, chain) for query, chain, _length, _start, _end in COMMON_CHAIN_CASES]
     + [("A=-", "A")],  # uniprot/Q08499 pdb/1E9K
 )
-def test_pdbresult_chain(query, expected):
+def test_pdbresult_chain(query: str, expected: str):
     pdb_result = PdbResult(id="DUMMY", method="DUMMY", uniprot_chains=query)
     result = pdb_result.chain
 
@@ -47,7 +47,7 @@ def test_pdbresult_chain(query, expected):
     "query,expected",
     [(query, length) for query, _chain, length, _start, _end in COMMON_CHAIN_CASES],
 )
-def test_pdb_result_chain_length(query, expected):
+def test_pdb_result_chain_length(query: str, expected: int):
     pdb_result = PdbResult(id="DUMMY", method="DUMMY", uniprot_chains=query)
     result = pdb_result.chain_length
 
@@ -66,7 +66,7 @@ def test_pdb_result_chain_length_invalid():
     "query,expected_start,expected_end",
     [(query, start, end) for query, _chain, _length, start, end in COMMON_CHAIN_CASES],
 )
-def test_pdb_result_uniprot_range(query, expected_start, expected_end):
+def test_pdb_result_uniprot_range(query: str, expected_start: int, expected_end: int):
     pdb_result = PdbResult(id="DUMMY", method="DUMMY", uniprot_chains=query)
 
     assert pdb_result.uniprot_start == expected_start
@@ -77,7 +77,7 @@ def test_pdb_result_uniprot_range(query, expected_start, expected_end):
     "query,expected",
     [(query, length / (end - start + 1)) for query, _chain, length, start, end in COMMON_CHAIN_CASES],
 )
-def test_pdb_result_sequence_identity(query, expected):
+def test_pdb_result_sequence_identity(query: str, expected: float):
     pdb_result = PdbResult(id="DUMMY", method="DUMMY", uniprot_chains=query)
 
     assert pdb_result.sequence_identity == pytest.approx(expected)
@@ -234,6 +234,6 @@ class TestFilterPdbResultsOnResolution:
         assert result == {"Q9NTW7": {valid}}
 
     @pytest.mark.parametrize("top", [0, -1])
-    def test_nonpositive_top_raises(self, top):
+    def test_nonpositive_top_raises(self, top: int):
         with pytest.raises(ValueError, match=f"Top must be a positive integer, got {top}"):
             filter_pdb_results_on_resolution({}, top=top)

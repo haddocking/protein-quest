@@ -198,7 +198,7 @@ def test_converter():
         ),
     ],
 )
-def test_converter_raises_on_invalid_range(raw, match):
+def test_converter_raises_on_invalid_range(raw: dict[str, float | int], match: str):
     with pytest.raises(ValueError, match=match):
         converter.structure(raw, SecondaryStructureFilterQuery)
 
@@ -220,6 +220,6 @@ def test_converter_raises_on_invalid_range(raw, match):
         ),
     ],
 )
-def test_converter_raises_on_invalid_ratio(raw, match):
+def test_converter_raises_on_invalid_ratio(raw: dict[str, str | float], match: str):
     with pytest.RaisesGroup(pytest.RaisesExc(ValueError, match=match)):
         converter.structure(raw, SecondaryStructureFilterQuery)

@@ -1,6 +1,7 @@
 """Exceptions for structure module operations."""
 
 from pathlib import Path
+from typing import Any
 
 
 class ChainNotFoundError(IndexError):
@@ -16,7 +17,7 @@ class ChainNotFoundError(IndexError):
         """Helper for pickling the exception."""
         return (self.__class__, (self.chain_id, self.file, self.available_chains))
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if not isinstance(other, ChainNotFoundError):
             return NotImplemented
         return (

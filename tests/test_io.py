@@ -323,8 +323,8 @@ class TestVerifyInjectUniprotRef:
         new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
 
         assert structure == new_structure
-        assert "PDB ID 2Y29 not found in pdb2uniprot mapping. Leaving structure unverified and unchanged." in str(
-            caplog.text
+        assert (
+            "PDB ID 2Y29 not found in pdb2uniprot mapping. Leaving structure unverified and unchanged." in caplog.text
         )
 
     def test_verify_ok(self, sample2_cif: Path):

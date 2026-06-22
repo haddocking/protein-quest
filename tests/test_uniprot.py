@@ -20,7 +20,7 @@ from protein_quest.uniprot import (
 )
 
 
-def assertQueryEqual(actual, expected):
+def assertQueryEqual(actual: str, expected: str):
     """
     Helper function to assert that two SPARQL queries are equal.
     Strips leading whitespace for comparison.
@@ -195,7 +195,9 @@ def test_build_sparql_query_pdb():
         ),
     ],
 )
-def test_append_subcellular_location_filters(subcellular_location_uniprot, subcellular_location_go, expected):
+def test_append_subcellular_location_filters(
+    subcellular_location_uniprot: str, subcellular_location_go: set[str], expected: str
+):
     """Test _append_subcellular_location_filters with various input combinations."""
     query = Query(
         taxon_id=None,
@@ -305,7 +307,7 @@ def test_search4af_ok_sequence_length():
 def test_search4af_too_small_sequence_length():
     results = search4af({"P05067"}, limit=1, min_sequence_length=800)
 
-    expected = {}
+    expected: dict[str, set[str]] = {}
     assert results == expected
 
 
@@ -313,7 +315,7 @@ def test_search4af_too_small_sequence_length():
 def test_search4af_too_big_sequence_length():
     results = search4af({"P05067"}, limit=1, max_sequence_length=600)
 
-    expected = {}
+    expected: dict[str, set[str]] = {}
     assert results == expected
 
 
@@ -344,7 +346,7 @@ class TestSearch4AfExternalIsoforms:
         # as only non-canonical isoforms are longer than that
         results = search4af({"P42284"}, min_sequence_length=600, limit=10)
 
-        expected = {}
+        expected: dict[str, set[str]] = {}
         assert results == expected
 
 

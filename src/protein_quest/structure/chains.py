@@ -99,7 +99,7 @@ def _add_provenance_info(structure: gemmi.Structure, chain2keep: str, out_chain:
     new_si = gemmi.SoftwareItem()
     new_si.classification = gemmi.SoftwareItem.Classification.DataExtraction
     new_si.name = "protein-quest.pdbe.io.write_single_chain_pdb_file"
-    new_si.version = str(__version__)
+    new_si.version = __version__
     new_si.date = str(datetime.now(tz=UTC).date())
     structure.meta.software = [*structure.meta.software, new_si]
 

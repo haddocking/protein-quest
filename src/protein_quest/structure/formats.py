@@ -6,6 +6,7 @@ import shutil
 import tempfile
 from io import StringIO
 from pathlib import Path
+from typing import Any
 from urllib.request import urlopen
 
 import gemmi
@@ -141,7 +142,7 @@ def bcif2structure(bcif_file: Path) -> gemmi.Structure:
     return gemmi.make_structure_from_block(block)
 
 
-def _initialize_dictionary_api(containers) -> DictionaryApi:
+def _initialize_dictionary_api(containers: list[Any]) -> DictionaryApi:
     dict_local = user_cache_root_dir() / "mmcif_pdbx_v5_next.dic"
     if not dict_local.exists():
         dict_url = "https://raw.githubusercontent.com/wwpdb-dictionaries/mmcif_pdbx/master/dist/mmcif_pdbx_v5_next.dic"
@@ -162,7 +163,7 @@ def structure2bcif(structure: gemmi.Structure, bcif_file: Path):
         structure: The gemmi Structure object to write.
         bcif_file: Path to the output binary CIF file."""
     doc = _make_mmcif_document(structure)
-    containers = []
+    containers: list[Any] = []
     with StringIO(doc.as_string()) as sio:
         reader = PdbxReader(sio)
         reader.read(containers)

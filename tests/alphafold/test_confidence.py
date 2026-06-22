@@ -127,7 +127,7 @@ def test_query_converter():
         ),
     ],
 )
-def test_query_converter_bad_confidence(raw: dict, match: str):
+def test_query_converter_bad_confidence(raw: dict[str, str | int], match: str):
     with pytest.RaisesGroup(pytest.RaisesExc(ValueError, match=match)):
         converter.structure(
             raw,
@@ -148,7 +148,7 @@ def test_query_converter_bad_confidence(raw: dict, match: str):
         ),
     ],
 )
-def test_query_converter_bad_residues(raw: dict, match: str):
+def test_query_converter_bad_residues(raw: dict[str, str | int], match: str):
     with pytest.raises(ValueError, match=match):
         converter.structure(
             raw,

@@ -17,7 +17,7 @@ async def test_fetch(tmp_path: Path):
     assert results == expected
 
 
-@pytest.mark.default_cassette("test_fetch.yaml")  # pyrefly: ignore[not-callable]
+@pytest.mark.default_cassette("test_fetch.yaml")
 @pytest.mark.vcr
 def test_sync_fetch(tmp_path: Path):
     theid = "2Y29"

@@ -159,7 +159,7 @@ def test_nr_residues_in_chain(sample2_cif: Path):
     assert residue_count == 8
 
 
-def test_nr_residues_in_chain_wrongchain(sample2_cif: Path, caplog):
+def test_nr_residues_in_chain_wrongchain(sample2_cif: Path, caplog: pytest.LogCaptureFixture):
     residue_count = nr_residues_in_chain(sample2_cif, chain="Z")
 
     assert residue_count == 0
