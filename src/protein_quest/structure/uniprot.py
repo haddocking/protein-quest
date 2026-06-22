@@ -69,6 +69,28 @@ def _select_best_struct_ref_seq(struct_ref_seqs: list[StructRefSeq]) -> StructRe
     return min(struct_ref_seqs, key=lambda s: (-s.aligned_residue_count, s.uniprot_accession))
 
 
+def selected_struct_ref_seqs_by_chain(structure: gemmi.Structure, accessions: set[str]) -> dict[str, StructRefSeq]:
+    """Select one best ``StructRefSeq`` per chain for matching accessions.
+
+    Selection for each chain is based on highest aligned residue count,
+    with ties broken alphabetically by accession for deterministic behavior.
+
+    Args:
+        structure: The structure containing ``_struct_ref_seq`` records.
+        accessions: UniProt accessions to match against.
+
+    Returns:
+        Mapping from chain id to selected ``StructRefSeq``. Empty when no
+        matching records are present.
+    """
+    matching_struct_ref_seqs = _matching_struct_ref_seqs(structure, accessions)
+    struct_ref_seqs_by_chain = _group_struct_ref_seqs_by_chain(matching_struct_ref_seqs)
+    return {
+        chain_id: _select_best_struct_ref_seq(chain_struct_ref_seqs)
+        for chain_id, chain_struct_ref_seqs in struct_ref_seqs_by_chain.items()
+    }
+
+
 def structure_to_uniprot(structure: gemmi.Structure) -> Pdb2UniprotMapping:
     """Extract chain-to-UniProt mapping from a structure."""
     chain_uniprots: set[tuple[str, str]] = set()
