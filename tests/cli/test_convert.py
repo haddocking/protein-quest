@@ -57,7 +57,7 @@ def test_convert_structures_with_injected_uniprot(no_uniprot_cif: Path, tmp_path
             str(output_dir),
             "--output-format",
             ".cif.gz",
-            "--uniprot-ref",
+            "--uniprots",
             str(pdb2uniprotcsv),
         ]
     )
