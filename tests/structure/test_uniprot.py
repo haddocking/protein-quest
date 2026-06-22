@@ -4,8 +4,13 @@ import gemmi
 import pytest
 
 from protein_quest.structure.formats import read_structure
-from protein_quest.structure.types import StructRefSeq
-from protein_quest.structure.uniprot import struct_ref_seqs_columns_to_records, structure2uniprot_accessions
+from protein_quest.structure.types import Pdb2UniprotMapping, StructRefSeq
+from protein_quest.structure.uniprot import (
+    add_uniprot_accessions2structure,
+    struct_ref_seqs_columns_to_records,
+    structure2uniprot_accessions,
+    structure_to_uniprot,
+)
 
 
 def test_structure2uniprot_accessions_present(sample2_cif: Path):
@@ -161,3 +166,68 @@ def test_struct_ref_seqs_columns_to_records(
         expected_records,
         key=lambda r: (r.uniprot_accession, r.chain_id),
     )
+
+
+class TestStructureToUniprot:
+    def test_from_sifts(self, nmr_cif: Path):
+        structure = read_structure(nmr_cif)
+
+        result = structure_to_uniprot(structure)
+
+        expected: Pdb2UniprotMapping = {
+            "1AMB": {
+                ("A", "P05067"),
+            }
+        }
+        assert result == expected
+
+    def test_from_struct_ref(self, sample2_cif: Path):
+        structure = read_structure(sample2_cif)
+
+        result = structure_to_uniprot(structure)
+
+        expected: Pdb2UniprotMapping = {"2Y29": {("A", "P05067")}}
+        assert result == expected
+
+class TestVerifyInjectUniprotRef:
+    def test_none(self, sample2_cif: Path):
+        structure = read_structure(sample2_cif)
+
+        new_structure = add_uniprot_accessions2structure(structure, None)
+        assert structure == new_structure
+
+    def test_missing_id(self, sample2_cif: Path, caplog: pytest.LogCaptureFixture):
+        structure = read_structure(sample2_cif)
+        pdb2uniprot = {"1AAA": {("A", "P12345")}}  # wrong PDB ID
+        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+
+        assert structure == new_structure
+        assert (
+            "PDB ID 2Y29 not found in pdb2uniprot mapping. Leaving structure unverified and unchanged." in caplog.text
+        )
+
+    def test_verify_ok(self, sample2_cif: Path):
+        structure = read_structure(sample2_cif)
+        pdb2uniprot = {"2Y29": {("A", "P05067")}}
+        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+        assert structure == new_structure
+
+    def test_inject_into_nostructref(self, no_uniprot_cif: Path):
+        structure = read_structure(no_uniprot_cif)
+        pdb2uniprot = {"2Y29": {("A", "P12345")}}
+        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+
+        result2 = structure_to_uniprot(new_structure)
+
+        expected: Pdb2UniprotMapping = {"2Y29": {("A", "P12345")}}
+        assert result2 == expected
+
+    def test_inject_into_existing_sifts(self, nmr_cif: Path):
+        structure = read_structure(nmr_cif)
+        pdb2uniprot = {"1AMB": {("A", "P12345")}}
+        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+
+        result2 = structure_to_uniprot(new_structure)
+
+        expected: Pdb2UniprotMapping = {"1AMB": {("A", "P05067"), ("A", "P12345")}}
+        assert result2 == expected
