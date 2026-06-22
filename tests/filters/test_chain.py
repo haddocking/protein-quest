@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from protein_quest.filters.chain import ChainFilterStatistics, filter_files_on_chain
-from protein_quest.structure import ChainNotFoundError
+from protein_quest.structure.errors import ChainNotFoundError
 
 
 @pytest.mark.parametrize(

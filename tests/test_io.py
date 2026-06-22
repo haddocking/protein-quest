@@ -3,22 +3,17 @@ from pathlib import Path
 
 import pytest
 
-from protein_quest.io import (
-    Pdb2UniprotMapping,
-    add_uniprot_accessions2structure,
-    convert_to_cif_file,
-    convert_to_cif_files,
-    glob_structure_files,
+from protein_quest.structure.convert import convert_to_cif_file, convert_to_cif_files
+from protein_quest.structure.files import glob_structure_files, locate_structure_file, split_name_and_extension
+from protein_quest.structure.formats import (
     gunzip_file,
-    locate_structure_file,
     read_structure,
-    split_name_and_extension,
     structure2bcif,
     structure2cifgz,
-    structure_to_uniprot,
-    valid_structure_file_extensions,
     write_structure,
 )
+from protein_quest.structure.types import Pdb2UniprotMapping, valid_structure_file_extensions
+from protein_quest.structure.uniprot import add_uniprot_accessions2structure, structure_to_uniprot
 
 
 def test_valid_structure_file_extensions():

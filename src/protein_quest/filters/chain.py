@@ -11,7 +11,7 @@ from distributed.deploy.cluster import Cluster
 from tqdm.auto import tqdm
 
 from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
-from protein_quest.structure import write_single_chain_structure_file
+from protein_quest.structure.chains import write_single_chain_structure_file
 from protein_quest.utils import CopyMethod
 
 logger = logging.getLogger(__name__)

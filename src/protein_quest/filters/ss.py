@@ -9,8 +9,8 @@ from cyclopts import Parameter
 from gemmi import Structure
 
 from protein_quest.converter import PositiveInt, Ratio, converter
-from protein_quest.io import read_structure
-from protein_quest.structure import nr_of_residues_in_total
+from protein_quest.structure.chains import nr_of_residues_in_total
+from protein_quest.structure.formats import read_structure
 
 logger = logging.getLogger(__name__)
 

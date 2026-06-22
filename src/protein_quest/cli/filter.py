@@ -28,10 +28,7 @@ from protein_quest.filters.resolution import (
     write_resolution_stats,
 )
 from protein_quest.filters.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
-from protein_quest.io import (
-    glob_structure_files,
-    locate_structure_file,
-)
+from protein_quest.structure.files import glob_structure_files, locate_structure_file
 from protein_quest.utils import copyfile
 
 if TYPE_CHECKING:

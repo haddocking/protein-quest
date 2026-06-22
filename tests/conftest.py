@@ -3,7 +3,7 @@ from pathlib import Path
 import gemmi
 import pytest
 
-from protein_quest.io import read_structure, write_structure
+from protein_quest.structure.formats import read_structure, write_structure
 
 
 @pytest.fixture

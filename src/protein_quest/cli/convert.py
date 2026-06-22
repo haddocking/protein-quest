@@ -26,14 +26,11 @@ from protein_quest.clustering_io import (
     write_stats_csv,
 )
 from protein_quest.filters.resolution import load_resolution_statistics
-from protein_quest.io import (
-    CifOutputFormat,
-    Pdb2UniprotMapping,
-    convert_to_cif_files,
-    glob_structure_files,
-    read_structure,
-)
-from protein_quest.structure import structure2uniprot_accessions
+from protein_quest.structure.convert import convert_to_cif_files
+from protein_quest.structure.files import glob_structure_files
+from protein_quest.structure.formats import read_structure
+from protein_quest.structure.types import CifOutputFormat, Pdb2UniprotMapping
+from protein_quest.structure.uniprot import structure2uniprot_accessions
 
 rprint = console.print
 

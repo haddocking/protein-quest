@@ -15,7 +15,7 @@ from protein_quest.filters.ss import (
     nr_of_residues_in_sheet,
     nr_of_residues_in_total,
 )
-from protein_quest.io import read_structure
+from protein_quest.structure.formats import read_structure
 
 
 @pytest.fixture
