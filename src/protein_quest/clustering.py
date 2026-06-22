@@ -1,9 +1,5 @@
 """Generic clustering of UniProt-mapped structures by residue-range overlap.
 
-Source-agnostic clustering algorithm shared by the SPARQL PDB search
-([protein_quest.pdbe.clustering][]) and the 3D Beacons structure search
-([protein_quest.pdbe_3dbeacons.clustering][]).
-
 Any object satisfying the [ClusterableStructure][protein_quest.clustering.ClusterableStructure]
 protocol can be clustered.
 """

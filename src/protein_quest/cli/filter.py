@@ -385,7 +385,7 @@ def secondary_structure(
             f"{result.stats.nr_sheet_residues},{round(result.stats.helix_ratio, 3)},"
             f"{round(result.stats.sheet_ratio, 3)},{result.passed},{output_file or ''}"
         )
-        # TODO when result user resolvable discard reason then
+        # TODO when some discard reason are resolvable by the user then
         # make cli have exit code of non-zero and raise a ExceptionGroup with all those errors
         # a user resolvable discard reason is for example multi-chain accession ambiguity
     if write_stats:

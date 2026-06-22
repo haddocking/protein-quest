@@ -7,8 +7,6 @@ unchanged.
 
 Attributes:
     PDBE_PROVIDER_RESPONSE: Provider name used in the Overview summaries to identify entries provided by [PDBe](https://www.ebi.ac.uk/pdbe/).
-    ALPHAFOLD_PROVIDER_RESPONSE: Provider name used in the Overview summaries to identify entries
-        provided by [AlphaFold DB](https://alphafold.ebi.ac.uk/).
 """
 
 from dataclasses import dataclass

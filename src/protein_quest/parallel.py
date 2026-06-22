@@ -6,7 +6,7 @@ import sys
 import warnings
 from collections.abc import Callable, Collection, Generator
 from contextlib import contextmanager, suppress
-from typing import Any, Concatenate, ParamSpec, cast
+from typing import Any, Concatenate, ParamSpec, cast, override
 
 from dask.distributed import Client, LocalCluster
 from distributed.deploy.cluster import Cluster
@@ -107,8 +107,7 @@ class MyProgressBar(ProgressBar):
         loop: Any | None = None,
         complete: bool = True,
         start: bool = True,
-        # pyrefly: ignore [implicit-any-parameter]
-        **kwargs,  # noqa: ARG002
+        **kwargs: Any,  # noqa: ARG002
     ):
         self._loop_runner = loop_runner = LoopRunner(loop=loop)
         if interval == "100ms":
@@ -138,8 +137,7 @@ class MyProgressBar(ProgressBar):
         warnings.warn("setting the loop property is deprecated", DeprecationWarning, stacklevel=2)
         self.__loop = value
 
-    # pyrefly: ignore [implicit-any-parameter]
-    def _draw_bar(self, remaining: int, all: int, **kwargs):  # noqa: A002, ARG002
+    def _draw_bar(self, remaining: int, all: int, **kwargs: Any):  # noqa: A002, ARG002
         frac = (1 - remaining / all) if all else 1.0
         bar = "#" * int(self.width * frac)
         percent = int(100 * frac)
@@ -149,8 +147,8 @@ class MyProgressBar(ProgressBar):
             sys.stderr.write(msg)
             sys.stderr.flush()
 
-    # pyrefly: ignore [implicit-any-parameter, missing-override-decorator]
-    def _draw_stop(self, **kwargs):  # noqa: ARG002
+    @override
+    def _draw_stop(self, **kwargs: Any):
         sys.stderr.write("\33[2K\r")
         sys.stderr.flush()
 
