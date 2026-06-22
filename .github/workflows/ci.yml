@@ -55,7 +55,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
       - name: Run linters
-        run: uvx ruff check
+        run: uvx ruff check --output-format=github
   typing:
     name: typing
     runs-on: ubuntu-latest
