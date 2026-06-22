@@ -66,7 +66,7 @@ mcp = [
 
 [dependency-groups]
 type = [
-    "pyrefly>=0.30.0",
+    "pyrefly>=0.53.0",
     "types-aiofiles>=24.1.0.20250326",
     "types-tqdm>=4.67.0.20250513",
 ]
@@ -88,11 +88,6 @@ docs = [
     "mkdocs-jupyter>=0.25.1",
     "mkdocs-material>=9.6.14",
     "mkdocstrings-python>=2.0.2",
-]
-docs-type = [
-    "marimo>=0.23.0",
-    "nbconvert>=7.16.6",
-    {include-group = "type"},
 ]
 
 [build-system]
