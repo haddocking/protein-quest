@@ -189,6 +189,7 @@ class TestStructureToUniprot:
         expected: Pdb2UniprotMapping = {"2Y29": {("A", "P05067")}}
         assert result == expected
 
+
 class TestVerifyInjectUniprotRef:
     def test_none(self, sample2_cif: Path):
         structure = read_structure(sample2_cif)

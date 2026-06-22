@@ -6,7 +6,6 @@ import pytest
 from protein_quest.structure.formats import (
     gunzip_file,
     read_structure,
-    structure2bcif,
     structure2cifgz,
     write_structure,
 )
@@ -61,6 +60,7 @@ def test_gunzip_of_non_gz_file(tmp_path: Path):
 
     with pytest.raises(ValueError, match="must end with \\.gz"):
         gunzip_file(input_file)
+
 
 @pytest.mark.parametrize(
     ["output_fn"],

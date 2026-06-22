@@ -36,6 +36,7 @@ def test_locate_structure_file_notfound(tmp_path: Path):
     with pytest.raises(FileNotFoundError, match="No structure file found for nonexistent_id in"):
         locate_structure_file(tmp_path, "nonexistent_id")
 
+
 def test_split_name_and_extension_without_extension(tmp_path: Path):
     file = tmp_path / "filename"
     file.write_text("some text")
