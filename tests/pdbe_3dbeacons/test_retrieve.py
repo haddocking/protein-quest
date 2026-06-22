@@ -172,7 +172,7 @@ class TestRetrieveStructures:
 
     @pytest.mark.asyncio
     @pytest.mark.vcr
-    async def test_cif_to_gzip_cached(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
+    async def test_cif_to_gzip(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
         rows = [
             RetrieveStructureRow(
                 provider="ped",
@@ -183,13 +183,12 @@ class TestRetrieveStructures:
         ]
 
         cacher = DirectoryCacher(tmp_path / "cache", copy_method="copy")
-        output_dir = tmp_path / "second"
-        # populate cache with first run
-        expected_name = "ped~PED03502e001.cif.gz"
+        output_dir = tmp_path / "output"
 
         with caplog.at_level("DEBUG", logger="protein_quest.pdbe_3dbeacons.retrieve"):
             summary = await retrieve_structures(rows, output_dir, cacher=cacher)
 
+        expected_name = "ped~PED03502e001.cif.gz"
         output_file = output_dir / expected_name
         assert output_file.exists()
         assert output_file.stat().st_size > 0
