@@ -75,6 +75,7 @@ def convert_to_cif_file(
 
     Raises:
         ValueError: If the requested output format is not supported."""
+    logger.debug("Converting %s", input_file)
     if output_format not in cif_output_formats:
         msg = f"Unsupported output format {output_format}. Supported output formats are: {cif_output_formats}."
         raise ValueError(msg)

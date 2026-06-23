@@ -24,6 +24,9 @@ from protein_quest.structure.types import valid_structure_file_extensions
         ("2y29", "pdb2y29.ent.gz"),
         ("2y29", "2y29.bcif"),
         ("2y29", "2y29.bcif.gz"),
+        # updated postfix
+        ("1amb", "1amb_updated.cif"),
+        ("1amb", "1amb_updated.cif.gz"),
         # cases
         ("1KVm", "1KVm.cif"),
         ("1KVm", "1kvm.cif"),
@@ -43,14 +46,24 @@ def test_locate_structure_file_notfound(tmp_path: Path):
         locate_structure_file(tmp_path, "nonexistent_id")
 
 
-def test_split_name_and_extension_without_extension(tmp_path: Path):
-    file = tmp_path / "filename"
-    file.write_text("some text")
+@pytest.mark.parametrize(
+    "file_name, expected_filename, expected_extension",
+    [
+        ("filename.txt", "filename", ".txt"),
+        ("filename.txt.gz", "filename", ".txt.gz"),
+        ("filename", "filename", ""),
+        ("1amb_updated.cif.gz", "1amb_updated", ".cif.gz"),
+    ],
+)
+def test_split_name_and_extension(
+    file_name: str,
+    expected_filename: str,
+    expected_extension: str,
+):
+    filename, extension = split_name_and_extension(file_name)
 
-    filename, extension = split_name_and_extension(file.name)
-
-    assert filename == "filename"
-    assert extension == ""
+    assert filename == expected_filename
+    assert extension == expected_extension
 
 
 def test_glob_structure_files(tmp_path: Path):

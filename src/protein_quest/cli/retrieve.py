@@ -39,6 +39,10 @@ def pdbe(
     output_dir: OutputDir,
     /,
     *,
+    archived: Annotated[
+        bool,
+        Parameter(negative=""),
+    ] = False,
     max_parallel_downloads: BatchSize = 5,
     cache: CacheParameter | None = None,
     _: Common | None = None,
@@ -54,6 +58,10 @@ def pdbe(
             with `model_provider == 'pdbe'` are used. Single-column CSV files
             are also accepted, and the first row is treated as an ID. Use `-` for stdin.
         output_dir: Directory to store downloaded PDBe mmCIF files.
+        archived: Retrieve archived versions.
+            By default downloads an updated version of the PDB archive mmCIF format file.
+            The updated version is generated with standardisation of vocabularies,
+            and addition of connectivity information for every chemical compound present in the PDB entry.
         max_parallel_downloads: Maximum number of parallel downloads.
         cache: Cache options including no_cache, cache_dir, and copy_method.
         _: Common CLI options.
@@ -64,7 +72,9 @@ def pdbe(
     cacher = to_cacher(cache)
 
     result = asyncio.run(
-        pdbe_fetch.fetch(pdb_ids, output_dir, max_parallel_downloads=max_parallel_downloads, cacher=cacher)
+        pdbe_fetch.fetch(
+            pdb_ids, output_dir, archived=archived, max_parallel_downloads=max_parallel_downloads, cacher=cacher
+        )
     )
     rprint(f"Retrieved {len(result)} PDBe entries")
 
