@@ -32,6 +32,8 @@ def _map_id_mmcif(pdb_id: str, archived: bool = False) -> tuple[str, str]:
 async def fetch(
     ids: Iterable[str],
     save_dir: Path,
+    /,
+    *,
     archived: bool = False,
     max_parallel_downloads: int = 5,
     cacher: Cacher | None = None,
@@ -63,7 +65,7 @@ async def fetch(
 
 
 def sync_fetch(
-    ids: Iterable[str], save_dir: Path, archived: bool = False, max_parallel_downloads: int = 5
+    ids: Iterable[str], save_dir: Path, /, *, archived: bool = False, max_parallel_downloads: int = 5
 ) -> Mapping[str, Path]:
     """Synchronously fetches mmCIF files from the PDBe database.
 
