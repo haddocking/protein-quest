@@ -318,11 +318,11 @@ The `protein-quest filter resolution` commands does not work on structures
 without an resolution like those made using NMR. With
 `protein-quest search pdbe-quality` we can fetch the quality scores from the
 wwPDB validation reports and then we can filter on quality with
-`protein-quest filter quality`.
+`protein-quest filter pdbe-quality`.
 
 ```shell
 protein-quest search pdbe-quality ./pdbe.csv ./pdbe.quality.json
-protein-quest filter quality ./filter-quality.stats.json ./filtered-chains ./pdbe.quality.json ./filtered-quality
+protein-quest filter pdbe-quality ./filtered-chains ./pdbe.quality.json ./filtered-quality
 ```
 
 ### Convert structure files to .cif format
