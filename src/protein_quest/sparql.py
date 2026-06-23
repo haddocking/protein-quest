@@ -3,13 +3,16 @@
 import logging
 from collections.abc import Iterable
 from textwrap import dedent
+from typing import Any
 
 from SPARQLWrapper import JSON, SPARQLWrapper
 
 logger = logging.getLogger(__name__)
 
 
-def build_sparql_generic_query(select_clause: str, where_clause: str, limit: int = 10_000, groupby_clause="") -> str:
+def build_sparql_generic_query(
+    select_clause: str, where_clause: str, limit: int = 10_000, groupby_clause: str = ""
+) -> str:
     """
     Builds a generic SPARQL query with the given select and where clauses.
 
@@ -41,7 +44,7 @@ def build_sparql_generic_query(select_clause: str, where_clause: str, limit: int
 
 
 def build_sparql_generic_by_uniprot_accessions_query(
-    uniprot_accs: Iterable[str], select_clause: str, where_clause: str, limit: int = 10_000, groupby_clause=""
+    uniprot_accs: Iterable[str], select_clause: str, where_clause: str, limit: int = 10_000, groupby_clause: str = ""
 ) -> str:
     """Builds a generic SPARQL query and filters by the given UniProt accessions.
 
@@ -75,7 +78,7 @@ def build_sparql_generic_by_uniprot_accessions_query(
 def execute_sparql_search(
     sparql_query: str,
     timeout: int,
-) -> list:
+) -> list[Any]:
     """
     Execute a SPARQL query.
 

@@ -82,25 +82,17 @@ class PdbResult:
         Missing or non-numeric resolutions become ``0.0`` so they rank as
         undesirable by resolution-based sorting.
         """
-        return _resolution_value(self.resolution)
+        value = self.resolution
+        if value is None:
+            return 0.0
+        try:
+            return float(value)
+        except ValueError:
+            return 0.0
 
 
 type PdbResults = dict[str, set[PdbResult]]
 """Dictionary with uniprot accessions as keys and sets of PDB results as values."""
-
-
-def _resolution_value(value: str | None) -> float:
-    """Convert a PDB resolution string to float.
-
-    Missing or non-numeric values are treated as ``0.0`` and therefore
-    ranked as undesirable by resolution-based sorting.
-    """
-    if value is None:
-        return 0.0
-    try:
-        return float(value)
-    except ValueError:
-        return 0.0
 
 
 def _chain_length_or_zero(entry: PdbResult) -> int:
@@ -193,7 +185,7 @@ def _sort_resolution_key(entry: PdbResult) -> tuple[int, float, int, str]:
     undesirable and rank after entries with a real resolution. When resolution is
     tied, entries with more residues rank first, then PDB ID breaks ties.
     """
-    resolution = _resolution_value(entry.resolution)
+    resolution = entry.resolution_value
     chain_length = _chain_length_or_zero(entry)
     if resolution != 0.0:
         return (1, resolution, -chain_length, entry.id)

@@ -20,7 +20,8 @@ from protein_quest.clustering import (
 )
 from protein_quest.errors import ResolutionUnsetError
 from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
-from protein_quest.structure import StructureMetadata
+from protein_quest.structure.formats import read_structure
+from protein_quest.structure.metadata import structure_metadata
 from protein_quest.utils import CopyMethod, copyfile
 
 logger = logging.getLogger(__name__)
@@ -120,7 +121,7 @@ def _load_resolution_statistics_single(input_file: Path) -> ResolutionFilterStat
         returns statistics with default values and ``discard_reason`` set.
     """
     try:
-        metadata = StructureMetadata.from_path(input_file)
+        metadata = structure_metadata(read_structure(input_file), path=input_file)
         return ResolutionFilterStatistics(
             input_file=input_file,
             id=metadata.id,
@@ -232,7 +233,7 @@ class NoUniProtAccessionError(ValueError):
     def __init__(self, input_file: Path) -> None:
         msg = (
             f"No UniProt accession or multiple UniProt accessions in {input_file}. "
-            "Use `protein-quest convert structures --uniprot-ref pdbe.csv .` "
+            "Use `protein-quest convert structures --uniprots pdbe.csv` "
             "to inject UniProt accessions into files."
         )
         super().__init__(msg)

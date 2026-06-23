@@ -41,7 +41,7 @@ class Scores:
 async def _fetch_summary_quality_scores(
     batch: Iterable[str],
     session: RetryClient,
-    url="https://www.ebi.ac.uk/pdbe/api/v2/validation/summary_quality_scores/entry",
+    url: str = "https://www.ebi.ac.uk/pdbe/api/v2/validation/summary_quality_scores/entry",
 ) -> dict[str, Scores]:
     request = converter.dumps(",".join(batch))
     headers = {"Content-Type": "application/json", "Accept": "application/json"}

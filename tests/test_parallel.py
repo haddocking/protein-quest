@@ -4,7 +4,7 @@ from distributed import Client
 from protein_quest.parallel import MyProgressBar, dask_map_with_progress
 
 
-def test_MyProgressBar_interval_env(monkeypatch):
+def test_MyProgressBar_interval_env(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("TQDM_MININTERVAL", "1234")
 
     with Client():
@@ -25,7 +25,7 @@ def run_dask_map_with_progress():
     assert result == [0, 1, 4, 9, 16]
 
 
-def test_dask_map_with_progress(capsys: pytest.CaptureFixture, caplog: pytest.LogCaptureFixture):
+def test_dask_map_with_progress(capsys: pytest.CaptureFixture[str], caplog: pytest.LogCaptureFixture):
     caplog.set_level("INFO")
 
     run_dask_map_with_progress()
@@ -36,7 +36,7 @@ def test_dask_map_with_progress(capsys: pytest.CaptureFixture, caplog: pytest.Lo
     assert "Follow progress on dask dashboard at" in caplog.text
 
 
-def test_dask_map_with_progress_disabled(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture):
+def test_dask_map_with_progress_disabled(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]):
     monkeypatch.setenv("TQDM_DISABLE", "1")
 
     run_dask_map_with_progress()

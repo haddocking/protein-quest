@@ -66,8 +66,9 @@ mcp = [
 
 [dependency-groups]
 type = [
-    "pyrefly>=0.30.0",
+    "pyrefly>=1.1.1",
     "types-aiofiles>=24.1.0.20250326",
+    "types-psutil>=7.2.2.20260518",
     "types-tqdm>=4.67.0.20250513",
 ]
 dev = [
@@ -88,11 +89,6 @@ docs = [
     "mkdocs-jupyter>=0.25.1",
     "mkdocs-material>=9.6.14",
     "mkdocstrings-python>=2.0.2",
-]
-docs-type = [
-    "marimo>=0.23.0",
-    "nbconvert>=7.16.6",
-    {include-group = "type"},
 ]
 
 [build-system]
@@ -208,3 +204,10 @@ addopts = [
 [tool.coverage.run]
 source = ["src/protein_quest"]
 branch = true
+
+[tool.pyrefly]
+preset = "strict"
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
+]

@@ -5,7 +5,7 @@ from collections.abc import Collection, Generator, Iterable
 from dataclasses import dataclass
 from itertools import batched
 from textwrap import dedent
-from typing import Annotated, TypedDict
+from typing import Annotated, Any, TypedDict
 
 from cyclopts import Parameter
 from tqdm.auto import tqdm
@@ -146,7 +146,7 @@ def _append_subcellular_location_filters(query: Query) -> str:
     return subcellular_location_uniprot_part or subcellular_location_go_part
 
 
-def _build_sparql_query_uniprot(query: Query, limit=10_000) -> str:
+def _build_sparql_query_uniprot(query: Query, limit: int = 10_000) -> str:
     dynamic_triples = _query2dynamic_sparql_triples(query)
     # TODO add useful columns that have 1:1 mapping to protein
     # like uniprot_id with `?protein up:mnemonic ?mnemonic .`
@@ -213,7 +213,7 @@ def _build_sparql_query_sequence_length_filter(min_length: int | None = None, ma
     return ""
 
 
-def _build_sparql_query_pdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
+def _build_sparql_query_pdb(uniprot_accs: Iterable[str], limit: int = 10_000) -> str:
     # For http://purl.uniprot.org/uniprot/O00268 + http://rdf.wwpdb.org/pdb/1H3O
     # the chainSequenceMapping are
     # http://purl.uniprot.org/isoforms/O00268-1#PDB_1H3O_tt872tt945
@@ -254,7 +254,7 @@ def _build_sparql_query_af(
     uniprot_accs: Iterable[str],
     min_sequence_length: int | None = None,
     max_sequence_length: int | None = None,
-    limit=10_000,
+    limit: int = 10_000,
 ) -> str:
     select_clause = "?protein ?af_db"
     where_clause = dedent("""
@@ -274,7 +274,7 @@ def _build_sparql_query_af(
     return build_sparql_generic_by_uniprot_accessions_query(uniprot_accs, select_clause, dedent(where_clause), limit)
 
 
-def _build_sparql_query_emdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
+def _build_sparql_query_emdb(uniprot_accs: Iterable[str], limit: int = 10_000) -> str:
     select_clause = "?protein ?emdb_db"
     where_clause = dedent("""
         # --- Protein Selection ---
@@ -287,7 +287,7 @@ def _build_sparql_query_emdb(uniprot_accs: Iterable[str], limit=10_000) -> str:
     return build_sparql_generic_by_uniprot_accessions_query(uniprot_accs, select_clause, dedent(where_clause), limit)
 
 
-def _flatten_results_af(rawresults: Iterable) -> dict[str, set[str]]:
+def _flatten_results_af(rawresults: Iterable[Any]) -> dict[str, set[str]]:
     alphafold_entries: dict[str, set[str]] = {}
     for result in rawresults:
         protein = result["protein"]["value"].split("/")[-1]
@@ -299,7 +299,7 @@ def _flatten_results_af(rawresults: Iterable) -> dict[str, set[str]]:
     return alphafold_entries
 
 
-def _flatten_results_emdb(rawresults: Iterable) -> dict[str, set[str]]:
+def _flatten_results_emdb(rawresults: Iterable[Any]) -> dict[str, set[str]]:
     emdb_entries: dict[str, set[str]] = {}
     for result in rawresults:
         protein = result["protein"]["value"].split("/")[-1]
@@ -347,7 +347,7 @@ def search4uniprot(query: Query, limit: int = 10_000, timeout: int = 1_800) -> s
     return {result["protein"]["value"].split("/")[-1] for result in raw_results}
 
 
-def _flatten_results_pdb(rawresults: Iterable) -> PdbResults:
+def _flatten_results_pdb(rawresults: Iterable[Any]) -> PdbResults:
     pdb_entries: PdbResults = {}
     for result in rawresults:
         protein = result["protein"]["value"].split("/")[-1]
@@ -549,7 +549,7 @@ class ComplexPortalEntry:
     members: set[str]
 
 
-def _flatten_results_complex(raw_results) -> list[ComplexPortalEntry]:
+def _flatten_results_complex(raw_results: Iterable[Any]) -> list[ComplexPortalEntry]:
     results = []
     for raw_result in raw_results:
         query_protein = raw_result["protein"]["value"].split("/")[-1]

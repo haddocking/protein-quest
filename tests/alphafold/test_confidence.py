@@ -11,8 +11,8 @@ from protein_quest.alphafold.confidence import (
     filter_out_low_confidence_residues,
     find_high_confidence_residues,
 )
-from protein_quest.io import read_structure
-from protein_quest.structure import nr_residues_in_chain
+from protein_quest.structure.chains import nr_residues_in_chain
+from protein_quest.structure.formats import read_structure
 
 
 @pytest.fixture
@@ -127,7 +127,7 @@ def test_query_converter():
         ),
     ],
 )
-def test_query_converter_bad_confidence(raw: dict, match: str):
+def test_query_converter_bad_confidence(raw: dict[str, str | int], match: str):
     with pytest.RaisesGroup(pytest.RaisesExc(ValueError, match=match)):
         converter.structure(
             raw,
@@ -148,7 +148,7 @@ def test_query_converter_bad_confidence(raw: dict, match: str):
         ),
     ],
 )
-def test_query_converter_bad_residues(raw: dict, match: str):
+def test_query_converter_bad_residues(raw: dict[str, str | int], match: str):
     with pytest.raises(ValueError, match=match):
         converter.structure(
             raw,

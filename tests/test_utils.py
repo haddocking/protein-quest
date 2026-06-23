@@ -2,6 +2,7 @@ import asyncio
 import gzip
 import logging
 from pathlib import Path
+from typing import override
 
 import pytest
 from aiohttp.client import ClientResponseError
@@ -117,10 +118,12 @@ class ByteGenerator(AsyncStreamIterator[bytes]):
         self.data = data
         self.chunk_size = chunk_size
 
+    @override
     def __aiter__(self):
         self.index = 0
         return self
 
+    @override
     async def __anext__(self):
         if self.index >= len(self.data):
             raise StopAsyncIteration

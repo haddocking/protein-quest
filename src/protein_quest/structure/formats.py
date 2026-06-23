@@ -1,0 +1,225 @@
+"""Structure format read/write and conversion helpers."""
+
+import gzip
+import logging
+import shutil
+import tempfile
+from io import StringIO
+from pathlib import Path
+from typing import Any
+from urllib.request import urlopen
+
+import gemmi
+from mmcif.api.DictionaryApi import DictionaryApi
+from mmcif.io.BinaryCifReader import BinaryCifReader
+from mmcif.io.BinaryCifWriter import BinaryCifWriter
+from mmcif.io.PdbxReader import PdbxReader
+from mmcif.io.PdbxWriter import PdbxWriter
+
+from protein_quest.utils import user_cache_root_dir
+
+logger = logging.getLogger(__name__)
+
+
+def _make_mmcif_document(structure: gemmi.Structure) -> gemmi.cif.Document:
+    """Create an mmCIF document and preserve EM resolution metadata when needed."""
+    # do not write chem_comp so it is viewable by molstar
+    # see https://github.com/project-gemmi/gemmi/discussions/362
+    doc = structure.make_mmcif_document(gemmi.MmcifOutputGroups(True, chem_comp=False))
+    # Gemmi reads EM resolution into Structure.resolution from
+    # _em_3d_reconstruction.resolution, but does not emit that category again.
+    try:
+        experimental_method = structure.info["_exptl.method"]
+    except KeyError:
+        experimental_method = None
+    if structure.resolution > 0 and experimental_method == "Electron Microscopy":
+        block = doc.sole_block()
+        if not block.find_value("_em_3d_reconstruction.resolution"):
+            block.set_pair("_em_3d_reconstruction.entry_id", structure.name)
+            block.set_pair("_em_3d_reconstruction.id", "1")
+            block.set_pair("_em_3d_reconstruction.resolution", str(structure.resolution))
+    return doc
+
+
+def write_structure(structure: gemmi.Structure, path: Path):
+    """Write a gemmi structure to a file.
+
+    Args:
+        structure: The gemmi structure to write.
+        path: The file path to write the structure to.
+            The format depends on the file extension.
+            See [StructureFileExtensions][protein_quest.structure.types.StructureFileExtensions]
+            for supported extensions.
+
+    Raises:
+        ValueError: If the file extension is not supported."""
+    if path.name.endswith(".pdb") or path.name.endswith(".ent"):
+        body: str = structure.make_pdb_string()
+        path.write_text(body)
+    elif path.name.endswith(".pdb.gz") or path.name.endswith(".ent.gz"):
+        body = structure.make_pdb_string()
+        with gzip.open(path, "wt") as f:
+            f.write(body)
+    elif path.name.endswith(".cif"):
+        doc = _make_mmcif_document(structure)
+        doc.write_file(str(path))
+    elif path.name.endswith(".cif.gz"):
+        path.write_bytes(structure2cifgz(structure))
+    elif path.name.endswith(".bcif"):
+        structure2bcif(structure, path)
+    elif path.name.endswith(".bcif.gz"):
+        structure2bcifgz(structure, path)
+    else:
+        msg = f"Unsupported file extension in {path.name}."
+        raise ValueError(msg)
+
+
+def read_structure(file: Path) -> gemmi.Structure:
+    """Read a structure from a file.
+
+    Args:
+        file: Path to the input structure file.
+            See [StructureFileExtensions][protein_quest.structure.types.StructureFileExtensions]
+            for supported extensions.
+
+    Returns:
+        A gemmi Structure object representing the structure in the file."""
+    if file.name.endswith(".bcif"):
+        return bcif2structure(file)
+    if file.name.endswith(".bcif.gz"):
+        return bcifgz2structure(file)
+    return gemmi.read_structure(str(file))
+
+
+def bcif2cif(bcif_file: Path) -> str:
+    """Convert a binary CIF (bcif) file to a CIF string.
+
+    Args:
+        bcif_file: Path to the binary CIF file.
+
+    Returns:
+        A string containing the CIF representation of the structure."""
+    reader = BinaryCifReader()
+    container = reader.deserialize(str(bcif_file))
+    capture = StringIO()
+    writer = PdbxWriter(capture)
+    writer.write(container)
+    return capture.getvalue()
+
+
+def bcifgz2structure(bcif_gz_file: Path) -> gemmi.Structure:
+    """Read a binary CIF (bcif) gzipped file and return a gemmi Structure object.
+
+    This is slower than other formats because gemmi does not support reading bcif files directly.
+    So we first gunzip the file to a temporary location, convert it to a cif string using mmcif package,
+    and then read the cif string using gemmi.
+
+    Args:
+        bcif_gz_file: Path to the binary CIF gzipped file.
+
+    Returns:
+        A gemmi Structure object representing the structure in the bcif.gz file."""
+    with tempfile.NamedTemporaryFile(suffix=".bcif", delete=True) as tmp_bcif:
+        tmp_path = Path(tmp_bcif.name)
+        gunzip_file(bcif_gz_file, output_file=tmp_path, keep_original=True)
+        return bcif2structure(tmp_path)
+
+
+def bcif2structure(bcif_file: Path) -> gemmi.Structure:
+    """Read a binary CIF (bcif) file and return a gemmi Structure object.
+
+    This is slower than other formats because gemmi does not support reading bcif files directly.
+    So we convert it to a cif string first using mmcif package and then read the cif string using gemmi.
+
+    Args:
+        bcif_file: Path to the binary CIF file.
+
+    Returns:
+        A gemmi Structure object representing the structure in the bcif file."""
+    cif_content = bcif2cif(bcif_file)
+    doc = gemmi.cif.read_string(cif_content)
+    block = doc.sole_block()
+    return gemmi.make_structure_from_block(block)
+
+
+def _initialize_dictionary_api(containers: list[Any]) -> DictionaryApi:
+    dict_local = user_cache_root_dir() / "mmcif_pdbx_v5_next.dic"
+    if not dict_local.exists():
+        dict_url = "https://raw.githubusercontent.com/wwpdb-dictionaries/mmcif_pdbx/master/dist/mmcif_pdbx_v5_next.dic"
+        logger.info("Downloading mmcif dictionary from %s to %s", dict_url, dict_local)
+        dict_local.parent.mkdir(parents=True, exist_ok=True)
+        with dict_local.open("wb") as f, urlopen(dict_url) as response:  # noqa: S310 url is hardcoded and https
+            f.write(response.read())
+    return DictionaryApi(containerList=containers, consolidate=True)
+
+
+def structure2bcif(structure: gemmi.Structure, bcif_file: Path):
+    """Write a gemmi Structure object to a binary CIF (bcif) file.
+
+    This is slower than other formats because gemmi does not support writing bcif files directly.
+    So we convert it to a cif string first using gemmi and then convert cif to bcif using mmcif package.
+
+    Args:
+        structure: The gemmi Structure object to write.
+        bcif_file: Path to the output binary CIF file."""
+    doc = _make_mmcif_document(structure)
+    containers: list[Any] = []
+    with StringIO(doc.as_string()) as sio:
+        reader = PdbxReader(sio)
+        reader.read(containers)
+    dict_api = _initialize_dictionary_api(containers)
+    writer = BinaryCifWriter(dictionaryApi=dict_api)
+    writer.serialize(str(bcif_file), containers)
+
+
+def structure2cifgz(structure: gemmi.Structure) -> bytes:
+    """Render a gemmi Structure as gzipped mmCIF bytes.
+
+    Args:
+        structure: The gemmi Structure object to render.
+
+    Returns:
+        Gzipped mmCIF bytes."""
+    doc = _make_mmcif_document(structure)
+    return gzip.compress(doc.as_string().encode("utf-8"))
+
+
+def gunzip_file(gz_file: Path, output_file: Path | None = None, keep_original: bool = True) -> Path:
+    """Unzip a .gz file.
+
+    Args:
+        gz_file: Path to the .gz file.
+        output_file: Optional path to the output unzipped file. If None, the .gz suffix is removed from gz_file.
+        keep_original: Whether to keep the original .gz file. Default is True.
+
+    Returns:
+        Path to the unzipped file.
+
+    Raises:
+        ValueError: If output_file is None and gz_file does not end with .gz."""
+    if output_file is None and not gz_file.name.endswith(".gz"):
+        msg = f"If output_file is not provided, {gz_file} must end with .gz"
+        raise ValueError(msg)
+    out_file = output_file or gz_file.with_suffix("")
+    with gzip.open(gz_file, "rb") as f_in, out_file.open("wb") as f_out:
+        shutil.copyfileobj(f_in, f_out)
+    if not keep_original:
+        gz_file.unlink()
+    return out_file
+
+
+def structure2bcifgz(structure: gemmi.Structure, bcif_gz_file: Path):
+    """Write a gemmi Structure object to a binary CIF gzipped (bcif.gz) file.
+
+    This is slower than other formats because gemmi does not support writing bcif files directly.
+    So we convert it to a cif string first using gemmi and then convert cif to bcif using mmcif package.
+    Finally, we gzip the bcif file.
+
+    Args:
+        structure: The gemmi Structure object to write.
+        bcif_gz_file: Path to the output binary CIF gzipped file."""
+    with tempfile.NamedTemporaryFile(suffix=".bcif", delete=True) as tmp_bcif:
+        tmp_path = Path(tmp_bcif.name)
+        structure2bcif(structure, tmp_path)
+        with tmp_path.open("rb") as f_in, gzip.open(bcif_gz_file, "wb") as f_out:
+            shutil.copyfileobj(f_in, f_out)

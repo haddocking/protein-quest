@@ -1,5 +1,7 @@
 """Convert json or dict to Python objects."""
 
+from typing import Any
+
 from cattrs.preconf.orjson import make_converter
 from yarl import URL
 
@@ -17,7 +19,7 @@ converter.register_unstructure_hook(URL, str)
 
 
 @converter.register_structure_hook
-def percentage_hook(val, _) -> Percentage:
+def percentage_hook(val: Any, _) -> Percentage:
     value = float(val)
     """Cattrs hook to validate percentage values."""
     if not 0.0 <= value <= 100.0:
@@ -27,7 +29,7 @@ def percentage_hook(val, _) -> Percentage:
 
 
 @converter.register_structure_hook
-def ratio_hook(val, _) -> Ratio:
+def ratio_hook(val: Any, _) -> Ratio:
     """Cattrs hook to validate ratio values."""
     value = float(val)
     if not 0.0 <= value <= 1.0:
@@ -37,7 +39,7 @@ def ratio_hook(val, _) -> Ratio:
 
 
 @converter.register_structure_hook
-def positive_int_hook(val, _) -> PositiveInt:
+def positive_int_hook(val: Any, _) -> PositiveInt:
     """Cattrs hook to validate positive integer values."""
     value = int(val)
     if value < 0:

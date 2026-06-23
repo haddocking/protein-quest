@@ -46,14 +46,13 @@ from protein_quest.alphafold.fetch import fetch_many as alphafold_fetch
 from protein_quest.emdb import fetch as emdb_fetch
 from protein_quest.filters.ss import filter_file_on_secondary_structure
 from protein_quest.go import search_gene_ontology_term
-from protein_quest.io import convert_to_cif_file, glob_structure_files, read_structure
 from protein_quest.pdbe.fetch import fetch as pdbe_fetch
 from protein_quest.pdbe.result import PdbResult
-from protein_quest.structure import (
-    nr_residues_in_chain,
-    structure2uniprot_accessions,
-    write_single_chain_structure_file,
-)
+from protein_quest.structure.chains import nr_residues_in_chain, write_single_chain_structure_file
+from protein_quest.structure.convert import convert_to_cif_file
+from protein_quest.structure.files import glob_structure_files
+from protein_quest.structure.formats import read_structure
+from protein_quest.structure.uniprot import structure2uniprot_accessions
 from protein_quest.taxonomy import search_taxon
 from protein_quest.uniprot import (
     Query,

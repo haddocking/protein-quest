@@ -26,14 +26,11 @@ from protein_quest.clustering_io import (
     write_stats_csv,
 )
 from protein_quest.filters.resolution import load_resolution_statistics
-from protein_quest.io import (
-    CifOutputFormat,
-    Pdb2UniprotMapping,
-    convert_to_cif_files,
-    glob_structure_files,
-    read_structure,
-)
-from protein_quest.structure import structure2uniprot_accessions
+from protein_quest.structure.convert import convert_to_cif_files
+from protein_quest.structure.files import glob_structure_files
+from protein_quest.structure.formats import read_structure
+from protein_quest.structure.types import CifOutputFormat, Pdb2UniprotMapping
+from protein_quest.structure.uniprot import structure2uniprot_accessions
 
 rprint = console.print
 
@@ -81,23 +78,23 @@ def uniprot(
         write_lines(output, sorted(uniprot_accessions))
 
 
-def _read_pdb2uniprot_csv(uniprot_ref: Path | None) -> Pdb2UniprotMapping:
+def _read_pdb2uniprot_csv(uniprots: Path | None) -> Pdb2UniprotMapping:
     """Read CSV file with PDB id to chain/UniProt mappings.
 
     Expects 3 columns: `pdb_id,chain,uniprot_accession`.
 
     Args:
-        uniprot_ref: CSV file with PDB to UniProt mappings. If None, returns empty dictionary.
+        uniprots: CSV file with PDB to UniProt mappings. If None, returns empty dictionary.
 
     Returns:
         Dictionary mapping PDB ID to set of tuples containing chain and UniProt accession.
     """
     uniprot_ref_dict: Pdb2UniprotMapping = {}
-    if uniprot_ref is None:
+    if uniprots is None:
         return uniprot_ref_dict
 
-    with uniprot_ref.open("r", encoding="utf-8") as f:
-        reader = csv.DictReader(f, fieldnames=["pdb_id", "chain", "uniprot_accession"])
+    with uniprots.open("r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
         for row in reader:
             pdb_id = row["pdb_id"]
             chain = row["chain"]
@@ -116,8 +113,7 @@ def structures(
     *,
     output_dir: OutputDir | None = None,
     output_format: CifOutputFormat = ".cif.gz",
-    # TODO find better name for uniprot_ref
-    uniprot_ref: InputFile | None = None,
+    uniprots: InputFile | None = None,
     cache: CacheParameter | None = None,
     _common: Common | None = None,
 ) -> None:
@@ -131,9 +127,11 @@ def structures(
             .cif.gz, .bcif, .bcif.gz.
         output_dir: Directory to write converted structure files.
             If not given, files are written to input_dir.
-        uniprot_ref: Supply Uniprot to chain and PDB id mappings.
+        uniprots: Supply Uniprot to PDB id and chain mappings.
             Adds UniProt accessions to structures that are missing them based on the provided mapping.
             The supplied file must be in CSV format with 3 columns: `pdb_id,chain,uniprot_accession`.
+            (column order does not matter)
+            This CSV file can be generated with `protein-quest search pdbe ...`.
         output_format: Output format for converted files. Supported values are .cif and .cif.gz.
         cache: Cache options including no_cache, cache_dir, and copy_method.
         _common: Common CLI options.
@@ -145,8 +143,7 @@ def structures(
     input_files = sorted(glob_structure_files(input_dir))
     rprint(f"Converting {len(input_files)} files in {input_dir} directory to {output_format} format.")
 
-    # TODO find better name for pdb2uniprot
-    pdb2uniprot = _read_pdb2uniprot_csv(uniprot_ref)
+    pdb2uniprot = _read_pdb2uniprot_csv(uniprots)
 
     for _ in tqdm(
         convert_to_cif_files(
@@ -177,7 +174,7 @@ def clusters(
     scheduler_address: str | None = None,
     _common: Common | None = None,
 ) -> None:
-    """Cluster structures per UniProt accession and write clustering outputs.
+    """Group structures per UniProt accession and cluster based on coverage.
 
     Always writes one CSV file:
 
@@ -189,6 +186,10 @@ def clusters(
     `protein-quest search structure --top_clustered_resolution_per_uniprot_accession ...`
     keeps or discards certain structures
     by checking their intermediate cluster assignments and statistics.
+
+    See
+    [clustering documentation](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/clustering.html#protein_quest.pdbe.clustering.filter_pdbs_on_clustered_resolution)
+    for details on the clustering and ordering criteria.
 
     Args:
         input_dir: Directory with structure files.

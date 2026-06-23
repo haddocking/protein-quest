@@ -63,7 +63,7 @@ The sections below outline the steps in each case.
    `uvx ruff check --select I --fix`;
 1. lint your code with `uvx ruff check` (use `uvx ruff check --fix` to fix
    issues automatically);
-1. type check your code with `uv run pyrefly check src tests`;
+1. type check your code with `uv run pyrefly check`;
 1. apply more formatting and linting with `uvx prek run --all-files`;
 1. update or expand the documentation (see
    [Contributing to documentation](#contributing-to-documentation) section
@@ -124,20 +124,6 @@ uv run mkdocs build
 # You can preview it with
 python3 -m http.server -d site
 ```
-
-<details>
-<summary>Type checking notebooks</summary>
-
-[Pyrefly](https://pyrefly.org/) does not support notebooks yet, so we need to
-convert them to python scripts and then run pyrefly on them.
-
-```shell
-find docs/ -name "*.ipynb" -exec uv run --group docs-type marimo convert {} -o {}.py \;
-uv run --group docs-type pyrefly check docs/notebooks/*.ipynb.py
-rm docs/notebooks/*.ipynb.py
-```
-
-</details>
 
 ## Contributing to tests
 

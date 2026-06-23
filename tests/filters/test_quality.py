@@ -5,8 +5,8 @@ import pytest
 from cyclopts.types import StdioPath
 
 from protein_quest.filters.quality import FilterQualityResult, filter_by_pdbe_quality, write_quality_stats_csv
-from protein_quest.io import LocateStructureFilesByIdResult
 from protein_quest.pdbe.ws import Scores
+from protein_quest.structure.files import LocateStructureFilesByIdResult
 
 
 class TestFilterByPdbeQuality:

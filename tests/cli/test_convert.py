@@ -6,7 +6,8 @@ from pathlib import Path
 import pytest
 
 from protein_quest.cli import main
-from protein_quest.io import read_structure, structure_to_uniprot
+from protein_quest.structure.formats import read_structure
+from protein_quest.structure.uniprot import structure_to_uniprot
 
 
 def test_convert_structures_to_cifgz(sample_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
@@ -57,7 +58,7 @@ def test_convert_structures_with_injected_uniprot(no_uniprot_cif: Path, tmp_path
             str(output_dir),
             "--output-format",
             ".cif.gz",
-            "--uniprot-ref",
+            "--uniprots",
             str(pdb2uniprotcsv),
         ]
     )

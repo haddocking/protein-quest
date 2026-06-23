@@ -3,7 +3,7 @@ from pathlib import Path
 import gemmi
 import pytest
 
-from protein_quest.io import read_structure, write_structure
+from protein_quest.structure.formats import read_structure, write_structure
 
 
 @pytest.fixture
@@ -77,8 +77,9 @@ def all_cifs(
     multi_accession_chain_cif: Path,
     af_cif: Path,
     nmr_cif: Path,
+    em_cif: Path,
 ) -> list[Path]:
-    """List of all CIF fixtures except multi_accession_cif as it raises an error."""
+    """List of all CIF fixtures except multi_accession_cif and no_uniprot_cif as they raise an error."""
     return [
         sample_cif,
         sample2_cif,
@@ -86,4 +87,5 @@ def all_cifs(
         multi_accession_chain_cif,
         af_cif,
         nmr_cif,
+        em_cif,
     ]

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from tqdm.auto import tqdm
 
-from protein_quest.structure import nr_residues_in_chain
+from protein_quest.structure.chains import nr_residues_in_chain
 from protein_quest.utils import CopyMethod, copyfile
 
 

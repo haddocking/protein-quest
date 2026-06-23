@@ -7,11 +7,9 @@ from typing import TypedDict
 from cyclopts.types import StdioPath
 from tqdm.rich import tqdm
 
-from protein_quest.io import (
-    LocateStructureFilesByIdResult,
-    read_structure,
-)
 from protein_quest.pdbe.ws import Scores
+from protein_quest.structure.files import LocateStructureFilesByIdResult
+from protein_quest.structure.formats import read_structure
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +54,7 @@ def _associate_files_with_sorted_scores(
             )
         )
 
-    def sorter(x):
+    def sorter(x: PdbIdGeomtryQualityPair) -> tuple[bool, float | None]:
         # None as worst and highest as best with reverse sort
         return (x["geometry_quality"] is not None, x["geometry_quality"])
 

@@ -4,13 +4,14 @@ import logging
 from collections.abc import Generator, Iterable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from cyclopts import Parameter
 from gemmi import Structure
 
 from protein_quest.converter import PositiveInt, Ratio, converter
-from protein_quest.io import read_structure
-from protein_quest.structure import nr_of_residues_in_total
+from protein_quest.structure.chains import nr_of_residues_in_total
+from protein_quest.structure.formats import read_structure
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +116,7 @@ class SecondaryStructureFilterQuery:
         )
 
 
-def _check_range(min_val, max_val, label):
+def _check_range(min_val: Any, max_val: Any, label: str):
     if min_val is not None and max_val is not None and min_val >= max_val:
         msg = f"Invalid {label} range: min {min_val} must be smaller than max {max_val}"
         raise ValueError(msg)
@@ -125,7 +126,7 @@ base_query_hook = converter.get_structure_hook(SecondaryStructureFilterQuery)
 
 
 @converter.register_structure_hook
-def secondary_structure_filter_query_hook(value, _type) -> SecondaryStructureFilterQuery:
+def secondary_structure_filter_query_hook(value: Any, _type: type) -> SecondaryStructureFilterQuery:
     result: SecondaryStructureFilterQuery = base_query_hook(value, _type)
     _check_range(result.abs_min_helix_residues, result.abs_max_helix_residues, "absolute helix residue")
     _check_range(result.abs_min_sheet_residues, result.abs_max_sheet_residues, "absolute sheet residue")

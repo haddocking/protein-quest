@@ -356,7 +356,7 @@ class TestResolution:
         }
 
         captured = capsys.readouterr()
-        assert "Filtering 6 files" in captured.err
+        assert "Filtering 7 files" in captured.err
         assert "Wrote 4 files to" in captured.err
         assert "Additionally wrote 2 files to" in captured.err
 
@@ -395,8 +395,24 @@ class TestResolution:
                 "uniprot_start": "687",
             },
             {
-                "chain_length": "131",
+                "chain_length": "260",
                 "discard_reason": "Rank 3 > top 2",
+                "discard_reason_type": "OutsideTopError",
+                "id": "8W77",
+                "input_file": str(input_dir / "8w77_updated.cif.gz"),
+                "is_alphafold": "False",
+                "output_file": "",
+                "passed": "False",
+                "resolution": "3.61",
+                "sequence_identity": "1.000",
+                "total_residue_count": "260",
+                "uniprot_accession": "P0ABE7",
+                "uniprot_end": "127",
+                "uniprot_start": "23",
+            },
+            {
+                "chain_length": "131",
+                "discard_reason": "Rank 4 > top 2",
                 "discard_reason_type": "OutsideTopError",
                 "id": "1UN5",
                 "input_file": str(input_dir / "1un5.cif.gz"),
@@ -529,6 +545,12 @@ def test_pdbe_quality(
                     "overall_quality": 63.17,
                     "experiment_data_available": True,
                 },
+                "8w77": {
+                    "geometry_quality": 75.0,
+                    "data_quality": 75.0,
+                    "overall_quality": 75.0,
+                    "experiment_data_available": True,
+                },
             }
         )
     )
@@ -551,6 +573,14 @@ def test_pdbe_quality(
 
     stats = list(csv.DictReader(stats_csv.open()))
     expected_stats = [
+        {
+            "geometry_quality": "75.0",
+            "input_file": str(input_dir / "8w77_updated.cif.gz"),
+            "output_file": str(output_dir / "8w77_updated.cif.gz"),
+            "passed": "True",
+            "pdb_id": "8w77",
+            "reason": "",
+        },
         {
             "pdb_id": "6o5i",
             "input_file": str(input_dir / "6O5I.cif.gz"),

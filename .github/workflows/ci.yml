@@ -55,7 +55,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
       - name: Run linters
-        run: uvx ruff check
+        run: uvx ruff check --output-format=github
   typing:
     name: typing
     runs-on: ubuntu-latest
@@ -66,21 +66,7 @@ jobs:
       - name: Install the project
         run: uv sync --locked --dev --extra mcp
       - name: Run type checkers
-        run: uv run pyrefly check src tests
-  typing-docs:
-    name: typing-docs
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-      - name: Install the project
-        run: uv sync --group docs-type
-      - name: Convert notebooks to Python scripts
-        run: |
-          find docs/ -name "*.ipynb" -exec uv run --group docs-type marimo convert {} -o {}.py \;
-      - name: Run type checkers on docs
-        run: uv run --group docs-type pyrefly check docs/notebooks/*.ipynb.py
+        run: uv run pyrefly check
   pre-commit:
     runs-on: ubuntu-latest
     steps:
