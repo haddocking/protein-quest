@@ -61,6 +61,7 @@ graph TB;
     residuefilter --> |mmcif_files| ssfilter
     ssfilter -. mmcif_files .-> convert2cif([Convert to cif])
     ssfilter -. mmcif_files .-> convert2uniprot_accessions([Convert to UniProt accessions])
+    ssfilter -. mmcif_files .-> convert2clusters([Convert to clusters by UniProt overlap])
     classDef dashedBorder stroke-dasharray: 5 5;
     goterm:::dashedBorder
     taxonomy:::dashedBorder
@@ -72,6 +73,7 @@ graph TB;
     searchuniprotdetails:::dashedBorder
     convert2cif:::dashedBorder
     convert2uniprot_accessions:::dashedBorder
+    convert2clusters:::dashedBorder
 ```
 
 (Dotted nodes and edges are side-quests.)
@@ -220,7 +222,6 @@ protein-quest filter residue  \
 
 ```shell
 protein-quest filter resolution \
-  --group-by uniprot_accession \
   --top 3 \
   ./filtered-chains ./filtered-resolution
 ```
@@ -321,6 +322,16 @@ still present in the filtered structures.
 
 ```shell
 protein-quest convert uniprot ./filtered-ss uniprot_accs.filtered.txt
+```
+
+### Convert structures to clusters
+
+Generate clusters based on UniProt protein residue overlap.
+
+```shell
+protein-quest convert clusters ./filtered-chains clusters.csv
+# Or for more details
+protein-quest convert clusters ./filtered-chains clusters.csv --stats stats.csv --condensed-distances distances.csv --linkage-matrix linkage.csv --dendrogram dendrograms
 ```
 
 ## Provenance

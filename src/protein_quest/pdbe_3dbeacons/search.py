@@ -186,7 +186,7 @@ async def fetch_summary_batch(
     batch: Iterable[str],
     session: RetryClient,
     prune_options: PruneOptions,
-    url="https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/api/v2/uniprot/summary",
+    url: str = "https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/api/v2/uniprot/summary",
 ) -> list[UniprotSummary]:
     providers = prune_options.providers
     request = AccessionListRequest(accessions=list(batch))

@@ -26,12 +26,14 @@ from protein_quest.cli.common import (
 )
 from protein_quest.converter import converter
 from protein_quest.go import Aspect, GoTerm, search_gene_ontology_term
+from protein_quest.pdbe.clustering import filter_pdbs_on_clustered_resolution
 from protein_quest.pdbe.result import (
     PdbChainLengthError,
     PdbResults,
     filter_pdb_results_on_chain_length,
     filter_pdb_results_on_resolution,
 )
+from protein_quest.pdbe_3dbeacons.clustering import cluster_overviews_per_uniprot
 from protein_quest.pdbe_3dbeacons.model import Provider, search_structure_provider_choices
 from protein_quest.pdbe_3dbeacons.search import PruneOptions, flatten_structure_summaries, uniprots2structures
 from protein_quest.taxonomy import SearchField, Taxon, search_taxon
@@ -243,6 +245,7 @@ def pdbe(
     max_residues: MaxResidues | None = None,
     keep_invalid: Annotated[bool, Parameter(negative="")] = False,
     top_resolution_per_uniprot_accession: PositiveInt | None = None,
+    top_clustered_resolution_per_uniprot_accession: PositiveInt | None = None,
     _: Common | None = None,
 ) -> None:
     """Search for PDB structures of given UniProt accessions.
@@ -267,6 +270,12 @@ def pdbe(
             ranked by best (lowest) resolution first, then by highest residue count.
             For example use `--top-resolution-per-uniprot-accession 3` to keep
             only the best 3 PDB entries per UniProt accession.
+        top_clustered_resolution_per_uniprot_accession: Retain the top N PDB entries per UniProt accession.
+            Uses clustering to give better coverage.
+
+            See
+            [clustering documentation](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/clustering.html#protein_quest.pdbe.clustering.filter_pdbs_on_clustered_resolution)
+            for details on the clustering and ordering criteria.
         _: Common CLI options.
     """
     accs = set(_read_lines(uniprot_accessions))
@@ -293,6 +302,11 @@ def pdbe(
             f"After filtering by resolution and keeping the best {top_resolution_per_uniprot_accession} PDB entries"
             f" for each UniProt accession, {total_pdbs} PDB entries remained "
         )
+    if top_clustered_resolution_per_uniprot_accession is not None:
+        for uniprot_accession, pdbs in results.items():
+            results[uniprot_accession] = set(
+                filter_pdbs_on_clustered_resolution(list(pdbs), top=top_clustered_resolution_per_uniprot_accession)
+            )
 
     _write_pdbe_csv(output_csv, results)
     rprint(f"Written to {output_csv}")
@@ -353,6 +367,7 @@ def structure(
     limit: Limit = 10_000,
     timeout: Timeout = 1_800,
     raw: OutputFile | None = None,
+    top_clustered_resolution_per_uniprot_accession: PositiveInt | None = None,
     _: Common | None = None,
 ) -> None:
     """Search for experimentally determined and predicted structures.
@@ -373,6 +388,13 @@ def structure(
         limit: Maximum number of structures per uniprot accession per source to return.
         timeout: Maximum seconds to wait for query to complete.
         raw: Path to write raw 3D beacon summaries as JSON.
+        top_clustered_resolution_per_uniprot_accession: Retain the top N PDBe entries per UniProt accession.
+            Uses clustering to give better coverage.
+            Non-PDBe structures (e.g. AlphaFold, SWISS-MODEL) are always retained..
+
+            See
+            [clustering documentation](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/pdbe_3dbeacons/clustering.html#protein_quest.pdbe_3dbeacons.clustering.cluster_overviews_per_uniprot)
+            for details on the clustering and ordering criteria.
         _: Common CLI options.
     """
     nsource: set[Provider]
@@ -404,6 +426,9 @@ def structure(
     if raw:
         raw.write_bytes(converter.dumps(results))
         rprint(f"Written raw results to {raw}")
+
+    if top_clustered_resolution_per_uniprot_accession is not None:
+        results = cluster_overviews_per_uniprot(results, top=top_clustered_resolution_per_uniprot_accession)
 
     rows = flatten_structure_summaries(results)
     if not rows:

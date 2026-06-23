@@ -1,19 +1,17 @@
 import logging
 from pathlib import Path
 
-import gemmi
 import pytest
 from platformdirs import user_cache_dir
 
-from protein_quest.io import read_structure
 from protein_quest.pdbe.fetch import sync_fetch
-from protein_quest.structure import (
-    ChainNotFoundError,
+from protein_quest.structure.chains import (
     nr_of_residues_in_total,
     nr_residues_in_chain,
-    structure2uniprot_accessions,
     write_single_chain_structure_file,
 )
+from protein_quest.structure.errors import ChainNotFoundError
+from protein_quest.structure.formats import read_structure
 
 logger = logging.getLogger(__name__)
 
@@ -161,32 +159,11 @@ def test_nr_residues_in_chain(sample2_cif: Path):
     assert residue_count == 8
 
 
-def test_nr_residues_in_chain_wrongchain(sample2_cif: Path, caplog):
+def test_nr_residues_in_chain_wrongchain(sample2_cif: Path, caplog: pytest.LogCaptureFixture):
     residue_count = nr_residues_in_chain(sample2_cif, chain="Z")
 
     assert residue_count == 0
     assert "Chain Z not found in" in caplog.text
-
-
-def test_structure2uniprot_accessions_present(sample2_cif: Path):
-    structure = read_structure(sample2_cif)
-    accessions = structure2uniprot_accessions(structure)
-
-    assert accessions == {"P05067"}
-
-
-def test_structure2uniprot_accessions_missing(sample_cif: Path, caplog):
-    # Empty struct_ref category to simulate missing UniProt accessions
-    structure_with_unp = read_structure(sample_cif)
-    block_without_struct_ref = structure_with_unp.make_mmcif_block(
-        gemmi.MmcifOutputGroups(True, chem_comp=False, struct_ref=False)
-    )
-    structure = gemmi.make_structure_from_block(block_without_struct_ref)
-
-    accessions = structure2uniprot_accessions(structure)
-
-    assert accessions == set()
-    assert "No UniProt accessions found in structure 3JRSB2A" in caplog.text
 
 
 def test_nr_of_residues_in_total(sample2_cif: Path):

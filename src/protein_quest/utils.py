@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from textwrap import dedent
-from typing import Any, Literal, Protocol, get_args, runtime_checkable
+from typing import Any, Literal, Protocol, get_args, override, runtime_checkable
 
 import aiofiles
 import aiofiles.os
@@ -124,20 +124,24 @@ class PassthroughCacher(Cacher):
     On writes it just writes to the target path.
     """
 
+    @override
     def __contains__(self, item: str | Path) -> bool:
         # We don't have anything cached ever
         return False
 
-    async def copy_from_cache(self, target: Path) -> Path | None:  # noqa: ARG002
+    @override
+    async def copy_from_cache(self, target: Path) -> Path | None:
         # We don't have anything cached ever
         return None
 
+    @override
     async def write_iter(self, target: Path, content: AsyncStreamIterator[bytes]) -> Path:
         if target.exists():
             raise FileExistsError(target)
         target.write_bytes(b"".join([chunk async for chunk in content]))
         return target
 
+    @override
     async def write_bytes(self, target: Path, content: bytes) -> Path:
         if target.exists():
             raise FileExistsError(target)
@@ -183,6 +187,7 @@ class DirectoryCacher(Cacher):
             msg = f"Unknown copy method: {self.copy_method}. Must be one of {copy_methods}."
             raise ValueError(msg)
 
+    @override
     def __contains__(self, item: str | Path) -> bool:
         cached_file = self._as_cached_path(item)
         return cached_file.exists()
@@ -192,6 +197,7 @@ class DirectoryCacher(Cacher):
         cache_sub_dir = _cache_sub_dir(self.cache_dir, file_name)
         return cache_sub_dir / file_name
 
+    @override
     async def copy_from_cache(self, target: Path) -> Path | None:
         cached_file = self._as_cached_path(target.name)
         exists = await aiofiles.os.path.exists(str(cached_file))
@@ -200,6 +206,7 @@ class DirectoryCacher(Cacher):
             return cached_file
         return None
 
+    @override
     async def write_iter(self, target: Path, content: AsyncStreamIterator[bytes]) -> Path:
         cached_file = self._as_cached_path(target.name)
         # Write file to cache dir
@@ -210,6 +217,7 @@ class DirectoryCacher(Cacher):
         await async_copyfile(cached_file, target, copy_method=self.copy_method)
         return cached_file
 
+    @override
     async def write_bytes(self, target: Path, content: bytes) -> Path:
         cached_file = self._as_cached_path(target.name)
         # Write file to cache dir
@@ -315,7 +323,7 @@ async def _retrieve_file(
     cacher: Cacher | None = None,
     chunk_size: int = 524288,  # 512 KiB
     gzip_files: bool = False,
-    raise_for_not_found=True,
+    raise_for_not_found: bool = True,
 ) -> Path | None:
     """Retrieve a single file from a URL and save it to a specified path.
 
@@ -389,7 +397,7 @@ async def friendly_session(retries: int = 3, total_timeout: int = 300):
         total_timeout: The total timeout for a request in seconds.
     """
     retry_options = ExponentialRetry(attempts=retries)
-    timeout = aiohttp.ClientTimeout(total=total_timeout)  # pyrefly: ignore false positive
+    timeout = aiohttp.ClientTimeout(total=total_timeout)
     async with aiohttp.ClientSession(timeout=timeout) as session:
         client = RetryClient(client_session=session, retry_options=retry_options)
         yield client

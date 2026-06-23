@@ -4,8 +4,10 @@ import logging
 import sys
 from collections.abc import Sequence
 
+import cyclopts
 from cyclopts import App
 from rich.console import Console
+from rich.traceback import install as install_rich_traceback
 from rocrate_action_recorder.adapters.cyclopts import record_cyclopts
 
 from protein_quest.__version__ import __version__
@@ -26,6 +28,7 @@ app = App(
 )
 
 app.register_install_completion_command()
+install_rich_traceback(console=console, suppress=[cyclopts])
 
 app.command(search_app)
 app.command(retrieve_app)

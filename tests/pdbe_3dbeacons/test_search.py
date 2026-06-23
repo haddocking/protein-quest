@@ -540,7 +540,7 @@ async def test_uniprots2structures_merge_same_pdb():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("batch_size", [0, 1001])
-async def test_uniprots2structures_invalid_batch_size(batch_size):
+async def test_uniprots2structures_invalid_batch_size(batch_size: int):
     with pytest.raises(ValueError, match=f"Batch size {batch_size} must be between 1 and 10."):
         await uniprots2structures({"P05067"}, PruneOptions(providers={"alphafill"}), batch_size=batch_size)
 

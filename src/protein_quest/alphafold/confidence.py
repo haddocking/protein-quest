@@ -4,7 +4,7 @@ import logging
 from collections.abc import Generator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import gemmi
 from cyclopts import Parameter
@@ -13,9 +13,9 @@ from distributed.deploy.cluster import Cluster
 from tqdm.auto import tqdm
 
 from protein_quest.converter import Percentage, PositiveInt, converter
-from protein_quest.io import read_structure, write_structure
 from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
-from protein_quest.structure import nr_of_residues_in_total
+from protein_quest.structure.chains import nr_of_residues_in_total
+from protein_quest.structure.formats import read_structure, write_structure
 from protein_quest.utils import CopyMethod, copyfile
 
 """
@@ -96,7 +96,7 @@ base_query_hook = converter.get_structure_hook(ConfidenceFilterQuery)
 
 
 @converter.register_structure_hook
-def confidence_filter_query_hook(val, _type) -> ConfidenceFilterQuery:
+def confidence_filter_query_hook(val: Any, _type) -> ConfidenceFilterQuery:
     result: ConfidenceFilterQuery = base_query_hook(val, _type)
     if result.min_residues > result.max_residues:
         msg = f"min_residues {result.min_residues} cannot be larger than max_residues {result.max_residues}"

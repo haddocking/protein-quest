@@ -1,7 +1,6 @@
-"""Module for querying and modifying [gemmi structures][gemmi.Structure]."""
+"""Chain-level structure helpers and transformations."""
 
 import logging
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -9,7 +8,9 @@ import gemmi
 from gemmi import Structure
 
 from protein_quest.__version__ import __version__
-from protein_quest.io import read_structure, split_name_and_extension, write_structure
+from protein_quest.structure.errors import ChainNotFoundError
+from protein_quest.structure.files import split_name_and_extension
+from protein_quest.structure.formats import read_structure, write_structure
 from protein_quest.utils import CopyMethod, copyfile
 
 logger = logging.getLogger(__name__)
@@ -23,13 +24,9 @@ def find_chain_in_model(model: gemmi.Model, wanted_chain: str) -> gemmi.Chain | 
         wanted_chain: The chain identifier to search for.
 
     Returns:
-        The found chain or None if not found.
-    """
+        The found chain or None if not found."""
     chain = model.find_chain(wanted_chain)
     if chain is None:
-        # For chain A in 4v92 the find_chain method returns None,
-        # however it is prefixed with 'B',
-        # so we try again as last char of chain name
         mchains = [c for c in model if c.name.endswith(wanted_chain)]
         if mchains:
             return mchains[0]
@@ -44,8 +41,7 @@ def find_chain_in_structure(structure: gemmi.Structure, wanted_chain: str) -> ge
         wanted_chain: The chain identifier to search for.
 
     Returns:
-        The found chain or None if not found.
-    """
+        The found chain or None if not found."""
     for model in structure:
         chain = find_chain_in_model(model, wanted_chain)
         if chain is not None:
@@ -61,8 +57,7 @@ def nr_residues_in_chain(file: Path, chain: str = "A") -> int:
         chain: Chain to count residues of.
 
     Returns:
-        The number of residues in the specified chain.
-    """
+        The number of residues in the specified chain."""
     structure = read_structure(file)
     gchain = find_chain_in_structure(structure, chain)
     if gchain is None:
@@ -71,50 +66,12 @@ def nr_residues_in_chain(file: Path, chain: str = "A") -> int:
     return len(gchain)
 
 
-@dataclass(frozen=True)
-class StructureMetadata:
-    """Metadata extracted from a structure file for ranking and grouping.
-
-    Parameters:
-        uniprot_accession: Deterministic first UniProt accession, if any.
-        resolution: Resolution from gemmi Structure. ``0.0`` means absent.
-        total_residue_count: Total number of residues across the whole structure.
-        is_alphafold: Whether the structure originates from AlphaFold.
-    """
-
-    uniprot_accession: str | None
-    resolution: float
-    total_residue_count: int
-    is_alphafold: bool
-
-
-def structure_metadata(file: Path) -> StructureMetadata:
-    """Extract metadata from structure.
-
-    Args:
-        file: Path to the structure file.
-
-    Returns:
-        Structure metadata derived from the file contents.
-    """
-    structure = read_structure(file)
-    accessions = sorted(structure2uniprot_accessions(structure))
-    software_name = structure.meta.software[0].name if structure.meta.software else ""
-    total_residue_count = nr_of_residues_in_total(structure)
-    return StructureMetadata(
-        uniprot_accession=accessions[0] if accessions else None,
-        resolution=structure.resolution,
-        total_residue_count=total_residue_count,
-        is_alphafold=software_name == "AlphaFold",
-    )
-
-
 def _dedup_helices(structure: gemmi.Structure):
     helix_starts: set[str] = set()
     duplicate_helix_indexes: list[int] = []
     for hindex, helix in enumerate(structure.helices):
         if str(helix.start) in helix_starts:
-            logger.debug(f"Duplicate start helix found: {hindex} {helix.start}, removing")
+            logger.debug("Duplicate start helix found: %s %s, removing", hindex, helix.start)
             duplicate_helix_indexes.append(hindex)
         else:
             helix_starts.add(str(helix.start))
@@ -142,7 +99,7 @@ def _add_provenance_info(structure: gemmi.Structure, chain2keep: str, out_chain:
     new_si = gemmi.SoftwareItem()
     new_si.classification = gemmi.SoftwareItem.Classification.DataExtraction
     new_si.name = "protein-quest.pdbe.io.write_single_chain_pdb_file"
-    new_si.version = str(__version__)
+    new_si.version = __version__
     new_si.date = str(datetime.now(tz=UTC).date())
     structure.meta.software = [*structure.meta.software, new_si]
 
@@ -154,35 +111,8 @@ def chains_in_structure(structure: gemmi.Structure) -> set[gemmi.Chain]:
         structure: The gemmi structure to get chains from.
 
     Returns:
-        A set of chains in the structure.
-    """
+        A set of chains in the structure."""
     return {c for model in structure for c in model}
-
-
-class ChainNotFoundError(IndexError):
-    """Exception raised when a chain is not found in a structure."""
-
-    def __init__(self, chain_id: str, file: Path | str, available_chains: set[str]):
-        super().__init__(f"Chain {chain_id} not found in {file}. Available chains are: {available_chains}")
-        self.available_chains = available_chains
-        self.chain_id = chain_id
-        self.file = file
-
-    def __reduce__(self):
-        """Helper for pickling the exception."""
-        return (self.__class__, (self.chain_id, self.file, self.available_chains))
-
-    def __eq__(self, other):
-        if not isinstance(other, ChainNotFoundError):
-            return NotImplemented
-        return (
-            self.chain_id == other.chain_id
-            and self.file == other.file
-            and self.available_chains == other.available_chains
-        )
-
-    def __hash__(self):
-        return hash((self.chain_id, str(self.file), frozenset(self.available_chains)))
 
 
 def write_single_chain_structure_file(
@@ -204,7 +134,7 @@ def write_single_chain_structure_file(
     This function is equivalent to the following gemmi commands:
 
     ```shell
-    gemmi convert --remove-lig-wat --select=B --to=cif chain-in/3JRS.cif - | \\
+    gemmi convert --remove-lig-wat --select=B --to=cif chain-in/3JRS.cif - | \
     gemmi convert --from=cif --rename-chain=B:A - chain-out/3JRS_B2A.gemmi.cif
     ```
 
@@ -220,10 +150,8 @@ def write_single_chain_structure_file(
 
     Raises:
         FileNotFoundError: If the input file does not exist.
-        ChainNotFoundError: If the specified chain is not found in the input file.
-    """
-
-    logger.debug(f"chain2keep: {chain2keep}, out_chain: {out_chain}")
+        ChainNotFoundError: If the specified chain is not found in the input file."""
+    logger.debug("chain2keep: %s, out_chain: %s", chain2keep, out_chain)
     structure = read_structure(input_file)
     structure.setup_entities()
 
@@ -251,8 +179,8 @@ def write_single_chain_structure_file(
         return output_file
 
     gemmi.Selection(f"/1/{chain_name}").remove_not_selected(structure)
-    for m in structure:
-        m.remove_ligands_and_waters()
+    for model in structure:
+        model.remove_ligands_and_waters()
     structure.setup_entities()
     structure.rename_chain(chain_name, out_chain)
     _dedup_helices(structure)
@@ -272,30 +200,6 @@ def write_single_chain_structure_file(
     return output_file
 
 
-def structure2uniprot_accessions(structure: gemmi.Structure) -> set[str]:
-    """Extract UniProt accessions from a gemmi Structure object.
-
-    Logs a warning and returns an empty set if no accessions are found in structure.
-
-    Args:
-        structure: The gemmi Structure object to extract UniProt accessions from.
-
-    Returns:
-        A set of UniProt accessions found in the structure.
-    """
-    block = structure.make_mmcif_block(gemmi.MmcifOutputGroups(False, struct_ref=True))
-    struct_ref = block.get_mmcif_category("_struct_ref.")
-    uniprot_accessions: set[str] = set()
-    for i, db_name in enumerate(struct_ref["db_name"]):
-        if db_name != "UNP":
-            continue
-        pdbx_db_accession = struct_ref["pdbx_db_accession"][i]
-        uniprot_accessions.add(pdbx_db_accession)
-    if not uniprot_accessions:
-        logger.warning("No UniProt accessions found in structure %s", structure.name)
-    return uniprot_accessions
-
-
 def nr_of_residues_in_total(structure: Structure) -> int:
     """Count the total number of residues in the structure.
 
@@ -303,8 +207,7 @@ def nr_of_residues_in_total(structure: Structure) -> int:
         structure: The gemmi Structure object to analyze.
 
     Returns:
-        The total number of residues in the structure.
-    """
+        The total number of residues in the structure."""
     count = 0
     for model in structure:
         for chain in model:

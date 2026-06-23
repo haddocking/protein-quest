@@ -75,9 +75,20 @@ repos:
     hooks:
       - id: jscpd
         name: jscpd code duplication checker
-        entry: npx jscpd
+        entry: npx cpd@5.0.4
         language: node
-        args: ["--gitignore", "--exitCode=1", "src"]
+        # v4 made distinction between docstring and code,
+        # v5 does not so we loosen line/token consideration
+        args:
+          [
+            "--exit-code",
+            "--no-tips",
+            "--min-tokens",
+            "100",
+            "--min-lines",
+            "15",
+            "src",
+          ]
         types: [text]
         pass_filenames: false
 

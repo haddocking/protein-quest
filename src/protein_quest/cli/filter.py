@@ -4,9 +4,8 @@ import csv
 import os
 from typing import TYPE_CHECKING, Annotated
 
-from cyclopts import App, Group, Parameter
-from cyclopts.types import PositiveInt
-from cyclopts.validators import mutually_exclusive
+from cyclopts import App, Parameter
+from cyclopts.types import NormFloat, PositiveInt
 from rich.panel import Panel
 
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
@@ -24,12 +23,12 @@ from protein_quest.cli.common import (
 )
 from protein_quest.filters.chain import filter_files_on_chain
 from protein_quest.filters.residues import filter_files_on_residues
-from protein_quest.filters.resolution import GroupBy, filter_files_on_resolution
-from protein_quest.filters.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
-from protein_quest.io import (
-    glob_structure_files,
-    locate_structure_file,
+from protein_quest.filters.resolution import (
+    filter_files_on_resolution,
+    write_resolution_stats,
 )
+from protein_quest.filters.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
+from protein_quest.structure.files import glob_structure_files, locate_structure_file
 from protein_quest.utils import copyfile
 
 if TYPE_CHECKING:
@@ -225,74 +224,66 @@ def residue(
         rprint(f"Statistics written to {write_stats}")
 
 
-_GROUP_BY = Group(show=False, validator=mutually_exclusive)
-
-
-def _resolution_stats_header(group_by: GroupBy) -> str:
-    if group_by is None:
-        return "input_file,resolution,total_residue_count,is_alphafold,passed,output_file"
-    return "input_file,uniprot_accession,resolution,total_residue_count,is_alphafold,passed,output_file"
-
-
-def _resolution_stats_row(result, group_by: GroupBy) -> str:
-    if group_by is None:
-        return (
-            f"{result.input_file},{result.resolution},{result.total_residue_count},"
-            f"{result.is_alphafold},{result.passed},{result.output_file or ''}"
-        )
-    return (
-        f"{result.input_file},{result.uniprot_accession or ''},{result.resolution},"
-        f"{result.total_residue_count},{result.is_alphafold},{result.passed},{result.output_file or ''}"
-    )
-
-
-def _resolution_progress_message(nr_total: int, input_dir: "Path", group_by: GroupBy) -> str:
-    if group_by is None:
-        return f"Filtering {nr_total} files in {input_dir} directory by global resolution ranking (no grouping)."
-    return f"Filtering {nr_total} files in {input_dir} directory by resolution grouped by {group_by}."
-
-
 @filter_app.command
 def resolution(
     input_dir: InputDir,
     output_dir: OutputDir,
     /,
     *,
-    group_by: Annotated[GroupBy, Parameter(group=_GROUP_BY)] = "uniprot_accession",
-    no_group_by: Annotated[bool, Parameter(name="--no-group-by", negative="", group=_GROUP_BY)] = False,
+    no_group_by_uniprot_accession: Annotated[bool, Parameter(negative="")] = False,
     top: PositiveInt = 1_000,
+    no_coverage: Annotated[bool, Parameter(negative="")] = False,
+    min_sequence_identity: NormFloat = 1.0,
+    lax: Annotated[bool, Parameter(negative="")] = False,
+    scheduler_address: str | None = None,
     write_stats: OutputFile | None = None,
     cache: CacheParameter | None = None,
     _: Common | None = None,
 ) -> None:
     """Filter structure files by best resolution.
 
-    AlphaFold structures are preferred over non-AlphaFold.
-    Structures with lower resolution are preferred.
-    If resolution is the same, structures with more residues are preferred.
-    If resolution is missing, those structures are undesirable.
+    * Structures with no resolution and no Uniprot accession are discarded.
+    * Structures with lower resolution are preferred.
+    * If resolution is the same, structures with more residues are preferred.
+    * If resolution is missing, those structures are undesirable.
+    * Structures with low sequence identity (smaller than 1) are undesirable.
+    * Structures are grouped by Uniprot accession and then clustered by their coverage of the Uniprot sequence
+      (can be disabled with `--no-group-by-uniprot-accession` and `--no-coverage`).
+
+    To see how clustering was done use `protein-quest convert clusters` command.
 
     Args:
         input_dir: Directory structure files.
         output_dir: Directory to write the selected structure files.
-        group_by: Pass top-N structures with best resolution per uniprot accession.
-            Structures without uniprot accession are never passed.
-            Mutually exclusive with ``no_group_by``.
-        no_group_by: Disable grouping and use global top-N ranking across all files.
-            Mutually exclusive with ``group_by``.
+        no_group_by_uniprot_accession: Disable grouping by Uniprot accession
+            and use global top-N ranking across all files.
         top: Maximum number of files to keep.
+        no_coverage: If not set, will take top by first grouping by uniprot accession
+            and then clustering files by their coverage and then take the top.
+            See
+            [clustering documentation](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/clustering.html#protein_quest.pdbe.clustering.filter_pdbs_on_clustered_resolution)
+            for details on the clustering and ordering criteria.
+            If set will sort files per Uniprot accession by just their resolution.
+        min_sequence_identity: Minimum sequence identity ratio to the Uniprot sequence for a structure to be passed.
+            If not set then discards structures that are not fully identical to the Uniprot sequence.
+            For example if set to 0.8 then structures that have sequence identity below 0.8 are discarded.
+        lax: If set will passthrough files that do not have valid resolution, regardless of other flags like --top.
+            By default filter is applied strictly and those files are discarded.
+            Useful if you have a directory with files from different sources/methods and
+            want to call multiple filters sequentially to discard files gradually.
+        scheduler_address: Address of the Dask scheduler to connect to.
+            If not provided, will create a local cluster.
+            If set to `sequential` will run tasks sequentially.
         write_stats: Write filter statistics to file.
-            In CSV format. For ``--group-by=uniprot_accession`` columns are:
-            `<input_file>,<uniprot_accession>,<resolution>,<total_residue_count>,<is_alphafold>,<passed>,<output_file>`.
-            For ``--no-group-by`` columns are:
-            `<input_file>,<resolution>,<total_residue_count>,<is_alphafold>,<passed>,<output_file>`.
+            In CSV format with columns:
+            `<input_file>,<id>,<uniprot_accession>,<resolution>,<total_residue_count>,<is_alphafold>,<uniprot_start>,<uniprot_end>,<sequence_identity>,<chain_length>,<passed>,<output_file>,<discard_reason>,<discard_reason_type>`.
             Use `-` for stdout.
         cache: Cache options
         _: Common CLI options.
-    """
-    if no_group_by:
-        group_by = None
 
+    """
+    coverage = not no_coverage
+    group_by = not no_group_by_uniprot_accession
     output_dir.mkdir(parents=True, exist_ok=True)
     cache = cache or CacheParameter()
 
@@ -301,26 +292,42 @@ def resolution(
 
     input_files = sorted(glob_structure_files(input_dir))
     nr_total = len(input_files)
-    rprint(_resolution_progress_message(nr_total, input_dir, group_by))
+    if not group_by:
+        rprint(f"Filtering {nr_total} files in {input_dir} directory by global resolution ranking (no grouping).")
+    else:
+        rprint(f"Filtering {nr_total} files in {input_dir} directory by resolution grouped by uniprot accession.")
 
-    stats_lines = [_resolution_stats_header(group_by)]
-    nr_passed = 0
-    for result in filter_files_on_resolution(
-        input_files,
-        output_dir,
-        top=top,
-        group_by=group_by,
-        copy_method=cache.copy_method,
-    ):
-        stats_lines.append(_resolution_stats_row(result, group_by))
-        if result.passed:
-            nr_passed += 1
+    results = list(
+        filter_files_on_resolution(
+            input_files,
+            output_dir,
+            top=top,
+            coverage=coverage,
+            group_by=group_by,
+            min_sequence_identity=min_sequence_identity,
+            lax=lax,
+            copy_method=cache.copy_method,
+            scheduler_address=scheduler_address,
+        )
+    )
+
+    nr_passed = sum(1 for r in results if r.passed)
+    if lax:
+        nr_passed_due_to_lax = sum(1 for r in results if r.passed and r.discard_reason is not None)
+        rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
+        rprint(f"Additionally wrote {nr_passed_due_to_lax} files to {output_dir} directory due to lax mode.")
+        if not write_stats:
+            rprint(
+                "[yellow]Note: You can use --write-stats to see which files were passed due to lax mode "
+                "and their discard reasons.[/yellow]"
+            )
+    else:
+        rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
 
     if write_stats:
-        write_lines(write_stats, stats_lines)
-    rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
-    if write_stats and str(write_stats) != "-":
-        rprint(f"Statistics written to {write_stats}")
+        write_resolution_stats(results, write_stats)
+        if str(write_stats) != "-":
+            rprint(f"Statistics written to {write_stats}")
 
 
 @filter_app.command
@@ -378,7 +385,9 @@ def secondary_structure(
             f"{result.stats.nr_sheet_residues},{round(result.stats.helix_ratio, 3)},"
             f"{round(result.stats.sheet_ratio, 3)},{result.passed},{output_file or ''}"
         )
-
+        # TODO when some discard reason are resolvable by the user then
+        # make cli have exit code of non-zero and raise a ExceptionGroup with all those errors
+        # a user resolvable discard reason is for example multi-chain accession ambiguity
     if write_stats:
         write_lines(write_stats, stats_lines)
     rprint(f"Wrote {nr_passed} files to {output_dir} directory.")

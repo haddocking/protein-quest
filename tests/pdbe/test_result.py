@@ -7,23 +7,36 @@ from protein_quest.pdbe.result import (
     filter_pdb_results_on_resolution,
 )
 
+COMMON_CHAIN_CASES: list[tuple[str, str, int, int, int]] = [
+    ("O=1-300", "O", 300, 1, 300),  # uniprot:A8MT69 pdb:7R5S
+    ("B/D=1-81", "B", 81, 1, 81),  # uniprot:A8MT69 pdb:4E44
+    (
+        "B/D/H/L/M/N/U/V/W/X/Z/b/d/h/i/j/o/p/q/r=8-81",  # uniprot:A8MT69 pdb:4NE1
+        "B",
+        74,
+        8,
+        81,
+    ),
+    ("A/B=2-459,A/B=520-610", "A", 549, 2, 610),  # uniprot/O00255 pdb/3U84
+    ("DD/Dd=1-1085", "DD", 1085, 1, 1085),  # uniprot/O00268 pdb/7ENA
+    ("A=398-459,A=74-386,A=520-584,A=1-53", "A", 493, 1, 584),  # uniprot/O00255 pdb/7O9T
+    ("A/B=268-443,C=268-373", "A", 282, 268, 443),  # uniprot/O00255 pdb/7O9T protein split over 2 chains
+]
+"""Format is
+1. uniprot_chains string
+2. expected chain (first chain in uniprot_chains)
+3. expected chain length
+4. expected uniprot start
+5. expected uniprot end
+"""
+
 
 @pytest.mark.parametrize(
     "query,expected",
-    [
-        ("O=1-300", "O"),  #  uniprot:A8MT69 pdb:7R5S
-        ("B/D=1-81", "B"),  # uniprot:A8MT69 pdb:4E44
-        (
-            "B/D/H/L/M/N/U/V/W/X/Z/b/d/h/i/j/o/p/q/r=8-81",  # uniprot:A8MT69 pdb:4NE1
-            "B",
-        ),
-        ("A/B=2-459,A/B=520-610", "A"),  # uniprot/O00255 pdb/3U84
-        ("DD/Dd=1-1085", "DD"),  # uniprot/O00268 pdb/7ENA
-        ("A=398-459,A=74-386,A=520-584,A=1-53", "A"),  # uniprot/O00255 pdb/7O9T
-        ("A=-", "A"),  # uniprot/Q08499 pdb/1E9K
-    ],
+    [(query, chain) for query, chain, _length, _start, _end in COMMON_CHAIN_CASES]
+    + [("A=-", "A")],  # uniprot/Q08499 pdb/1E9K
 )
-def test_pdbresult_chain(query, expected):
+def test_pdbresult_chain(query: str, expected: str):
     pdb_result = PdbResult(id="DUMMY", method="DUMMY", uniprot_chains=query)
     result = pdb_result.chain
 
@@ -32,19 +45,9 @@ def test_pdbresult_chain(query, expected):
 
 @pytest.mark.parametrize(
     "query,expected",
-    [
-        ("O=1-300", 300),  #  uniprot:A8MT69 pdb:7R5S
-        ("B/D=1-81", 81),  # uniprot:A8MT69 pdb:4E44
-        (
-            "B/D/H/L/M/N/U/V/W/X/Z/b/d/h/i/j/o/p/q/r=8-81",  # uniprot:A8MT69 pdb:4NE1
-            74,
-        ),
-        ("A/B=2-459,A/B=520-610", 549),  # uniprot/O00255 pdb/3U84
-        ("DD/Dd=1-1085", 1085),  # uniprot/O00268 pdb/7ENA
-        ("A=398-459,A=74-386,A=520-584,A=1-53", 493),  # uniprot/O00255 pdb/7O9T
-    ],
+    [(query, length) for query, _chain, length, _start, _end in COMMON_CHAIN_CASES],
 )
-def test_pdb_result_chain_length(query, expected):
+def test_pdb_result_chain_length(query: str, expected: int):
     pdb_result = PdbResult(id="DUMMY", method="DUMMY", uniprot_chains=query)
     result = pdb_result.chain_length
 
@@ -57,6 +60,49 @@ def test_pdb_result_chain_length_invalid():
 
     with pytest.raises(PdbChainLengthError, match="Could not determine chain length of '1X5W' from 'A=-'"):
         _ = pdb_result.chain_length
+
+
+@pytest.mark.parametrize(
+    "query,expected_start,expected_end",
+    [(query, start, end) for query, _chain, _length, start, end in COMMON_CHAIN_CASES],
+)
+def test_pdb_result_uniprot_range(query: str, expected_start: int, expected_end: int):
+    pdb_result = PdbResult(id="DUMMY", method="DUMMY", uniprot_chains=query)
+
+    assert pdb_result.uniprot_start == expected_start
+    assert pdb_result.uniprot_end == expected_end
+
+
+@pytest.mark.parametrize(
+    "query,expected",
+    [(query, length / (end - start + 1)) for query, _chain, length, start, end in COMMON_CHAIN_CASES],
+)
+def test_pdb_result_sequence_identity(query: str, expected: float):
+    pdb_result = PdbResult(id="DUMMY", method="DUMMY", uniprot_chains=query)
+
+    assert pdb_result.sequence_identity == pytest.approx(expected)
+
+
+def test_pdb_result_sequence_identity_invalid():
+    pdb_result = PdbResult(id="1X5W", method="NMR", uniprot_chains="A=-")
+
+    assert pdb_result.sequence_identity == 0.0
+
+
+def test_pdb_result_uniprot_range_invalid_raises():
+    pdb_result = PdbResult(id="1X5W", method="NMR", uniprot_chains="A=-")
+
+    with pytest.raises(PdbChainLengthError, match="Could not determine chain length of '1X5W' from 'A=-'"):
+        _ = pdb_result.uniprot_start
+
+    with pytest.raises(PdbChainLengthError, match="Could not determine chain length of '1X5W' from 'A=-'"):
+        _ = pdb_result.uniprot_end
+
+
+def test_pdbresult_is_hashable():
+    result = PdbResult(id="1AAA", method="X-Ray_Crystallography", resolution="3.6", uniprot_chains="A=1-250")
+    assert isinstance(result, PdbResult)
+    assert isinstance(hash(result), int)
 
 
 class TestFilterPdbResultsOnChainLength:
@@ -188,6 +234,6 @@ class TestFilterPdbResultsOnResolution:
         assert result == {"Q9NTW7": {valid}}
 
     @pytest.mark.parametrize("top", [0, -1])
-    def test_nonpositive_top_raises(self, top):
+    def test_nonpositive_top_raises(self, top: int):
         with pytest.raises(ValueError, match=f"Top must be a positive integer, got {top}"):
             filter_pdb_results_on_resolution({}, top=top)

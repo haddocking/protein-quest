@@ -1,6 +1,7 @@
 """Filter CLI tests for protein-quest."""
 
 import csv
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -21,6 +22,8 @@ def test_filter_chain_happy_path(sample2_cif: Path, tmp_path: Path, capsys: pyte
         str(tmp_path),
         "--copy-method",
         "copy",
+        "--scheduler-address",
+        "sequential",
     ]
 
     main(argv)
@@ -30,6 +33,49 @@ def test_filter_chain_happy_path(sample2_cif: Path, tmp_path: Path, capsys: pyte
 
     captured = capsys.readouterr()
     assert "Wrote 1 single-chain PDB/mmCIF files to" in captured.err
+
+
+def test_filter_chain_multi_accession_happy_path(
+    multi_accession_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+):
+    """Test filter chain command handles multi-accession structures."""
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    local_multi = input_dir / multi_accession_cif.name
+    local_multi.symlink_to(multi_accession_cif)
+
+    chains_fn = tmp_path / "chains.csv"
+    # 1A02 maps the three UniProt accessions to chains N, F, and J.
+    chains_fn.write_text(
+        textwrap.dedent(
+            """\
+            pdb_id,chain
+            1A02,N
+            1A02,F
+            1A02,J
+            """
+        )
+    )
+
+    argv = [
+        "filter",
+        "chain",
+        str(chains_fn),
+        str(input_dir),
+        str(tmp_path),
+        "--scheduler-address",
+        "sequential",
+        "--copy-method",
+        "copy",
+    ]
+
+    main(argv)
+
+    output_files = {path.name for path in tmp_path.glob("1a02_*2A.cif.gz")}
+    assert output_files == {"1a02_N2A.cif.gz", "1a02_F2A.cif.gz", "1a02_J2A.cif.gz"}
+
+    captured = capsys.readouterr()
+    assert "Wrote 3 single-chain PDB/mmCIF files to" in captured.err
 
 
 def test_filter_chain_input_file_notfound(tmp_path: Path):
@@ -185,233 +231,250 @@ def test_filter_secondary_structure(
 
 
 class TestResolution:
-    def test_default_grouping(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
-        """Test filter resolution ranks structures per UniProt accession."""
-        fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
+    def test_with_defaults_and_stats(
+        self, sample_cif: Path, sample2_cif: Path, af_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ):
         input_dir = tmp_path / "input"
         input_dir.mkdir()
-        for fixture_name in ("2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz", "1amb_updated.cif.gz"):
-            (input_dir / fixture_name).symlink_to(fixtures_dir / fixture_name)
+        for fixture_name in (sample_cif, sample2_cif, af_cif):
+            (input_dir / fixture_name.name).symlink_to(fixture_name)
 
         output_dir = tmp_path / "output"
-
+        stats_fn = tmp_path / "stats.csv"
         argv = [
             "filter",
             "resolution",
             str(input_dir),
             str(output_dir),
-            "--top",
-            "1",
             "--copy-method",
             "symlink",
+            "--scheduler-address",
+            "sequential",
+            "--write-stats",
+            str(stats_fn),
         ]
 
         main(argv)
 
-        output_files = sorted(path.name for path in output_dir.iterdir())
-        assert output_files == ["2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"]
+        output_files = {path.name for path in output_dir.iterdir()}
+        assert output_files == {"2Y29.cif.gz", "3JRS_B2A.cif.gz"}
 
         captured = capsys.readouterr()
         assert "Filtering 3 files" in captured.err
         assert "Wrote 2 files to" in captured.err
 
-    def test_uses_default_top(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
-        """Test filter resolution defaults to top 1000 and stays quiet about stats when unused."""
-        fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
-        input_dir = tmp_path / "input"
-        input_dir.mkdir()
-        for fixture_name in ("2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz", "1amb_updated.cif.gz"):
-            (input_dir / fixture_name).symlink_to(fixtures_dir / fixture_name)
-
-        output_dir = tmp_path / "output"
-
-        argv = [
-            "filter",
-            "resolution",
-            str(input_dir),
-            str(output_dir),
-            "--copy-method",
-            "symlink",
-        ]
-
-        main(argv)
-
-        output_files = sorted(path.name for path in output_dir.iterdir())
-        assert output_files == ["1amb_updated.cif.gz", "2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"]
-
-        captured = capsys.readouterr()
-        assert "Wrote 3 files to" in captured.err
-        assert "Statistics written to" not in captured.err
-
-    def test_write_stats(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
-        """Test filter resolution writes CSV stats even when output file uses .log extension."""
-        fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
-        input_dir = tmp_path / "input"
-        input_dir.mkdir()
-        for fixture_name in ("2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz", "1amb_updated.cif.gz"):
-            (input_dir / fixture_name).symlink_to(fixtures_dir / fixture_name)
-
-        output_dir = tmp_path / "output"
-        stats_fn = tmp_path / "some.log"
-
-        argv = [
-            "filter",
-            "resolution",
-            str(input_dir),
-            str(output_dir),
-            "--copy-method",
-            "symlink",
-            "--write-stats",
-            str(stats_fn),
-        ]
-
-        main(argv)
-
-        with stats_fn.open() as handle:
-            rows = list(csv.DictReader(handle))
-
-        assert len(rows) == 3
-        assert rows[0] == {
-            "input_file": str(input_dir / "1amb_updated.cif.gz"),
-            "uniprot_accession": "P05067",
-            "resolution": "0.0",
-            "total_residue_count": "28",
-            "is_alphafold": "False",
-            "passed": "True",
-            "output_file": str(output_dir / "1amb_updated.cif.gz"),
-        }
-        assert rows[1] == {
-            "input_file": str(input_dir / "2Y29.cif.gz"),
-            "uniprot_accession": "P05067",
-            "resolution": "2.3",
-            "total_residue_count": "8",
-            "is_alphafold": "False",
-            "passed": "True",
-            "output_file": str(output_dir / "2Y29.cif.gz"),
-        }
-        assert rows[2] == {
-            "input_file": str(input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
-            "uniprot_accession": "A0A0C5B5G6",
-            "resolution": "0.0",
-            "total_residue_count": "16",
-            "is_alphafold": "True",
-            "passed": "True",
-            "output_file": str(output_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
-        }
-
-        captured = capsys.readouterr()
-        assert "Statistics written to" in captured.err
-        assert str(stats_fn) in captured.err
-
-    def test_no_groupby_and_write_stats(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
-        fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
-        input_dir = tmp_path / "input"
-        input_dir.mkdir()
-        for fixture_name in ("2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz", "1amb_updated.cif.gz"):
-            (input_dir / fixture_name).symlink_to(fixtures_dir / fixture_name)
-
-        output_dir = tmp_path / "output"
-        stats_fn = tmp_path / "stats.csv"
-
-        argv = [
-            "filter",
-            "resolution",
-            str(input_dir),
-            str(output_dir),
-            "--no-group-by",
-            "--top",
-            "2",
-            "--copy-method",
-            "symlink",
-            "--write-stats",
-            str(stats_fn),
-        ]
-
-        main(argv)
-
-        output_files = sorted(path.name for path in output_dir.iterdir())
-        assert output_files == ["2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"]
-
-        with stats_fn.open() as handle:
-            rows = list(csv.DictReader(handle))
-
-        expected_rows = [
+        stats = list(csv.DictReader(stats_fn.open()))
+        expected_stats = [
             {
-                "input_file": str(input_dir / "1amb_updated.cif.gz"),
-                "resolution": "0.0",
-                "total_residue_count": "28",
+                "input_file": (input_dir / sample_cif.name).as_posix(),
+                "id": "3JRSB2A",
+                "uniprot_accession": "Q8VZS8",
+                "resolution": "2.05",
+                "total_residue_count": "173",
                 "is_alphafold": "False",
-                "passed": "False",
-                "output_file": "",
+                "uniprot_start": "8",
+                "uniprot_end": "211",
+                "sequence_identity": "1.000",
+                "chain_length": "173",
+                "passed": "True",
+                "output_file": (output_dir / sample_cif.name).as_posix(),
+                "discard_reason": "",
+                "discard_reason_type": "",
             },
             {
-                "input_file": str(input_dir / "2Y29.cif.gz"),
+                "input_file": (input_dir / sample2_cif.name).as_posix(),
+                "id": "2Y29",
+                "uniprot_accession": "P05067",
                 "resolution": "2.3",
                 "total_residue_count": "8",
                 "is_alphafold": "False",
+                "uniprot_start": "687",
+                "uniprot_end": "692",
+                "sequence_identity": "1.000",
+                "chain_length": "8",
                 "passed": "True",
-                "output_file": str(output_dir / "2Y29.cif.gz"),
+                "output_file": (output_dir / sample2_cif.name).as_posix(),
+                "discard_reason": "",
+                "discard_reason_type": "",
             },
             {
-                "input_file": str(input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
+                "input_file": (input_dir / af_cif.name).as_posix(),
+                "id": "AF-A0A0C5B5G6-F1",
+                "uniprot_accession": "A0A0C5B5G6",
                 "resolution": "0.0",
                 "total_residue_count": "16",
                 "is_alphafold": "True",
-                "passed": "True",
-                "output_file": str(output_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
+                "uniprot_start": "1",
+                "uniprot_end": "16",
+                "sequence_identity": "1.000",
+                "chain_length": "16",
+                "passed": "False",
+                "output_file": "",
+                "discard_reason": f"Resolution is unset for {(input_dir / af_cif.name).as_posix()}",
+                "discard_reason_type": "ResolutionUnsetError",
             },
         ]
-        assert rows == expected_rows
+        assert stats == expected_stats
 
-        captured = capsys.readouterr()
-        assert "global resolution ranking (no grouping)" in captured.err
-
-    def test_no_group(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
-        fixtures_dir = Path(__file__).resolve().parents[1] / "fixtures"
+    def test_with_all_options(self, all_cifs: list[Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]):
         input_dir = tmp_path / "input"
         input_dir.mkdir()
-        for fixture_name in ("2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz", "1amb_updated.cif.gz"):
-            (input_dir / fixture_name).symlink_to(fixtures_dir / fixture_name)
+        for fixture_name in all_cifs:
+            (input_dir / fixture_name.name).symlink_to(fixture_name)
 
         output_dir = tmp_path / "output"
-
+        stats_fn = tmp_path / "stats.csv"
         argv = [
             "filter",
             "resolution",
             str(input_dir),
             str(output_dir),
-            "--no-group-by",
-            "--top",
-            "2",
             "--copy-method",
             "symlink",
+            "--scheduler-address",
+            "sequential",
+            "--write-stats",
+            str(stats_fn),
+            "--top",
+            "2",
+            "--no-group-by-uniprot-accession",
+            "--no-coverage",
+            "--min-sequence-identity",
+            "0.9",
+            "--lax",
         ]
 
         main(argv)
 
-        output_files = sorted(path.name for path in output_dir.iterdir())
-        assert output_files == ["2Y29.cif.gz", "AF-A0A0C5B5G6-F1-model_v6.cif.gz"]
+        output_files = {path.name for path in output_dir.iterdir()}
+        assert output_files == {
+            "1amb_updated.cif.gz",
+            "2Y29.cif.gz",
+            "3JRS_B2A.cif.gz",
+            "AF-A0A0C5B5G6-F1-model_v6.cif.gz",
+        }
 
         captured = capsys.readouterr()
-        assert "global resolution ranking (no grouping)" in captured.err
+        assert "Filtering 7 files" in captured.err
+        assert "Wrote 4 files to" in captured.err
+        assert "Additionally wrote 2 files to" in captured.err
 
-    def test_mutually_exclusive_groupby(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
-        argv = [
-            "filter",
-            "resolution",
-            str(tmp_path),
-            str(tmp_path),
-            "--group-by",
-            "uniprot_accession",
-            "--no-group-by",
+        stats = list(csv.DictReader(stats_fn.open()))
+        expected_stats = [
+            {
+                "chain_length": "173",
+                "discard_reason": "",
+                "discard_reason_type": "",
+                "id": "3JRSB2A",
+                "input_file": str(input_dir / "3JRS_B2A.cif.gz"),
+                "is_alphafold": "False",
+                "output_file": str(output_dir / "3JRS_B2A.cif.gz"),
+                "passed": "True",
+                "resolution": "2.05",
+                "sequence_identity": "1.000",
+                "total_residue_count": "173",
+                "uniprot_accession": "Q8VZS8",
+                "uniprot_end": "211",
+                "uniprot_start": "8",
+            },
+            {
+                "chain_length": "8",
+                "discard_reason": "",
+                "discard_reason_type": "",
+                "id": "2Y29",
+                "input_file": str(input_dir / "2Y29.cif.gz"),
+                "is_alphafold": "False",
+                "output_file": str(output_dir / "2Y29.cif.gz"),
+                "passed": "True",
+                "resolution": "2.3",
+                "sequence_identity": "1.000",
+                "total_residue_count": "8",
+                "uniprot_accession": "P05067",
+                "uniprot_end": "692",
+                "uniprot_start": "687",
+            },
+            {
+                "chain_length": "260",
+                "discard_reason": "Rank 3 > top 2",
+                "discard_reason_type": "OutsideTopError",
+                "id": "8W77",
+                "input_file": str(input_dir / "8w77_updated.cif.gz"),
+                "is_alphafold": "False",
+                "output_file": "",
+                "passed": "False",
+                "resolution": "3.61",
+                "sequence_identity": "1.000",
+                "total_residue_count": "260",
+                "uniprot_accession": "P0ABE7",
+                "uniprot_end": "127",
+                "uniprot_start": "23",
+            },
+            {
+                "chain_length": "131",
+                "discard_reason": "Rank 4 > top 2",
+                "discard_reason_type": "OutsideTopError",
+                "id": "1UN5",
+                "input_file": str(input_dir / "1un5.cif.gz"),
+                "is_alphafold": "False",
+                "output_file": "",
+                "passed": "False",
+                "resolution": "2.6",
+                "sequence_identity": "0.967",
+                "total_residue_count": "131",
+                "uniprot_accession": "P03950",
+                "uniprot_end": "147",
+                "uniprot_start": "25",
+            },
+            {
+                "chain_length": "1346",
+                "discard_reason": f"Sequence identity 0.816 below minimal 0.900 for {input_dir / '6O5I.cif.gz'}",
+                "discard_reason_type": "SequenceIdentityBelowThresholdError",
+                "id": "6O5I",
+                "input_file": str(input_dir / "6O5I.cif.gz"),
+                "is_alphafold": "False",
+                "output_file": "",
+                "passed": "False",
+                "resolution": "1.24",
+                "sequence_identity": "0.816",
+                "total_residue_count": "1346",
+                "uniprot_accession": "O00255",
+                "uniprot_end": "593",
+                "uniprot_start": "1",
+            },
+            {
+                "chain_length": "28",
+                "discard_reason": f"Resolution is unset for {input_dir / '1amb_updated.cif.gz'}",
+                "discard_reason_type": "ResolutionUnsetError",
+                "id": "1AMB",
+                "input_file": str(input_dir / "1amb_updated.cif.gz"),
+                "is_alphafold": "False",
+                "output_file": str(output_dir / "1amb_updated.cif.gz"),
+                "passed": "True",
+                "resolution": "0.0",
+                "sequence_identity": "1.000",
+                "total_residue_count": "28",
+                "uniprot_accession": "P05067",
+                "uniprot_end": "699",
+                "uniprot_start": "672",
+            },
+            {
+                "chain_length": "16",
+                "discard_reason": f"Resolution is unset for {input_dir / 'AF-A0A0C5B5G6-F1-model_v6.cif.gz'}",
+                "discard_reason_type": "ResolutionUnsetError",
+                "id": "AF-A0A0C5B5G6-F1",
+                "input_file": str(input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
+                "is_alphafold": "True",
+                "output_file": str(output_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
+                "passed": "True",
+                "resolution": "0.0",
+                "sequence_identity": "1.000",
+                "total_residue_count": "16",
+                "uniprot_accession": "A0A0C5B5G6",
+                "uniprot_end": "16",
+                "uniprot_start": "1",
+            },
         ]
-
-        with pytest.raises(SystemExit) as exc_info:
-            main(argv)
-
-        assert exc_info.value.code == 1
-        captured = capsys.readouterr()
-        assert "Mutually exclusive arguments" in captured.err
+        assert stats == expected_stats
 
     def test_rejects_zero_top(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
         argv = [

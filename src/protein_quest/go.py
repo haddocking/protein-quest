@@ -50,7 +50,7 @@ class SearchResponse:
     page_info: PageInfo
 
 
-def flatten_definition(definition, _context) -> str:
+def flatten_definition(definition: dict[str, str], _) -> str:
     return definition["text"]
 
 
