@@ -54,18 +54,18 @@ graph TB;
     searchstructures -. af_ids .-> fetchad
     searchaf --> |uniprot_accessions|fetchad(Retrieve AlphaFold)
     searchemdb -. emdb_ids .->fetchemdb[Retrieve EMDB]
-    fetchpdbe -->|mmcif_files| filterquality
     fetchpdbe -->|mmcif_files| chainfilter{{Filter on chain of uniprot}}
-    chainfilter --> |mmcif_files| resolutionfilter{{Filter on best resolution per UniProt}}
-    resolutionfilter --> |mmcif_files| residuefilter{{Filter on nr of residues}}
+    chainfilter --> |mmcif_files| residuefilter{{Filter on nr of residues}}
+    residuefilter -. mmcif_files .-> qualityfilter
+    residuefilter --> |mmcif_files| resolutionfilter{{Filter on best resolution per UniProt}}
     fetchad -->|mmcif_files| confidencefilter{{Filter out low confidence}}
     confidencefilter --> |mmcif_files| ssfilter{{Filter on secondary structure}}
-    residuefilter --> |mmcif_files| ssfilter
+    resolutionfilter --> |mmcif_files| ssfilter
     ssfilter -. mmcif_files .-> convert2cif([Convert to cif])
     ssfilter -. mmcif_files .-> convert2uniprot_accessions([Convert to UniProt accessions])
     ssfilter -. mmcif_files .-> convert2clusters([Convert to clusters by UniProt overlap])
-    searchpdbequality -. pdb_ids .-> filterquality{{Filter on quality}}
-    filterquality --> |mmcif_files| chainfilter
+    searchpdbequality -. pdb_quality.-> qualityfilter{{Filter on PDBe quality}}
+    qualityfilter -. mmcif_files .-> ssfilter
     classDef dashedBorder stroke-dasharray: 5 5;
     goterm:::dashedBorder
     taxonomy:::dashedBorder
@@ -76,7 +76,7 @@ graph TB;
     searchcomplexes:::dashedBorder
     searchuniprotdetails:::dashedBorder
     searchpdbequality:::dashedBorder
-    filterquality:::dashedBorder
+    qualityfilter:::dashedBorder
     convert2cif:::dashedBorder
     convert2uniprot_accessions:::dashedBorder
     convert2clusters:::dashedBorder
