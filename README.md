@@ -314,8 +314,8 @@ A0A087WUV0,ZN892_HUMAN,522,True,Zinc finger protein 892,9606,Homo sapiens
 
 ### Search and filter for PDBe quality scores
 
-The `protein-quest filter resolution` commands does not work on structures
-without an resolution like those made using NMR. With
+The `protein-quest filter resolution` command does not work on structures
+without a resolution (for example those made using NMR). With
 `protein-quest search pdbe-quality` we can fetch the quality scores from the
 wwPDB validation reports and then we can filter on quality with
 `protein-quest filter pdbe-quality`.
