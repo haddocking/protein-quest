@@ -84,7 +84,7 @@ def make_pdb(
     ],
 )
 def test_filter_pdbs_on_clustered_resolution(
-    pdbs: list[PdbResult], expected_ids: set[str], expected_log: list[str], caplog: pytest.LogCaptureFixture
+    pdbs: list[PdbResult], expected_ids: list[str], expected_log: list[str], caplog: pytest.LogCaptureFixture
 ):
     caplog.set_level(logging.INFO)
 

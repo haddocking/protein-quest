@@ -60,7 +60,7 @@ def convert_to_cif_file(
 
     Args:
         input_file: The structure file to convert.
-            See [StructureFileExtensions][protein_quest.io.StructureFileExtensions]
+            See [StructureFileExtensions][protein_quest.structure.types.StructureFileExtensions]
             for supported extensions.
         output_dir: Directory to save the converted file.
         copy_method: How to copy when no changes are needed to output file.

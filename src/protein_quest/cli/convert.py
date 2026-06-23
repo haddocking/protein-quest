@@ -94,7 +94,7 @@ def _read_pdb2uniprot_csv(uniprots: Path | None) -> Pdb2UniprotMapping:
         return uniprot_ref_dict
 
     with uniprots.open("r", encoding="utf-8") as f:
-        reader = csv.DictReader(f, fieldnames=["pdb_id", "chain", "uniprot_accession"])
+        reader = csv.DictReader(f)
         for row in reader:
             pdb_id = row["pdb_id"]
             chain = row["chain"]

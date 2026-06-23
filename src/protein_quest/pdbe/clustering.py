@@ -31,7 +31,7 @@ def _separate_valid_invalid_pdbs(pdbs: list[PdbResult]) -> tuple[list[PdbResult]
         try:
             _is_valid_pdb(pdb)
         except (PdbChainLengthError, ResolutionUnsetError) as e:
-            logger.info(f"PDB {pdb.id} is invalid, placing last: {e}")
+            logger.info("PDB %s is invalid, placing last: %s", pdb.id, e)
             invalid_pdbs.append(pdb)
         else:
             valid_pdbs.append(pdb)

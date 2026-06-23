@@ -48,7 +48,7 @@ def write_structure(structure: gemmi.Structure, path: Path):
         structure: The gemmi structure to write.
         path: The file path to write the structure to.
             The format depends on the file extension.
-            See [StructureFileExtensions][protein_quest.io.StructureFileExtensions]
+            See [StructureFileExtensions][protein_quest.structure.types.StructureFileExtensions]
             for supported extensions.
 
     Raises:
@@ -79,7 +79,7 @@ def read_structure(file: Path) -> gemmi.Structure:
 
     Args:
         file: Path to the input structure file.
-            See [StructureFileExtensions][protein_quest.io.StructureFileExtensions]
+            See [StructureFileExtensions][protein_quest.structure.types.StructureFileExtensions]
             for supported extensions.
 
     Returns:

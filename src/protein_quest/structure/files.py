@@ -14,7 +14,7 @@ def split_name_and_extension(name: str) -> tuple[str, str]:
     Examples:
         Some example usages.
 
-        >>> from protein_quest.pdbe.io import split_name_and_extension
+        >>> from protein_quest.structure.files import split_name_and_extension
         >>> split_name_and_extension("1234.pdb")
         ('1234', '.pdb')
         >>> split_name_and_extension("1234.pdb.gz")
@@ -39,7 +39,7 @@ def split_name_and_extension(name: str) -> tuple[str, str]:
 def locate_structure_file(root: Path, pdb_id: str) -> Path:
     """Locate a structure file for a given PDB ID in the specified directory.
 
-    Uses [StructureFileExtensions][protein_quest.io.StructureFileExtensions] as potential extensions.
+    Uses [StructureFileExtensions][protein_quest.structure.types.StructureFileExtensions] as potential extensions.
     Also tries different casing of the PDB ID.
 
     Args:
@@ -68,7 +68,7 @@ def locate_structure_file(root: Path, pdb_id: str) -> Path:
 def glob_structure_files(input_dir: Path) -> Generator[Path]:
     """Glob for structure files in a directory.
 
-    Uses [StructureFileExtensions][protein_quest.io.StructureFileExtensions] as valid extensions.
+    Uses [StructureFileExtensions][protein_quest.structure.types.StructureFileExtensions] as valid extensions.
     Does not search recursively.
 
     Args:
