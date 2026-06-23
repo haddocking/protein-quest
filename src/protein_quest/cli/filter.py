@@ -1,6 +1,7 @@
 """Filter subcommands for protein-quest."""
 
 import csv
+import logging
 import os
 from typing import TYPE_CHECKING, Annotated
 
@@ -21,21 +22,24 @@ from protein_quest.cli.common import (
     console,
     write_lines,
 )
+from protein_quest.converter import converter
 from protein_quest.filters.chain import filter_files_on_chain
+from protein_quest.filters.quality import filter_by_pdbe_quality, write_quality_stats_csv
 from protein_quest.filters.residues import filter_files_on_residues
 from protein_quest.filters.resolution import (
     filter_files_on_resolution,
     write_resolution_stats,
 )
 from protein_quest.filters.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
-from protein_quest.structure.files import glob_structure_files, locate_structure_file
+from protein_quest.pdbe.ws import Scores
+from protein_quest.structure.files import glob_structure_files, locate_structure_file, locate_structure_files_by_id
 from protein_quest.utils import copyfile
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 rprint = console.print
-
+logger = logging.getLogger(__name__)
 
 filter_app = App(name="filter", help="Filter files")
 
@@ -328,6 +332,70 @@ def resolution(
         write_resolution_stats(results, write_stats)
         if str(write_stats) != "-":
             rprint(f"Statistics written to {write_stats}")
+
+
+@filter_app.command
+def pdbe_quality(
+    input_dir: InputDir,
+    quality_json: InputFile,
+    output_dir: OutputDir,
+    /,
+    *,
+    minimal_geometry_quality: float = 50.0,
+    top: PositiveInt | None = None,
+    pass_given_resolution: Annotated[bool, Parameter(negative="")] = False,
+    write_stats: OutputFile | None = None,
+    cache: CacheParameter | None = None,
+    _: Common | None = None,
+):
+    """Filter PDB/mmCIF files by PDBe quality scores.
+
+    Args:
+        input_dir: Directory with PDB/mmCIF files.
+        quality_json: JSON file with PDBe quality scores.
+            Can be made with `protein-quest search pdbe-quality` command.
+        output_dir: Directory to write filtered PDB/mmCIF files. Files are copied without modification.
+        minimal_geometry_quality: Minimal geometry quality score to pass the filter.
+        top: Maximum number of files to keep. If not given, top is same as number of files that pass the filter.
+        pass_given_resolution: If set will passthrough files that have a valid resolution.
+        write_stats: Write filter statistics to file.
+            In CSV format with columns:
+            `<pdb_id>,<input_file>,<geometry_quality>,<passed>,<output_file>,<discard_reason>`.
+            Use `-` for stdout.
+        cache: Cache options including no_cache, cache_dir, and copy_method.
+        _: Common CLI options.
+
+    """
+    cache = cache or CacheParameter()
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    logger.info('Reading PDBe quality scores from "%s"', quality_json)
+    with quality_json.open("r", encoding="utf-8") as f:
+        scores = converter.loads(f.read(), dict[str, Scores])
+
+    logger.info('Finding structure files in "%s" directory that match ids from PDBe quality scores', input_dir)
+    located_ids = locate_structure_files_by_id(set(scores.keys()), input_dir)
+
+    logger.info("Filtering structure files by PDBe quality scores with minimal_geometry_quality=%s, top=%s,")
+    results = filter_by_pdbe_quality(
+        scores,
+        located_ids,
+        minimal_geometry_quality=minimal_geometry_quality,
+        top=top,
+        pass_given_resolution=pass_given_resolution,
+    )
+
+    for result in results:
+        if result.passed and result.input_file is not None:
+            copyfile(result.input_file, output_dir / result.input_file.name, cache.copy_method)
+
+    rprint(f"Wrote {len([r for r in results if r.passed])} files to {output_dir} directory.")
+    rprint(f"Discarded {len([r for r in results if not r.passed])} files due to any reason.")
+    rprint(f"Discarded {len(located_ids.extras)} files in {input_dir} directory that were not in {quality_json}.")
+
+    if write_stats:
+        write_quality_stats_csv(results, write_stats, output_dir)
+        rprint(f"Statistics written to {write_stats}")
 
 
 @filter_app.command

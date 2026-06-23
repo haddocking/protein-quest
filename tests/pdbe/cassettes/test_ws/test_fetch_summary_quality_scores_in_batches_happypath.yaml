@@ -1,0 +1,66 @@
+interactions:
+- request:
+    body: '"1UN5,2Y29,1A02,6O5I"'
+    headers:
+      Accept:
+      - application/json
+      Content-Type:
+      - application/json
+    method: POST
+    uri: https://www.ebi.ac.uk/pdbe/api/v2/validation/summary_quality_scores/entry
+  response:
+    body:
+      string: '{"1un5":{"geometry_quality":45.23,"data_quality":null,"overall_quality":45.23,"experiment_data_available":false},"2y29":{"geometry_quality":55.9,"data_quality":81.09,"overall_quality":63.83,"experiment_data_available":true},"1a02":{"geometry_quality":6.15,"data_quality":7.84,"overall_quality":6.73,"experiment_data_available":true},"6o5i":{"geometry_quality":64.38,"data_quality":61.45,"overall_quality":63.17,"experiment_data_available":true}}'
+    headers:
+      Cache-Control:
+      - public, max-age=604800
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '445'
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 15 Jun 2026 13:21:40 GMT
+      Strict-Transport-Security:
+      - max-age=0
+      Vary:
+      - Accept-Encoding,Origin
+      x-process-time:
+      - '0.010839462280273438'
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '"1AMB,3JRS"'
+    headers:
+      Accept:
+      - application/json
+      Content-Type:
+      - application/json
+    method: POST
+    uri: https://www.ebi.ac.uk/pdbe/api/v2/validation/summary_quality_scores/entry
+  response:
+    body:
+      string: '{"3jrs":{"geometry_quality":31.58,"data_quality":22.4,"overall_quality":27.13,"experiment_data_available":true},"1amb":{"geometry_quality":null,"data_quality":null,"overall_quality":null,"experiment_data_available":"unknown"}}'
+    headers:
+      Cache-Control:
+      - public, max-age=604800
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '226'
+      Content-Type:
+      - application/json
+      Date:
+      - Mon, 15 Jun 2026 13:21:40 GMT
+      Strict-Transport-Security:
+      - max-age=0
+      Vary:
+      - Accept-Encoding,Origin
+      x-process-time:
+      - '0.008832693099975586'
+    status:
+      code: 200
+      message: OK
+version: 1
