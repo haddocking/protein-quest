@@ -1,6 +1,7 @@
 """Filter subcommands for protein-quest."""
 
 import csv
+import logging
 import os
 from typing import TYPE_CHECKING, Annotated
 
@@ -38,7 +39,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 rprint = console.print
-
+logger = logging.getLogger(__name__)
 
 filter_app = App(name="filter", help="Filter files")
 
@@ -368,11 +369,14 @@ def pdbe_quality(
     cache = cache or CacheParameter()
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    logger.info('Reading PDBe quality scores from "%s"', quality_json)
     with quality_json.open("r", encoding="utf-8") as f:
         scores = converter.loads(f.read(), dict[str, Scores])
 
+    logger.info('Finding structure files in "%s" directory that match ids from PDBe quality scores', input_dir)
     located_ids = locate_structure_files_by_id(set(scores.keys()), input_dir)
 
+    logger.info("Filtering structure files by PDBe quality scores with minimal_geometry_quality=%s, top=%s,")
     results = filter_by_pdbe_quality(
         scores,
         located_ids,

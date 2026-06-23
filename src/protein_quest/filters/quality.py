@@ -121,7 +121,7 @@ def filter_by_pdbe_quality(
                             reason=f"Passed due to valid resolution {structure.resolution}",
                         )
                     )
-                    logger.info(f"Passing {pdb_id} due to valid resolution {structure.resolution}")
+                    logger.debug(f"Passing {pdb_id} due to valid resolution {structure.resolution}")
                     continue
             if score.geometry_quality is None:
                 results.append(
