@@ -58,6 +58,7 @@ def locate_structure_file(root: Path, pdb_id: str) -> Path:
             root / f"{pdb_id.lower()}{ext}",
             root / f"{pdb_id.upper()}{ext}",
             root / f"pdb{pdb_id.lower()}{ext}",
+            root / f"{pdb_id.lower()}_updated{ext}",
         )
         for candidate in candidates:
             if candidate.exists():
