@@ -86,9 +86,9 @@ class LocateStructureFilesByIdResult:
     """Result of locating structure files by PDB ID.
 
     Attributes:
-        found: A mapping of PDB IDs to their located structure file paths.
-           An PDB ID may be associated with multiple structure files and
-           an structure file may be associated with multiple PDB ID.
+        found: A set of PDB IDs and their located structure file path.
+           A PDB ID may be associated with multiple structure files and
+           a structure file may be associated with multiple PDB IDs.
         not_found: A set of PDB IDs that could not be located.
         extras: A set of structure files in the input directory that were not associated with any of the provided IDs.
     """
@@ -101,7 +101,7 @@ class LocateStructureFilesByIdResult:
 def locate_structure_files_by_id(ids: set[str], input_dir: Path) -> LocateStructureFilesByIdResult:
     """Locate structure files for a set of PDB IDs in the specified directory.
 
-    Use presences of ID in filename to associate files with IDs.
+    Use presence of ID in filename to associate files with IDs.
 
     Args:
         ids: A set of PDB IDs to locate.

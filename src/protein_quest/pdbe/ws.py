@@ -61,7 +61,7 @@ async def fetch_summary_quality_scores_in_batches(
 
     Args:
         pdb_ids: A set of PDB IDs to fetch quality scores for.
-        timeout: Total timeout for fetching all batches, in seconds.
+        timeout: Timeout for fetching each batch, in seconds.
         batch_size: Number of PDB IDs to include in each batch request.
         sleep_between_batches: Time to sleep between batch requests, in seconds.
 
@@ -72,15 +72,15 @@ async def fetch_summary_quality_scores_in_batches(
         aiohttp.ClientResponseError: If any batch request fails with a non-2xx status code.
     """
     total = len(pdb_ids)
+    sorted_pdb_ids = sorted(pdb_ids)
     scores = {}
     async with friendly_session(total_timeout=timeout) as session:
         with tqdm(
             total=total,
             desc="Searching for quality scores for PDBe entries",
-            disable=total < batch_size,
             unit="acc",
         ) as pbar:
-            for batch in batched(pdb_ids, batch_size, strict=False):
+            for batch in batched(sorted_pdb_ids, batch_size, strict=False):
                 batch_summries = await _fetch_summary_quality_scores(batch, session)
                 scores.update(batch_summries)
                 pbar.update(len(batch))

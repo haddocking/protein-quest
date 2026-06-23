@@ -360,7 +360,7 @@ def pdbe_quality(
         pass_given_resolution: If set will passthrough files that have a valid resolution.
         write_stats: Write filter statistics to file.
             In CSV format with columns:
-            `<pdb_id>,<input_file>,<geometry_quality>,<passed>,<output_file>,<discard_reason>`.
+            `<pdb_id>,<input_file>,<geometry_quality>,<passed>,<output_file>,<reason>`.
             Use `-` for stdout.
         cache: Cache options including no_cache, cache_dir, and copy_method.
         _: Common CLI options.
@@ -376,7 +376,7 @@ def pdbe_quality(
     logger.info('Finding structure files in "%s" directory that match ids from PDBe quality scores', input_dir)
     located_ids = locate_structure_files_by_id(set(scores.keys()), input_dir)
 
-    logger.info("Filtering structure files by PDBe quality scores with minimal_geometry_quality=%s, top=%s,")
+    logger.info("Filtering structure files by PDBe quality scores")
     results = filter_by_pdbe_quality(
         scores,
         located_ids,
@@ -394,6 +394,8 @@ def pdbe_quality(
     rprint(f"Discarded {len(located_ids.extras)} files in {input_dir} directory that were not in {quality_json}.")
 
     if write_stats:
+        if str(write_stats) != "-":
+            write_stats.parent.mkdir(parents=True, exist_ok=True)
         write_quality_stats_csv(results, write_stats, output_dir)
         rprint(f"Statistics written to {write_stats}")
 

@@ -34,27 +34,27 @@ class FilterQualityResult:
     reason: str | None = None
 
 
-class PdbIdGeomtryQualityPair(TypedDict):
+class PdbIdGeometryQualityPair(TypedDict):
     pdb_id: str
     geometry_quality: float | None
 
 
 def _associate_files_with_sorted_scores(
     scores: dict[str, Scores], located_ids: LocateStructureFilesByIdResult, top: int | None = None
-) -> tuple[list[PdbIdGeomtryQualityPair], dict[str, list[Path]]]:
-    flattened_scores: list[PdbIdGeomtryQualityPair] = []
+) -> tuple[list[PdbIdGeometryQualityPair], dict[str, list[Path]]]:
+    flattened_scores: list[PdbIdGeometryQualityPair] = []
     found_ids = {pdb_id for pdb_id, _ in located_ids.found}
     for pdb_id, score in scores.items():
         if pdb_id not in found_ids:
             continue
         flattened_scores.append(
-            PdbIdGeomtryQualityPair(
+            PdbIdGeometryQualityPair(
                 pdb_id=pdb_id,
                 geometry_quality=score.geometry_quality,
             )
         )
 
-    def sorter(x: PdbIdGeomtryQualityPair) -> tuple[bool, float | None]:
+    def sorter(x: PdbIdGeometryQualityPair) -> tuple[bool, float | None]:
         # None as worst and highest as best with reverse sort
         return (x["geometry_quality"] is not None, x["geometry_quality"])
 
