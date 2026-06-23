@@ -331,7 +331,7 @@ Some tools (for example [powerfit](https://github.com/haddocking/powerfit)) only
 work with `.cif` files and not `*.cif.gz` or `*.bcif` files.
 
 ```shell
-protein-quest convert structures --output-format cif --output-dir ./filtered-ss-as-cif ./filtered-ss
+protein-quest convert structures --output-format .cif --output-dir ./filtered-ss-as-cif ./filtered-ss
 ```
 
 Or to inject Uniprot accessions into structure files use
