@@ -1,11 +1,14 @@
 import logging
 from pathlib import Path
 
+import gemmi
 import pytest
 from platformdirs import user_cache_dir
 
+from protein_quest.__version__ import __version__
 from protein_quest.pdbe.fetch import sync_fetch
 from protein_quest.structure.chains import (
+    extract_chain_extraction_provenance,
     nr_of_residues_in_total,
     nr_residues_in_chain,
     write_single_chain_structure_file,
@@ -17,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 def test_write_single_chain_structure_file_happypath(sample2_cif: Path, tmp_path: Path):
+    input_structure = read_structure(sample2_cif)
+
     output_file = write_single_chain_structure_file(
         input_file=sample2_cif,
         chain2keep="A",
@@ -27,13 +32,31 @@ def test_write_single_chain_structure_file_happypath(sample2_cif: Path, tmp_path
     assert output_file is not None
     assert output_file.name == "2Y29_A2Z.cif.gz"
     assert output_file.exists()
+
+    # Chain checks
     structure = read_structure(output_file)
-    assert len(structure) == 1  # One model
+    assert len(structure) == 1
     model = structure[0]
-    assert len(model) == 1  # One chain
+    assert len(model) == 1
     chain = model[0]
     assert chain.name == "Z"
-    assert len(chain) == 6  # 6 residues in chain Z
+    assert len(chain) == 6
+
+    # Unchanged main/info
+    assert structure.name == input_structure.name
+    assert structure.info["_entry.id"] == input_structure.info["_entry.id"]
+    assert structure.info["_struct.title"] == input_structure.info["_struct.title"]
+
+    # Added software item
+    assert len(structure.meta.software) == len(input_structure.meta.software) + 1
+    extracted_provenance = extract_chain_extraction_provenance(structure)
+    assert extracted_provenance is not None
+    software_item, provenance = extracted_provenance
+    assert software_item.name == "protein-quest.structure.chains.write_single_chain_structure_file"
+    assert software_item.version == __version__
+    assert software_item.classification == gemmi.SoftwareItem.Classification.DataExtraction
+    assert provenance.chain2keep == "A"
+    assert provenance.out_chain == "Z"
 
 
 def test_write_single_chain_structure_file_with_secondary_structure(sample_cif: Path, tmp_path: Path):
