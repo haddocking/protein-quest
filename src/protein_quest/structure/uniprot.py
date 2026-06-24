@@ -181,7 +181,7 @@ def _rename_chain_based_on_provenance(
 ) -> Pdb2UniprotMapping:
     pdb_id = structure.name
     prov = retrieve_chain_extraction_provenance(structure)
-    if prov:
+    if prov and pdb_id in pdb2uniprot:
         _, chain_provenance = prov
         logger.info(
             "Structure %s has provenance information indicating it was extracted from chain %s to %s. "
