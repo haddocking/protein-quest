@@ -1,9 +1,9 @@
 from pathlib import Path
 
 import gemmi
-from platformdirs import user_cache_dir
 import pooch
 import pytest
+from platformdirs import user_cache_dir
 
 from protein_quest.structure.formats import read_structure, write_structure
 
@@ -69,6 +69,7 @@ def no_uniprot_cif(sample2_cif: Path, tmp_path: Path) -> Path:
     structure = gemmi.make_structure_from_block(block_without_struct_ref)
     write_structure(structure, tmp_path / "no_uniprot.cif")
     return tmp_path / "no_uniprot.cif"
+
 
 @pytest.fixture
 def download_cache_dir() -> Path:
