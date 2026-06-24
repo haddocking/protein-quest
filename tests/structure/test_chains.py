@@ -10,6 +10,7 @@ from platformdirs import user_cache_dir
 from protein_quest.__version__ import __version__
 from protein_quest.pdbe.fetch import sync_fetch
 from protein_quest.structure.chains import (
+    CHAIN_PROVENANCE_SOFTWARE_NAME,
     nr_of_residues_in_total,
     nr_residues_in_chain,
     retrieve_chain_extraction_provenance,
@@ -54,7 +55,7 @@ def test_write_single_chain_structure_file_happypath(sample2_cif: Path, tmp_path
     extracted_provenance = retrieve_chain_extraction_provenance(structure)
     assert extracted_provenance is not None
     software_item, provenance = extracted_provenance
-    assert software_item.name == "protein-quest.structure.chains.write_single_chain_structure_file"
+    assert software_item.name == CHAIN_PROVENANCE_SOFTWARE_NAME
     assert software_item.version == __version__
     assert software_item.classification == gemmi.SoftwareItem.Classification.DataExtraction
     assert provenance.chain2keep == "A"
@@ -210,7 +211,7 @@ def test_retrieve_chain_extraction_provenance_badjson(
     caplog.set_level(logging.WARNING)
     structure = gemmi.Structure()
     software_item = gemmi.SoftwareItem()
-    software_item.name = "protein-quest.structure.chains.write_single_chain_structure_file"
+    software_item.name = CHAIN_PROVENANCE_SOFTWARE_NAME
     software_item.contact_author = contact_author
     structure.meta.software = [software_item]
 

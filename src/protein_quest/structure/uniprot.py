@@ -204,7 +204,7 @@ def add_uniprot_accessions2structure(
 ) -> gemmi.Structure:
     """Add UniProt accessions to a structure if they are missing, based on the provided pdb2uniprot mapping.
 
-    If structure has uniprot accesion that is not in `pdb2uniprot`, it will be left unchanged.
+    If structure has UniProt accession that is not in `pdb2uniprot`, it will be left unchanged.
     If structure has chain extraction provenance, the chain names from pdb2uniprot
     will be renamed to match the output chain name in the provenance.
 
