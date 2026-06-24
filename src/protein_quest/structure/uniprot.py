@@ -6,6 +6,7 @@ from collections.abc import Generator
 
 import gemmi
 
+from protein_quest.structure.chains import retrieve_chain_extraction_provenance
 from protein_quest.structure.types import Pdb2UniprotMapping, StructRefSeq
 
 logger = logging.getLogger(__name__)
@@ -175,12 +176,37 @@ def _append_uniprot_to_structure(
     return gemmi.make_structure_from_block(block)
 
 
+def _rename_chain_based_on_provenance(
+    structure: gemmi.Structure, pdb2uniprot: Pdb2UniprotMapping
+) -> Pdb2UniprotMapping:
+    pdb_id = structure.name
+    prov = retrieve_chain_extraction_provenance(structure)
+    if prov:
+        _, chain_provenance = prov
+        logger.info(
+            "Structure %s has provenance information indicating it was extracted from chain %s to %s. "
+            "Using this information to verify/add UniProt accessions.",
+            pdb_id,
+            chain_provenance.chain2keep,
+            chain_provenance.out_chain,
+        )
+        renamed_mapping = {
+            (chain_provenance.out_chain, uniprot)
+            for chain, uniprot in pdb2uniprot[pdb_id]
+            if chain == chain_provenance.chain2keep
+        }
+        pdb2uniprot = {pdb_id: renamed_mapping}
+    return pdb2uniprot
+
+
 def add_uniprot_accessions2structure(
     structure: gemmi.Structure, pdb2uniprot: Pdb2UniprotMapping | None
 ) -> gemmi.Structure:
     """Add UniProt accessions to a structure if they are missing, based on the provided pdb2uniprot mapping.
 
     If structure has uniprot accesion that is not in `pdb2uniprot`, it will be left unchanged.
+    If structure has chain extraction provenance, the chain names from pdb2uniprot
+    will be renamed to match the output chain name in the provenance.
 
     Args:
         structure: The gemmi Structure object to add UniProt accessions to.
@@ -199,6 +225,8 @@ def add_uniprot_accessions2structure(
             "PDB ID %s not found in pdb2uniprot mapping. Leaving structure unverified and unchanged.", pdb_id
         )
         return structure
+
+    pdb2uniprot = _rename_chain_based_on_provenance(structure, pdb2uniprot)
 
     known = structure_to_uniprot(structure)
     missing = pdb2uniprot[pdb_id] - known[pdb_id]

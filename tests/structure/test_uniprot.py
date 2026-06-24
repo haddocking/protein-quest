@@ -3,6 +3,7 @@ from pathlib import Path
 import gemmi
 import pytest
 
+from protein_quest.structure.chains import write_single_chain_structure_file
 from protein_quest.structure.formats import read_structure
 from protein_quest.structure.types import Pdb2UniprotMapping, StructRefSeq
 from protein_quest.structure.uniprot import (
@@ -232,3 +233,24 @@ class TestVerifyInjectUniprotRef:
 
         expected: Pdb2UniprotMapping = {"1AMB": {("A", "P05067"), ("A", "P12345")}}
         assert result2 == expected
+
+    def test_on_single_chain_written(self, multi_accession_cif: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture):
+        caplog.set_level("INFO")
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        input_file = write_single_chain_structure_file(
+            input_file=multi_accession_cif, output_dir=input_dir, chain2keep="F"
+        )
+
+        structure = read_structure(input_file)
+        pdb2uniprot = {"1A02": {("F", "P01111")}}
+
+        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+        result = structure_to_uniprot(new_structure)
+
+        expected: Pdb2UniprotMapping = {"1A02": {("A", "P01111")}}
+        assert result == expected
+
+        log = caplog.text
+        assert "Structure 1A02 has provenance information indicating it was extracted from chain F to A" in log
+        assert "Using this information to verify/add UniProt accessions." in log
