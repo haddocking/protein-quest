@@ -268,7 +268,7 @@ class TestResolution:
         expected_stats = [
             {
                 "input_file": (input_dir / sample_cif.name).as_posix(),
-                "id": "3JRSB2A",
+                "id": "3JRS",
                 "uniprot_accession": "Q8VZS8",
                 "resolution": "2.05",
                 "total_residue_count": "173",
@@ -366,7 +366,7 @@ class TestResolution:
                 "chain_length": "173",
                 "discard_reason": "",
                 "discard_reason_type": "",
-                "id": "3JRSB2A",
+                "id": "3JRS",
                 "input_file": str(input_dir / "3JRS_B2A.cif.gz"),
                 "is_alphafold": "False",
                 "output_file": str(output_dir / "3JRS_B2A.cif.gz"),

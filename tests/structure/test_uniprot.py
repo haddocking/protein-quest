@@ -38,7 +38,7 @@ def test_structure2uniprot_accessions_missing(sample_cif: Path, caplog: pytest.L
     accessions = structure2uniprot_accessions(structure)
 
     assert accessions == set()
-    assert "No UniProt accessions found in structure 3JRSB2A" in caplog.text
+    assert "No UniProt accessions found in structure 3JRS" in caplog.text
 
 
 @pytest.mark.parametrize(

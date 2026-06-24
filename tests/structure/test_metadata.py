@@ -15,7 +15,7 @@ class TestStructureMetadata:
             pytest.param(
                 "sample_cif",
                 StructureMetadata(
-                    id="3JRSB2A",
+                    id="3JRS",
                     uniprot_accession="Q8VZS8",
                     resolution=2.05,
                     total_residue_count=173,

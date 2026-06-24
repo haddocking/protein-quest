@@ -137,7 +137,7 @@ class TestYieldResolutionStatistics:
 
         expected = [
             ResolutionFilterStatistics(
-                id="3JRSB2A",
+                id="3JRS",
                 input_file=sample_cif,
                 uniprot_accession="Q8VZS8",
                 resolution=2.05,
@@ -214,7 +214,7 @@ class TestLoadResolutionStatistics:
 
         expected = [
             ResolutionFilterStatistics(
-                id="3JRSB2A",
+                id="3JRS",
                 input_file=sample_cif,
                 uniprot_accession="Q8VZS8",
                 resolution=2.05,
