@@ -8,9 +8,9 @@ from platformdirs import user_cache_dir
 from protein_quest.__version__ import __version__
 from protein_quest.pdbe.fetch import sync_fetch
 from protein_quest.structure.chains import (
-    extract_chain_extraction_provenance,
     nr_of_residues_in_total,
     nr_residues_in_chain,
+    retrieve_chain_extraction_provenance,
     write_single_chain_structure_file,
 )
 from protein_quest.structure.errors import ChainNotFoundError
@@ -49,7 +49,7 @@ def test_write_single_chain_structure_file_happypath(sample2_cif: Path, tmp_path
 
     # Added software item
     assert len(structure.meta.software) == len(input_structure.meta.software) + 1
-    extracted_provenance = extract_chain_extraction_provenance(structure)
+    extracted_provenance = retrieve_chain_extraction_provenance(structure)
     assert extracted_provenance is not None
     software_item, provenance = extracted_provenance
     assert software_item.name == "protein-quest.structure.chains.write_single_chain_structure_file"

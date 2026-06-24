@@ -124,7 +124,7 @@ def _add_provenance_info(structure: gemmi.Structure, chain2keep: str, out_chain:
     structure.meta.software = [*structure.meta.software, new_si]
 
 
-def extract_chain_extraction_provenance(
+def retrieve_chain_extraction_provenance(
     structure: gemmi.Structure,
 ) -> tuple[SoftwareItem, ChainExtractionProvenance] | None:
     """Extract the provenance information from a structure.
