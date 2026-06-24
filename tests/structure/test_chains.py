@@ -1,13 +1,19 @@
 import logging
 from pathlib import Path
 
+import gemmi
 import pytest
+from cattrs import ClassValidationError
+from orjson import JSONDecodeError
 from platformdirs import user_cache_dir
 
+from protein_quest.__version__ import __version__
 from protein_quest.pdbe.fetch import sync_fetch
 from protein_quest.structure.chains import (
+    CHAIN_PROVENANCE_SOFTWARE_NAME,
     nr_of_residues_in_total,
     nr_residues_in_chain,
+    retrieve_chain_extraction_provenance,
     write_single_chain_structure_file,
 )
 from protein_quest.structure.errors import ChainNotFoundError
@@ -17,6 +23,8 @@ logger = logging.getLogger(__name__)
 
 
 def test_write_single_chain_structure_file_happypath(sample2_cif: Path, tmp_path: Path):
+    input_structure = read_structure(sample2_cif)
+
     output_file = write_single_chain_structure_file(
         input_file=sample2_cif,
         chain2keep="A",
@@ -27,13 +35,31 @@ def test_write_single_chain_structure_file_happypath(sample2_cif: Path, tmp_path
     assert output_file is not None
     assert output_file.name == "2Y29_A2Z.cif.gz"
     assert output_file.exists()
+
+    # Chain checks
     structure = read_structure(output_file)
-    assert len(structure) == 1  # One model
+    assert len(structure) == 1
     model = structure[0]
-    assert len(model) == 1  # One chain
+    assert len(model) == 1
     chain = model[0]
     assert chain.name == "Z"
-    assert len(chain) == 6  # 6 residues in chain Z
+    assert len(chain) == 6
+
+    # Unchanged main/info
+    assert structure.name == input_structure.name
+    assert structure.info["_entry.id"] == input_structure.info["_entry.id"]
+    assert structure.info["_struct.title"] == input_structure.info["_struct.title"]
+
+    # Added software item
+    assert len(structure.meta.software) == len(input_structure.meta.software) + 1
+    extracted_provenance = retrieve_chain_extraction_provenance(structure)
+    assert extracted_provenance is not None
+    software_item, provenance = extracted_provenance
+    assert software_item.name == CHAIN_PROVENANCE_SOFTWARE_NAME
+    assert software_item.version == __version__
+    assert software_item.classification == gemmi.SoftwareItem.Classification.DataExtraction
+    assert provenance.chain2keep == "A"
+    assert provenance.out_chain == "Z"
 
 
 def test_write_single_chain_structure_file_with_secondary_structure(sample_cif: Path, tmp_path: Path):
@@ -138,7 +164,7 @@ def multi_model_cif(download_cache_dir: Path) -> Path:
 def test_write_single_chain_structure_file_multi_model_cif(multi_model_cif: Path, tmp_path: Path):
     output_file = write_single_chain_structure_file(
         input_file=multi_model_cif,
-        chain2keep="A",
+        chain2keep="B",
         output_dir=tmp_path,
         out_chain="Z",
     )
@@ -150,7 +176,10 @@ def test_write_single_chain_structure_file_multi_model_cif(multi_model_cif: Path
     assert len(model) == 1  # One chain
     chain = model[0]
     assert chain.name == "Z"
-    assert len(chain) == 59
+    assert len(chain) == 61
+    subchains = {chain: entity.name for entity in structure.entities for chain in entity.subchains}
+    expected_subchains = {"Z": "1"}
+    assert subchains == expected_subchains
 
 
 def test_nr_residues_in_chain(sample2_cif: Path):
@@ -171,3 +200,20 @@ def test_nr_of_residues_in_total(sample2_cif: Path):
     total_residues = nr_of_residues_in_total(structure)
 
     assert total_residues == 8
+
+
+@pytest.mark.parametrize(
+    "contact_author, exception_type", [("not a valid json", JSONDecodeError), ('{"a:":42}', ClassValidationError)]
+)
+def test_retrieve_chain_extraction_provenance_badjson(
+    contact_author: str, exception_type: type, caplog: pytest.LogCaptureFixture
+):
+    caplog.set_level(logging.WARNING)
+    structure = gemmi.Structure()
+    software_item = gemmi.SoftwareItem()
+    software_item.name = CHAIN_PROVENANCE_SOFTWARE_NAME
+    software_item.contact_author = contact_author
+    structure.meta.software = [software_item]
+
+    with pytest.raises(exception_type):
+        retrieve_chain_extraction_provenance(structure)

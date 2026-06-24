@@ -1,19 +1,27 @@
-"""Chain-level structure helpers and transformations."""
+"""Chain-level structure helpers and transformations.
+
+Attributes:
+    CHAIN_PROVENANCE_SOFTWARE_NAME: The name of the software item used for chain extraction provenance.
+"""
 
 import logging
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
 import gemmi
-from gemmi import Structure
+from gemmi import SoftwareItem, Structure
 
 from protein_quest.__version__ import __version__
+from protein_quest.converter import converter
 from protein_quest.structure.errors import ChainNotFoundError
 from protein_quest.structure.files import split_name_and_extension
 from protein_quest.structure.formats import read_structure, write_structure
 from protein_quest.utils import CopyMethod, copyfile
 
 logger = logging.getLogger(__name__)
+
+CHAIN_PROVENANCE_SOFTWARE_NAME = "protein-quest.structure.chains.write_single_chain_structure_file"
 
 
 def find_chain_in_model(model: gemmi.Model, wanted_chain: str) -> gemmi.Chain | None:
@@ -88,20 +96,59 @@ def _dedup_sheets(structure: gemmi.Structure, chain2keep: str):
         structure.sheets.pop(sheet_index)
 
 
+@dataclass(frozen=True)
+class ChainExtractionProvenance:
+    """Provenance information for chain extraction.
+
+    Attributes:
+        chain2keep: The chain identifier that was kept from the input structure.
+        out_chain: The chain identifier that is used in this output structure."""
+
+    chain2keep: str
+    out_chain: str
+
+
 def _add_provenance_info(structure: gemmi.Structure, chain2keep: str, out_chain: str):
-    old_id = structure.name
-    new_id = structure.name + f"{chain2keep}2{out_chain}"
-    structure.name = new_id
-    structure.info["_entry.id"] = new_id
-    new_title = f"From {old_id} chain {chain2keep} to {out_chain}"
-    structure.info["_struct.title"] = new_title
-    structure.info["_struct_keywords.pdbx_keywords"] = new_title.upper()
     new_si = gemmi.SoftwareItem()
     new_si.classification = gemmi.SoftwareItem.Classification.DataExtraction
-    new_si.name = "protein-quest.pdbe.io.write_single_chain_pdb_file"
+    new_si.name = CHAIN_PROVENANCE_SOFTWARE_NAME
     new_si.version = __version__
     new_si.date = str(datetime.now(tz=UTC).date())
+    chain_provenance = converter.dumps(
+        ChainExtractionProvenance(
+            chain2keep=chain2keep,
+            out_chain=out_chain,
+        )
+    ).decode("utf-8")
+    new_si.contact_author = chain_provenance
     structure.meta.software = [*structure.meta.software, new_si]
+
+
+def retrieve_chain_extraction_provenance(
+    structure: gemmi.Structure,
+) -> tuple[SoftwareItem, ChainExtractionProvenance] | None:
+    """Extract the provenance information from a structure.
+
+    Gives back what chain renamed as a result of call to `protein-quest filter chain` command or
+    [write_single_chain_structure_file][protein_quest.structure.chains.write_single_chain_structure_file]
+    function.
+
+    Args:
+        structure: The gemmi structure to extract provenance from.
+
+    Returns:
+        A tuple of the software item and the provenance information, or None if not found.
+
+    Raises:
+        JSONDecodeError: If the contact_author field is not valid JSON.
+        ClassValidationError: If the contact_author field is valid JSON is incorrect shape.
+    """
+    for software_item in reversed(structure.meta.software):
+        if software_item.name != CHAIN_PROVENANCE_SOFTWARE_NAME or not software_item.contact_author:
+            continue
+        contact_author = converter.loads(software_item.contact_author, ChainExtractionProvenance)
+        return software_item, contact_author
+    return None
 
 
 def chains_in_structure(structure: gemmi.Structure) -> set[gemmi.Chain]:
@@ -113,6 +160,19 @@ def chains_in_structure(structure: gemmi.Structure) -> set[gemmi.Chain]:
     Returns:
         A set of chains in the structure."""
     return {c for model in structure for c in model}
+
+
+def _normalize_single_chain_entities(structure: gemmi.Structure, out_chain: str):
+    for model in structure:
+        for chain in model:
+            for residue in chain:
+                residue.subchain = chain.name
+                residue.entity_id = "1"
+
+    structure.entities.clear()
+    entity = gemmi.Entity("1")
+    entity.subchains = [out_chain]
+    structure.entities.append(entity)
 
 
 def write_single_chain_structure_file(
@@ -129,7 +189,10 @@ def write_single_chain_structure_file(
     - removes ligands and waters
     - renumbers atoms ids
     - removes chem_comp section from cif files
-    - adds provenance information to the header like software and input file+chain
+    - stores chain2keep and out_chain as JSON-ified
+        [ChainExtractionProvenance][protein_quest.structure.chains.ChainExtractionProvenance]
+        object in the `contact_author` field of a new software item.
+        The software item also contains this function name, version and current date.
 
     This function is equivalent to the following gemmi commands:
 
@@ -183,6 +246,7 @@ def write_single_chain_structure_file(
         model.remove_ligands_and_waters()
     structure.setup_entities()
     structure.rename_chain(chain_name, out_chain)
+    _normalize_single_chain_entities(structure, out_chain)
     _dedup_helices(structure)
     _dedup_sheets(structure, out_chain)
     _add_provenance_info(structure, chain_name, out_chain)
