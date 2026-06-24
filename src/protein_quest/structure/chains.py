@@ -157,6 +157,19 @@ def chains_in_structure(structure: gemmi.Structure) -> set[gemmi.Chain]:
     return {c for model in structure for c in model}
 
 
+def _normalize_single_chain_entities(structure: gemmi.Structure, out_chain: str):
+    for model in structure:
+        for chain in model:
+            for residue in chain:
+                residue.subchain = chain.name
+                residue.entity_id = "1"
+
+    structure.entities.clear()
+    entity = gemmi.Entity("1")
+    entity.subchains = [out_chain]
+    structure.entities.append(entity)
+
+
 def write_single_chain_structure_file(
     input_file: Path,
     chain2keep: str,
@@ -228,6 +241,7 @@ def write_single_chain_structure_file(
         model.remove_ligands_and_waters()
     structure.setup_entities()
     structure.rename_chain(chain_name, out_chain)
+    _normalize_single_chain_entities(structure, out_chain)
     _dedup_helices(structure)
     _dedup_sheets(structure, out_chain)
     _add_provenance_info(structure, chain_name, out_chain)
