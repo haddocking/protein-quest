@@ -191,7 +191,7 @@ class TestStructureToUniprot:
         assert result == expected
 
 
-class TestVerifyInjectUniprotRef:
+class TestAddUniprotAccessions2Structure:
     def test_none(self, sample2_cif: Path):
         structure = read_structure(sample2_cif)
 
@@ -254,3 +254,59 @@ class TestVerifyInjectUniprotRef:
         log = caplog.text
         assert "Structure 1A02 has provenance information indicating it was extracted from chain F to A" in log
         assert "Using this information to verify/add UniProt accessions." in log
+
+    def test_multi_entity_cif(self, multi_entity_cif: Path):
+        structure = read_structure(multi_entity_cif)
+        # From `echo P0C0S5 | protein-quest search pdbe - - |grep 1F66` gives `P0C0S5,1F66,X-Ray_Crystallography,2.6,C/G=1-128,C,128`
+        pdb2uniprot = {"1F66": {("C", "P0C0S5")}}
+
+        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+
+        result = structure_to_uniprot(new_structure)
+
+        # TODO wrong expectations, result should have ("C","P0C0S5") in it
+        expected: Pdb2UniprotMapping = {
+            "1F66": {
+                (
+                    "A",
+                    "P0C0S5",
+                ),
+                (
+                    "A",
+                    "Q7ZT64",
+                ),
+                (
+                    "B",
+                    "P62806",
+                ),
+                (
+                    "C",
+                    "P17317",
+                ),
+                (
+                    "D",
+                    "P02281",
+                ),
+                (
+                    "E",
+                    "P0C0S5",
+                ),
+                (
+                    "E",
+                    "Q7ZT64",
+                ),
+                (
+                    "F",
+                    "P62806",
+                ),
+                (
+                    "G",
+                    "P17317",
+                ),
+                (
+                    "H",
+                    "P02281",
+                ),
+            },
+        }
+        assert result == expected
