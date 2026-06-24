@@ -88,8 +88,8 @@ class LocateStructureFilesByIdResult:
 
     Attributes:
         found: A set of PDB IDs and their located structure file path.
-           A PDB ID may be associated with multiple structure files and
-           a structure file may be associated with multiple PDB IDs.
+            A PDB ID may be associated with multiple structure files and
+            a structure file may be associated with multiple PDB IDs.
         not_found: A set of PDB IDs that could not be located.
         extras: A set of structure files in the input directory that were not associated with any of the provided IDs.
     """
