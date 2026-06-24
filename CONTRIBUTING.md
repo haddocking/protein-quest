@@ -143,6 +143,12 @@ The files downloaded for tests are cached in `~/.cache/protein-quest-tests`.
 
 Sometimes tests fail during recording, but are OK when tested again.
 
+Testing functions that use local structure files as input fixtures should not be
+added to `tests/fixtures/` directory anymore, instead use
+[pooch](https://www.fatiando.org/pooch/latest/) based
+`tests/conftest.py::fetch_cif(filename, sha256)` helper function to retrieve and
+cache files.
+
 ## Automated code quality checks on git commit
 
 This step is **optional** but recommended for developers who want to

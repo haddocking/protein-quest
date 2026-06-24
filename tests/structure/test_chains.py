@@ -5,7 +5,6 @@ import gemmi
 import pytest
 from cattrs import ClassValidationError
 from orjson import JSONDecodeError
-from platformdirs import user_cache_dir
 
 from protein_quest.__version__ import __version__
 from protein_quest.pdbe.fetch import sync_fetch
@@ -109,13 +108,6 @@ def test_write_single_chain_structure_file_unknown_format(tmp_path: Path):
             output_dir=tmp_path,
             out_chain="Z",
         )
-
-
-@pytest.fixture
-def download_cache_dir() -> Path:
-    cache_dir = Path(user_cache_dir("protein-quest-tests"))
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    return cache_dir
 
 
 def fetch_pdb_file_cached(pdb_id: str, download_cache_dir: Path) -> Path:

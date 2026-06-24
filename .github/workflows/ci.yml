@@ -25,7 +25,7 @@ jobs:
       - name: Install pocl
         run: uv pip install pocl-binary-distribution==3.0
       - name: Cache downloaded test data
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/protein-quest-tests
           key: cached-protein-quest-tests

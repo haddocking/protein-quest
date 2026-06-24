@@ -1,6 +1,8 @@
 from pathlib import Path
 
 import gemmi
+from platformdirs import user_cache_dir
+import pooch
 import pytest
 
 from protein_quest.structure.formats import read_structure, write_structure
@@ -67,6 +69,33 @@ def no_uniprot_cif(sample2_cif: Path, tmp_path: Path) -> Path:
     structure = gemmi.make_structure_from_block(block_without_struct_ref)
     write_structure(structure, tmp_path / "no_uniprot.cif")
     return tmp_path / "no_uniprot.cif"
+
+@pytest.fixture
+def download_cache_dir() -> Path:
+    cache_dir = Path(user_cache_dir("protein-quest-tests"))
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir
+
+
+def fetch_cif(filename: str, sha256: str) -> Path:
+    base_url = "https://www.ebi.ac.uk/pdbe/entry-files/download/"
+    path = pooch.retrieve(
+        url=f"{base_url}/{filename}",
+        known_hash=f"sha256:{sha256}",
+        fname=filename,
+        # keep path same as download_cache_dir fixture, for ci caching
+        path=pooch.os_cache("protein-quest-tests"),
+    )
+    return Path(path)
+
+
+@pytest.fixture
+def multi_entity_cif() -> Path:
+    """1f66 structure with multiple entities."""
+    return fetch_cif(
+        "1f66_updated.cif.gz",
+        "208386eac478c4deb9767f66f6ade97dc869a8d5395cdadfb385c9597442a56e",
+    )
 
 
 @pytest.fixture
