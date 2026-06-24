@@ -109,16 +109,6 @@ class ChainExtractionProvenance:
 
 
 def _add_provenance_info(structure: gemmi.Structure, chain2keep: str, out_chain: str):
-    """Add provenance information to the structure.
-
-    Writes provenance information to the structure's software list,
-    using contact_author field to store chain rename.
-
-    Args:
-        structure: The gemmi structure to add provenance to.
-        chain2keep: The chain identifier that was kept.
-        out_chain: The chain identifier that was used in the output structure.
-    """
     new_si = gemmi.SoftwareItem()
     new_si.classification = gemmi.SoftwareItem.Classification.DataExtraction
     new_si.name = CHAIN_PROVENANCE_SOFTWARE_NAME
@@ -181,7 +171,10 @@ def write_single_chain_structure_file(
     - removes ligands and waters
     - renumbers atoms ids
     - removes chem_comp section from cif files
-    - adds provenance information to the header like software and input file+chain
+    - stores chain2keep and out_chain as JSON-ified
+        [ChainExtractionProvenance][protein_quest.structure.chains.ChainExtractionProvenance]
+        object in the `contact_author` field of a new software item.
+        The software item also contains this function name, version and current date.
 
     This function is equivalent to the following gemmi commands:
 
