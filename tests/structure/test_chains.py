@@ -3,6 +3,8 @@ from pathlib import Path
 
 import gemmi
 import pytest
+from cattrs import ClassValidationError
+from orjson import JSONDecodeError
 from platformdirs import user_cache_dir
 
 from protein_quest.__version__ import __version__
@@ -197,3 +199,20 @@ def test_nr_of_residues_in_total(sample2_cif: Path):
     total_residues = nr_of_residues_in_total(structure)
 
     assert total_residues == 8
+
+
+@pytest.mark.parametrize(
+    "contact_author, exception_type", [("not a valid json", JSONDecodeError), ('{"a:":42}', ClassValidationError)]
+)
+def test_retrieve_chain_extraction_provenance_badjson(
+    contact_author: str, exception_type: type, caplog: pytest.LogCaptureFixture
+):
+    caplog.set_level(logging.WARNING)
+    structure = gemmi.Structure()
+    software_item = gemmi.SoftwareItem()
+    software_item.name = "protein-quest.structure.chains.write_single_chain_structure_file"
+    software_item.contact_author = contact_author
+    structure.meta.software = [software_item]
+
+    with pytest.raises(exception_type):
+        retrieve_chain_extraction_provenance(structure)

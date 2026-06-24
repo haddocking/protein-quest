@@ -137,7 +137,12 @@ def retrieve_chain_extraction_provenance(
         structure: The gemmi structure to extract provenance from.
 
     Returns:
-        A tuple of the software item and the provenance information, or None if not found."""
+        A tuple of the software item and the provenance information, or None if not found.
+
+    Raises:
+        JSONDecodeError: If the contact_author field is not valid JSON.
+        ClassValidationError: If the contact_author field is valid JSON is incorrect shape.
+    """
     for software_item in reversed(structure.meta.software):
         if software_item.name != CHAIN_PROVENANCE_SOFTWARE_NAME or not software_item.contact_author:
             continue
