@@ -81,7 +81,7 @@ def download_cache_dir() -> Path:
 def fetch_cif(filename: str, sha256: str) -> Path:
     base_url = "https://www.ebi.ac.uk/pdbe/entry-files/download/"
     path = pooch.retrieve(
-        url=f"{base_url}/{filename}",
+        url=f"{base_url}{filename}",
         known_hash=f"sha256:{sha256}",
         fname=filename,
         # keep path same as download_cache_dir fixture, for ci caching
