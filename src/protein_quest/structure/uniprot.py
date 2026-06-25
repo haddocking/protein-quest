@@ -164,7 +164,7 @@ def _append_uniprot_to_structure(
 
         new_seq_id = len(struct_ref_seq["align_id"]) + 1
         struct_ref_seq["align_id"].append(new_seq_id)
-        struct_ref_seq["ref_id"].append(new_seq_id)
+        struct_ref_seq["ref_id"].append(new_id)
         struct_ref_seq["pdbx_strand_id"].append(chain)
         struct_ref_seq["pdbx_db_accession"].append(uniprot_accession)
         for col in struct_ref_seq:
