@@ -10,6 +10,8 @@ from protein_quest.__version__ import __version__
 from protein_quest.pdbe.fetch import sync_fetch
 from protein_quest.structure.chains import (
     CHAIN_PROVENANCE_SOFTWARE_NAME,
+    get_label2auth_chains,
+    label_auth_mismatch,
     nr_of_residues_in_total,
     nr_residues_in_chain,
     retrieve_chain_extraction_provenance,
@@ -192,6 +194,61 @@ def test_nr_of_residues_in_total(sample2_cif: Path):
     total_residues = nr_of_residues_in_total(structure)
 
     assert total_residues == 8
+
+
+@pytest.mark.parametrize(
+    ("cif_fixture", "expected"),
+    [
+        # TODO write_single_chain_structure_file should update label_auth_chains, which it does not now, expected {A:A} when write works correctly
+        pytest.param("sample_cif", {"B": "A"}, id="3JRS_B2A"),
+        pytest.param("sample2_cif", {"A": "A"}, id="2Y29"),
+        pytest.param("af_cif", {"A": "A"}, id="AF-A0A0C5B5G6-F1"),
+        pytest.param("nmr_cif", {"A": "A"}, id="1AMB"),
+        pytest.param("em_cif", {"A": "A"}, id="8W77"),
+        pytest.param("sample_multispan_cif", {"A": "A"}, id="6O5I"),
+        pytest.param(
+            "multi_accession_cif",
+            {"A": "A", "B": "B", "C": "N", "D": "F", "E": "J"},
+            id="1A02",
+        ),
+        pytest.param("multi_accession_chain_cif", {"A": "A"}, id="1UN5"),
+        pytest.param(
+            "multi_entity_cif",
+            {
+                "A": "I",
+                "B": "J",
+                "C": "A",
+                "D": "B",
+                "E": "C",
+                "F": "D",
+                "G": "E",
+                "H": "F",
+                "I": "G",
+                "J": "H",
+            },
+            id="1F66",
+        ),
+    ],
+)
+def test_get_label2auth_chains(cif_fixture: str, expected: dict[str, str], request: pytest.FixtureRequest):
+    path = request.getfixturevalue(cif_fixture)
+    structure = read_structure(path)
+
+    label2auth_chains = get_label2auth_chains(structure)
+
+    assert label2auth_chains == expected
+
+
+@pytest.mark.parametrize(
+    ("chains_map", "expected"),
+    [
+        pytest.param({"A": "A", "B": "B"}, False, id="no-mismatch"),
+        pytest.param({"A": "I", "B": "B"}, True, id="has-mismatch"),
+        pytest.param({}, False, id="empty-map"),
+    ],
+)
+def test_label_auth_mismatch(chains_map: dict[str, str], expected: bool):
+    assert label_auth_mismatch(chains_map) is expected
 
 
 @pytest.mark.parametrize(

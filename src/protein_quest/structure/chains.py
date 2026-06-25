@@ -162,6 +162,52 @@ def chains_in_structure(structure: gemmi.Structure) -> set[gemmi.Chain]:
     return {c for model in structure for c in model}
 
 
+def get_label2auth_chains(structure: gemmi.Structure) -> dict[str, str]:
+    """Build a label-to-author chain mapping from a structure.
+
+    This function primarily reads mmCIF ``_atom_site.label_asym_id`` and
+    ``_atom_site.auth_asym_id`` columns from ``group_PDB == 'ATOM'`` rows to derive
+    ``label_asym_id -> auth_asym_id``.
+
+    Args:
+        structure: The structure to inspect.
+
+    Returns:
+        A dictionary mapping label chain ids to author chain ids.
+            If the same label appears multiple times, the first observed mapping
+            is kept to ensure deterministic output.
+    """
+    # as atoms site is largest block we do not filter with MmcifOutputGroups
+    block = structure.make_mmcif_block()
+    atom_site = block.get_mmcif_category("_atom_site.")
+    label_asym_ids = atom_site.get("label_asym_id", [])
+    auth_asym_ids = atom_site.get("auth_asym_id", [])
+    group_pdb_values = atom_site.get("group_PDB", [])
+
+    label2auth: dict[str, str] = {}
+
+    for label_asym_id, auth_asym_id, group_pdb in zip(label_asym_ids, auth_asym_ids, group_pdb_values, strict=False):
+        if group_pdb != "ATOM":
+            # Skip HETATM
+            continue
+        if label_asym_id not in label2auth:
+            label2auth[label_asym_id] = auth_asym_id
+    return label2auth
+
+
+def label_auth_mismatch(chains_map: dict[str, str]) -> bool:
+    """Report whether label and author chain ids differ.
+
+    Args:
+        chains_map: Mapping produced by [get_label2auth_chains][protein_quest.structure.chains.get_label2auth_chains].
+
+    Returns:
+        ``True`` when at least one mapping has different label and author ids,
+        otherwise ``False``.
+    """
+    return any(label_asym_id != auth_asym_id for label_asym_id, auth_asym_id in chains_map.items())
+
+
 def _normalize_single_chain_entities(structure: gemmi.Structure, out_chain: str):
     for model in structure:
         for chain in model:
