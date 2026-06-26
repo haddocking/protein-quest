@@ -100,6 +100,14 @@ def multi_entity_cif() -> Path:
 
 
 @pytest.fixture
+def cif_8rw8() ->Path:
+    """8rw8 structure with a mismatch between label (A) and auth (B) chain."""
+    return fetch_cif(
+        "8rw8_updated.cif.gz",
+        "882e27541671578935db963787a720c3c942199049f9b4cfa99edbac5239a946",
+    )
+
+@pytest.fixture
 def all_cifs(
     sample_cif: Path,
     sample2_cif: Path,

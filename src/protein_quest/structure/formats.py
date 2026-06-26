@@ -88,6 +88,7 @@ def read_structure(file: Path) -> gemmi.Structure:
         return bcif2structure(file)
     if file.name.endswith(".bcif.gz"):
         return bcifgz2structure(file)
+    # TODO reading 3c5f_updated.cif.gz gives `RuntimeError: _pdbx_sifts_xref_db: seq_id not found: 230`
     return gemmi.read_structure(str(file))
 
 
