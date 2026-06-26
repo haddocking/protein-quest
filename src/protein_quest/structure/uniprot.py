@@ -6,7 +6,11 @@ from collections.abc import Generator
 
 import gemmi
 
-from protein_quest.structure.chains import retrieve_chain_extraction_provenance
+from protein_quest.structure.chains import (
+    ChainIdSystem,
+    resolve_chain_id_to_label,
+    retrieve_chain_extraction_provenance,
+)
 from protein_quest.structure.types import Pdb2UniprotMapping, StructRefSeq
 
 logger = logging.getLogger(__name__)
@@ -200,7 +204,10 @@ def _rename_chain_based_on_provenance(
 
 
 def add_uniprot_accessions2structure(
-    structure: gemmi.Structure, pdb2uniprot: Pdb2UniprotMapping | None
+    structure: gemmi.Structure,
+    pdb2uniprot: Pdb2UniprotMapping | None,
+    *,
+    chain_system: ChainIdSystem = "auth",
 ) -> gemmi.Structure:
     """Add UniProt accessions to a structure if they are missing, based on the provided pdb2uniprot mapping.
 
@@ -213,6 +220,8 @@ def add_uniprot_accessions2structure(
         pdb2uniprot: Dictionary mapping PDB ID to set of tuples containing chain and UniProt accession.
             If provided, will be used to inject UniProt accessions into the structure if they are missing.
             If None, the structure is returned unchanged.
+        chain_system: System of chain ids in ``pdb2uniprot`` mapping.
+            ``auth`` values are resolved to label ids before comparison and injection.
 
     Returns:
         A gemmi Structure object with UniProt accessions added if they were missing
@@ -227,9 +236,13 @@ def add_uniprot_accessions2structure(
         return structure
 
     pdb2uniprot = _rename_chain_based_on_provenance(structure, pdb2uniprot)
+    expected_pairs = {
+        (resolve_chain_id_to_label(structure, chain, chain_system=chain_system, source_file=structure.name), uniprot)
+        for chain, uniprot in pdb2uniprot[pdb_id]
+    }
 
     known = structure_to_uniprot(structure)
-    missing = pdb2uniprot[pdb_id] - known[pdb_id]
+    missing = expected_pairs - known[pdb_id]
     if not missing:
         return structure
 
@@ -239,7 +252,7 @@ def add_uniprot_accessions2structure(
             "Existing: %s, Expected: %s, Missing: %s. Injecting missing accessions.",
             pdb_id,
             known[pdb_id],
-            pdb2uniprot[pdb_id],
+            expected_pairs,
             missing,
         )
     else:

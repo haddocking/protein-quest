@@ -4,6 +4,7 @@ import logging
 from collections.abc import Generator, Iterable
 from pathlib import Path
 
+from protein_quest.structure.chains import ChainIdSystem
 from protein_quest.structure.files import split_name_and_extension
 from protein_quest.structure.formats import (
     bcif2cif,
@@ -29,6 +30,7 @@ def convert_to_cif_files(
     copy_method: CopyMethod,
     output_format: CifOutputFormat = ".cif",
     pdb2uniprot: Pdb2UniprotMapping | None = None,
+    chain_system: ChainIdSystem = "auth",
 ) -> Generator[tuple[Path, Path]]:
     """Convert structure files to CIF format.
 
@@ -39,12 +41,19 @@ def convert_to_cif_files(
         output_format: Output file format to write.
         pdb2uniprot: Optional dictionary mapping PDB ID to set of tuples containing chain and UniProt accession.
             If provided, will be used to inject UniProt accessions into structures that lack them.
+        chain_system: System of chain ids in ``pdb2uniprot`` mapping.
+            ``auth`` values are resolved to label ids before UniProt injection.
 
     Yields:
         A tuple of the input file and the output file."""
     for input_file in input_files:
         output_file = convert_to_cif_file(
-            input_file, output_dir, copy_method, output_format=output_format, pdb2uniprot=pdb2uniprot
+            input_file,
+            output_dir,
+            copy_method,
+            output_format=output_format,
+            pdb2uniprot=pdb2uniprot,
+            chain_system=chain_system,
         )
         yield input_file, output_file
 
@@ -55,6 +64,7 @@ def convert_to_cif_file(
     copy_method: CopyMethod,
     output_format: CifOutputFormat = ".cif",
     pdb2uniprot: Pdb2UniprotMapping | None = None,
+    chain_system: ChainIdSystem = "auth",
 ) -> Path:
     """Convert a single structure file to CIF format.
 
@@ -69,6 +79,8 @@ def convert_to_cif_file(
             If provided, will not use any shortcuts for copying files and
             will always read and write the structure to ensure UniProt accessions
             are verified and injected if necessary.
+        chain_system: System of chain ids in ``pdb2uniprot`` mapping.
+            ``auth`` values are resolved to label ids before UniProt injection.
 
     Returns:
         Path to the converted file.
@@ -86,7 +98,7 @@ def convert_to_cif_file(
         logger.info("Output file %s already exists for input file %s. Skipping.", output_file, input_file)
     elif pdb2uniprot or extension in {".pdb", ".pdb.gz", ".ent", ".ent.gz"}:
         structure = read_structure(input_file)
-        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot, chain_system=chain_system)
         write_structure(new_structure, output_file)
     elif extension == ".cif":
         if output_format == ".cif":

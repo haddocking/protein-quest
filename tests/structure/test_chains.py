@@ -241,7 +241,7 @@ def test_find_chain_in_structure_uses_label_system(cif_8rw8: Path):
             },
             id="1F66",
         ),
-        pytest.param("cif_8rw8", {"A":"B"}, id="8rw8"),
+        pytest.param("cif_8rw8", {"A": "B"}, id="8rw8"),
     ],
 )
 def test_get_label2auth_chains(cif_fixture: str, expected: dict[str, str], request: pytest.FixtureRequest):

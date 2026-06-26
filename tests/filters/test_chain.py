@@ -105,5 +105,3 @@ def test_filter_file_on_chain_system_handling(
     assert result.output_file is not None
     assert result.output_file.exists()
     assert result.output_file.name.endswith("_B2A.cif.gz")
-
-

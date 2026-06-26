@@ -3,7 +3,7 @@ from pathlib import Path
 import gemmi
 import pytest
 
-from protein_quest.structure.chains import write_single_chain_structure_file
+from protein_quest.structure.chains import ChainIdSystem, write_single_chain_structure_file
 from protein_quest.structure.formats import read_structure
 from protein_quest.structure.types import Pdb2UniprotMapping, StructRefSeq
 from protein_quest.structure.uniprot import (
@@ -255,22 +255,28 @@ class TestAddUniprotAccessions2Structure:
         assert "Structure 1A02 has provenance information indicating it was extracted from chain F to A" in log
         assert "Using this information to verify/add UniProt accessions." in log
 
-    def test_multi_entity_cif(self, multi_entity_cif: Path):
+    @pytest.mark.parametrize(
+        ("chain_system", "chain_id"),
+        [
+            # auth chain C resolves to label chain E in fixture
+            pytest.param("auth", "C", id="auth-chain-C"),
+            pytest.param("label", "E", id="label-chain-E"),
+        ],
+    )
+    def test_multi_entity_cif(self, multi_entity_cif: Path, chain_system: ChainIdSystem, chain_id: str):
         structure = read_structure(multi_entity_cif)
-        # From `echo P0C0S5 | protein-quest search pdbe - - |grep 1F66` gives `P0C0S5,1F66,X-Ray_Crystallography,2.6,C/G=1-128,C,128`
-        pdb2uniprot = {"1F66": {("C", "P0C0S5")}}
+        # From `echo P0C0S5 | protein-quest search pdbe - - |grep 1F66` gives
+        # `P0C0S5,1F66,X-Ray_Crystallography,2.6,C/G=1-128,C,128`.
+        # In this fixture: auth C maps to label E.
+        pdb2uniprot = {"1F66": {(chain_id, "P0C0S5")}}
+        # TODO make setting to "P12345" also work
 
-        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot, chain_system=chain_system)
 
         result = structure_to_uniprot(new_structure)
 
-        # TODO wrong expectations, result should have ("C","P0C0S5") in it
         expected: Pdb2UniprotMapping = {
             "1F66": {
-                (
-                    "A",
-                    "P0C0S5",
-                ),
                 (
                     "A",
                     "Q7ZT64",
@@ -284,8 +290,16 @@ class TestAddUniprotAccessions2Structure:
                     "P17317",
                 ),
                 (
+                    "C",
+                    "P84233",
+                ),
+                (
                     "D",
                     "P02281",
+                ),
+                (
+                    "D",
+                    "P62806",
                 ),
                 (
                     "E",
@@ -297,6 +311,10 @@ class TestAddUniprotAccessions2Structure:
                 ),
                 (
                     "F",
+                    "P02281",
+                ),
+                (
+                    "F",
                     "P62806",
                 ),
                 (
@@ -304,7 +322,23 @@ class TestAddUniprotAccessions2Structure:
                     "P17317",
                 ),
                 (
+                    "G",
+                    "P84233",
+                ),
+                (
                     "H",
+                    "P02281",
+                ),
+                (
+                    "H",
+                    "P62806",
+                ),
+                (
+                    "I",
+                    "P0C0S5",
+                ),
+                (
+                    "J",
                     "P02281",
                 ),
             },

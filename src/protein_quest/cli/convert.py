@@ -26,6 +26,7 @@ from protein_quest.clustering_io import (
     write_stats_csv,
 )
 from protein_quest.filters.resolution import load_resolution_statistics
+from protein_quest.structure.chains import ChainIdSystem
 from protein_quest.structure.convert import convert_to_cif_files
 from protein_quest.structure.files import glob_structure_files
 from protein_quest.structure.formats import read_structure
@@ -114,6 +115,7 @@ def structures(
     output_dir: OutputDir | None = None,
     output_format: CifOutputFormat = ".cif.gz",
     uniprots: InputFile | None = None,
+    chain_system: ChainIdSystem = "auth",
     cache: CacheParameter | None = None,
     _common: Common | None = None,
 ) -> None:
@@ -132,6 +134,13 @@ def structures(
             The supplied file must be in CSV format with 3 columns: `pdb_id,chain,uniprot_accession`.
             (column order does not matter)
             This CSV file can be generated with `protein-quest search pdbe ...`.
+        chain_system: System of chain ids in the input CSV.
+            Use ``auth`` when your ``chain`` column contains author chain ids
+            (``auth_asym_id``), for example from ``search pdbe`` output.
+            Use ``label`` when your ``chain`` column already contains
+            PDB-assigned chain ids (``label_asym_id``).
+            If these differ, chain ids are commonly displayed as
+            ``label_asym_id [auth auth_asym_id]``.
         output_format: Output format for converted files. Supported values are .cif and .cif.gz.
         cache: Cache options including no_cache, cache_dir, and copy_method.
         _common: Common CLI options.
@@ -152,6 +161,7 @@ def structures(
             copy_method=cache.copy_method,
             output_format=output_format,
             pdb2uniprot=pdb2uniprot,
+            chain_system=chain_system,
         ),
         total=len(input_files),
         unit="file",
