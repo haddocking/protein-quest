@@ -10,10 +10,13 @@ from protein_quest.__version__ import __version__
 from protein_quest.pdbe.fetch import sync_fetch
 from protein_quest.structure.chains import (
     CHAIN_PROVENANCE_SOFTWARE_NAME,
+    ChainIdSystem,
+    find_chain_in_structure,
     get_label2auth_chains,
     label_auth_mismatch,
     nr_of_residues_in_total,
     nr_residues_in_chain,
+    resolve_chain_id_to_label,
     retrieve_chain_extraction_provenance,
     write_single_chain_structure_file,
 )
@@ -196,6 +199,16 @@ def test_nr_of_residues_in_total(sample2_cif: Path):
     assert total_residues == 8
 
 
+def test_find_chain_in_structure_uses_label_system(cif_8rw8: Path):
+    structure = read_structure(cif_8rw8)
+
+    found_chain = find_chain_in_structure(structure, "A")
+
+    assert found_chain is not None
+    # Gemmi chain names are auth system for 8rw8, while the lookup input is label.
+    assert found_chain.name == "B"
+
+
 @pytest.mark.parametrize(
     ("cif_fixture", "expected"),
     [
@@ -238,6 +251,31 @@ def test_get_label2auth_chains(cif_fixture: str, expected: dict[str, str], reque
     label2auth_chains = get_label2auth_chains(structure)
 
     assert label2auth_chains == expected
+
+
+@pytest.mark.parametrize(
+    ("input_chain", "chain_system", "expected"),
+    [
+        pytest.param("B", "auth", "A", id="auth-to-label"),
+        pytest.param("A", "label", "A", id="label-passthrough"),
+    ],
+)
+def test_resolve_chain_id_to_label(
+    cif_8rw8: Path,
+    input_chain: str,
+    chain_system: ChainIdSystem,
+    expected: str,
+):
+    structure = read_structure(cif_8rw8)
+
+    resolved_chain = resolve_chain_id_to_label(
+        structure,
+        input_chain,
+        chain_system=chain_system,
+        source_file=cif_8rw8,
+    )
+
+    assert resolved_chain == expected
 
 
 @pytest.mark.parametrize(

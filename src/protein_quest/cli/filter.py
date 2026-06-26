@@ -32,6 +32,7 @@ from protein_quest.filters.resolution import (
 )
 from protein_quest.filters.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
 from protein_quest.pdbe.ws import Scores
+from protein_quest.structure.chains import ChainIdSystem
 from protein_quest.structure.files import glob_structure_files, locate_structure_file, locate_structure_files_by_id
 from protein_quest.utils import copyfile
 
@@ -111,6 +112,7 @@ def chain(
     output_dir: OutputDir,
     /,
     *,
+    chain_system: ChainIdSystem = "auth",
     scheduler_address: str | None = None,
     cache: CacheParameter | None = None,
     _: Common | None = None,
@@ -126,6 +128,13 @@ def chain(
             Expected filenames are `{pdb_id}.cif.gz`, `{pdb_id}.cif`, `{pdb_id}.pdb.gz` or `{pdb_id}.pdb`.
         output_dir: Directory to write the single-chain PDB/mmCIF files.
             Output files are in same format as input files.
+        chain_system: System of chain ids in the input CSV.
+            Use ``auth`` when your ``chain`` column contains author chain ids
+            (``auth_asym_id``), for example from ``search pdbe`` output.
+            Use ``label`` when your ``chain`` column already contains
+            PDB-assigned chain ids (``label_asym_id``).
+            If these differ, chain ids are commonly displayed as
+            ``label_asym_id [auth auth_asym_id]``.
         scheduler_address: Address of the Dask scheduler to connect to.
             If not provided, will create a local cluster.
             If set to `sequential` will run tasks sequentially.
@@ -158,7 +167,11 @@ def chain(
         raise ValueError(msg)
 
     results = filter_files_on_chain(
-        file2chain, output_dir, scheduler_address=scheduler_address, copy_method=cache.copy_method
+        file2chain,
+        output_dir,
+        chain_system=chain_system,
+        scheduler_address=scheduler_address,
+        copy_method=cache.copy_method,
     )
 
     nr_written = len([r for r in results if r.passed])

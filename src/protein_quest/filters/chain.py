@@ -11,7 +11,8 @@ from distributed.deploy.cluster import Cluster
 from tqdm.auto import tqdm
 
 from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
-from protein_quest.structure.chains import write_single_chain_structure_file
+from protein_quest.structure.chains import ChainIdSystem, resolve_chain_id_to_label, write_single_chain_structure_file
+from protein_quest.structure.formats import read_structure
 from protein_quest.utils import CopyMethod
 
 logger = logging.getLogger(__name__)
@@ -30,13 +31,32 @@ def filter_file_on_chain(
     file_and_chain: tuple[Path, str],
     output_dir: Path,
     out_chain: str = "A",
+    chain_system: ChainIdSystem = "auth",
     copy_method: CopyMethod = "copy",
 ) -> ChainFilterStatistics:
     input_file, chain_id = file_and_chain
-    logger.debug("Filtering %s on chain %s", input_file, chain_id)
+    logger.debug("Filtering %s on chain %s (%s system)", input_file, chain_id, chain_system)
     try:
+        structure = read_structure(input_file)
+        label_chain_id = resolve_chain_id_to_label(
+            structure,
+            chain_id,
+            chain_system=chain_system,
+            source_file=input_file,
+        )
+        if label_chain_id != chain_id:
+            logger.info(
+                "Resolved chain id %s -> %s for %s",
+                chain_id,
+                label_chain_id,
+                input_file,
+            )
         output_file = write_single_chain_structure_file(
-            input_file, chain_id, output_dir, out_chain=out_chain, copy_method=copy_method
+            input_file,
+            label_chain_id,
+            output_dir,
+            out_chain=out_chain,
+            copy_method=copy_method,
         )
         return ChainFilterStatistics(
             input_file=input_file,
@@ -52,6 +72,7 @@ def _filter_files_on_chain_sequentially(
     file2chains: Collection[tuple[Path, str]],
     output_dir: Path,
     out_chain: str = "A",
+    chain_system: ChainIdSystem = "auth",
     copy_method: CopyMethod = "copy",
 ) -> list[ChainFilterStatistics]:
     results = []
@@ -60,6 +81,7 @@ def _filter_files_on_chain_sequentially(
             file_and_chain,
             output_dir=output_dir,
             out_chain=out_chain,
+            chain_system=chain_system,
             copy_method=copy_method,
         )
         results.append(result)
@@ -70,6 +92,7 @@ def filter_files_on_chain(
     file2chains: Collection[tuple[Path, str]],
     output_dir: Path,
     out_chain: str = "A",
+    chain_system: ChainIdSystem = "auth",
     scheduler_address: str | Cluster | Literal["sequential"] | None = None,
     copy_method: CopyMethod = "copy",
 ) -> list[ChainFilterStatistics]:
@@ -80,6 +103,8 @@ def filter_files_on_chain(
             First item is the PDB file path, second item is the chain ID.
         output_dir: The directory where the filtered files will be written.
         out_chain: Under what name to write the kept chain.
+        chain_system: System for the given chain ids.
+            If set to ``auth`` they are translated to label ids before Gemmi processing.
         scheduler_address: The address of the Dask scheduler.
             If not provided, will create a local cluster.
             If set to `sequential` will run tasks sequentially.
@@ -91,7 +116,11 @@ def filter_files_on_chain(
     output_dir.mkdir(parents=True, exist_ok=True)
     if scheduler_address == "sequential":
         return _filter_files_on_chain_sequentially(
-            file2chains, output_dir, out_chain=out_chain, copy_method=copy_method
+            file2chains,
+            output_dir,
+            out_chain=out_chain,
+            chain_system=chain_system,
+            copy_method=copy_method,
         )
 
     # TODO make logger.debug in filter_file_on_chain show to user when --log
@@ -110,5 +139,6 @@ def filter_files_on_chain(
             file2chains,
             output_dir=output_dir,
             out_chain=out_chain,
+            chain_system=chain_system,
             copy_method=copy_method,
         )

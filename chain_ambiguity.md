@@ -3,32 +3,35 @@ TODO remove this document when ambiguity is resolved
 # Chain Identifier Audit: label_asym_id vs auth_asym_id
 
 ## Scope
-This document records where chain identifiers are used in protein-quest and what identifier namespace each function expects or returns.
+This document records where chain identifiers are used in protein-quest and what identifier system each function expects or returns.
 
-## Namespace legend
+## System legend
 - AUTH_CHAIN: Gemmi chain name (model chain id; used by chain lookup and rename APIs).
 - LABEL_ASYM: mmCIF label asym id (for example _atom_site.label_asym_id, _struct_ref_seq.pdbx_strand_id, 3D-Beacons chain_ids).
-- MIXED: function combines values from multiple sources that may not be in the same namespace.
+- MIXED: function combines values from multiple sources that may not be in the same system.
 - EXTERNAL_PDBe: chain token from UniProt/PDBe uniprot_chains text field; not explicitly tied to label/auth fields in this code.
 
 ## Gemmi evidence used for classification
 - Gemmi stores Residue.subchain as mmCIF _atom_site.label_asym_id (include/gemmi/model.hpp).
 - Gemmi docs in polyheur state subchain corresponds to label_asym_id and that auth_asym_id can be split into label_asym_id units (include/gemmi/polyheur.hpp).
-- Entity.subchains are subchain ids (label_asym namespace via residues/entities linkage) (include/gemmi/metadata.hpp, include/gemmi/model.hpp).
+- Entity.subchains are subchain ids (label_asym system via residues/entities linkage) (include/gemmi/metadata.hpp, include/gemmi/model.hpp).
 
 ## Function-by-function findings
 
 ### src/protein_quest/structure/chains.py
 - find_chain_in_model(model, wanted_chain) -> Chain | None
   - Input: AUTH_CHAIN
-  - Output: Gemmi Chain object in AUTH_CHAIN namespace (Chain.name)
+  - Output: Gemmi Chain object in AUTH_CHAIN system (Chain.name)
 - find_chain_in_structure(structure, wanted_chain) -> Chain | None
-  - Input: AUTH_CHAIN
+  - Input: AUTH_CHAIN or LABEL_ASYM (LABEL_ASYM is translated to AUTH_CHAIN before model lookup)
   - Output: AUTH_CHAIN
+- resolve_chain_id_to_label(structure, chain_id, chain_system, ...) -> str
+  - Input: chain_id interpreted using chain_system flag ("auth" or "label")
+  - Output: LABEL_ASYM (canonical id used for downstream Gemmi extraction)
 - nr_residues_in_chain(file, chain="A") -> int
   - Input: AUTH_CHAIN
 - write_single_chain_structure_file(input_file, chain2keep, output_dir, out_chain="A", ...)
-  - Input chain2keep: AUTH_CHAIN
+  - Input chain2keep: AUTH_CHAIN (Gemmi chain lookup id)
   - Output out_chain: AUTH_CHAIN for chain renaming, then also written into entity.subchains during normalization
 - _normalize_single_chain_entities(structure, out_chain)
   - Writes entity.subchains=[out_chain], so creates LABEL_ASYM-style subchain values from out_chain text
@@ -48,9 +51,9 @@ This document records where chain identifiers are used in protein-quest and what
 - _append_uniprot_to_structure(structure, chain_uniprot_pairs)
   - Input chain ids expected to match structure.entities[*].subchains keys
   - Writes _struct_ref_seq.pdbx_strand_id with the same chain string
-  - Effective namespace: subchain/LABEL_ASYM assumptions, but roundtrip normalization may remap
+  - Effective system: subchain/LABEL_ASYM assumptions, but roundtrip normalization may remap
 - add_uniprot_accessions2structure(structure, pdb2uniprot)
-  - Input expected to match structure_to_uniprot output namespace
+  - Input expected to match structure_to_uniprot output system
   - Since structure_to_uniprot is MIXED, this boundary is currently ambiguous
 - _rename_chain_based_on_provenance(structure, pdb2uniprot)
   - Rewrites mapping using provenance chain ids from single-chain extraction flow
@@ -63,13 +66,17 @@ This document records where chain identifiers are used in protein-quest and what
 
 ### src/protein_quest/filters/chain.py
 - filter_file_on_chain((input_file, chain_id), output_dir, out_chain="A", ...) -> ChainFilterStatistics
-  - Input chain_id passed directly to write_single_chain_structure_file => AUTH_CHAIN
+  - Input: chain_id + chain_system (default "auth")
+  - Behavior: resolves chain_id to LABEL_ASYM via resolve_chain_id_to_label, then passes resolved id to write_single_chain_structure_file
+  - Effective extraction lookup remains AUTH_CHAIN inside write_single_chain_structure_file/find_chain_in_structure
 - filter_files_on_chain(file2chains, ...)
-  - Same as above
+  - Same as above; forwards chain_system to each filter_file_on_chain call (sequential and Dask modes)
 
 ### src/protein_quest/cli/filter.py
 - chain(chains_csv, input_dir, output_dir, ...)
-  - CSV chain column is forwarded to filter_files_on_chain/write_single_chain_structure_file => AUTH_CHAIN expected
+  - Accepts chain_system flag ("auth" default, "label" optional)
+  - CSV chain column is interpreted according to chain_system and forwarded to filter_files_on_chain
+  - Downstream path: chain -> filter_files_on_chain -> filter_file_on_chain -> resolve_chain_id_to_label -> write_single_chain_structure_file
 
 ### src/protein_quest/mcp_server.py
 - extract_single_chain_from_structure(input_file, chain2keep, output_dir, out_chain="A") -> Path
@@ -89,7 +96,7 @@ This document records where chain identifiers are used in protein-quest and what
 
 ### src/protein_quest/pdbe/result.py
 - PdbResult.chain (via _first_chain_from_uniprot_chains)
-  - Output namespace: EXTERNAL_PDBe (parsed from UniProt/PDBe uniprot_chains string)
+  - Output system: EXTERNAL_PDBe (parsed from UniProt/PDBe uniprot_chains string)
   - In practice this behaves like author-chain naming for PDBe/UniProt chain strings
     (for example 1F66 returned `C/G=1-128`, not PDB-assigned label asym ids)
 
@@ -106,9 +113,18 @@ This document records where chain identifiers are used in protein-quest and what
 - Practical effect: a pair injected as chain C in _struct_ref_seq may be reported back under different chain ids after reconstruction.
 
 ## Summary of risk areas
-- Highest risk: structure_to_uniprot (MIXED output namespace).
+- Highest risk: structure_to_uniprot (MIXED output system).
 - Secondary risk: structure_metadata bridging LABEL_ASYM-derived chain ids into AUTH_CHAIN chain lookup.
 - External input risk: chain ids from PDBe/UniProt search pipeline are EXTERNAL_PDBe and currently assumed compatible downstream.
 
+## Implementation status checklist
+- [X] `filter chain` command has `chain_system` flag (default `auth`, optional `label`).
+- [X] `chain_system` is forwarded through `filter_files_on_chain` and `filter_file_on_chain`.
+- [X] Chain ids are resolved at the filter boundary via `resolve_chain_id_to_label` before extraction.
+- [X] `find_chain_in_structure` supports label input by translating label to auth before Gemmi lookup.
+- [ ] `structure_to_uniprot` still returns MIXED chain-id systems across branches.
+- [ ] `structure_metadata` still bridges LABEL_ASYM-derived ids into AUTH_CHAIN lookup and can be fragile when ids differ.
+- [ ] External PDBe/UniProt chain ids are still assumed compatible downstream without an explicit conversion boundary.
+
 ## Recommendation
-Adopt one canonical chain namespace at all function boundaries in structure workflows, and convert at edges only. The most defensible choice for mmCIF metadata joins is LABEL_ASYM. If AUTH_CHAIN is needed for direct chain operations, perform explicit conversion with a helper map and keep both ids visible in diagnostics.
+Adopt one canonical chain system at all function boundaries in structure workflows, and convert at edges only. The most defensible choice for mmCIF metadata joins is LABEL_ASYM. If AUTH_CHAIN is needed for direct chain operations, perform explicit conversion with a helper map and keep both ids visible in diagnostics.

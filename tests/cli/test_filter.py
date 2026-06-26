@@ -100,6 +100,39 @@ def test_filter_chain_input_file_notfound(tmp_path: Path):
         main(argv)
 
 
+@pytest.mark.parametrize(
+    ("chain_id", "extra_args"),
+    [
+        pytest.param("B", [], id="defaults-to-auth"),
+        pytest.param("A", ["--chain-system", "label"], id="explicit-label-system"),
+    ],
+)
+def test_filter_chain_system_modes(cif_8rw8: Path, tmp_path: Path, chain_id: str, extra_args: list[str]):
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    local_cif = input_dir / cif_8rw8.name
+    local_cif.symlink_to(cif_8rw8)
+
+    chains_fn = tmp_path / "chains.csv"
+    chains_fn.write_text(f"pdb_id,chain\n8rw8,{chain_id}\n")
+
+    argv = [
+        "filter",
+        "chain",
+        str(chains_fn),
+        str(input_dir),
+        str(tmp_path),
+        *extra_args,
+        "--scheduler-address",
+        "sequential",
+    ]
+
+    main(argv)
+
+    output_files = {path.name for path in tmp_path.glob("*8rw8*_B2A.cif.gz")}
+    assert len(output_files) == 1
+
+
 def test_filter_residue(sample_cif: Path, sample2_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     """Test filter residue command."""
     input_dir = tmp_path / "input"

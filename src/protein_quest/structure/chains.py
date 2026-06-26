@@ -1,13 +1,20 @@
 """Chain-level structure helpers and transformations.
 
 Attributes:
-    CHAIN_PROVENANCE_SOFTWARE_NAME: The name of the software item used for chain extraction provenance.
+    CHAIN_PROVENANCE_SOFTWARE_NAME: Name stored in structure metadata to record
+        chain extraction provenance.
+    ChainIdSystem: Which chain identifier system is used.
+        - ``label``: PDB-assigned chain id (``label_asym_id`` in mmcif).
+        - ``auth``: author-reported chain id (``auth_asym_id`` in mmcif).
+        If they differ, chain ids are shown as
+        ``label_asym_id [auth auth_asym_id]`` on https://www.rcsb.org/.
 """
 
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
 
 import gemmi
 from gemmi import SoftwareItem, Structure
@@ -22,6 +29,7 @@ from protein_quest.utils import CopyMethod, copyfile
 logger = logging.getLogger(__name__)
 
 CHAIN_PROVENANCE_SOFTWARE_NAME = "protein-quest.structure.chains.write_single_chain_structure_file"
+ChainIdSystem = Literal["auth", "label"]
 
 
 def find_chain_in_model(model: gemmi.Model, wanted_chain: str) -> gemmi.Chain | None:
@@ -41,6 +49,47 @@ def find_chain_in_model(model: gemmi.Model, wanted_chain: str) -> gemmi.Chain | 
     return chain
 
 
+def resolve_chain_id_to_label(
+    structure: gemmi.Structure,
+    chain_id: str,
+    *,
+    chain_system: ChainIdSystem,
+    source_file: Path | str | None = None,
+) -> str:
+    """Resolve a chain identifier to label system.
+
+    Args:
+        structure: Structure used to resolve chain identifiers.
+        chain_id: Input chain identifier.
+        chain_system: System of ``chain_id`` (``auth`` or ``label``).
+        source_file: Optional source for diagnostics.
+
+    Returns:
+        Chain id in label system.
+
+    Raises:
+        ChainNotFoundError: If the chain cannot be resolved in the chosen system.
+    """
+    if chain_system == "label":
+        return chain_id
+
+    label2auth = get_label2auth_chains(structure)
+    auth2label: dict[str, str] = {}
+    for label_asym_id, auth_asym_id in label2auth.items():
+        if auth_asym_id not in auth2label:
+            auth2label[auth_asym_id] = label_asym_id
+
+    if chain_id in auth2label:
+        return auth2label[chain_id]
+
+    # If caller passes label ids while claiming auth, allow identical systems.
+    if chain_id in label2auth:
+        return chain_id
+
+    available_chains = set(auth2label.keys()) if auth2label else {c.name for c in chains_in_structure(structure)}
+    raise ChainNotFoundError(chain_id, source_file, available_chains)
+
+
 def find_chain_in_structure(structure: gemmi.Structure, wanted_chain: str) -> gemmi.Chain | None:
     """Find a chain in a structure.
 
@@ -50,8 +99,9 @@ def find_chain_in_structure(structure: gemmi.Structure, wanted_chain: str) -> ge
 
     Returns:
         The found chain or None if not found."""
+    auth_chain = get_label2auth_chains(structure).get(wanted_chain, wanted_chain)
     for model in structure:
-        chain = find_chain_in_model(model, wanted_chain)
+        chain = find_chain_in_model(model, auth_chain)
         if chain is not None:
             return chain
     return None
