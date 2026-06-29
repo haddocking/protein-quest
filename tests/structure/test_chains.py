@@ -199,10 +199,17 @@ def test_nr_of_residues_in_total(sample2_cif: Path):
     assert total_residues == 8
 
 
-def test_find_chain_in_structure_uses_label_system(cif_8rw8: Path):
+@pytest.mark.parametrize(
+    ("wanted", "system"),
+    [
+        ("B", "auth"),
+        ("A", "label"),
+    ],
+)
+def test_find_chain_in_structure(cif_8rw8: Path, wanted: str, system: ChainIdSystem):
     structure = read_structure(cif_8rw8)
 
-    found_chain = find_chain_in_structure(structure, "A")
+    found_chain = find_chain_in_structure(structure, wanted, chain_system=system)
 
     assert found_chain is not None
     # Gemmi chain names are auth system for 8rw8, while the lookup input is label.

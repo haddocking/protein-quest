@@ -7,6 +7,36 @@
 This document records where chain identifiers are used in protein-quest and what
 identifier system each function expects or returns.
 
+## Gemmi chain systems
+
+8rw8 has:
+label=A
+auth=B
+
+```python
+import gemmi
+s = gemmi.read_structure('/home/verhoes/.cache/protein-quest-tests/8rw8_updated.cif.gz')
+s[0].find_chain('B')
+<gemmi.Chain B with 116 res>
+{c for m in s for c in m}
+# {<gemmi.Chain B with 116 res>}
+c = s[0][0]
+c.name
+# B
+c.subchains()
+# [<gemmi.ResidueSpan of 104: A [338(MET) 339(GLU) 340(TYR) ... 441(VAL)]>,
+#  <gemmi.ResidueSpan of 1: B [501(A1H3P)]>,
+#  <gemmi.ResidueSpan of 1: C [502(A1H3Q)]>,
+#  <gemmi.ResidueSpan of 10: D [601(HOH) 602(HOH) 603(HOH) ... 610(HOH)]>]
+s.entities[0].subchains
+#['A']
+atom_site = s.make_mmcif_block().get_mmcif_category("_atom_site.")
+atom_site.get('label_asym_id',[])[0]
+# 'A'
+atom_site.get('auth_asym_id',[])[0]
+# 'B'
+```
+
 ## System legend
 
 - AUTH_CHAIN: Gemmi chain name (model chain id; used by chain lookup and rename

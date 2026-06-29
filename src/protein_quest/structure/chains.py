@@ -1,14 +1,4 @@
-"""Chain-level structure helpers and transformations.
-
-Attributes:
-    CHAIN_PROVENANCE_SOFTWARE_NAME: Name stored in structure metadata to record
-        chain extraction provenance.
-    ChainIdSystem: Which chain identifier system is used.
-        - ``label``: PDB-assigned chain id (``label_asym_id`` in mmcif).
-        - ``auth``: author-reported chain id (``auth_asym_id`` in mmcif).
-        If they differ, chain ids are shown as
-        ``label_asym_id [auth auth_asym_id]`` on https://www.rcsb.org/.
-"""
+"""Chain-level structure helpers and transformations."""
 
 import logging
 from dataclasses import dataclass
@@ -29,7 +19,16 @@ from protein_quest.utils import CopyMethod, copyfile
 logger = logging.getLogger(__name__)
 
 CHAIN_PROVENANCE_SOFTWARE_NAME = "protein-quest.structure.chains.write_single_chain_structure_file"
+"""Name stored in structure metadata to record chain extraction provenance."""
 ChainIdSystem = Literal["auth", "label"]
+"""Which chain identifier system is used.
+
+* ``label``: PDB-assigned chain id (``label_asym_id`` in mmcif).
+* ``auth``: author-reported chain id (``auth_asym_id`` in mmcif).
+
+If they differ, chain ids are shown as
+``label_asym_id [auth auth_asym_id]`` on [https://www.rcsb.org/](https://www.rcsb.org/).
+"""
 
 
 def find_chain_in_model(model: gemmi.Model, wanted_chain: str) -> gemmi.Chain | None:
@@ -38,9 +37,13 @@ def find_chain_in_model(model: gemmi.Model, wanted_chain: str) -> gemmi.Chain | 
     Args:
         model: The gemmi model to search in.
         wanted_chain: The chain identifier to search for.
+            Interpreted in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
 
     Returns:
-        The found chain or None if not found."""
+        The found chain or None if not found.
+            Returned chain object is in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem]."""
     chain = model.find_chain(wanted_chain)
     if chain is None:
         mchains = [c for c in model if c.name.endswith(wanted_chain)]
@@ -61,11 +64,13 @@ def resolve_chain_id_to_label(
     Args:
         structure: Structure used to resolve chain identifiers.
         chain_id: Input chain identifier.
-        chain_system: System of ``chain_id`` (``auth`` or ``label``).
+            Interpreted using ``chain_system``.
+        chain_system: System of ``chain_id``.
         source_file: Optional source for diagnostics.
 
     Returns:
-        Chain id in label system.
+        Chain id in 'label'
+        [chain id system][protein_quest.structure.chains.ChainIdSystem].
 
     Raises:
         ChainNotFoundError: If the chain cannot be resolved in the chosen system.
@@ -90,18 +95,26 @@ def resolve_chain_id_to_label(
     raise ChainNotFoundError(chain_id, source_file, available_chains)
 
 
-def find_chain_in_structure(structure: gemmi.Structure, wanted_chain: str) -> gemmi.Chain | None:
+def find_chain_in_structure(
+    structure: gemmi.Structure, wanted_chain: str, chain_system: ChainIdSystem = "auth"
+) -> gemmi.Chain | None:
     """Find a chain in a structure.
 
     Args:
         structure: The gemmi structure to search in.
         wanted_chain: The chain identifier to search for.
+        chain_system: System of ``wanted_chain``.
 
     Returns:
-        The found chain or None if not found."""
-    auth_chain = get_label2auth_chains(structure).get(wanted_chain, wanted_chain)
+        The found chain or None if not found.
+            Returned chain object is in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
+    """
+    if chain_system == "label":
+        label2auth = get_label2auth_chains(structure)
+        wanted_chain = label2auth[wanted_chain]
     for model in structure:
-        chain = find_chain_in_model(model, auth_chain)
+        chain = find_chain_in_model(model, wanted_chain)
         if chain is not None:
             return chain
     return None
@@ -113,6 +126,8 @@ def nr_residues_in_chain(file: Path, chain: str = "A") -> int:
     Args:
         file: Path to the input structure file.
         chain: Chain to count residues of.
+            Interpreted in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
 
     Returns:
         The number of residues in the specified chain."""
@@ -152,7 +167,11 @@ class ChainExtractionProvenance:
 
     Attributes:
         chain2keep: The chain identifier that was kept from the input structure.
-        out_chain: The chain identifier that is used in this output structure."""
+            Stored in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
+        out_chain: The chain identifier that is used in this output structure.
+            Stored in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem]."""
 
     chain2keep: str
     out_chain: str
@@ -208,7 +227,9 @@ def chains_in_structure(structure: gemmi.Structure) -> set[gemmi.Chain]:
         structure: The gemmi structure to get chains from.
 
     Returns:
-        A set of chains in the structure."""
+        A set of chains in the structure.
+            Returned chain objects are in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem]."""
     return {c for model in structure for c in model}
 
 
@@ -224,6 +245,10 @@ def get_label2auth_chains(structure: gemmi.Structure) -> dict[str, str]:
 
     Returns:
         A dictionary mapping label chain ids to author chain ids.
+            Keys are in 'label'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
+            Values are in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
             If the same label appears multiple times, the first observed mapping
             is kept to ensure deterministic output.
     """
@@ -250,6 +275,10 @@ def label_auth_mismatch(chains_map: dict[str, str]) -> bool:
 
     Args:
         chains_map: Mapping produced by [get_label2auth_chains][protein_quest.structure.chains.get_label2auth_chains].
+            Keys are expected in 'label'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem],
+            values in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
 
     Returns:
         ``True`` when at least one mapping has different label and author ids,
@@ -300,8 +329,12 @@ def write_single_chain_structure_file(
     Args:
         input_file: Path to the input structure file.
         chain2keep: The chain to keep.
+            Interpreted in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
         output_dir: Directory to save the output file.
         out_chain: The chain identifier for the output file.
+            Written in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
         copy_method: How to copy when no changes are needed to output file.
 
     Returns:
