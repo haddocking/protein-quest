@@ -42,11 +42,12 @@ atom_site.get('auth_asym_id',[])[0]
 - AUTH_CHAIN: Gemmi chain name (model chain id; used by chain lookup and rename
   APIs).
 - LABEL_ASYM: mmCIF label asym id (for example \_atom_site.label_asym_id,
-  \_struct_ref_seq.pdbx_strand_id, 3D-Beacons chain_ids).
+  \_struct_ref_seq.pdbx_strand_id).
 - MIXED: function combines values from multiple sources that may not be in the
   same system.
-- EXTERNAL_PDBe: chain token from UniProt/PDBe uniprot_chains text field; not
-  explicitly tied to label/auth fields in this code.
+- EXTERNAL_PDBe: chain token from external UniProt/PDBe responses (for example
+  SPARQL uniprot_chains and 3D-Beacons chain_ids); may be AUTH-like in
+  practice, but should be validated per source/endpoint.
 
 ## Gemmi evidence used for classification
 
@@ -184,9 +185,13 @@ atom_site.get('auth_asym_id',[])[0]
 ### src/protein_quest/pdbe_3dbeacons/search.py
 
 - \_find_chain_for_uniprot(uniprot_accession, summary) -> str
-  - Returns entity.chain_ids value => LABEL_ASYM
+  - Returns entity.chain_ids value => EXTERNAL_PDBe
+  - Observed behavior for 3D-Beacons UniProt summary endpoint:
+    `.../uniprot/summary/O00327.json` reports chain `B` for 8rw8 (AUTH-like;
+    8rw8 label is `A`, auth is `B`)
 - flatten_structure_summaries(summaries) -> rows with chain
-  - chain field is LABEL_ASYM (from \_find_chain_for_uniprot)
+  - chain field is EXTERNAL_PDBe (from \_find_chain_for_uniprot)
+  - Current observed 3D-Beacons behavior is AUTH-like for tested case 8rw8
 
 ### src/protein_quest/pdbe/result.py
 
@@ -222,8 +227,9 @@ atom_site.get('auth_asym_id',[])[0]
 - Highest risk: structure_to_uniprot (MIXED output system).
 - Secondary risk: structure_metadata bridging LABEL_ASYM-derived chain ids into
   AUTH_CHAIN chain lookup.
-- External input risk: chain ids from PDBe/UniProt search pipeline are
-  EXTERNAL_PDBe and currently assumed compatible downstream.
+- External input risk: SPARQL `uniprot_chains` remains EXTERNAL_PDBe and can
+  is observed AUTH-like; however it can still diverge from LABEL_ASYM in
+  structures (for example 1F66 `C/G` vs label-asym `E/I`).
 
 ## Implementation status checklist
 
@@ -244,8 +250,10 @@ atom_site.get('auth_asym_id',[])[0]
       branches.
 - [x] `structure_metadata` still bridges LABEL_ASYM-derived ids into AUTH_CHAIN
       lookup and can be fragile when ids differ.
-- [ ] External PDBe/UniProt chain ids are still assumed compatible downstream
-      without an explicit conversion boundary.
+- [x] 3D-Beacons UniProt summary chain ids validated as AUTH-like for tested
+  case 8rw8 (`O00327.json` reports chain `B`, matching auth_asym_id).
+- [x] UniProt SPARQL `up:chain` values are observed AUTH-like (author-chain
+  style, for example 1F66 `C/G`).
 
 ## Recommendation
 

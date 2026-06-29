@@ -263,6 +263,8 @@ def pdbe(
             And `chain_length` is the length of the chain, for example `100`
             or '' if it could not be determined.
             Use `-` for stdout.
+            The chain ids returned are in 'auth'
+            [chain id system](https://www.bonvinlab.org/protein_quest/autoapi/protein_quest/structure/chains.html#protein_quest.structure.chains.ChainIdSystem).
         limit: Maximum number of PDB uniprot accessions combinations to return.
         timeout: Maximum seconds to wait for query to complete.
         min_residues: Minimum number of residues required in the chain mapped to the UniProt accession.
@@ -407,12 +409,14 @@ def structure(
     """Search for experimentally determined and predicted structures.
 
     Search for experimentally determined and predicted structures of given UniProt accessions
-    in the 3D Beacons Network API.
+    in the [3D Beacons Network API](https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/).
 
     Args:
         uniprot_accessions: Text file with UniProt accessions (one per line). Use `-` for stdin.
         output_csv: Output CSV with following columns:
             `uniprot_accession`, `provider`, `model_identifier`, `model_url`, `model_format`, `chain`, `residue_count`.
+            The chain values are in 'auth'
+            [chain id system](https://www.bonvinlab.org/protein_quest/autoapi/protein_quest/structure/chains.html#protein_quest.structure.chains.ChainIdSystem).
             Use `-` for stdout.
         source: Source of the structures to search for. Default `pdbe` and `alphafold`.
             Multiple sources can be given by repeating the `--source` parameter.

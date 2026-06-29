@@ -129,12 +129,9 @@ def chain(
         output_dir: Directory to write the single-chain PDB/mmCIF files.
             Output files are in same format as input files.
         chain_system: System of chain ids in the input CSV.
-            Use ``auth`` when your ``chain`` column contains author chain ids
-            (``auth_asym_id``), for example from ``search pdbe`` output.
-            Use ``label`` when your ``chain`` column already contains
-            PDB-assigned chain ids (``label_asym_id``).
-            If these differ, chain ids are commonly displayed as
-            ``label_asym_id [auth auth_asym_id]``.
+            Set to 'label' to use chain ids assigned by PDB.
+            See [docs](https://www.bonvinlab.org/protein_quest/autoapi/protein_quest/structure/chains.html#protein_quest.structure.chains.ChainIdSystem)
+            for more information on chain id system.
         scheduler_address: Address of the Dask scheduler to connect to.
             If not provided, will create a local cluster.
             If set to `sequential` will run tasks sequentially.

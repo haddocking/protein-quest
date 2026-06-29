@@ -11,10 +11,11 @@ logger = logging.getLogger(__name__)
 class PdbResult:
     """Result of a PDB search in UniProtKB.
 
-    Parameters:
+    Attributes:
         id: PDB ID (for example "1H3O").
         method: Method used for the PDB entry (for example "X-ray diffraction").
         uniprot_chains: Chains in UniProt format (for example "A/B=1-42,A/B=50-99").
+            The chain ids used in string are in 'auth' [chain id system][protein_quest.structure.chains.ChainIdSystem].
         resolution: Resolution of the PDB entry (for example "2.0" for 2.0 Å). Optional.
     """
 
@@ -25,7 +26,10 @@ class PdbResult:
 
     @cached_property
     def chain(self) -> str:
-        """The first chain from the UniProt chains aka self.uniprot_chains."""
+        """The first chain from the UniProt chains aka self.uniprot_chains.
+
+        The chain ids used in string are in 'auth' [chain id system][protein_quest.structure.chains.ChainIdSystem].
+        """
         return _first_chain_from_uniprot_chains(self.uniprot_chains)
 
     @cached_property

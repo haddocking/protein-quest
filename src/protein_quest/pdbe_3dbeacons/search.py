@@ -113,7 +113,7 @@ def _prune_on_residues(
     return filtered_on_residues
 
 
-def prune_on_limit(
+def _prune_on_limit(
     structures: list[Overview],
     response_providers: set[str],
     limit: int,
@@ -153,7 +153,7 @@ def _prune_summary(
         min_residues=options.min_residues,
         max_residues=options.max_residues,
     )
-    filtered_on_limit = prune_on_limit(
+    filtered_on_limit = _prune_on_limit(
         filtered_on_residues,
         response_providers=response_providers,
         limit=options.limit,
@@ -182,7 +182,7 @@ def _prune_summaries(summaries: list[UniprotSummary], options: PruneOptions) -> 
             yield pruned_summary
 
 
-async def fetch_summary_batch(
+async def _fetch_summary_batch(
     batch: Iterable[str],
     session: RetryClient,
     prune_options: PruneOptions,
@@ -237,6 +237,9 @@ async def uniprots2structures(
 
     Returns:
         List of summaries of structures for each uniprot accession.
+        The chain ids returned are in 'auth'
+            [chain id system](https://www.bonvinlab.org/protein_quest/autoapi/protein_quest/structure/chains.html#protein_quest.structure.chains.ChainIdSystem).
+
     """
     if batch_size <= 0 or batch_size > MAX_POST_LIMIT:
         msg = f"Batch size {batch_size} must be between 1 and {MAX_POST_LIMIT}."
@@ -252,7 +255,7 @@ async def uniprots2structures(
             unit="acc",
         ) as pbar:
             for batch in batched(uniprot_accessions, batch_size, strict=False):
-                batch_structures = await fetch_summary_batch(batch, session, prune_options=prune_options)
+                batch_structures = await _fetch_summary_batch(batch, session, prune_options=prune_options)
                 structures.extend(batch_structures)
                 pbar.update(len(batch))
                 await sleep(sleep_between_batches)
