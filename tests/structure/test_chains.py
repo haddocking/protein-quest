@@ -16,7 +16,6 @@ from protein_quest.structure.chains import (
     label_auth_mismatch,
     nr_of_residues_in_total,
     nr_residues_in_chain,
-    resolve_chain_id_to_label,
     retrieve_chain_extraction_provenance,
     write_single_chain_structure_file,
 )
@@ -258,31 +257,6 @@ def test_get_label2auth_chains(cif_fixture: str, expected: dict[str, str], reque
     label2auth_chains = get_label2auth_chains(structure)
 
     assert label2auth_chains == expected
-
-
-@pytest.mark.parametrize(
-    ("input_chain", "chain_system", "expected"),
-    [
-        pytest.param("B", "auth", "A", id="auth-to-label"),
-        pytest.param("A", "label", "A", id="label-passthrough"),
-    ],
-)
-def test_resolve_chain_id_to_label(
-    cif_8rw8: Path,
-    input_chain: str,
-    chain_system: ChainIdSystem,
-    expected: str,
-):
-    structure = read_structure(cif_8rw8)
-
-    resolved_chain = resolve_chain_id_to_label(
-        structure,
-        input_chain,
-        chain_system=chain_system,
-        source_file=cif_8rw8,
-    )
-
-    assert resolved_chain == expected
 
 
 @pytest.mark.parametrize(

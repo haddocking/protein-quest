@@ -7,6 +7,7 @@ from protein_quest.structure.chains import ChainIdSystem, write_single_chain_str
 from protein_quest.structure.formats import read_structure
 from protein_quest.structure.types import Pdb2UniprotMapping, StructRefSeq
 from protein_quest.structure.uniprot import (
+    UniprotSource,
     add_uniprot_accessions2structure,
     struct_ref_seqs_columns_to_records,
     structure2uniprot_accessions,
@@ -170,24 +171,266 @@ def test_struct_ref_seqs_columns_to_records(
 
 
 class TestStructureToUniprot:
-    def test_from_sifts(self, nmr_cif: Path):
-        structure = read_structure(nmr_cif)
+    @pytest.mark.parametrize(
+        ("fixture_name", "source", "expected"),
+        [
+            pytest.param(
+                "nmr_cif",
+                "sifts",
+                {
+                    "1AMB": {
+                        ("A", "P05067"),
+                    }
+                },
+                id="sifts-only",
+            ),
+            pytest.param(
+                "sample2_cif",
+                "struct_ref_seq",
+                {"2Y29": {("A", "P05067")}},
+                id="struct-ref-seq-only",
+            ),
+            pytest.param(
+                "multi_entity_cif",
+                "both",
+                {
+                    "1F66": {
+                        (
+                            "A",
+                            "P84233",
+                        ),
+                        (
+                            "A",
+                            "Q7ZT64",
+                        ),
+                        (
+                            "B",
+                            "P62806",
+                        ),
+                        (
+                            "C",
+                            "P0C0S5",
+                        ),
+                        (
+                            "C",
+                            "P17317",
+                        ),
+                        (
+                            "D",
+                            "P02281",
+                        ),
+                        (
+                            "E",
+                            "P84233",
+                        ),
+                        (
+                            "E",
+                            "Q7ZT64",
+                        ),
+                        (
+                            "F",
+                            "P62806",
+                        ),
+                        (
+                            "G",
+                            "P0C0S5",
+                        ),
+                        (
+                            "G",
+                            "P17317",
+                        ),
+                        (
+                            "H",
+                            "P02281",
+                        ),
+                    }
+                },
+                id="multi-both-explicit",
+            ),
+            pytest.param(
+                "multi_entity_cif",
+                "sifts",
+                {
+                    "1F66": {
+                        (
+                            "A",
+                            "P84233",
+                        ),
+                        (
+                            "B",
+                            "P62806",
+                        ),
+                        (
+                            "C",
+                            "P0C0S5",
+                        ),
+                        (
+                            "D",
+                            "P02281",
+                        ),
+                        (
+                            "E",
+                            "P84233",
+                        ),
+                        (
+                            "F",
+                            "P62806",
+                        ),
+                        (
+                            "G",
+                            "P0C0S5",
+                        ),
+                        (
+                            "H",
+                            "P02281",
+                        ),
+                    }
+                },
+                id="multi-sifts",
+            ),
+            pytest.param(
+                "multi_entity_cif",
+                "struct_ref_seq",
+                {
+                    "1F66": {
+                        (
+                            "A",
+                            "Q7ZT64",
+                        ),
+                        (
+                            "B",
+                            "P62806",
+                        ),
+                        (
+                            "C",
+                            "P17317",
+                        ),
+                        (
+                            "D",
+                            "P02281",
+                        ),
+                        (
+                            "E",
+                            "Q7ZT64",
+                        ),
+                        (
+                            "F",
+                            "P62806",
+                        ),
+                        (
+                            "G",
+                            "P17317",
+                        ),
+                        (
+                            "H",
+                            "P02281",
+                        ),
+                    }
+                },
+                id="multi-struct_ref_seq",
+            ),
+            pytest.param(
+                "multi_entity_cif",
+                "fallback",
+                {
+                    "1F66": {
+                        (
+                            "A",
+                            "P84233",
+                        ),
+                        (
+                            "B",
+                            "P62806",
+                        ),
+                        (
+                            "C",
+                            "P0C0S5",
+                        ),
+                        (
+                            "D",
+                            "P02281",
+                        ),
+                        (
+                            "E",
+                            "P84233",
+                        ),
+                        (
+                            "F",
+                            "P62806",
+                        ),
+                        (
+                            "G",
+                            "P0C0S5",
+                        ),
+                        (
+                            "H",
+                            "P02281",
+                        ),
+                    }
+                },
+                id="multi-fallback-prefers-sifts",
+            ),
+            pytest.param(
+                "sample2_cif",
+                "fallback",
+                {"2Y29": {("A", "P05067")}},
+                id="fallback-uses-struct-ref-seq-when-sifts-empty",
+            ),
+            pytest.param(
+                "multi_entity_cif",
+                None,
+                {
+                    "1F66": {
+                        (
+                            "A",
+                            "P84233",
+                        ),
+                        (
+                            "B",
+                            "P62806",
+                        ),
+                        (
+                            "C",
+                            "P0C0S5",
+                        ),
+                        (
+                            "D",
+                            "P02281",
+                        ),
+                        (
+                            "E",
+                            "P84233",
+                        ),
+                        (
+                            "F",
+                            "P62806",
+                        ),
+                        (
+                            "G",
+                            "P0C0S5",
+                        ),
+                        (
+                            "H",
+                            "P02281",
+                        ),
+                    }
+                },
+                id="multi-default",
+            ),
+        ],
+    )
+    def test_sources(
+        self,
+        request: pytest.FixtureRequest,
+        fixture_name: str,
+        source: UniprotSource | None,
+        expected: Pdb2UniprotMapping,
+    ):
+        structure_path = request.getfixturevalue(fixture_name)
+        structure = read_structure(structure_path)
 
-        result = structure_to_uniprot(structure)
+        result = structure_to_uniprot(structure) if source is None else structure_to_uniprot(structure, source=source)
 
-        expected: Pdb2UniprotMapping = {
-            "1AMB": {
-                ("A", "P05067"),
-            }
-        }
-        assert result == expected
-
-    def test_from_struct_ref(self, sample2_cif: Path):
-        structure = read_structure(sample2_cif)
-
-        result = structure_to_uniprot(structure)
-
-        expected: Pdb2UniprotMapping = {"2Y29": {("A", "P05067")}}
         assert result == expected
 
 
@@ -258,22 +501,18 @@ class TestAddUniprotAccessions2Structure:
     @pytest.mark.parametrize(
         ("chain_system", "chain_id"),
         [
-            # auth chain C resolves to label chain E in fixture
-            pytest.param("auth", "C", id="auth-chain-C"),
-            pytest.param("label", "E", id="label-chain-E"),
+            ("auth", "C"),
+            # label chain E is same entity as auth chain C
+            ("label", "E"),
         ],
     )
     def test_multi_entity_cif(self, multi_entity_cif: Path, chain_system: ChainIdSystem, chain_id: str):
         structure = read_structure(multi_entity_cif)
-        # From `echo P0C0S5 | protein-quest search pdbe - - |grep 1F66` gives
-        # `P0C0S5,1F66,X-Ray_Crystallography,2.6,C/G=1-128,C,128`.
-        # In this fixture: auth C maps to label E.
-        pdb2uniprot = {"1F66": {(chain_id, "P0C0S5")}}
-        # TODO make setting to "P12345" also work
+        pdb2uniprot = {"1F66": {(chain_id, "P12345")}}
 
         new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot, chain_system=chain_system)
 
-        result = structure_to_uniprot(new_structure)
+        result = structure_to_uniprot(new_structure, source="both")
 
         expected: Pdb2UniprotMapping = {
             "1F66": {
@@ -287,23 +526,16 @@ class TestAddUniprotAccessions2Structure:
                 ),
                 (
                     "C",
-                    "P17317",
+                    # as requested
+                    "P12345",
                 ),
                 (
                     "C",
-                    "P84233",
+                    "P17317",
                 ),
                 (
                     "D",
                     "P02281",
-                ),
-                (
-                    "D",
-                    "P62806",
-                ),
-                (
-                    "E",
-                    "P0C0S5",
                 ),
                 (
                     "E",
@@ -311,34 +543,19 @@ class TestAddUniprotAccessions2Structure:
                 ),
                 (
                     "F",
-                    "P02281",
+                    "P62806",
                 ),
                 (
-                    "F",
-                    "P62806",
+                    "G",
+                    # Also updates P0C0S5 to requested as G and C auth chains are same entity
+                    "P12345",
                 ),
                 (
                     "G",
                     "P17317",
                 ),
                 (
-                    "G",
-                    "P84233",
-                ),
-                (
                     "H",
-                    "P02281",
-                ),
-                (
-                    "H",
-                    "P62806",
-                ),
-                (
-                    "I",
-                    "P0C0S5",
-                ),
-                (
-                    "J",
                     "P02281",
                 ),
             },

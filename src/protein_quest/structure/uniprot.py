@@ -3,14 +3,16 @@
 import logging
 from collections import defaultdict
 from collections.abc import Generator
+from typing import Literal
 
 import gemmi
 
 from protein_quest.structure.chains import (
     ChainIdSystem,
-    resolve_chain_id_to_label,
+    get_label2auth_chains,
     retrieve_chain_extraction_provenance,
 )
+from protein_quest.structure.errors import ChainNotFoundError
 from protein_quest.structure.types import Pdb2UniprotMapping, StructRefSeq
 
 logger = logging.getLogger(__name__)
@@ -96,24 +98,78 @@ def selected_struct_ref_seqs_by_chain(structure: gemmi.Structure, accessions: se
     }
 
 
-def structure_to_uniprot(structure: gemmi.Structure) -> Pdb2UniprotMapping:
-    """Extract chain-to-UniProt mapping from a structure."""
+def _extract_chain_uniprots_from_sifts(structure: gemmi.Structure) -> set[tuple[str, str]]:
     chain_uniprots: set[tuple[str, str]] = set()
+    label2auth = get_label2auth_chains(structure)
     for entity in structure.entities:
         uniprots = entity.sifts_unp_acc
-        subchains = entity.subchains
-        for subchain in subchains:
+        if not uniprots:
+            continue
+        for label_subchain in entity.subchains:
+            try:
+                auth_subchain = label2auth[label_subchain]
+            except KeyError:
+                raise ChainNotFoundError(label_subchain, structure.name, set(label2auth.keys())) from None
             for uniprot in uniprots:
-                chain_uniprots.add((subchain, uniprot))
+                chain_uniprots.add((auth_subchain, uniprot))
+    return chain_uniprots
 
+
+def _extract_chain_uniprots_from_struct_ref_seq(structure: gemmi.Structure) -> set[tuple[str, str]]:
+    chain_uniprots: set[tuple[str, str]] = set()
     block = structure.make_mmcif_block(gemmi.MmcifOutputGroups(False, struct_ref=True))
     struct_ref = block.get_mmcif_category("_struct_ref.")
-    db_name_unp_idx = [i for i, db_name in enumerate(struct_ref["db_name"]) if db_name == "UNP"]
-    uniprot_accessions = [struct_ref["pdbx_db_accession"][i] for i in db_name_unp_idx]
     struct_ref_seq = block.get_mmcif_category("_struct_ref_seq.")
+    if not (struct_ref and struct_ref_seq):
+        logger.warning("No struct_ref data category found in structure %s", structure.name)
+        return chain_uniprots
+
+    db_name_unp_idx = [i for i, db_name in enumerate(struct_ref["db_name"]) if db_name == "UNP"]
+    uniprot_accessions = {struct_ref["pdbx_db_accession"][i] for i in db_name_unp_idx}
     for i, uniprot_accession in enumerate(struct_ref_seq["pdbx_db_accession"]):
         if uniprot_accession in uniprot_accessions:
-            chain_uniprots.add((struct_ref_seq["pdbx_strand_id"][i], uniprot_accession))
+            auth_chain = struct_ref_seq["pdbx_strand_id"][i]
+            chain_uniprots.add((auth_chain, uniprot_accession))
+
+    if not chain_uniprots:
+        logger.warning("No UniProt accessions found in structure %s", structure.name)
+    return chain_uniprots
+
+
+UniprotSource = Literal["both", "sifts", "struct_ref_seq", "fallback"]
+"""From which source to extract UniProt accessions from a structure."""
+
+
+def structure_to_uniprot(structure: gemmi.Structure, source: UniprotSource = "fallback") -> Pdb2UniprotMapping:
+    """Extract chain-to-UniProt mapping from a structure.
+
+    Args:
+        structure: The gemmi Structure object to extract UniProt accessions from.
+        source: UniProt source to read from.
+
+            - ``sifts``: Read from entity ``sifts_unp_acc`` values.
+            - ``struct_ref_seq``: Read from ``_struct_ref_seq`` filtered by
+                ``_struct_ref`` records with ``db_name=UNP``.
+            - ``both``: Merge SIFTS and struct_ref_seq results.
+            - ``fallback``: Return SIFTS when available, otherwise ``struct_ref_seq``.
+
+    Returns:
+        A dictionary mapping the structure name to a set of tuples containing chain and UniProt accession.
+            The chain names are in 'auth' [chain id system][protein_quest.structure.chains.ChainIdSystem].
+
+    """
+    if source == "fallback":
+        sifts_uniprots = _extract_chain_uniprots_from_sifts(structure)
+        if sifts_uniprots:
+            return {structure.name: sifts_uniprots}
+        return {structure.name: _extract_chain_uniprots_from_struct_ref_seq(structure)}
+
+    chain_uniprots: set[tuple[str, str]] = set()
+    if source in {"both", "sifts"}:
+        chain_uniprots.update(_extract_chain_uniprots_from_sifts(structure))
+
+    if source in {"both", "struct_ref_seq"}:
+        chain_uniprots.update(_extract_chain_uniprots_from_struct_ref_seq(structure))
 
     return {structure.name: chain_uniprots}
 
@@ -128,20 +184,9 @@ def structure2uniprot_accessions(structure: gemmi.Structure) -> set[str]:
 
     Returns:
         A set of UniProt accessions found in the structure."""
-    block = structure.make_mmcif_block(gemmi.MmcifOutputGroups(False, struct_ref=True))
-    struct_ref = block.get_mmcif_category("_struct_ref.")
-    uniprot_accessions: set[str] = set()
-    if not struct_ref:
-        logger.warning("No struct_ref data category found in structure %s", structure.name)
-        return uniprot_accessions
-    for i, db_name in enumerate(struct_ref["db_name"]):
-        if db_name != "UNP":
-            continue
-        pdbx_db_accession = struct_ref["pdbx_db_accession"][i]
-        uniprot_accessions.add(pdbx_db_accession)
-    if not uniprot_accessions:
-        logger.warning("No UniProt accessions found in structure %s", structure.name)
-    return uniprot_accessions
+    s2cu = structure_to_uniprot(structure)
+    cus = s2cu[structure.name]
+    return {uniprot for _chain, uniprot in cus}
 
 
 def _append_uniprot_to_structure(
@@ -152,12 +197,20 @@ def _append_uniprot_to_structure(
     block = structure.make_mmcif_block()
     struct_ref = block.get_mmcif_category("_struct_ref.")
     struct_ref_seq = block.get_mmcif_category("_struct_ref_seq.")
+    label2auth = get_label2auth_chains(structure)
+    auth2label = {auth: label for label, auth in label2auth.items()}
     chain2entity_id: dict[str, str] = {
         chain: entity.name for entity in structure.entities for chain in entity.subchains
     }
     fillable_struct_ref_seq_cols = {"align_id", "ref_id", "pdbx_strand_id", "pdbx_db_accession"}
-    for chain, uniprot_accession in chain_uniprot_pairs:
-        entity_id = chain2entity_id[chain]
+    for auth_chain, uniprot_accession in chain_uniprot_pairs:
+        # Chain in chain_uniprot_pairs is of auth sytstem, but entity subchains are label system
+        # so we need to convert to label system to get entity id.
+        try:
+            label_chain = auth2label[auth_chain]
+        except KeyError:
+            raise ChainNotFoundError(auth_chain, structure.name, set(auth2label.keys())) from None
+        entity_id = chain2entity_id[label_chain]
         new_id = str(len(struct_ref["id"]) + 1)
         struct_ref["id"].append(new_id)
         struct_ref["entity_id"].append(entity_id)
@@ -169,7 +222,7 @@ def _append_uniprot_to_structure(
         new_seq_id = len(struct_ref_seq["align_id"]) + 1
         struct_ref_seq["align_id"].append(new_seq_id)
         struct_ref_seq["ref_id"].append(new_id)
-        struct_ref_seq["pdbx_strand_id"].append(chain)
+        struct_ref_seq["pdbx_strand_id"].append(auth_chain)
         struct_ref_seq["pdbx_db_accession"].append(uniprot_accession)
         for col in struct_ref_seq:
             if col not in fillable_struct_ref_seq_cols:
@@ -221,7 +274,6 @@ def add_uniprot_accessions2structure(
             If provided, will be used to inject UniProt accessions into the structure if they are missing.
             If None, the structure is returned unchanged.
         chain_system: System of chain ids in ``pdb2uniprot`` mapping.
-            ``auth`` values are resolved to label ids before comparison and injection.
 
     Returns:
         A gemmi Structure object with UniProt accessions added if they were missing
@@ -236,10 +288,15 @@ def add_uniprot_accessions2structure(
         return structure
 
     pdb2uniprot = _rename_chain_based_on_provenance(structure, pdb2uniprot)
-    expected_pairs = {
-        (resolve_chain_id_to_label(structure, chain, chain_system=chain_system, source_file=structure.name), uniprot)
-        for chain, uniprot in pdb2uniprot[pdb_id]
-    }
+    expected_pairs = pdb2uniprot[pdb_id]
+    if chain_system == "label":
+        # Translate from label to auth chain ids
+        # as all functions expect auth chain ids as input/output.
+        label2auth = get_label2auth_chains(structure)
+        try:
+            expected_pairs = {(label2auth[label_chain], uniprot) for label_chain, uniprot in pdb2uniprot[pdb_id]}
+        except KeyError as e:
+            raise ChainNotFoundError(e.args[0], structure.name, set(label2auth.keys())) from None
 
     known = structure_to_uniprot(structure)
     missing = expected_pairs - known[pdb_id]

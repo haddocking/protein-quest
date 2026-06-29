@@ -26,7 +26,10 @@ StructureMethod = Literal["EM", "NMR", "Predicted", "X-ray", "Other"]
 """Represents the method used to determine the structure."""
 
 Pdb2UniprotMapping = dict[str, set[tuple[str, str]]]
-"""Dictionary mapping PDB ID to set of tuples containing chain and UniProt accession."""
+"""Dictionary mapping PDB ID to set of tuples containing chain and UniProt accession.
+
+The chain name is in the 'auth' [chain ID system][protein_quest.structure.chains.ChainIdSystem].
+"""
 
 
 @dataclass(frozen=True)

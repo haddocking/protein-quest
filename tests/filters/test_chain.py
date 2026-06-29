@@ -50,12 +50,12 @@ class TestFilterFilesOnChain:
         assert expected_progress_bar in stderr
 
     @pytest.mark.parametrize(
-        ("chain_id", "chain_system", "expected_passed"),
+        ("chain_id", "chain_system"),
         [
-            pytest.param("ZZ", "auth", False, id="invalid-auth-chain"),
-            pytest.param("ZZ", "label", False, id="invalid-label-chain"),
-            pytest.param("A", "auth", True, id="wrong-system-A-as-auth"),
-            pytest.param("B", "label", True, id="wrong-system-B-as-label"),
+            pytest.param("ZZ", "auth", id="invalid-auth-chain"),
+            pytest.param("ZZ", "label", id="invalid-label-chain"),
+            pytest.param("A", "auth", id="wrong-system-A-as-auth"),
+            pytest.param("B", "label", id="wrong-system-B-as-label"),
         ],
     )
     def test_invalid_chain(
@@ -64,7 +64,6 @@ class TestFilterFilesOnChain:
         tmp_path: Path,
         chain_id: str,
         chain_system: ChainIdSystem,
-        expected_passed: bool,
     ):
         results = filter_files_on_chain(
             [(cif_8rw8, chain_id)],
@@ -75,22 +74,16 @@ class TestFilterFilesOnChain:
 
         assert len(results) == 1
         result = results[0]
-        assert result.passed is expected_passed
-        if expected_passed:
-            assert result.output_file is not None
-            assert result.output_file.exists()
-            assert result.output_file.name.endswith("_B2A.cif.gz")
-            assert result.discard_reason is None
-        else:
-            assert result.output_file is None
-            assert isinstance(result.discard_reason, ChainNotFoundError)
+        assert not result.passed
+        assert result.output_file is None
+        assert isinstance(result.discard_reason, ChainNotFoundError)
 
 
 @pytest.mark.parametrize(
     ("chain_id", "chain_system"),
     [
-        pytest.param("B", "auth", id="auth-to-label"),
-        pytest.param("A", "label", id="label-passthrough"),
+        ("B", "auth"),
+        ("A", "label"),
     ],
 )
 def test_filter_file_on_chain_system_handling(

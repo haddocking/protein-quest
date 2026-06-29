@@ -11,7 +11,12 @@ from distributed.deploy.cluster import Cluster
 from tqdm.auto import tqdm
 
 from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
-from protein_quest.structure.chains import ChainIdSystem, resolve_chain_id_to_label, write_single_chain_structure_file
+from protein_quest.structure.chains import (
+    ChainIdSystem,
+    ChainNotFoundError,
+    get_label2auth_chains,
+    write_single_chain_structure_file,
+)
 from protein_quest.structure.formats import read_structure
 from protein_quest.utils import CopyMethod
 
@@ -34,26 +39,40 @@ def filter_file_on_chain(
     chain_system: ChainIdSystem = "auth",
     copy_method: CopyMethod = "copy",
 ) -> ChainFilterStatistics:
+    """Filter a single structure file by chain.
+
+    Args:
+        file_and_chain: Tuple of (structure file path, chain ID to keep).
+            The chain ID is interpreted according to the `chain_system` argument.
+        output_dir: The directory where the filtered file will be written.
+        out_chain: Under what name to write the kept chain.
+            The chain system id is 'auth'.
+        chain_system: System for the given chain ids in `file_and_chain`.
+        copy_method: How to copy when a direct copy is possible.
+    """
     input_file, chain_id = file_and_chain
     logger.debug("Filtering %s on chain %s (%s system)", input_file, chain_id, chain_system)
     try:
         structure = read_structure(input_file)
-        label_chain_id = resolve_chain_id_to_label(
-            structure,
-            chain_id,
-            chain_system=chain_system,
-            source_file=input_file,
-        )
-        if label_chain_id != chain_id:
-            logger.info(
-                "Resolved chain id %s -> %s for %s",
-                chain_id,
-                label_chain_id,
-                input_file,
-            )
+
+        auth_chain_id = chain_id
+        if chain_system == "label":
+            l2a = get_label2auth_chains(structure)
+            try:
+                auth_chain_id = l2a[chain_id]
+            except KeyError:
+                raise ChainNotFoundError(chain_id, input_file, set(l2a.keys())) from None
+            if auth_chain_id != chain_id:
+                logger.info(
+                    "Resolved label chain id %s -> %s auth for %s",
+                    chain_id,
+                    auth_chain_id,
+                    input_file,
+                )
+
         output_file = write_single_chain_structure_file(
             input_file,
-            label_chain_id,
+            auth_chain_id,
             output_dir,
             out_chain=out_chain,
             copy_method=copy_method,
@@ -104,7 +123,6 @@ def filter_files_on_chain(
         output_dir: The directory where the filtered files will be written.
         out_chain: Under what name to write the kept chain.
         chain_system: System for the given chain ids.
-            If set to ``auth`` they are translated to label ids before Gemmi processing.
         scheduler_address: The address of the Dask scheduler.
             If not provided, will create a local cluster.
             If set to `sequential` will run tasks sequentially.

@@ -52,47 +52,44 @@ def find_chain_in_model(model: gemmi.Model, wanted_chain: str) -> gemmi.Chain | 
     return chain
 
 
-def resolve_chain_id_to_label(
-    structure: gemmi.Structure,
-    chain_id: str,
-    *,
-    chain_system: ChainIdSystem,
-    source_file: Path | str | None = None,
-) -> str:
-    """Resolve a chain identifier to label system.
+def get_label2auth_chains(structure: gemmi.Structure) -> dict[str, str]:
+    """Build a label-to-author chain mapping from a structure.
+
+    This function primarily reads mmCIF ``_atom_site.label_asym_id`` and
+    ``_atom_site.auth_asym_id`` columns from ``group_PDB == 'ATOM'`` rows to derive
+    ``label_asym_id -> auth_asym_id``.
 
     Args:
-        structure: Structure used to resolve chain identifiers.
-        chain_id: Input chain identifier.
-            Interpreted using ``chain_system``.
-        chain_system: System of ``chain_id``.
-        source_file: Optional source for diagnostics.
+        structure: The structure to inspect.
 
     Returns:
-        Chain id in 'label'
-        [chain id system][protein_quest.structure.chains.ChainIdSystem].
-
-    Raises:
-        ChainNotFoundError: If the chain cannot be resolved in the chosen system.
+        A dictionary mapping label chain ids to author chain ids.
+            Keys are in 'label'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
+            Values are in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
+            If the same label appears multiple times, the first observed mapping
+            is kept to ensure deterministic output.
     """
-    if chain_system == "label":
-        return chain_id
+    # as atoms site is largest block we do not filter with MmcifOutputGroups
+    block = structure.make_mmcif_block()
+    atom_site = block.get_mmcif_category("_atom_site.")
+    label_asym_ids = atom_site.get("label_asym_id", [])
+    auth_asym_ids = atom_site.get("auth_asym_id", [])
+    group_pdb_values = atom_site.get("group_PDB", [])
 
-    label2auth = get_label2auth_chains(structure)
-    auth2label: dict[str, str] = {}
-    for label_asym_id, auth_asym_id in label2auth.items():
-        if auth_asym_id not in auth2label:
-            auth2label[auth_asym_id] = label_asym_id
+    # Empirical note: in a sample of ~14k structures, label/auth chain pairs were always 1:1.
+    # so no many to one (B2A + C2A) or one to many (A2B + A2C) mappings were observed.
+    # We therefore keep first-seen label->auth pairs in a dict and can safely invert when needed.
+    label2auth: dict[str, str] = {}
 
-    if chain_id in auth2label:
-        return auth2label[chain_id]
-
-    # If caller passes label ids while claiming auth, allow identical systems.
-    if chain_id in label2auth:
-        return chain_id
-
-    available_chains = set(auth2label.keys()) if auth2label else {c.name for c in chains_in_structure(structure)}
-    raise ChainNotFoundError(chain_id, source_file, available_chains)
+    for label_asym_id, auth_asym_id, group_pdb in zip(label_asym_ids, auth_asym_ids, group_pdb_values, strict=False):
+        if group_pdb != "ATOM":
+            # Skip HETATM
+            continue
+        if label_asym_id not in label2auth:
+            label2auth[label_asym_id] = auth_asym_id
+    return label2auth
 
 
 def find_chain_in_structure(
@@ -112,7 +109,11 @@ def find_chain_in_structure(
     """
     if chain_system == "label":
         label2auth = get_label2auth_chains(structure)
-        wanted_chain = label2auth[wanted_chain]
+        try:
+            wanted_chain = label2auth[wanted_chain]
+        except KeyError:
+            logger.warning("Label chain %s not found in structure. Returning None.", wanted_chain)
+            return None
     for model in structure:
         chain = find_chain_in_model(model, wanted_chain)
         if chain is not None:
@@ -231,43 +232,6 @@ def chains_in_structure(structure: gemmi.Structure) -> set[gemmi.Chain]:
             Returned chain objects are in 'auth'
             [chain id system][protein_quest.structure.chains.ChainIdSystem]."""
     return {c for model in structure for c in model}
-
-
-def get_label2auth_chains(structure: gemmi.Structure) -> dict[str, str]:
-    """Build a label-to-author chain mapping from a structure.
-
-    This function primarily reads mmCIF ``_atom_site.label_asym_id`` and
-    ``_atom_site.auth_asym_id`` columns from ``group_PDB == 'ATOM'`` rows to derive
-    ``label_asym_id -> auth_asym_id``.
-
-    Args:
-        structure: The structure to inspect.
-
-    Returns:
-        A dictionary mapping label chain ids to author chain ids.
-            Keys are in 'label'
-            [chain id system][protein_quest.structure.chains.ChainIdSystem].
-            Values are in 'auth'
-            [chain id system][protein_quest.structure.chains.ChainIdSystem].
-            If the same label appears multiple times, the first observed mapping
-            is kept to ensure deterministic output.
-    """
-    # as atoms site is largest block we do not filter with MmcifOutputGroups
-    block = structure.make_mmcif_block()
-    atom_site = block.get_mmcif_category("_atom_site.")
-    label_asym_ids = atom_site.get("label_asym_id", [])
-    auth_asym_ids = atom_site.get("auth_asym_id", [])
-    group_pdb_values = atom_site.get("group_PDB", [])
-
-    label2auth: dict[str, str] = {}
-
-    for label_asym_id, auth_asym_id, group_pdb in zip(label_asym_ids, auth_asym_ids, group_pdb_values, strict=False):
-        if group_pdb != "ATOM":
-            # Skip HETATM
-            continue
-        if label_asym_id not in label2auth:
-            label2auth[label_asym_id] = auth_asym_id
-    return label2auth
 
 
 def label_auth_mismatch(chains_map: dict[str, str]) -> bool:

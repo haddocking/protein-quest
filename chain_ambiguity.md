@@ -15,7 +15,7 @@ auth=B
 
 ```python
 import gemmi
-s = gemmi.read_structure('/home/verhoes/.cache/protein-quest-tests/8rw8_updated.cif.gz')
+s = gemmi.read_structure('~/.cache/protein-quest-tests/8rw8_updated.cif.gz')
 s[0].find_chain('B')
 <gemmi.Chain B with 116 res>
 {c for m in s for c in m}
@@ -240,7 +240,7 @@ atom_site.get('auth_asym_id',[])[0]
 - [x] `chain_system` is forwarded through
       `convert_to_cif_files`/`convert_to_cif_file` to
       `add_uniprot_accessions2structure`.
-- [ ] `structure_to_uniprot` still returns MIXED chain-id systems across
+- [x] `structure_to_uniprot` still returns MIXED chain-id systems across
       branches.
 - [ ] `structure_metadata` still bridges LABEL_ASYM-derived ids into AUTH_CHAIN
       lookup and can be fragile when ids differ.

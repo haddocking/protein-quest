@@ -120,7 +120,7 @@ def test_convert_structures_with_injected_uniprot_chain_system(
     structure = read_structure(output_file)
     injected_uniprot = structure_to_uniprot(structure)
     assert any(uniprot == "P12345" for _, uniprot in injected_uniprot[pdb_id])
-    assert "Expected: {('A', 'P12345')}" in caplog.text
+    assert "Expected: {('B', 'P12345')}" in caplog.text
 
 
 def test_convert_clusters_writes_clusters_output(
