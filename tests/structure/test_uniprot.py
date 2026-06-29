@@ -9,6 +9,7 @@ from protein_quest.structure.types import Pdb2UniprotMapping, StructRefSeq
 from protein_quest.structure.uniprot import (
     UniprotSource,
     add_uniprot_accessions2structure,
+    selected_struct_ref_seqs_by_chain,
     struct_ref_seqs_columns_to_records,
     structure2uniprot_accessions,
     structure_to_uniprot,
@@ -561,3 +562,23 @@ class TestAddUniprotAccessions2Structure:
             },
         }
         assert result == expected
+
+
+def test_selected_struct_ref_seqs_by_chain_returns_auth_system(cif_8rw8: Path):
+    structure = read_structure(cif_8rw8)
+    accessions = structure2uniprot_accessions(structure)
+
+    result = selected_struct_ref_seqs_by_chain(structure, accessions)
+
+    # cif_8rw8 fixture has auth chain B and label chain A, we expect auth chain B
+    expected: dict[str, StructRefSeq] = {
+        "B": StructRefSeq(
+            uniprot_accession="O00327",
+            uniprot_start=337,
+            uniprot_end=449,
+            chain_id="B",
+            sequence_identity=1.0,
+            aligned_residue_count=113,
+        )
+    }
+    assert result == expected

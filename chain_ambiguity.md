@@ -242,7 +242,7 @@ atom_site.get('auth_asym_id',[])[0]
       `add_uniprot_accessions2structure`.
 - [x] `structure_to_uniprot` still returns MIXED chain-id systems across
       branches.
-- [ ] `structure_metadata` still bridges LABEL_ASYM-derived ids into AUTH_CHAIN
+- [x] `structure_metadata` still bridges LABEL_ASYM-derived ids into AUTH_CHAIN
       lookup and can be fragile when ids differ.
 - [ ] External PDBe/UniProt chain ids are still assumed compatible downstream
       without an explicit conversion boundary.

@@ -87,8 +87,10 @@ def selected_struct_ref_seqs_by_chain(structure: gemmi.Structure, accessions: se
         accessions: UniProt accessions to match against.
 
     Returns:
-        Mapping from chain id to selected ``StructRefSeq``. Empty when no
-        matching records are present.
+        Mapping from chain id to selected ``StructRefSeq``.
+        The key is in 'auth' [chain id system][protein_quest.structure.chains.ChainIdSystem].
+        StructRefSeq.chain_id is also in 'auth' chain id system.
+        Empty when no matching records are present.
     """
     matching_struct_ref_seqs = _matching_struct_ref_seqs(structure, accessions)
     struct_ref_seqs_by_chain = _group_struct_ref_seqs_by_chain(matching_struct_ref_seqs)

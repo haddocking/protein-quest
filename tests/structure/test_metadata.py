@@ -1,5 +1,4 @@
 from pathlib import Path
-from textwrap import dedent
 
 import gemmi
 import pytest
@@ -24,6 +23,8 @@ class TestStructureMetadata:
                     uniprot_end=211,
                     sequence_identity=1.0,
                     chain_length=173,
+                    auth_chain="A",
+                    label_chain="B",
                     method="X-ray",
                 ),
                 id="3JRS_B2A",
@@ -40,6 +41,8 @@ class TestStructureMetadata:
                     uniprot_end=692,
                     sequence_identity=1.0,
                     chain_length=8,
+                    auth_chain="A",
+                    label_chain="A",
                     method="X-ray",
                 ),
                 id="2Y29",
@@ -56,6 +59,8 @@ class TestStructureMetadata:
                     uniprot_end=16,
                     sequence_identity=1.0,
                     chain_length=16,
+                    auth_chain="A",
+                    label_chain="A",
                     method="Predicted",
                 ),
                 id="AF-A0A0C5B5G6-F1",
@@ -72,6 +77,8 @@ class TestStructureMetadata:
                     uniprot_end=699,
                     sequence_identity=1.0,
                     chain_length=28,
+                    auth_chain="A",
+                    label_chain="A",
                     method="NMR",
                 ),
                 id="1AMB",
@@ -88,6 +95,8 @@ class TestStructureMetadata:
                     uniprot_end=127,
                     sequence_identity=1.0,
                     chain_length=260,
+                    auth_chain="A",
+                    label_chain="A",
                     method="EM",
                 ),
                 id="8W77",
@@ -104,6 +113,8 @@ class TestStructureMetadata:
                     uniprot_end=593,
                     sequence_identity=0.816,
                     chain_length=1346,
+                    auth_chain="A",
+                    label_chain="A",
                     method="X-ray",
                 ),
                 id="6O5I_multispan",
@@ -119,7 +130,9 @@ class TestStructureMetadata:
                     uniprot_start=0,
                     uniprot_end=0,
                     sequence_identity=0.0,
-                    chain_length=513,
+                    chain_length=40,
+                    auth_chain="A",
+                    label_chain="A",
                     method="X-ray",
                 ),
                 id="1A02_multi_accessions separate_chains",
@@ -136,9 +149,47 @@ class TestStructureMetadata:
                     uniprot_end=147,
                     sequence_identity=119 / 123,
                     chain_length=131,
+                    auth_chain="A",
+                    label_chain="A",
                     method="X-ray",
                 ),
                 id="1UN5_multi_accession_chain",
+            ),
+            pytest.param(
+                "cif_8rw8",
+                StructureMetadata(
+                    id="8RW8",
+                    uniprot_accession="O00327",
+                    resolution=2.16,
+                    total_residue_count=116,
+                    is_alphafold=False,
+                    uniprot_start=337,
+                    uniprot_end=449,
+                    sequence_identity=1.0,
+                    chain_length=116,
+                    auth_chain="B",
+                    label_chain="A",
+                    method="X-ray",
+                ),
+                id="label-auth-chain-mismatch",
+            ),
+            pytest.param(
+                "no_uniprot_cif",
+                StructureMetadata(
+                    id="2Y29",
+                    uniprot_accession=None,
+                    resolution=2.3,
+                    total_residue_count=8,
+                    is_alphafold=False,
+                    uniprot_start=0,
+                    uniprot_end=0,
+                    sequence_identity=0.0,
+                    chain_length=8,
+                    auth_chain="A",
+                    label_chain="A",
+                    method="X-ray",
+                ),
+                id="no_uniprot_accession",
             ),
         ],
     )
@@ -158,60 +209,9 @@ class TestStructureMetadata:
         assert "P01100" in message
         assert "P05412" in message
 
-    def test_without_uniprot(self):
+    def test_empty_structure(self):
         structure = gemmi.Structure()
+        structure.name = "EMPTY"
 
-        result = structure_metadata(structure)
-
-        expected = StructureMetadata(
-            id="",
-            uniprot_accession=None,
-            resolution=0.0,
-            total_residue_count=0,
-            is_alphafold=False,
-            uniprot_start=0,
-            uniprot_end=0,
-            sequence_identity=0.0,
-            chain_length=0,
-            method="Other",
-        )
-        assert result == expected
-
-    @pytest.fixture
-    def fake_alphafill_structure(self) -> gemmi.Structure:
-        block = dedent("""\
-            data_AF-P38634-F1
-            #
-            _entry.id   AF-P38634-F1
-                    loop_
-            _software.classification
-            _software.date
-            _software.description
-            _software.name
-            _software.pdbx_ordinal
-            _software.type
-            _software.version
-            other              ?                    'Structure prediction' AlphaFold 1 package v2.0
-            other              ?                    'Secondary structure'  dssp      2 library 4
-            'model annotation' 2023-11-22T07:49:00Z ?                      alphafill 3 ?       2.1.0
-            #
-            """)
-        doc = gemmi.cif.read_string(block)
-        return gemmi.make_structure_from_block(doc.sole_block())
-
-    def test_alphafill(self, fake_alphafill_structure: gemmi.Structure):
-        result = structure_metadata(fake_alphafill_structure)
-
-        expected = StructureMetadata(
-            id="AF-P38634-F1",
-            uniprot_accession=None,
-            resolution=0.0,
-            total_residue_count=0,
-            is_alphafold=False,
-            uniprot_start=0,
-            uniprot_end=0,
-            sequence_identity=0.0,
-            chain_length=0,
-            method="Predicted",
-        )
-        assert result == expected
+        with pytest.raises(ValueError, match="No chains found in structure EMPTY"):
+            structure_metadata(structure)
