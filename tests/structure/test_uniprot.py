@@ -16,10 +16,8 @@ from protein_quest.structure.uniprot import (
 )
 
 
-def test_write_single_chain_structure_file_preserves_uniprot_mapping(tmp_path: Path):
-    input_file = Path(__file__).resolve().parents[1] / "fixtures" / "3jrs_updated.cif.gz"
-
-    output_file = write_single_chain_structure_file(input_file=input_file, chain2keep="B", output_dir=tmp_path)
+def test_write_single_chain_structure_file_preserves_uniprot_mapping(cif_3jrs: Path, tmp_path: Path):
+    output_file = write_single_chain_structure_file(input_file=cif_3jrs, chain2keep="B", output_dir=tmp_path)
 
     structure = read_structure(output_file)
 

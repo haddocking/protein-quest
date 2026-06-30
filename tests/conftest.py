@@ -109,6 +109,15 @@ def cif_8rw8() -> Path:
 
 
 @pytest.fixture
+def cif_3jrs() -> Path:
+    """3jrs structure which is used to create sample_cif fixture."""
+    return fetch_cif(
+        "3jrs_updated.cif.gz",
+        "6117a1ef3d5d655491367588c56747fe9a4c5132dd240401f03f6ad3645d7603",
+    )
+
+
+@pytest.fixture
 def all_cifs(
     sample_cif: Path,
     sample2_cif: Path,
