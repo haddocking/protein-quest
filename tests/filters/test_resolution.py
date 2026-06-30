@@ -289,7 +289,7 @@ class TestLoadResolutionStatistics:
             uniprot_start=0,
             uniprot_end=0,
             sequence_identity=0.0,
-            chain_length=513,
+            chain_length=40,
             passed=False,
             output_file=None,
         )
