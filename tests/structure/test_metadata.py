@@ -24,7 +24,7 @@ class TestStructureMetadata:
                     sequence_identity=1.0,
                     chain_length=173,
                     auth_chain="A",
-                    label_chain="B",
+                    label_chain="A",
                     method="X-ray",
                 ),
                 id="3JRS_B2A",

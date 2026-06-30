@@ -72,7 +72,7 @@ def test_write_single_chain_structure_file_with_secondary_structure(sample_cif: 
         output_dir=tmp_path,
     )
     structure = read_structure(output_file)
-    assert len(structure.helices) == 4
+    assert len(structure.helices) == 6
     assert len(structure.sheets) == 1
 
 
@@ -218,8 +218,7 @@ def test_find_chain_in_structure(cif_8rw8: Path, wanted: str, system: ChainIdSys
 @pytest.mark.parametrize(
     ("cif_fixture", "expected"),
     [
-        # TODO write_single_chain_structure_file should update label_auth_chains, which it does not now, expected {A:A} when write works correctly
-        pytest.param("sample_cif", {"B": "A"}, id="3JRS_B2A"),
+        pytest.param("sample_cif", {"A": "A"}, id="3JRS_B2A"),
         pytest.param("sample2_cif", {"A": "A"}, id="2Y29"),
         pytest.param("af_cif", {"A": "A"}, id="AF-A0A0C5B5G6-F1"),
         pytest.param("nmr_cif", {"A": "A"}, id="1AMB"),

@@ -247,10 +247,10 @@ def test_filter_secondary_structure(
         {
             "input_file": str(local_sample),
             "nr_residues": "173",
-            "nr_helix_residues": "58",
-            "nr_sheet_residues": "59",
-            "helix_ratio": f"{58 / 173:.3f}",
-            "sheet_ratio": f"{59 / 173:.3f}",
+            "nr_helix_residues": "54",
+            "nr_sheet_residues": "61",
+            "helix_ratio": f"{54 / 173:.3f}",
+            "sheet_ratio": f"{61 / 173:.3f}",
             "passed": "True",
             "output_file": str(expected_passed_file),
         },
@@ -291,7 +291,7 @@ class TestResolution:
         main(argv)
 
         output_files = {path.name for path in output_dir.iterdir()}
-        assert output_files == {"2Y29.cif.gz", "3JRS_B2A.cif.gz"}
+        assert output_files == {"2Y29.cif.gz", "3jrs_updated_B2A.cif.gz"}
 
         captured = capsys.readouterr()
         assert "Filtering 3 files" in captured.err
@@ -384,7 +384,7 @@ class TestResolution:
         assert output_files == {
             "1amb_updated.cif.gz",
             "2Y29.cif.gz",
-            "3JRS_B2A.cif.gz",
+            "3jrs_updated_B2A.cif.gz",
             "AF-A0A0C5B5G6-F1-model_v6.cif.gz",
         }
 
@@ -400,9 +400,9 @@ class TestResolution:
                 "discard_reason": "",
                 "discard_reason_type": "",
                 "id": "3JRS",
-                "input_file": str(input_dir / "3JRS_B2A.cif.gz"),
+                "input_file": str(input_dir / "3jrs_updated_B2A.cif.gz"),
                 "is_alphafold": "False",
-                "output_file": str(output_dir / "3JRS_B2A.cif.gz"),
+                "output_file": str(output_dir / "3jrs_updated_B2A.cif.gz"),
                 "passed": "True",
                 "resolution": "2.05",
                 "sequence_identity": "1.000",
@@ -640,7 +640,7 @@ def test_pdbe_quality(
         },
         {
             "pdb_id": "3jrs",
-            "input_file": str(input_dir / "3JRS_B2A.cif.gz"),
+            "input_file": str(input_dir / "3jrs_updated_B2A.cif.gz"),
             "geometry_quality": "31.58",
             "passed": "False",
             "output_file": "",

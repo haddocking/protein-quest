@@ -164,7 +164,7 @@ class TestLocateStructureFilesByIdResult:
             found={
                 ("2y29", input_dir / "2Y29.cif.gz"),
                 ("1un5", input_dir / "1un5.cif.gz"),
-                ("3jrs", input_dir / "3JRS_B2A.cif.gz"),
+                ("3jrs", input_dir / "3jrs_updated_B2A.cif.gz"),
                 ("6o5i", input_dir / "6O5I.cif.gz"),
                 ("1amb", input_dir / "1amb_updated.cif.gz"),
                 ("8w77", input_dir / "8w77_updated.cif.gz"),

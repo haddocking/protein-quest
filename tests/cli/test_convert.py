@@ -29,7 +29,7 @@ def test_convert_structures_to_cifgz(sample_cif: Path, tmp_path: Path, capsys: p
         ]
     )
 
-    assert (output_dir / "3JRS_B2A.cif.gz").exists()
+    assert (output_dir / sample_cif.name).exists()
     captured = capsys.readouterr()
     assert ".cif.gz" in captured.err
 

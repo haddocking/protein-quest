@@ -251,17 +251,28 @@ def label_auth_mismatch(chains_map: dict[str, str]) -> bool:
     return any(label_asym_id != auth_asym_id for label_asym_id, auth_asym_id in chains_map.items())
 
 
-def _normalize_single_chain_entities(structure: gemmi.Structure, out_chain: str):
+def _normalize_single_chain_entities(structure: gemmi.Structure, source_entity_id: str, out_chain: str):
+    kept_entity_index = next(
+        (index for index, entity in enumerate(structure.entities) if entity.name == source_entity_id),
+        None,
+    )
+    if kept_entity_index is None:
+        msg = f"Could not find entity {source_entity_id}."
+        raise ValueError(msg)
+
+    kept_entity = structure.entities[kept_entity_index]
+
+    kept_entity.name = "1"
+    kept_entity.subchains = [out_chain]
     for model in structure:
         for chain in model:
             for residue in chain:
                 residue.subchain = chain.name
                 residue.entity_id = "1"
 
-    structure.entities.clear()
-    entity = gemmi.Entity("1")
-    entity.subchains = [out_chain]
-    structure.entities.append(entity)
+    for entity_index in range(len(structure.entities) - 1, -1, -1):
+        if entity_index != kept_entity_index:
+            structure.entities.pop(entity_index)
 
 
 def write_single_chain_structure_file(
@@ -337,9 +348,16 @@ def write_single_chain_structure_file(
     gemmi.Selection(f"/1/{chain_name}").remove_not_selected(structure)
     for model in structure:
         model.remove_ligands_and_waters()
+    remaining_entity_ids = {
+        residue.entity_id for model in structure for chain in model for residue in chain if residue.entity_id
+    }
+    if len(remaining_entity_ids) != 1:
+        msg = f"Could not determine a unique entity for source chain {chain_name}."
+        raise ValueError(msg)
+    source_entity_id = next(iter(remaining_entity_ids))
     structure.setup_entities()
     structure.rename_chain(chain_name, out_chain)
-    _normalize_single_chain_entities(structure, out_chain)
+    _normalize_single_chain_entities(structure, source_entity_id, out_chain)
     _dedup_helices(structure)
     _dedup_sheets(structure, out_chain)
     _add_provenance_info(structure, chain_name, out_chain)

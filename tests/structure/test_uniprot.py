@@ -16,6 +16,16 @@ from protein_quest.structure.uniprot import (
 )
 
 
+def test_write_single_chain_structure_file_preserves_uniprot_mapping(tmp_path: Path):
+    input_file = Path(__file__).resolve().parents[1] / "fixtures" / "3jrs_updated.cif.gz"
+
+    output_file = write_single_chain_structure_file(input_file=input_file, chain2keep="B", output_dir=tmp_path)
+
+    structure = read_structure(output_file)
+
+    assert structure_to_uniprot(structure) == {"3JRS": {("A", "Q8VZS8")}}
+
+
 def test_structure2uniprot_accessions_present(sample2_cif: Path):
     structure = read_structure(sample2_cif)
     accessions = structure2uniprot_accessions(structure)
@@ -492,7 +502,7 @@ class TestAddUniprotAccessions2Structure:
         new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
         result = structure_to_uniprot(new_structure)
 
-        expected: Pdb2UniprotMapping = {"1A02": {("A", "P01111")}}
+        expected: Pdb2UniprotMapping = {"1A02": {("A", "P01100"), ("A", "P01111")}}
         assert result == expected
 
         log = caplog.text

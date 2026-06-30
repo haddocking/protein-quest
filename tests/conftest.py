@@ -10,11 +10,11 @@ from protein_quest.structure.formats import read_structure, write_structure
 
 @pytest.fixture
 def sample_cif() -> Path:
-    """Downloaded from https://www.rcsb.org/structure/3JRS
+    """Downloaded from https://www.ebi.ac.uk/pdbe/entry-files/download/3jrs_updated.cif.gz
     and filtered with
-    `write_single_chain_structure_file(Path('tests/fixtures/3JRS.cif.gz'), 'B', Path('tests/fixtures/'))`
+    `write_single_chain_structure_file(Path('tests/fixtures/3jrs_updated.cif.gz'), 'B', Path('tests/fixtures/'))`
     """
-    return Path(__file__).parent / "fixtures" / "3JRS_B2A.cif.gz"
+    return Path(__file__).parent / "fixtures" / "3jrs_updated_B2A.cif.gz"
 
 
 @pytest.fixture
