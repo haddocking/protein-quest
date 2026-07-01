@@ -27,20 +27,20 @@ def sample_structure(sample_cif: Path) -> gemmi.Structure:
 def sample_stats() -> SecondaryStructureStats:
     return SecondaryStructureStats(
         nr_residues=173,
-        nr_helix_residues=58,
-        nr_sheet_residues=59,
-        helix_ratio=58 / 173,
-        sheet_ratio=59 / 173,
+        nr_helix_residues=54,
+        nr_sheet_residues=61,
+        helix_ratio=54 / 173,
+        sheet_ratio=61 / 173,
     )
 
 
 def test_nr_of_residues_in_helix(sample_structure: gemmi.Structure):
-    expected_count = 58
+    expected_count = 54
     assert nr_of_residues_in_helix(sample_structure) == expected_count
 
 
 def test_nr_of_residues_in_sheet(sample_structure: gemmi.Structure):
-    expected_count = 59
+    expected_count = 61
     assert nr_of_residues_in_sheet(sample_structure) == expected_count
 
 
@@ -53,28 +53,28 @@ def test_nr_of_residues_in_total(sample_structure: gemmi.Structure):
     "query, expected_passed",
     [
         # abs_min_helix_residues
-        (SecondaryStructureFilterQuery(abs_min_helix_residues=58), True),
-        (SecondaryStructureFilterQuery(abs_min_helix_residues=59), False),
+        (SecondaryStructureFilterQuery(abs_min_helix_residues=54), True),
+        (SecondaryStructureFilterQuery(abs_min_helix_residues=55), False),
         # abs_max_helix_residues
-        (SecondaryStructureFilterQuery(abs_max_helix_residues=58), True),
-        (SecondaryStructureFilterQuery(abs_max_helix_residues=57), False),
+        (SecondaryStructureFilterQuery(abs_max_helix_residues=54), True),
+        (SecondaryStructureFilterQuery(abs_max_helix_residues=53), False),
         # abs_min_sheet_residues
-        (SecondaryStructureFilterQuery(abs_min_sheet_residues=59), True),
-        (SecondaryStructureFilterQuery(abs_min_sheet_residues=60), False),
+        (SecondaryStructureFilterQuery(abs_min_sheet_residues=61), True),
+        (SecondaryStructureFilterQuery(abs_min_sheet_residues=62), False),
         # abs_max_sheet_residues
-        (SecondaryStructureFilterQuery(abs_max_sheet_residues=59), True),
-        (SecondaryStructureFilterQuery(abs_max_sheet_residues=58), False),
+        (SecondaryStructureFilterQuery(abs_max_sheet_residues=61), True),
+        (SecondaryStructureFilterQuery(abs_max_sheet_residues=60), False),
         # ratio_min_helix_residues
-        (SecondaryStructureFilterQuery(ratio_min_helix_residues=58 / 173), True),
+        (SecondaryStructureFilterQuery(ratio_min_helix_residues=54 / 173), True),
         (SecondaryStructureFilterQuery(ratio_min_helix_residues=0.4), False),
         # ratio_max_helix_residues
-        (SecondaryStructureFilterQuery(ratio_max_helix_residues=58 / 173), True),
+        (SecondaryStructureFilterQuery(ratio_max_helix_residues=54 / 173), True),
         (SecondaryStructureFilterQuery(ratio_max_helix_residues=0.3), False),
         # ratio_min_sheet_residues
-        (SecondaryStructureFilterQuery(ratio_min_sheet_residues=59 / 173), True),
+        (SecondaryStructureFilterQuery(ratio_min_sheet_residues=61 / 173), True),
         (SecondaryStructureFilterQuery(ratio_min_sheet_residues=0.4), False),
         # ratio_max_sheet_residues
-        (SecondaryStructureFilterQuery(ratio_max_sheet_residues=59 / 173), True),
+        (SecondaryStructureFilterQuery(ratio_max_sheet_residues=61 / 173), True),
         (SecondaryStructureFilterQuery(ratio_max_sheet_residues=0.3), False),
         # multiple
         (

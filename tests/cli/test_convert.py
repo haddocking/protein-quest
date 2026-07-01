@@ -29,7 +29,7 @@ def test_convert_structures_to_cifgz(sample_cif: Path, tmp_path: Path, capsys: p
         ]
     )
 
-    assert (output_dir / "3JRS_B2A.cif.gz").exists()
+    assert (output_dir / sample_cif.name).exists()
     captured = capsys.readouterr()
     assert ".cif.gz" in captured.err
 
@@ -69,6 +69,58 @@ def test_convert_structures_with_injected_uniprot(no_uniprot_cif: Path, tmp_path
     injected_uniprot = structure_to_uniprot(structure)
     expected = {"2Y29": {("A", "P01100")}}
     assert injected_uniprot == expected
+
+
+@pytest.mark.parametrize(
+    ("chain_id", "extra_args"),
+    [
+        pytest.param("B", [], id="defaults-to-auth"),
+        pytest.param("A", ["--chain-system", "label"], id="explicit-label-system"),
+    ],
+)
+def test_convert_structures_with_injected_uniprot_chain_system(
+    cif_8rw8: Path,
+    tmp_path: Path,
+    chain_id: str,
+    extra_args: list[str],
+    caplog: pytest.LogCaptureFixture,
+):
+    caplog.set_level("WARNING")
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    local_cif = input_dir / cif_8rw8.name
+    local_cif.symlink_to(cif_8rw8)
+
+    output_dir = tmp_path / "output"
+    pdb2uniprotcsv = tmp_path / "pdb2uniprot.csv"
+    pdb_id = read_structure(cif_8rw8).name
+    with pdb2uniprotcsv.open("w", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["pdb_id", "chain", "uniprot_accession"])
+        writer.writeheader()
+        writer.writerow({"pdb_id": pdb_id, "chain": chain_id, "uniprot_accession": "P12345"})
+
+    main(
+        [
+            "convert",
+            "structures",
+            str(input_dir),
+            "--output-dir",
+            str(output_dir),
+            "--output-format",
+            ".cif.gz",
+            "--uniprots",
+            str(pdb2uniprotcsv),
+            *extra_args,
+        ]
+    )
+
+    output_file = output_dir / cif_8rw8.name
+    assert output_file.exists()
+
+    structure = read_structure(output_file)
+    injected_uniprot = structure_to_uniprot(structure)
+    assert any(uniprot == "P12345" for _, uniprot in injected_uniprot[pdb_id])
+    assert "Expected: {('B', 'P12345')}" in caplog.text
 
 
 def test_convert_clusters_writes_clusters_output(

@@ -1,13 +1,10 @@
-"""Chain-level structure helpers and transformations.
-
-Attributes:
-    CHAIN_PROVENANCE_SOFTWARE_NAME: The name of the software item used for chain extraction provenance.
-"""
+"""Chain-level structure helpers and transformations."""
 
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
 
 import gemmi
 from gemmi import SoftwareItem, Structure
@@ -22,6 +19,18 @@ from protein_quest.utils import CopyMethod, copyfile
 logger = logging.getLogger(__name__)
 
 CHAIN_PROVENANCE_SOFTWARE_NAME = "protein-quest.structure.chains.write_single_chain_structure_file"
+"""Name stored in structure metadata to record chain extraction provenance."""
+ChainIdSystem = Literal["auth", "label"]
+"""Which chain identifier system is used.
+
+* ``label``: PDB-assigned chain id (``label_asym_id`` in mmcif).
+* ``auth``: author-reported chain id (``auth_asym_id`` in mmcif).
+
+If they differ, chain ids are shown as
+``label_asym_id [auth auth_asym_id]`` on [https://www.rcsb.org/](https://www.rcsb.org/).
+
+For more information see [rcsb help](https://www.rcsb.org/docs/general-help/identifiers-in-pdb#macromolecular-instance-id).
+"""
 
 
 def find_chain_in_model(model: gemmi.Model, wanted_chain: str) -> gemmi.Chain | None:
@@ -30,9 +39,13 @@ def find_chain_in_model(model: gemmi.Model, wanted_chain: str) -> gemmi.Chain | 
     Args:
         model: The gemmi model to search in.
         wanted_chain: The chain identifier to search for.
+            Interpreted in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
 
     Returns:
-        The found chain or None if not found."""
+        The found chain or None if not found.
+            Returned chain object is in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem]."""
     chain = model.find_chain(wanted_chain)
     if chain is None:
         mchains = [c for c in model if c.name.endswith(wanted_chain)]
@@ -41,15 +54,68 @@ def find_chain_in_model(model: gemmi.Model, wanted_chain: str) -> gemmi.Chain | 
     return chain
 
 
-def find_chain_in_structure(structure: gemmi.Structure, wanted_chain: str) -> gemmi.Chain | None:
+def get_label2auth_chains(structure: gemmi.Structure) -> dict[str, str]:
+    """Build a label-to-author chain mapping from a structure.
+
+    This function primarily reads mmCIF ``_atom_site.label_asym_id`` and
+    ``_atom_site.auth_asym_id`` columns from ``group_PDB == 'ATOM'`` rows to derive
+    ``label_asym_id -> auth_asym_id``.
+
+    Args:
+        structure: The structure to inspect.
+
+    Returns:
+        A dictionary mapping label chain ids to author chain ids.
+            Keys are in 'label'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
+            Values are in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
+            If the same label appears multiple times, the first observed mapping
+            is kept to ensure deterministic output.
+    """
+    # as atoms site is largest block we do not filter with MmcifOutputGroups
+    block = structure.make_mmcif_block()
+    atom_site = block.get_mmcif_category("_atom_site.")
+    label_asym_ids = atom_site.get("label_asym_id", [])
+    auth_asym_ids = atom_site.get("auth_asym_id", [])
+    group_pdb_values = atom_site.get("group_PDB", [])
+
+    # Empirical note: in a sample of ~14k structures, label/auth chain pairs were always 1:1.
+    # so no many to one (B2A + C2A) or one to many (A2B + A2C) mappings were observed.
+    # We therefore keep first-seen label->auth pairs in a dict and can safely invert when needed.
+    label2auth: dict[str, str] = {}
+
+    for label_asym_id, auth_asym_id, group_pdb in zip(label_asym_ids, auth_asym_ids, group_pdb_values, strict=False):
+        if group_pdb != "ATOM":
+            # Skip HETATM
+            continue
+        if label_asym_id not in label2auth:
+            label2auth[label_asym_id] = auth_asym_id
+    return label2auth
+
+
+def find_chain_in_structure(
+    structure: gemmi.Structure, wanted_chain: str, chain_system: ChainIdSystem = "auth"
+) -> gemmi.Chain | None:
     """Find a chain in a structure.
 
     Args:
         structure: The gemmi structure to search in.
         wanted_chain: The chain identifier to search for.
+        chain_system: System of ``wanted_chain``.
 
     Returns:
-        The found chain or None if not found."""
+        The found chain or None if not found.
+            Returned chain object is in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
+    """
+    if chain_system == "label":
+        label2auth = get_label2auth_chains(structure)
+        try:
+            wanted_chain = label2auth[wanted_chain]
+        except KeyError:
+            logger.warning("Label chain %s not found in structure %s.", wanted_chain, structure.name)
+            return None
     for model in structure:
         chain = find_chain_in_model(model, wanted_chain)
         if chain is not None:
@@ -63,6 +129,8 @@ def nr_residues_in_chain(file: Path, chain: str = "A") -> int:
     Args:
         file: Path to the input structure file.
         chain: Chain to count residues of.
+            Interpreted in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
 
     Returns:
         The number of residues in the specified chain."""
@@ -102,7 +170,11 @@ class ChainExtractionProvenance:
 
     Attributes:
         chain2keep: The chain identifier that was kept from the input structure.
-        out_chain: The chain identifier that is used in this output structure."""
+            Stored in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
+        out_chain: The chain identifier that is used in this output structure.
+            Stored in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem]."""
 
     chain2keep: str
     out_chain: str
@@ -158,31 +230,56 @@ def chains_in_structure(structure: gemmi.Structure) -> set[gemmi.Chain]:
         structure: The gemmi structure to get chains from.
 
     Returns:
-        A set of chains in the structure."""
+        A set of chains in the structure.
+            Returned chain objects are in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem]."""
     return {c for model in structure for c in model}
 
 
-def _normalize_single_chain_entities(structure: gemmi.Structure, out_chain: str):
+def _normalize_single_chain_entities(structure: gemmi.Structure, source_entity_id: str, out_chain: str):
+    kept_entity_index = next(
+        (index for index, entity in enumerate(structure.entities) if entity.name == source_entity_id),
+        None,
+    )
+    if kept_entity_index is None:
+        msg = f"Could not find entity {source_entity_id}."
+        raise ValueError(msg)
+
+    kept_entity = structure.entities[kept_entity_index]
+
+    kept_entity.name = "1"
+    kept_entity.subchains = [out_chain]
     for model in structure:
         for chain in model:
             for residue in chain:
                 residue.subchain = chain.name
                 residue.entity_id = "1"
 
-    structure.entities.clear()
-    entity = gemmi.Entity("1")
-    entity.subchains = [out_chain]
-    structure.entities.append(entity)
+    for entity_index in range(len(structure.entities) - 1, -1, -1):
+        if entity_index != kept_entity_index:
+            structure.entities.pop(entity_index)
 
 
-def write_single_chain_structure_file(
-    input_file: Path,
+def _extract_source_entity_id(structure: Structure, chain_name: str) -> str:
+    remaining_entity_ids = {
+        residue.entity_id for model in structure for chain in model for residue in chain if residue.entity_id
+    }
+    if len(remaining_entity_ids) != 1:
+        msg = f"Could not determine a unique entity for source chain {chain_name}."
+        raise ValueError(msg)
+    return next(iter(remaining_entity_ids))
+
+
+def make_single_chain_structure(
+    input_structure: gemmi.Structure,
     chain2keep: str,
-    output_dir: Path,
     out_chain: str = "A",
-    copy_method: CopyMethod = "copy",
-) -> Path:
-    """Write a single chain from a structure file to a new structure file.
+    input_file: Path | None = None,
+    force: bool = False,
+) -> gemmi.Structure | None:
+    """Make a single chain structure.
+
+    By keeping given chain and renaming it to out_chain.
 
     Also
 
@@ -202,20 +299,23 @@ def write_single_chain_structure_file(
     ```
 
     Args:
-        input_file: Path to the input structure file.
+        input_structure: The input structure.
         chain2keep: The chain to keep.
-        output_dir: Directory to save the output file.
+            Interpreted in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
         out_chain: The chain identifier for the output file.
-        copy_method: How to copy when no changes are needed to output file.
+            Written in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
+        input_file: The input file path, used for logging and error messages.
+        force: Rewrite the structure even when it is already a single matching chain.
 
     Returns:
-        Path to the output structure file
+        The new structure with only the specified chain, or None if no changes were needed.
 
     Raises:
-        FileNotFoundError: If the input file does not exist.
         ChainNotFoundError: If the specified chain is not found in the input file."""
     logger.debug("chain2keep: %s, out_chain: %s", chain2keep, out_chain)
-    structure = read_structure(input_file)
+    structure = input_structure
     structure.setup_entities()
 
     chain = find_chain_in_structure(structure, chain2keep)
@@ -223,30 +323,23 @@ def write_single_chain_structure_file(
     if chain is None:
         raise ChainNotFoundError(chain2keep, input_file, chainnames_in_structure)
     chain_name = chain.name
-    name, extension = split_name_and_extension(input_file.name)
-    output_file = output_dir / f"{name}_{chain_name}2{out_chain}{extension}"
 
-    if output_file.exists():
-        logger.info("Output file %s already exists for input file %s. Skipping.", output_file, input_file)
-        return output_file
-
-    if chain_name == out_chain and len(chainnames_in_structure) == 1:
+    if not force and chain_name == out_chain and len(chainnames_in_structure) == 1:
         logger.info(
-            "%s only has chain %s and out_chain is also %s. Copying file to %s.",
-            input_file,
+            "structure %s only has chain %s and out_chain is also %s. Leaving structure unchanged.",
+            structure.name,
             chain_name,
             out_chain,
-            output_file,
         )
-        copyfile(input_file, output_file, copy_method)
-        return output_file
+        return None
 
     gemmi.Selection(f"/1/{chain_name}").remove_not_selected(structure)
     for model in structure:
         model.remove_ligands_and_waters()
+    source_entity_id = _extract_source_entity_id(structure, chain_name)
     structure.setup_entities()
     structure.rename_chain(chain_name, out_chain)
-    _normalize_single_chain_entities(structure, out_chain)
+    _normalize_single_chain_entities(structure, source_entity_id, out_chain)
     _dedup_helices(structure)
     _dedup_sheets(structure, out_chain)
     _add_provenance_info(structure, chain_name, out_chain)
@@ -259,7 +352,70 @@ def write_single_chain_structure_file(
         )
         raise ValueError(msg)
 
-    write_structure(structure, output_file)
+    return structure
+
+
+def write_single_chain_structure_file(
+    input_file: Path,
+    chain2keep: str,
+    output_dir: Path,
+    out_chain: str = "A",
+    copy_method: CopyMethod = "copy",
+    force: bool = False,
+) -> Path:
+    """Write a single chain from a structure file to a new structure file.
+
+    Does additional processing see
+    [make_single_chain_structure][protein_quest.structure.chains.make_single_chain_structure].
+
+    Args:
+        input_file: Path to the input structure file.
+        chain2keep: The chain to keep.
+            Interpreted in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
+        output_dir: Directory to save the output file.
+        out_chain: The chain identifier for the output file.
+            Written in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
+        copy_method: How to copy when no changes are needed to output file.
+        force: Rewrite the structure even when it is already a single matching chain,
+            and overwrite an existing output file.
+
+    Returns:
+        Path to the output structure file
+
+    Raises:
+        FileNotFoundError: If the input file does not exist.
+        ChainNotFoundError: If the specified chain is not found in the input file."""
+    logger.debug("chain2keep: %s, out_chain: %s", chain2keep, out_chain)
+    structure = read_structure(input_file)
+    new_structure = make_single_chain_structure(
+        structure,
+        chain2keep,
+        out_chain=out_chain,
+        input_file=input_file,
+        force=force,
+    )
+
+    name, extension = split_name_and_extension(input_file.name)
+    output_file = output_dir / f"{name}_{chain2keep}2{out_chain}{extension}"
+
+    if output_file.exists() and not force:
+        logger.info("Output file %s already exists for input file %s. Skipping.", output_file, input_file)
+        return output_file
+
+    if new_structure is None:
+        logger.info(
+            "%s only has chain %s and out_chain is also %s. Copying file to %s.",
+            input_file,
+            chain2keep,
+            out_chain,
+            output_file,
+        )
+        copyfile(input_file, output_file, copy_method)
+        return output_file
+
+    write_structure(new_structure, output_file)
 
     return output_file
 

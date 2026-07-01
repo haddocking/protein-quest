@@ -26,12 +26,25 @@ StructureMethod = Literal["EM", "NMR", "Predicted", "X-ray", "Other"]
 """Represents the method used to determine the structure."""
 
 Pdb2UniprotMapping = dict[str, set[tuple[str, str]]]
-"""Dictionary mapping PDB ID to set of tuples containing chain and UniProt accession."""
+"""Dictionary mapping PDB ID to set of tuples containing chain and UniProt accession.
+
+The chain name is in the 'auth' [chain ID system][protein_quest.structure.chains.ChainIdSystem].
+"""
 
 
 @dataclass(frozen=True)
 class StructRefSeq:
-    """Collapsed `_struct_ref_seq` alignment information for one chain."""
+    """Collapsed `_struct_ref_seq` alignment information for one chain.
+
+    Attributes:
+
+        uniprot_accession: The UniProt accession.
+        uniprot_start: The start position of the alignment on the UniProt sequence.
+        uniprot_end: The end position of the alignment on the UniProt sequence.
+        chain_id: The chain ID in the 'auth' [chain ID system][protein_quest.structure.chains.ChainIdSystem].
+        sequence_identity: The sequence identity of the alignment.
+        aligned_residue_count: The number of aligned residues in the alignment.
+    """
 
     uniprot_accession: str
     uniprot_start: int

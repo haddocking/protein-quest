@@ -3,15 +3,46 @@ from pathlib import Path
 import gemmi
 import pytest
 
-from protein_quest.structure.chains import write_single_chain_structure_file
+from protein_quest.structure.chains import ChainIdSystem, write_single_chain_structure_file
 from protein_quest.structure.formats import read_structure
 from protein_quest.structure.types import Pdb2UniprotMapping, StructRefSeq
 from protein_quest.structure.uniprot import (
+    UniprotSource,
     add_uniprot_accessions2structure,
+    selected_struct_ref_seqs_by_chain,
     struct_ref_seqs_columns_to_records,
     structure2uniprot_accessions,
     structure_to_uniprot,
 )
+
+
+@pytest.mark.parametrize(
+    ("fixture_name", "chain2keep", "expected"),
+    [
+        pytest.param(
+            "cif_3jrs",
+            "B",
+            {"3JRS": {("A", "Q8VZS8")}},
+            id="cif_3jrs",
+        ),
+        pytest.param(
+            "multi_entity_cif",
+            "B",
+            {"1F66": {("A", "P62806")}},
+            id="multi_entity_cif",
+        ),
+    ],
+)
+def test_write_single_chain_structure_file_preserves_uniprot_mapping(
+    request: pytest.FixtureRequest, tmp_path: Path, fixture_name: str, chain2keep: str, expected: Pdb2UniprotMapping
+):
+    input_file = request.getfixturevalue(fixture_name)
+    output_file = write_single_chain_structure_file(input_file=input_file, chain2keep=chain2keep, output_dir=tmp_path)
+    structure = read_structure(output_file)
+
+    result = structure_to_uniprot(structure)
+
+    assert result == expected
 
 
 def test_structure2uniprot_accessions_present(sample2_cif: Path):
@@ -170,24 +201,266 @@ def test_struct_ref_seqs_columns_to_records(
 
 
 class TestStructureToUniprot:
-    def test_from_sifts(self, nmr_cif: Path):
-        structure = read_structure(nmr_cif)
+    @pytest.mark.parametrize(
+        ("fixture_name", "source", "expected"),
+        [
+            pytest.param(
+                "nmr_cif",
+                "sifts",
+                {
+                    "1AMB": {
+                        ("A", "P05067"),
+                    }
+                },
+                id="sifts-only",
+            ),
+            pytest.param(
+                "sample2_cif",
+                "struct_ref_seq",
+                {"2Y29": {("A", "P05067")}},
+                id="struct-ref-seq-only",
+            ),
+            pytest.param(
+                "multi_entity_cif",
+                "both",
+                {
+                    "1F66": {
+                        (
+                            "A",
+                            "P84233",
+                        ),
+                        (
+                            "A",
+                            "Q7ZT64",
+                        ),
+                        (
+                            "B",
+                            "P62806",
+                        ),
+                        (
+                            "C",
+                            "P0C0S5",
+                        ),
+                        (
+                            "C",
+                            "P17317",
+                        ),
+                        (
+                            "D",
+                            "P02281",
+                        ),
+                        (
+                            "E",
+                            "P84233",
+                        ),
+                        (
+                            "E",
+                            "Q7ZT64",
+                        ),
+                        (
+                            "F",
+                            "P62806",
+                        ),
+                        (
+                            "G",
+                            "P0C0S5",
+                        ),
+                        (
+                            "G",
+                            "P17317",
+                        ),
+                        (
+                            "H",
+                            "P02281",
+                        ),
+                    }
+                },
+                id="multi-both-explicit",
+            ),
+            pytest.param(
+                "multi_entity_cif",
+                "sifts",
+                {
+                    "1F66": {
+                        (
+                            "A",
+                            "P84233",
+                        ),
+                        (
+                            "B",
+                            "P62806",
+                        ),
+                        (
+                            "C",
+                            "P0C0S5",
+                        ),
+                        (
+                            "D",
+                            "P02281",
+                        ),
+                        (
+                            "E",
+                            "P84233",
+                        ),
+                        (
+                            "F",
+                            "P62806",
+                        ),
+                        (
+                            "G",
+                            "P0C0S5",
+                        ),
+                        (
+                            "H",
+                            "P02281",
+                        ),
+                    }
+                },
+                id="multi-sifts",
+            ),
+            pytest.param(
+                "multi_entity_cif",
+                "struct_ref_seq",
+                {
+                    "1F66": {
+                        (
+                            "A",
+                            "Q7ZT64",
+                        ),
+                        (
+                            "B",
+                            "P62806",
+                        ),
+                        (
+                            "C",
+                            "P17317",
+                        ),
+                        (
+                            "D",
+                            "P02281",
+                        ),
+                        (
+                            "E",
+                            "Q7ZT64",
+                        ),
+                        (
+                            "F",
+                            "P62806",
+                        ),
+                        (
+                            "G",
+                            "P17317",
+                        ),
+                        (
+                            "H",
+                            "P02281",
+                        ),
+                    }
+                },
+                id="multi-struct_ref_seq",
+            ),
+            pytest.param(
+                "multi_entity_cif",
+                "fallback",
+                {
+                    "1F66": {
+                        (
+                            "A",
+                            "P84233",
+                        ),
+                        (
+                            "B",
+                            "P62806",
+                        ),
+                        (
+                            "C",
+                            "P0C0S5",
+                        ),
+                        (
+                            "D",
+                            "P02281",
+                        ),
+                        (
+                            "E",
+                            "P84233",
+                        ),
+                        (
+                            "F",
+                            "P62806",
+                        ),
+                        (
+                            "G",
+                            "P0C0S5",
+                        ),
+                        (
+                            "H",
+                            "P02281",
+                        ),
+                    }
+                },
+                id="multi-fallback-prefers-sifts",
+            ),
+            pytest.param(
+                "sample2_cif",
+                "fallback",
+                {"2Y29": {("A", "P05067")}},
+                id="fallback-uses-struct-ref-seq-when-sifts-empty",
+            ),
+            pytest.param(
+                "multi_entity_cif",
+                None,
+                {
+                    "1F66": {
+                        (
+                            "A",
+                            "P84233",
+                        ),
+                        (
+                            "B",
+                            "P62806",
+                        ),
+                        (
+                            "C",
+                            "P0C0S5",
+                        ),
+                        (
+                            "D",
+                            "P02281",
+                        ),
+                        (
+                            "E",
+                            "P84233",
+                        ),
+                        (
+                            "F",
+                            "P62806",
+                        ),
+                        (
+                            "G",
+                            "P0C0S5",
+                        ),
+                        (
+                            "H",
+                            "P02281",
+                        ),
+                    }
+                },
+                id="multi-default",
+            ),
+        ],
+    )
+    def test_sources(
+        self,
+        request: pytest.FixtureRequest,
+        fixture_name: str,
+        source: UniprotSource | None,
+        expected: Pdb2UniprotMapping,
+    ):
+        structure_path = request.getfixturevalue(fixture_name)
+        structure = read_structure(structure_path)
 
-        result = structure_to_uniprot(structure)
+        result = structure_to_uniprot(structure) if source is None else structure_to_uniprot(structure, source=source)
 
-        expected: Pdb2UniprotMapping = {
-            "1AMB": {
-                ("A", "P05067"),
-            }
-        }
-        assert result == expected
-
-    def test_from_struct_ref(self, sample2_cif: Path):
-        structure = read_structure(sample2_cif)
-
-        result = structure_to_uniprot(structure)
-
-        expected: Pdb2UniprotMapping = {"2Y29": {("A", "P05067")}}
         assert result == expected
 
 
@@ -248,29 +521,31 @@ class TestAddUniprotAccessions2Structure:
         new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
         result = structure_to_uniprot(new_structure)
 
-        expected: Pdb2UniprotMapping = {"1A02": {("A", "P01111")}}
+        expected: Pdb2UniprotMapping = {"1A02": {("A", "P01100"), ("A", "P01111")}}
         assert result == expected
 
         log = caplog.text
         assert "Structure 1A02 has provenance information indicating it was extracted from chain F to A" in log
         assert "Using this information to verify/add UniProt accessions." in log
 
-    def test_multi_entity_cif(self, multi_entity_cif: Path):
+    @pytest.mark.parametrize(
+        ("chain_system", "chain_id"),
+        [
+            ("auth", "C"),
+            # label chain E is same entity as auth chain C
+            ("label", "E"),
+        ],
+    )
+    def test_multi_entity_cif(self, multi_entity_cif: Path, chain_system: ChainIdSystem, chain_id: str):
         structure = read_structure(multi_entity_cif)
-        # From `echo P0C0S5 | protein-quest search pdbe - - |grep 1F66` gives `P0C0S5,1F66,X-Ray_Crystallography,2.6,C/G=1-128,C,128`
-        pdb2uniprot = {"1F66": {("C", "P0C0S5")}}
+        pdb2uniprot = {"1F66": {(chain_id, "P12345")}}
 
-        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot, chain_system=chain_system)
 
-        result = structure_to_uniprot(new_structure)
+        result = structure_to_uniprot(new_structure, source="both")
 
-        # TODO wrong expectations, result should have ("C","P0C0S5") in it
         expected: Pdb2UniprotMapping = {
             "1F66": {
-                (
-                    "A",
-                    "P0C0S5",
-                ),
                 (
                     "A",
                     "Q7ZT64",
@@ -278,6 +553,11 @@ class TestAddUniprotAccessions2Structure:
                 (
                     "B",
                     "P62806",
+                ),
+                (
+                    "C",
+                    # as requested
+                    "P12345",
                 ),
                 (
                     "C",
@@ -289,15 +569,16 @@ class TestAddUniprotAccessions2Structure:
                 ),
                 (
                     "E",
-                    "P0C0S5",
-                ),
-                (
-                    "E",
                     "Q7ZT64",
                 ),
                 (
                     "F",
                     "P62806",
+                ),
+                (
+                    "G",
+                    # Also updates P0C0S5 to requested as G and C auth chains are same entity
+                    "P12345",
                 ),
                 (
                     "G",
@@ -310,3 +591,23 @@ class TestAddUniprotAccessions2Structure:
             },
         }
         assert result == expected
+
+
+def test_selected_struct_ref_seqs_by_chain_returns_auth_system(cif_8rw8: Path):
+    structure = read_structure(cif_8rw8)
+    accessions = structure2uniprot_accessions(structure)
+
+    result = selected_struct_ref_seqs_by_chain(structure, accessions)
+
+    # cif_8rw8 fixture has auth chain B and label chain A, we expect auth chain B
+    expected: dict[str, StructRefSeq] = {
+        "B": StructRefSeq(
+            uniprot_accession="O00327",
+            uniprot_start=337,
+            uniprot_end=449,
+            chain_id="B",
+            sequence_identity=1.0,
+            aligned_residue_count=113,
+        )
+    }
+    assert result == expected

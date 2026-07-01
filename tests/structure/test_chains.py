@@ -10,6 +10,10 @@ from protein_quest.__version__ import __version__
 from protein_quest.pdbe.fetch import sync_fetch
 from protein_quest.structure.chains import (
     CHAIN_PROVENANCE_SOFTWARE_NAME,
+    ChainIdSystem,
+    find_chain_in_structure,
+    get_label2auth_chains,
+    make_single_chain_structure,
     nr_of_residues_in_total,
     nr_residues_in_chain,
     retrieve_chain_extraction_provenance,
@@ -19,6 +23,20 @@ from protein_quest.structure.errors import ChainNotFoundError
 from protein_quest.structure.formats import read_structure
 
 logger = logging.getLogger(__name__)
+
+
+def test_make_single_chain_structure(multi_entity_cif: Path):
+    structure = read_structure(multi_entity_cif)
+    assert len(get_label2auth_chains(structure)) > 0
+
+    new_structure = make_single_chain_structure(
+        structure,
+        chain2keep="B",
+        out_chain="Z",
+    )
+
+    assert new_structure is not None
+    assert get_label2auth_chains(new_structure) == {"Z": "Z"}
 
 
 def test_write_single_chain_structure_file_happypath(sample2_cif: Path, tmp_path: Path):
@@ -68,8 +86,33 @@ def test_write_single_chain_structure_file_with_secondary_structure(sample_cif: 
         output_dir=tmp_path,
     )
     structure = read_structure(output_file)
-    assert len(structure.helices) == 4
+    assert len(structure.helices) == 6
     assert len(structure.sheets) == 1
+
+
+def test_write_single_chain_structure_file_force_rewrites_single_chain(sample2_cif: Path, tmp_path: Path):
+    input_structure = read_structure(sample2_cif)
+
+    output_file = write_single_chain_structure_file(
+        input_file=sample2_cif,
+        chain2keep="A",
+        output_dir=tmp_path,
+        out_chain="A",
+        force=True,
+    )
+
+    assert output_file.exists()
+    structure = read_structure(output_file)
+    assert len(structure) == 1
+    assert len(structure[0]) == 1
+    assert structure[0]["A"].name == "A"
+    assert len(structure[0]["A"]) == 6
+    assert len(structure.meta.software) == len(input_structure.meta.software) + 1
+    extracted_provenance = retrieve_chain_extraction_provenance(structure)
+    assert extracted_provenance is not None
+    _, provenance = extracted_provenance
+    assert provenance.chain2keep == "A"
+    assert provenance.out_chain == "A"
 
 
 def test_write_single_chain_structure_file_already_exists(
@@ -88,6 +131,27 @@ def test_write_single_chain_structure_file_already_exists(
 
     assert output_file == fake_output_file
     assert "Skipping" in caplog.text
+
+
+def test_write_single_chain_structure_file_force_overwrites_existing_output(sample2_cif: Path, tmp_path: Path):
+    fake_output_file = tmp_path / "2Y29_A2A.cif.gz"
+    fake_output_file.write_text("fake content")
+
+    output_file = write_single_chain_structure_file(
+        input_file=sample2_cif,
+        chain2keep="A",
+        output_dir=tmp_path,
+        out_chain="A",
+        force=True,
+    )
+
+    assert output_file == fake_output_file
+    structure = read_structure(output_file)
+    assert len(structure) == 1
+    assert len(structure[0]) == 1
+    assert structure[0]["A"].name == "A"
+    assert len(structure[0]["A"]) == 6
+    assert retrieve_chain_extraction_provenance(structure) is not None
 
 
 def test_write_single_chain_structure_file_unknown_chain(sample2_cif: Path, tmp_path: Path):
@@ -192,6 +256,75 @@ def test_nr_of_residues_in_total(sample2_cif: Path):
     total_residues = nr_of_residues_in_total(structure)
 
     assert total_residues == 8
+
+
+@pytest.mark.parametrize(
+    ("wanted", "system"),
+    [
+        ("B", "auth"),
+        ("A", "label"),
+    ],
+)
+def test_find_chain_in_structure(cif_8rw8: Path, wanted: str, system: ChainIdSystem):
+    structure = read_structure(cif_8rw8)
+
+    found_chain = find_chain_in_structure(structure, wanted, chain_system=system)
+
+    assert found_chain is not None
+    # Gemmi chain names are auth system for 8rw8, while the lookup input is label.
+    assert found_chain.name == "B"
+
+
+def test_find_chain_in_structure_notfound(cif_8rw8: Path, caplog: pytest.LogCaptureFixture):
+    structure = read_structure(cif_8rw8)
+
+    found_chain = find_chain_in_structure(structure, "Z", chain_system="label")
+
+    assert found_chain is None
+    assert "Label chain Z not found in structure 8RW8" in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("cif_fixture", "expected"),
+    [
+        pytest.param("sample_cif", {"A": "A"}, id="3JRS_B2A"),
+        pytest.param("sample2_cif", {"A": "A"}, id="2Y29"),
+        pytest.param("af_cif", {"A": "A"}, id="AF-A0A0C5B5G6-F1"),
+        pytest.param("nmr_cif", {"A": "A"}, id="1AMB"),
+        pytest.param("em_cif", {"A": "A"}, id="8W77"),
+        pytest.param("sample_multispan_cif", {"A": "A"}, id="6O5I"),
+        pytest.param(
+            "multi_accession_cif",
+            {"A": "A", "B": "B", "C": "N", "D": "F", "E": "J"},
+            id="1A02",
+        ),
+        pytest.param("multi_accession_chain_cif", {"A": "A"}, id="1UN5"),
+        pytest.param(
+            "multi_entity_cif",
+            {
+                "A": "I",
+                "B": "J",
+                "C": "A",
+                "D": "B",
+                "E": "C",
+                "F": "D",
+                "G": "E",
+                "H": "F",
+                "I": "G",
+                "J": "H",
+            },
+            id="1F66",
+        ),
+        pytest.param("cif_8rw8", {"A": "B"}, id="8rw8"),
+    ],
+)
+def test_get_label2auth_chains(cif_fixture: str, expected: dict[str, str], request: pytest.FixtureRequest):
+    path = request.getfixturevalue(cif_fixture)
+    structure = read_structure(path)
+
+    label2auth_chains = get_label2auth_chains(structure)
+
+    assert label2auth_chains == expected
 
 
 @pytest.mark.parametrize(

@@ -10,7 +10,7 @@ def test_convert_cifgz_to_cif(sample_cif: Path, tmp_path: Path):
     output_file = convert_to_cif_file(sample_cif, tmp_path, copy_method="symlink")
 
     assert output_file.exists()
-    assert output_file.name == "3JRS_B2A.cif"
+    assert output_file.name == "3jrs_updated_B2A.cif"
     assert output_file.stat().st_size > sample_cif.stat().st_size  # uncompressed file is larger
     assert not output_file.is_symlink()
     assert output_file.stat().st_nlink == 1  # not a hard link
@@ -24,7 +24,7 @@ def test_convert_many_cifgz_to_cif(sample_cif: Path, tmp_path: Path):
     assert input_file == sample_cif
     output_file = output_files[0][1]
     assert output_file.exists()
-    assert output_file.name == "3JRS_B2A.cif"
+    assert output_file.name == "3jrs_updated_B2A.cif"
     assert output_file.stat().st_size > sample_cif.stat().st_size  # uncompressed file is larger
     assert not output_file.is_symlink()
     assert output_file.stat().st_nlink == 1  # not a hard link

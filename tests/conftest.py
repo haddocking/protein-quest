@@ -10,11 +10,11 @@ from protein_quest.structure.formats import read_structure, write_structure
 
 @pytest.fixture
 def sample_cif() -> Path:
-    """Downloaded from https://www.rcsb.org/structure/3JRS
+    """Downloaded from https://www.ebi.ac.uk/pdbe/entry-files/download/3jrs_updated.cif.gz
     and filtered with
-    `write_single_chain_structure_file(Path('tests/fixtures/3JRS.cif.gz'), 'B', Path('tests/fixtures/'))`
+    `write_single_chain_structure_file(Path('tests/fixtures/3jrs_updated.cif.gz'), 'B', Path('tests/fixtures/'))`
     """
-    return Path(__file__).parent / "fixtures" / "3JRS_B2A.cif.gz"
+    return Path(__file__).parent / "fixtures" / "3jrs_updated_B2A.cif.gz"
 
 
 @pytest.fixture
@@ -81,7 +81,7 @@ def download_cache_dir() -> Path:
 def fetch_cif(filename: str, sha256: str) -> Path:
     base_url = "https://www.ebi.ac.uk/pdbe/entry-files/download/"
     path = pooch.retrieve(
-        url=f"{base_url}/{filename}",
+        url=f"{base_url}{filename}",
         known_hash=f"sha256:{sha256}",
         fname=filename,
         # keep path same as download_cache_dir fixture, for ci caching
@@ -96,6 +96,24 @@ def multi_entity_cif() -> Path:
     return fetch_cif(
         "1f66_updated.cif.gz",
         "208386eac478c4deb9767f66f6ade97dc869a8d5395cdadfb385c9597442a56e",
+    )
+
+
+@pytest.fixture
+def cif_8rw8() -> Path:
+    """8rw8 structure with a mismatch between label (A) and auth (B) chain."""
+    return fetch_cif(
+        "8rw8_updated.cif.gz",
+        "882e27541671578935db963787a720c3c942199049f9b4cfa99edbac5239a946",
+    )
+
+
+@pytest.fixture
+def cif_3jrs() -> Path:
+    """3jrs structure which is used to create sample_cif fixture."""
+    return fetch_cif(
+        "3jrs_updated.cif.gz",
+        "6117a1ef3d5d655491367588c56747fe9a4c5132dd240401f03f6ad3645d7603",
     )
 
 

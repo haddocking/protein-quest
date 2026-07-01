@@ -11,7 +11,13 @@ from distributed.deploy.cluster import Cluster
 from tqdm.auto import tqdm
 
 from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
-from protein_quest.structure.chains import write_single_chain_structure_file
+from protein_quest.structure.chains import (
+    ChainIdSystem,
+    get_label2auth_chains,
+    write_single_chain_structure_file,
+)
+from protein_quest.structure.errors import ChainNotFoundError
+from protein_quest.structure.formats import read_structure
 from protein_quest.utils import CopyMethod
 
 logger = logging.getLogger(__name__)
@@ -30,13 +36,48 @@ def filter_file_on_chain(
     file_and_chain: tuple[Path, str],
     output_dir: Path,
     out_chain: str = "A",
+    chain_system: ChainIdSystem = "auth",
     copy_method: CopyMethod = "copy",
+    force: bool = False,
 ) -> ChainFilterStatistics:
+    """Filter a single structure file by chain.
+
+    Args:
+        file_and_chain: Tuple of (structure file path, chain ID to keep).
+            The chain ID is interpreted according to the `chain_system` argument.
+        output_dir: The directory where the filtered file will be written.
+        out_chain: Under what name to write the kept chain.
+            The chain system id is 'auth'.
+        chain_system: System for the given chain ids in `file_and_chain`.
+        copy_method: How to copy when a direct copy is possible.
+        force: Rewrite existing single-chain outputs and overwrite existing output files.
+    """
     input_file, chain_id = file_and_chain
-    logger.debug("Filtering %s on chain %s", input_file, chain_id)
+    logger.debug("Filtering %s on chain %s (%s system)", input_file, chain_id, chain_system)
     try:
+        auth_chain_id = chain_id
+        if chain_system == "label":
+            structure = read_structure(input_file)
+            l2a = get_label2auth_chains(structure)
+            try:
+                auth_chain_id = l2a[chain_id]
+            except KeyError:
+                raise ChainNotFoundError(chain_id, input_file, set(l2a.keys())) from None
+            if auth_chain_id != chain_id:
+                logger.info(
+                    "Resolved label chain id %s -> %s auth for %s",
+                    chain_id,
+                    auth_chain_id,
+                    input_file,
+                )
+
         output_file = write_single_chain_structure_file(
-            input_file, chain_id, output_dir, out_chain=out_chain, copy_method=copy_method
+            input_file,
+            auth_chain_id,
+            output_dir,
+            out_chain=out_chain,
+            copy_method=copy_method,
+            force=force,
         )
         return ChainFilterStatistics(
             input_file=input_file,
@@ -52,7 +93,9 @@ def _filter_files_on_chain_sequentially(
     file2chains: Collection[tuple[Path, str]],
     output_dir: Path,
     out_chain: str = "A",
+    chain_system: ChainIdSystem = "auth",
     copy_method: CopyMethod = "copy",
+    force: bool = False,
 ) -> list[ChainFilterStatistics]:
     results = []
     for file_and_chain in tqdm(file2chains, unit="file"):
@@ -60,7 +103,9 @@ def _filter_files_on_chain_sequentially(
             file_and_chain,
             output_dir=output_dir,
             out_chain=out_chain,
+            chain_system=chain_system,
             copy_method=copy_method,
+            force=force,
         )
         results.append(result)
     return results
@@ -70,8 +115,10 @@ def filter_files_on_chain(
     file2chains: Collection[tuple[Path, str]],
     output_dir: Path,
     out_chain: str = "A",
+    chain_system: ChainIdSystem = "auth",
     scheduler_address: str | Cluster | Literal["sequential"] | None = None,
     copy_method: CopyMethod = "copy",
+    force: bool = False,
 ) -> list[ChainFilterStatistics]:
     """Filter mmcif/PDB files by chain.
 
@@ -80,10 +127,12 @@ def filter_files_on_chain(
             First item is the PDB file path, second item is the chain ID.
         output_dir: The directory where the filtered files will be written.
         out_chain: Under what name to write the kept chain.
+        chain_system: System for the given chain ids.
         scheduler_address: The address of the Dask scheduler.
             If not provided, will create a local cluster.
             If set to `sequential` will run tasks sequentially.
         copy_method: How to copy when a direct copy is possible.
+        force: Rewrite existing single-chain outputs and overwrite existing output files.
 
     Returns:
         Result of the filtering process.
@@ -91,7 +140,12 @@ def filter_files_on_chain(
     output_dir.mkdir(parents=True, exist_ok=True)
     if scheduler_address == "sequential":
         return _filter_files_on_chain_sequentially(
-            file2chains, output_dir, out_chain=out_chain, copy_method=copy_method
+            file2chains,
+            output_dir,
+            out_chain=out_chain,
+            chain_system=chain_system,
+            copy_method=copy_method,
+            force=force,
         )
 
     # TODO make logger.debug in filter_file_on_chain show to user when --log
@@ -110,5 +164,7 @@ def filter_files_on_chain(
             file2chains,
             output_dir=output_dir,
             out_chain=out_chain,
+            chain_system=chain_system,
             copy_method=copy_method,
+            force=force,
         )
