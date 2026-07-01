@@ -340,7 +340,8 @@ def pdbe_quality(
         timeout: Maximum seconds to wait for single batch request.
 
     """
-    # TODO add --skip-with-resolution, do not fetch quality scores for PDB entries that have a resolution in the CSV file.
+    # TODO add --skip-with-resolution,
+    # do not fetch quality scores for PDB entries that have a resolution in the CSV file.
     pdb_ids = read_pdb_ids_from_csv(pdbe_csv)
 
     scores = asyncio.run(fetch_summary_quality_scores_in_batches(pdb_ids, batch_size=batch_size, timeout=timeout))

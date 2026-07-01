@@ -491,7 +491,7 @@ def combined(
     min_residues: PositiveInt = 0,
     max_residues: PositiveInt = 10_000_000,
     minimal_geometry_quality: float = 50.0,
-    top_uniprot: PositiveInt | None = 1_000,
+    top_uniprot_cluster: PositiveInt | None = 1_000,
     top_non_uniprot: PositiveInt | None = 0,
     # TODO move all named args above to reusable dataclass
     write_stats: OutputFile | None = None,
