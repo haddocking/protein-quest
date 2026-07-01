@@ -13,10 +13,10 @@ from tqdm.auto import tqdm
 from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
 from protein_quest.structure.chains import (
     ChainIdSystem,
-    ChainNotFoundError,
     get_label2auth_chains,
     write_single_chain_structure_file,
 )
+from protein_quest.structure.errors import ChainNotFoundError
 from protein_quest.structure.formats import read_structure
 from protein_quest.utils import CopyMethod
 

@@ -206,7 +206,7 @@ def _append_uniprot_to_structure(
     }
     fillable_struct_ref_seq_cols = {"align_id", "ref_id", "pdbx_strand_id", "pdbx_db_accession"}
     for auth_chain, uniprot_accession in chain_uniprot_pairs:
-        # Chain in chain_uniprot_pairs is of auth sytstem, but entity subchains are label system
+        # Chain in chain_uniprot_pairs is of auth system, but entity subchains are label system
         # so we need to convert to label system to get entity id.
         try:
             label_chain = auth2label[auth_chain]
