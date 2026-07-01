@@ -13,7 +13,6 @@ from protein_quest.structure.chains import (
     ChainIdSystem,
     find_chain_in_structure,
     get_label2auth_chains,
-    label_auth_mismatch,
     nr_of_residues_in_total,
     nr_residues_in_chain,
     retrieve_chain_extraction_provenance,
@@ -256,18 +255,6 @@ def test_get_label2auth_chains(cif_fixture: str, expected: dict[str, str], reque
     label2auth_chains = get_label2auth_chains(structure)
 
     assert label2auth_chains == expected
-
-
-@pytest.mark.parametrize(
-    ("chains_map", "expected"),
-    [
-        pytest.param({"A": "A", "B": "B"}, False, id="no-mismatch"),
-        pytest.param({"A": "I", "B": "B"}, True, id="has-mismatch"),
-        pytest.param({}, False, id="empty-map"),
-    ],
-)
-def test_label_auth_mismatch(chains_map: dict[str, str], expected: bool):
-    assert label_auth_mismatch(chains_map) is expected
 
 
 @pytest.mark.parametrize(

@@ -234,23 +234,6 @@ def chains_in_structure(structure: gemmi.Structure) -> set[gemmi.Chain]:
     return {c for model in structure for c in model}
 
 
-def label_auth_mismatch(chains_map: dict[str, str]) -> bool:
-    """Report whether label and author chain ids differ.
-
-    Args:
-        chains_map: Mapping produced by [get_label2auth_chains][protein_quest.structure.chains.get_label2auth_chains].
-            Keys are expected in 'label'
-            [chain id system][protein_quest.structure.chains.ChainIdSystem],
-            values in 'auth'
-            [chain id system][protein_quest.structure.chains.ChainIdSystem].
-
-    Returns:
-        ``True`` when at least one mapping has different label and author ids,
-        otherwise ``False``.
-    """
-    return any(label_asym_id != auth_asym_id for label_asym_id, auth_asym_id in chains_map.items())
-
-
 def _normalize_single_chain_entities(structure: gemmi.Structure, source_entity_id: str, out_chain: str):
     kept_entity_index = next(
         (index for index, entity in enumerate(structure.entities) if entity.name == source_entity_id),
