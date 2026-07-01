@@ -28,6 +28,8 @@ ChainIdSystem = Literal["auth", "label"]
 
 If they differ, chain ids are shown as
 ``label_asym_id [auth auth_asym_id]`` on [https://www.rcsb.org/](https://www.rcsb.org/).
+
+For more information see [rcsb help](https://www.rcsb.org/docs/general-help/identifiers-in-pdb#macromolecular-instance-id).
 """
 
 
