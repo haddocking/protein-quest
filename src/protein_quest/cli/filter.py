@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Annotated
 
 from cyclopts import App, Parameter
 from cyclopts.types import NormFloat, PositiveInt
+from cyclopts.validators import Number
 from rich.panel import Panel
 
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
@@ -477,3 +478,103 @@ def secondary_structure(
     rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
     if str(write_stats) != "-":
         rprint(f"Statistics written to {write_stats}")
+
+
+@filter_app.command
+def combined(
+    input_dir: InputDir,
+    quality_json: InputFile,
+    output_dir: OutputDir,
+    /,
+    *,
+    confidence: Annotated[float, Parameter(validator=(Number(lte=100, gte=0)))] = 70.0,
+    min_residues: PositiveInt = 0,
+    max_residues: PositiveInt = 10_000_000,
+    minimal_geometry_quality: float = 50.0,
+    top_uniprot: PositiveInt | None = 1_000,
+    top_non_uniprot: PositiveInt | None = 0,
+    # TODO move all named args above to reusable dataclass
+    write_stats: OutputFile | None = None,
+    scheduler_address: str | None = None,
+    cache: CacheParameter | None = None,
+    _: Common | None = None,
+):
+    """Filter PDB/mmCIF files using a combination of filters.
+
+    * All non-AlphaFold structures are filtered by number of residues in chain A.
+        See `protein-quest filter residue --help` for details.
+    * AlphaFold structures are filtered by confidence (plDDT) and afterwards by number of residues in chain A.
+        See `protein-quest filter confidence --help` for details.
+    * Structures with uniprot accession and resolution are filtered
+        by grouping/clustering and  sorting cluster members by resolution.
+        See `protein-quest filter resolution --help` for details.
+    * Structures with Uniprot accesion and without resolution are filtered by grouping/clustering
+        and sorting cluster members by PDBe quality scores.
+    * Structures without Uniprot accession and without resolution are filtered by PDBe quality scores.
+    * Structures without Uniprot accession and with resolution are filtered/sorted by resolution.
+
+    ```mermaid
+    flowchart TD
+        A[Input PDB/mmCIF files] --> B{AlphaFold structure?}
+
+        B -->|Yes| C[Filter by confidence plDDT]
+        C --> D[Filter by residues in chain A]
+
+        B -->|No| F[Filter by residues in chain A]
+        F --> G{UniProt accession?}
+
+        G -->|Yes| H{Resolution available?}
+        H -->|Yes| I[Group by UniProt accession and cluster by residue ranges]
+        I --> J[Sort cluster members by resolution]
+        J --> K[Keep up to top_uniprot_cluster per cluster]
+
+        H -->|No| L[Group by UniProt accession and cluster by residue ranges]
+        L --> M[Sort cluster members by PDBe quality]
+        M --> N[Keep up to top_uniprot_cluster per cluster]
+
+        G -->|No| O{Resolution available?}
+        O -->|No| P[Sort by PDBe quality]
+        P --> R[Select up to top_non_uniprot entries]
+        O -->|Yes| S[Sort by resolution]
+        S --> T[Select up to top_non_uniprot entries]
+
+        D --> Q[Write output structure files]
+        K --> Q
+        N --> Q
+        R --> Q
+        T --> Q
+    ```
+
+    This command is a combination of the `protein-quest filter confidence`, `protein-quest filter residue`,
+    `protein-quest filter resolution`, and `protein-quest filter pdbe-quality` commands.
+    As each of those commands accepts a certain source/method of structures.
+    This command accepts all sources/methods of structures and applies the appropriate filters to each.
+
+    Args:
+        input_dir: Directory with PDB/mmCIF files.
+        quality_json: JSON file with PDBe quality scores.
+            Can be made with `protein-quest search pdbe-quality` command.
+        output_dir: Directory to write filtered PDB/mmCIF files. Files are copied without modification.
+        confidence: Minimal confidence (plDDT) for AlphaFold structures to pass the filter.
+        min_residues: Min residues in chain A.
+        max_residues: Max residues in chain A.
+        minimal_geometry_quality: Minimal geometry quality score to pass the filter.
+        top_uniprot_cluster: Maximum number of files to keep for structures per cluster per Uniprot accession.
+            Alphafold structures are excluded from this limit.
+            The top N structures in each cluster of the resolution clusters.
+            The top N structures in each cluster of the PDBe quality clusters.
+        top_non_uniprot: Maximum number of files to keep for structures without Uniprot accession.
+        write_stats: Write filter statistics to file.
+            In CSV format with columns:
+            `<input_file>,<id>,<uniprot_accession>,<resolution>,<high_confidence_residues_count>,<total_residue_count>,
+            <method>,<uniprot_start>,<uniprot_end>,<sequence_identity>,<chain_length>,<passed>,<output_file>,
+            <reason_msg>,<reason_type>` columns for resolution filtering.
+            Depending on filter way some column can be empty.
+            Use `-` for stdout.
+        scheduler_address: Address of the Dask scheduler to connect to.
+            If not provided, will create a local cluster.
+            If set to `sequential` will run tasks sequentially.
+        cache: Cache options including no_cache, cache_dir, and copy_method.
+        _: Common CLI options.
+    """
+    pass
