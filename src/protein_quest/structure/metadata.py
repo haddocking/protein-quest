@@ -31,7 +31,7 @@ def _metadata_without_uniprot(
 ) -> "StructureMetadata":
     chain = find_chain_in_structure(structure, auth_chain)
     if chain is None:
-        raise ChainNotFoundError(auth_chain, None, set(auth_chain))
+        raise ChainNotFoundError(auth_chain, None, {auth_chain})
     chain_length = len(chain)
     return StructureMetadata(
         id=structure.name,
