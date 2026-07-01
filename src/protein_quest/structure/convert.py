@@ -42,7 +42,6 @@ def convert_to_cif_files(
         pdb2uniprot: Optional dictionary mapping PDB ID to set of tuples containing chain and UniProt accession.
             If provided, will be used to inject UniProt accessions into structures that lack them.
         chain_system: System of chain ids in ``pdb2uniprot`` mapping.
-            ``auth`` values are resolved to label ids before UniProt injection.
 
     Yields:
         A tuple of the input file and the output file."""
@@ -80,7 +79,6 @@ def convert_to_cif_file(
             will always read and write the structure to ensure UniProt accessions
             are verified and injected if necessary.
         chain_system: System of chain ids in ``pdb2uniprot`` mapping.
-            ``auth`` values are resolved to label ids before UniProt injection.
 
     Returns:
         Path to the converted file.
