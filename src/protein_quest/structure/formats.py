@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 def _is_em_method(structure: gemmi.Structure) -> bool:
-    # Not reusing ./metadata.py::_structure_method to preven circular import
+    # Could have used ./metadata.py::_structure_method, but do not to prevent circular import
     try:
         experimental_method = structure.info["_exptl.method"].lower()
     except KeyError:
