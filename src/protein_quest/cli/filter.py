@@ -115,6 +115,7 @@ def chain(
     chain_system: ChainIdSystem = "auth",
     scheduler_address: str | None = None,
     cache: CacheParameter | None = None,
+    force: Annotated[bool, Parameter(negative="")] = False,
     _: Common | None = None,
 ) -> None:
     """Filter on chain.
@@ -132,6 +133,8 @@ def chain(
             Set to 'label' to use chain ids assigned by PDB.
             See [docs](https://www.bonvinlab.org/protein_quest/autoapi/protein_quest/structure/chains.html#protein_quest.structure.chains.ChainIdSystem)
             for more information on chain id system.
+        force: If not set and given chain exists and is only one,
+            then file is copied unchanged. If set always rewrites and overwrites output files.
         scheduler_address: Address of the Dask scheduler to connect to.
             If not provided, will create a local cluster.
             If set to `sequential` will run tasks sequentially.
@@ -167,6 +170,7 @@ def chain(
         file2chain,
         output_dir,
         chain_system=chain_system,
+        force=force,
         scheduler_address=scheduler_address,
         copy_method=cache.copy_method,
     )

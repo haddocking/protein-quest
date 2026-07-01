@@ -98,3 +98,15 @@ def test_filter_file_on_chain_system_handling(
     assert result.output_file is not None
     assert result.output_file.exists()
     assert result.output_file.name.endswith("_B2A.cif.gz")
+
+
+def test_filter_file_on_chain_force_overwrites_existing_output(sample2_cif: Path, tmp_path: Path):
+    output_file = tmp_path / "2Y29_A2A.cif.gz"
+    output_file.write_text("fake content")
+
+    result = filter_file_on_chain((sample2_cif, "A"), tmp_path, force=True)
+
+    assert result.passed is True
+    assert result.output_file == output_file
+    assert result.output_file.exists()
+    assert result.output_file.read_bytes() != b"fake content"

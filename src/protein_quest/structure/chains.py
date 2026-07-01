@@ -114,7 +114,7 @@ def find_chain_in_structure(
         try:
             wanted_chain = label2auth[wanted_chain]
         except KeyError:
-            logger.warning("Label chain %s not found in structure. Returning None.", wanted_chain)
+            logger.warning("Label chain %s not found in structure %s.", wanted_chain, structure.name)
             return None
     for model in structure:
         chain = find_chain_in_model(model, wanted_chain)
@@ -260,12 +260,108 @@ def _normalize_single_chain_entities(structure: gemmi.Structure, source_entity_i
             structure.entities.pop(entity_index)
 
 
+def _extract_source_entity_id(structure: Structure, chain_name: str) -> str:
+    remaining_entity_ids = {
+        residue.entity_id for model in structure for chain in model for residue in chain if residue.entity_id
+    }
+    if len(remaining_entity_ids) != 1:
+        msg = f"Could not determine a unique entity for source chain {chain_name}."
+        raise ValueError(msg)
+    return next(iter(remaining_entity_ids))
+
+
+def make_single_chain_structure(
+    input_structure: gemmi.Structure,
+    chain2keep: str,
+    out_chain: str = "A",
+    input_file: Path | None = None,
+    force: bool = False,
+) -> gemmi.Structure | None:
+    """Make a single chain structure.
+
+    By keeping given chain and renaming it to out_chain.
+
+    Also
+
+    - removes ligands and waters
+    - renumbers atoms ids
+    - removes chem_comp section from cif files
+    - stores chain2keep and out_chain as JSON-ified
+        [ChainExtractionProvenance][protein_quest.structure.chains.ChainExtractionProvenance]
+        object in the `contact_author` field of a new software item.
+        The software item also contains this function name, version and current date.
+
+    This function is equivalent to the following gemmi commands:
+
+    ```shell
+    gemmi convert --remove-lig-wat --select=B --to=cif chain-in/3JRS.cif - | \
+    gemmi convert --from=cif --rename-chain=B:A - chain-out/3JRS_B2A.gemmi.cif
+    ```
+
+    Args:
+        input_structure: The input structure.
+        chain2keep: The chain to keep.
+            Interpreted in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
+        out_chain: The chain identifier for the output file.
+            Written in 'auth'
+            [chain id system][protein_quest.structure.chains.ChainIdSystem].
+        input_file: The input file path, used for logging and error messages.
+        force: Rewrite the structure even when it is already a single matching chain.
+
+    Returns:
+        The new structure with only the specified chain, or None if no changes were needed.
+
+    Raises:
+        ChainNotFoundError: If the specified chain is not found in the input file."""
+    logger.debug("chain2keep: %s, out_chain: %s", chain2keep, out_chain)
+    structure = input_structure
+    structure.setup_entities()
+
+    chain = find_chain_in_structure(structure, chain2keep)
+    chainnames_in_structure = {c.name for c in chains_in_structure(structure)}
+    if chain is None:
+        raise ChainNotFoundError(chain2keep, input_file, chainnames_in_structure)
+    chain_name = chain.name
+
+    if not force and chain_name == out_chain and len(chainnames_in_structure) == 1:
+        logger.info(
+            "structure %s only has chain %s and out_chain is also %s. Leaving structure unchanged.",
+            structure.name,
+            chain_name,
+            out_chain,
+        )
+        return None
+
+    gemmi.Selection(f"/1/{chain_name}").remove_not_selected(structure)
+    for model in structure:
+        model.remove_ligands_and_waters()
+    source_entity_id = _extract_source_entity_id(structure, chain_name)
+    structure.setup_entities()
+    structure.rename_chain(chain_name, out_chain)
+    _normalize_single_chain_entities(structure, source_entity_id, out_chain)
+    _dedup_helices(structure)
+    _dedup_sheets(structure, out_chain)
+    _add_provenance_info(structure, chain_name, out_chain)
+
+    if not (len(structure) == 1 and len(structure[0]) == 1 and len(structure[0][out_chain]) > 0):
+        msg = (
+            f"After processing, structure does not have exactly one model ({len(structure)}) "
+            f"with one chain (found {len(structure[0])}) called {out_chain} "
+            f"with some residues ({len(structure[0][out_chain])})."
+        )
+        raise ValueError(msg)
+
+    return structure
+
+
 def write_single_chain_structure_file(
     input_file: Path,
     chain2keep: str,
     output_dir: Path,
     out_chain: str = "A",
     copy_method: CopyMethod = "copy",
+    force: bool = False,
 ) -> Path:
     """Write a single chain from a structure file to a new structure file.
 
@@ -296,6 +392,8 @@ def write_single_chain_structure_file(
             Written in 'auth'
             [chain id system][protein_quest.structure.chains.ChainIdSystem].
         copy_method: How to copy when no changes are needed to output file.
+        force: Rewrite the structure even when it is already a single matching chain,
+            and overwrite an existing output file.
 
     Returns:
         Path to the output structure file
@@ -305,63 +403,35 @@ def write_single_chain_structure_file(
         ChainNotFoundError: If the specified chain is not found in the input file."""
     logger.debug("chain2keep: %s, out_chain: %s", chain2keep, out_chain)
     structure = read_structure(input_file)
-    structure.setup_entities()
+    new_structure = make_single_chain_structure(
+        structure,
+        chain2keep,
+        out_chain=out_chain,
+        input_file=input_file,
+        force=force,
+    )
 
-    chain = find_chain_in_structure(structure, chain2keep)
-    chainnames_in_structure = {c.name for c in chains_in_structure(structure)}
-    if chain is None:
-        raise ChainNotFoundError(chain2keep, input_file, chainnames_in_structure)
-    chain_name = chain.name
     name, extension = split_name_and_extension(input_file.name)
-    output_file = output_dir / f"{name}_{chain_name}2{out_chain}{extension}"
+    output_file = output_dir / f"{name}_{chain2keep}2{out_chain}{extension}"
 
-    if output_file.exists():
+    if output_file.exists() and not force:
         logger.info("Output file %s already exists for input file %s. Skipping.", output_file, input_file)
         return output_file
 
-    if chain_name == out_chain and len(chainnames_in_structure) == 1:
+    if new_structure is None:
         logger.info(
             "%s only has chain %s and out_chain is also %s. Copying file to %s.",
             input_file,
-            chain_name,
+            chain2keep,
             out_chain,
             output_file,
         )
         copyfile(input_file, output_file, copy_method)
         return output_file
 
-    gemmi.Selection(f"/1/{chain_name}").remove_not_selected(structure)
-    for model in structure:
-        model.remove_ligands_and_waters()
-    source_entity_id = _extract_source_entity_id(structure, chain_name)
-    structure.setup_entities()
-    structure.rename_chain(chain_name, out_chain)
-    _normalize_single_chain_entities(structure, source_entity_id, out_chain)
-    _dedup_helices(structure)
-    _dedup_sheets(structure, out_chain)
-    _add_provenance_info(structure, chain_name, out_chain)
-
-    if not (len(structure) == 1 and len(structure[0]) == 1 and len(structure[0][out_chain]) > 0):
-        msg = (
-            f"After processing, structure does not have exactly one model ({len(structure)}) "
-            f"with one chain (found {len(structure[0])}) called {out_chain} "
-            f"with some residues ({len(structure[0][out_chain])})."
-        )
-        raise ValueError(msg)
-
-    write_structure(structure, output_file)
+    write_structure(new_structure, output_file)
 
     return output_file
-
-
-def _extract_source_entity_id(structure: Structure, chain_name: str) -> str:
-    remaining_entity_ids = {
-        residue.entity_id for model in structure for chain in model for residue in chain if residue.entity_id
-    }
-    if len(remaining_entity_ids) != 1:
-        msg = f"Could not determine a unique entity for source chain {chain_name}."
-        raise ValueError(msg)
-    return next(iter(remaining_entity_ids))
 
 
 def nr_of_residues_in_total(structure: Structure) -> int:

@@ -38,6 +38,7 @@ def filter_file_on_chain(
     out_chain: str = "A",
     chain_system: ChainIdSystem = "auth",
     copy_method: CopyMethod = "copy",
+    force: bool = False,
 ) -> ChainFilterStatistics:
     """Filter a single structure file by chain.
 
@@ -49,14 +50,14 @@ def filter_file_on_chain(
             The chain system id is 'auth'.
         chain_system: System for the given chain ids in `file_and_chain`.
         copy_method: How to copy when a direct copy is possible.
+        force: Rewrite existing single-chain outputs and overwrite existing output files.
     """
     input_file, chain_id = file_and_chain
     logger.debug("Filtering %s on chain %s (%s system)", input_file, chain_id, chain_system)
     try:
-        structure = read_structure(input_file)
-
         auth_chain_id = chain_id
         if chain_system == "label":
+            structure = read_structure(input_file)
             l2a = get_label2auth_chains(structure)
             try:
                 auth_chain_id = l2a[chain_id]
@@ -76,6 +77,7 @@ def filter_file_on_chain(
             output_dir,
             out_chain=out_chain,
             copy_method=copy_method,
+            force=force,
         )
         return ChainFilterStatistics(
             input_file=input_file,
@@ -93,6 +95,7 @@ def _filter_files_on_chain_sequentially(
     out_chain: str = "A",
     chain_system: ChainIdSystem = "auth",
     copy_method: CopyMethod = "copy",
+    force: bool = False,
 ) -> list[ChainFilterStatistics]:
     results = []
     for file_and_chain in tqdm(file2chains, unit="file"):
@@ -102,6 +105,7 @@ def _filter_files_on_chain_sequentially(
             out_chain=out_chain,
             chain_system=chain_system,
             copy_method=copy_method,
+            force=force,
         )
         results.append(result)
     return results
@@ -114,6 +118,7 @@ def filter_files_on_chain(
     chain_system: ChainIdSystem = "auth",
     scheduler_address: str | Cluster | Literal["sequential"] | None = None,
     copy_method: CopyMethod = "copy",
+    force: bool = False,
 ) -> list[ChainFilterStatistics]:
     """Filter mmcif/PDB files by chain.
 
@@ -127,6 +132,7 @@ def filter_files_on_chain(
             If not provided, will create a local cluster.
             If set to `sequential` will run tasks sequentially.
         copy_method: How to copy when a direct copy is possible.
+        force: Rewrite existing single-chain outputs and overwrite existing output files.
 
     Returns:
         Result of the filtering process.
@@ -139,6 +145,7 @@ def filter_files_on_chain(
             out_chain=out_chain,
             chain_system=chain_system,
             copy_method=copy_method,
+            force=force,
         )
 
     # TODO make logger.debug in filter_file_on_chain show to user when --log
@@ -159,4 +166,5 @@ def filter_files_on_chain(
             out_chain=out_chain,
             chain_system=chain_system,
             copy_method=copy_method,
+            force=force,
         )
