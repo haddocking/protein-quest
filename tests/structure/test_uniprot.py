@@ -16,12 +16,33 @@ from protein_quest.structure.uniprot import (
 )
 
 
-def test_write_single_chain_structure_file_preserves_uniprot_mapping(cif_3jrs: Path, tmp_path: Path):
-    output_file = write_single_chain_structure_file(input_file=cif_3jrs, chain2keep="B", output_dir=tmp_path)
-
+@pytest.mark.parametrize(
+    ("fixture_name", "chain2keep", "expected"),
+    [
+        pytest.param(
+            "cif_3jrs",
+            "B",
+            {"3JRS": {("A", "Q8VZS8")}},
+            id="cif_3jrs",
+        ),
+        pytest.param(
+            "multi_entity_cif",
+            "B",
+            {"1F66": {("A", "P62806")}},
+            id="multi_entity_cif",
+        ),
+    ],
+)
+def test_write_single_chain_structure_file_preserves_uniprot_mapping(
+    request: pytest.FixtureRequest, tmp_path: Path, fixture_name: str, chain2keep: str, expected: Pdb2UniprotMapping
+):
+    input_file = request.getfixturevalue(fixture_name)
+    output_file = write_single_chain_structure_file(input_file=input_file, chain2keep=chain2keep, output_dir=tmp_path)
     structure = read_structure(output_file)
 
-    assert structure_to_uniprot(structure) == {"3JRS": {("A", "Q8VZS8")}}
+    result = structure_to_uniprot(structure)
+
+    assert result == expected
 
 
 def test_structure2uniprot_accessions_present(sample2_cif: Path):
