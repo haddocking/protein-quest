@@ -21,6 +21,15 @@ from protein_quest.utils import user_cache_root_dir
 logger = logging.getLogger(__name__)
 
 
+def _is_em_method(structure: gemmi.Structure) -> bool:
+    # Not reusing ./metadata.py::_structure_method to preven circular import
+    try:
+        experimental_method = structure.info["_exptl.method"].lower()
+    except KeyError:
+        experimental_method = ""
+    return "electron microscopy" in experimental_method
+
+
 def _make_mmcif_document(structure: gemmi.Structure) -> gemmi.cif.Document:
     """Create an mmCIF document and preserve EM resolution metadata when needed."""
     # do not write chem_comp so it is viewable by molstar
@@ -28,11 +37,7 @@ def _make_mmcif_document(structure: gemmi.Structure) -> gemmi.cif.Document:
     doc = structure.make_mmcif_document(gemmi.MmcifOutputGroups(True, chem_comp=False))
     # Gemmi reads EM resolution into Structure.resolution from
     # _em_3d_reconstruction.resolution, but does not emit that category again.
-    try:
-        experimental_method = structure.info["_exptl.method"]
-    except KeyError:
-        experimental_method = None
-    if structure.resolution > 0 and experimental_method == "Electron Microscopy":
+    if structure.resolution > 0 and _is_em_method(structure):
         block = doc.sole_block()
         if not block.find_value("_em_3d_reconstruction.resolution"):
             block.set_pair("_em_3d_reconstruction.entry_id", structure.name)
