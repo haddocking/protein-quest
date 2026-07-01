@@ -118,6 +118,30 @@ def cif_3jrs() -> Path:
 
 
 @pytest.fixture
+def fake_archive_em_structure() -> gemmi.Structure:
+    structure = gemmi.Structure()
+    structure.name = "1ABC"
+    # Archived structures use UPPERCASE as exp method value
+    structure.info["_exptl.method"] = "ELECTRON MICROSCOPY"
+    structure.resolution = 4.2
+    atom = gemmi.Atom()
+    atom.name = "CA"
+    atom.element = gemmi.Element("C")
+    residue = gemmi.Residue()
+    residue.name = "ALA"
+    residue.add_atom(atom)
+    residue.entity_type = gemmi.EntityType.Polymer
+    chain = gemmi.Chain("A")
+    chain.add_residue(residue)
+    model = gemmi.Model(1)
+    model.add_chain(chain)
+    structure.add_model(model)
+    structure.setup_entities()
+    structure.assign_subchains()
+    return structure
+
+
+@pytest.fixture
 def all_cifs(
     sample_cif: Path,
     sample2_cif: Path,

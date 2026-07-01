@@ -215,3 +215,22 @@ class TestStructureMetadata:
 
         with pytest.raises(ValueError, match="No chains found in structure EMPTY"):
             structure_metadata(structure)
+
+    def test_archived_em_structure(self, fake_archive_em_structure: gemmi.Structure):
+        result = structure_metadata(fake_archive_em_structure)
+
+        expected = StructureMetadata(
+            id="1ABC",
+            uniprot_accession=None,
+            resolution=4.2,
+            total_residue_count=1,
+            is_alphafold=False,
+            uniprot_start=0,
+            uniprot_end=0,
+            sequence_identity=0.0,
+            chain_length=1,
+            auth_chain="A",
+            label_chain="Axp",
+            method="EM",
+        )
+        assert result == expected
