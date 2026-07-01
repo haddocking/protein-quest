@@ -1,6 +1,7 @@
 import gzip
 from pathlib import Path
 
+import gemmi
 import pytest
 
 from protein_quest.structure.formats import (
@@ -79,3 +80,15 @@ def test_em_structure_retains_resolution(em_cif: Path, tmp_path: Path, output_fn
     written_structure = read_structure(output_file)
 
     assert written_structure.resolution == 3.61
+
+
+def test_em_archived_structure_retains_resolution(fake_archive_em_structure: gemmi.Structure, tmp_path: Path):
+    structure = fake_archive_em_structure
+    assert structure.resolution == 4.2
+    output_file = tmp_path / "em_structure.cif"
+
+    write_structure(structure, output_file)
+
+    written_structure = read_structure(output_file)
+
+    assert written_structure.resolution == 4.2
