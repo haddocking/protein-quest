@@ -365,22 +365,8 @@ def write_single_chain_structure_file(
 ) -> Path:
     """Write a single chain from a structure file to a new structure file.
 
-    Also
-
-    - removes ligands and waters
-    - renumbers atoms ids
-    - removes chem_comp section from cif files
-    - stores chain2keep and out_chain as JSON-ified
-        [ChainExtractionProvenance][protein_quest.structure.chains.ChainExtractionProvenance]
-        object in the `contact_author` field of a new software item.
-        The software item also contains this function name, version and current date.
-
-    This function is equivalent to the following gemmi commands:
-
-    ```shell
-    gemmi convert --remove-lig-wat --select=B --to=cif chain-in/3JRS.cif - | \
-    gemmi convert --from=cif --rename-chain=B:A - chain-out/3JRS_B2A.gemmi.cif
-    ```
+    Does additional processing see
+    [make_single_chain_structure][protein_quest.structure.chains.make_single_chain_structure].
 
     Args:
         input_file: Path to the input structure file.

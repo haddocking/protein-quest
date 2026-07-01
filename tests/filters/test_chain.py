@@ -108,5 +108,6 @@ def test_filter_file_on_chain_force_overwrites_existing_output(sample2_cif: Path
 
     assert result.passed is True
     assert result.output_file == output_file
+    assert result.output_file is not None
     assert result.output_file.exists()
     assert result.output_file.read_bytes() != b"fake content"
