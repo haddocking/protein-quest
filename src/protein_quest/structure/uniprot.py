@@ -235,27 +235,35 @@ def _append_uniprot_to_structure(
     return gemmi.make_structure_from_block(block)
 
 
-def _rename_chain_based_on_provenance(
-    structure: gemmi.Structure, pdb2uniprot: Pdb2UniprotMapping
-) -> Pdb2UniprotMapping:
-    pdb_id = structure.name
+def _force_auth_system(
+    structure: gemmi.Structure, pairs: set[tuple[str, str]], chain_system: ChainIdSystem
+) -> set[tuple[str, str]]:
+    if chain_system == "label":
+        # Translate from label to auth chain ids
+        # as all functions expect auth chain ids as input/output.
+        label2auth = get_label2auth_chains(structure)
+        try:
+            return {(label2auth[label_chain], uniprot) for label_chain, uniprot in pairs}
+        except KeyError as e:
+            raise ChainNotFoundError(e.args[0], structure.name, set(label2auth.keys())) from None
+    return pairs
+
+
+def _rename_chain_based_on_provenance(structure: gemmi.Structure, pairs: set[tuple[str, str]]) -> set[tuple[str, str]]:
     prov = retrieve_chain_extraction_provenance(structure)
-    if prov and pdb_id in pdb2uniprot:
-        _, chain_provenance = prov
-        logger.info(
-            "Structure %s has provenance information indicating it was extracted from chain %s to %s. "
-            "Using this information to verify/add UniProt accessions.",
-            pdb_id,
-            chain_provenance.chain2keep,
-            chain_provenance.out_chain,
-        )
-        renamed_mapping = {
-            (chain_provenance.out_chain, uniprot)
-            for chain, uniprot in pdb2uniprot[pdb_id]
-            if chain == chain_provenance.chain2keep
-        }
-        pdb2uniprot = {pdb_id: renamed_mapping}
-    return pdb2uniprot
+
+    if not prov:
+        return pairs
+
+    _, chain_provenance = prov
+    logger.info(
+        "Structure %s has provenance information indicating it was extracted from chain %s to %s. "
+        "Using this information to verify/add UniProt accessions.",
+        structure.name,
+        chain_provenance.chain2keep,
+        chain_provenance.out_chain,
+    )
+    return {(chain_provenance.out_chain, uniprot) for chain, uniprot in pairs if chain == chain_provenance.chain2keep}
 
 
 def add_uniprot_accessions2structure(
@@ -289,16 +297,8 @@ def add_uniprot_accessions2structure(
         )
         return structure
 
-    pdb2uniprot = _rename_chain_based_on_provenance(structure, pdb2uniprot)
-    expected_pairs = pdb2uniprot[pdb_id]
-    if chain_system == "label":
-        # Translate from label to auth chain ids
-        # as all functions expect auth chain ids as input/output.
-        label2auth = get_label2auth_chains(structure)
-        try:
-            expected_pairs = {(label2auth[label_chain], uniprot) for label_chain, uniprot in pdb2uniprot[pdb_id]}
-        except KeyError as e:
-            raise ChainNotFoundError(e.args[0], structure.name, set(label2auth.keys())) from None
+    expected_pairs = _force_auth_system(structure, pdb2uniprot[pdb_id], chain_system)
+    expected_pairs = _rename_chain_based_on_provenance(structure, expected_pairs)
 
     known = structure_to_uniprot(structure)
     missing = expected_pairs - known[pdb_id]
