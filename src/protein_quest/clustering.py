@@ -327,6 +327,10 @@ def top_members_of_clusters[T](clusters: list[list[T]], top: int) -> list[T]:
     Raises:
         ClusterCoverageError: If not all clusters are represented in the top results.
     """
+    # instead taking best member for each cluster to fill top,
+    # TODO Take top N of each cluster, this way we cover each domain of the protein.
+    # For example given 2 clusters with 5 and 2 members resp, taking the top 2 should return 4 items.
+    # while currently it returns 2 items, one from each cluster.
     if top <= 0:
         msg = "Top must be a positive integer."
         raise ValueError(msg)
