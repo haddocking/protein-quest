@@ -24,7 +24,11 @@ from protein_quest.cli.common import (
 )
 from protein_quest.converter import converter
 from protein_quest.filters.chain import filter_files_on_chain
-from protein_quest.filters.quality import filter_by_pdbe_quality, write_quality_stats_csv
+from protein_quest.filters.quality import (
+    filter_by_pdbe_quality,
+    filter_by_pdbe_quality_clustered,
+    write_quality_stats_csv,
+)
 from protein_quest.filters.residues import filter_files_on_residues
 from protein_quest.filters.resolution import (
     filter_files_on_resolution,
@@ -358,6 +362,7 @@ def pdbe_quality(
     minimal_geometry_quality: float = 50.0,
     top: PositiveInt | None = None,
     pass_given_resolution: Annotated[bool, Parameter(negative="")] = False,
+    cluster_by_uniprot_accession_and_coverage: PositiveInt | None = None,
     write_stats: OutputFile | None = None,
     cache: CacheParameter | None = None,
     _: Common | None = None,
@@ -372,6 +377,8 @@ def pdbe_quality(
         minimal_geometry_quality: Minimal geometry quality score to pass the filter.
         top: Maximum number of files to keep. If not given, top is same as number of files that pass the filter.
         pass_given_resolution: If set will passthrough files that have a valid resolution.
+        cluster_by_uniprot_accession_and_coverage: Number of top structures to keep per UniProt cluster.
+            Structures are grouped by UniProt accession, then clustered by residue-range overlap.
         write_stats: Write filter statistics to file.
             In CSV format with columns:
             `<pdb_id>,<input_file>,<geometry_quality>,<passed>,<output_file>,<reason>`.
@@ -391,13 +398,23 @@ def pdbe_quality(
     located_ids = locate_structure_files_by_id(set(scores.keys()), input_dir)
 
     logger.info("Filtering structure files by PDBe quality scores")
-    results = filter_by_pdbe_quality(
-        scores,
-        located_ids,
-        minimal_geometry_quality=minimal_geometry_quality,
-        top=top,
-        pass_given_resolution=pass_given_resolution,
-    )
+    if cluster_by_uniprot_accession_and_coverage is not None:
+        results = filter_by_pdbe_quality_clustered(
+            scores,
+            located_ids,
+            minimal_geometry_quality=minimal_geometry_quality,
+            top=top,
+            pass_given_resolution=pass_given_resolution,
+            cluster_by_uniprot_accession_and_coverage=cluster_by_uniprot_accession_and_coverage,
+        )
+    else:
+        results = filter_by_pdbe_quality(
+            scores,
+            located_ids,
+            minimal_geometry_quality=minimal_geometry_quality,
+            top=top,
+            pass_given_resolution=pass_given_resolution,
+        )
 
     for result in results:
         if result.passed and result.input_file is not None:

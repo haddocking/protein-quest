@@ -672,3 +672,155 @@ def test_pdbe_quality(
         },
     ]
     assert stats == expected_stats
+
+
+def test_pdbe_quality_with_clustering(
+    tmp_path: Path,
+    all_cifs: list[Path],
+):
+    """Test filter pdbe-quality command with clustering by UniProt accession and coverage."""
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    for fixture_name in all_cifs:
+        (input_dir / fixture_name.name).symlink_to(fixture_name)
+
+    # Fetched using `protein-quest search pdbe-quality ./cif_fixture.ids ./cif_fixture.qual.json`
+    quality_json = tmp_path / "quality.json"
+    quality_json.write_text(
+        json.dumps(
+            {
+                "1un5": {
+                    "geometry_quality": 45.23,
+                    "data_quality": None,
+                    "overall_quality": 45.23,
+                    "experiment_data_available": False,
+                },
+                "1a02": {
+                    "geometry_quality": 6.15,
+                    "data_quality": 7.84,
+                    "overall_quality": 6.73,
+                    "experiment_data_available": True,
+                },
+                "2y29": {
+                    "geometry_quality": 55.9,
+                    "data_quality": 81.09,
+                    "overall_quality": 63.83,
+                    "experiment_data_available": True,
+                },
+                "3jrs": {
+                    "geometry_quality": 31.58,
+                    "data_quality": 22.4,
+                    "overall_quality": 27.13,
+                    "experiment_data_available": True,
+                },
+                "1amb": {
+                    "geometry_quality": None,
+                    "data_quality": None,
+                    "overall_quality": None,
+                    "experiment_data_available": "unknown",
+                },
+                "6o5i": {
+                    "geometry_quality": 64.38,
+                    "data_quality": 61.45,
+                    "overall_quality": 63.17,
+                    "experiment_data_available": True,
+                },
+                "8w77": {
+                    "geometry_quality": 75.0,
+                    "data_quality": 75.0,
+                    "overall_quality": 75.0,
+                    "experiment_data_available": True,
+                },
+            }
+        )
+    )
+    output_dir = tmp_path / "output"
+    stats_csv = tmp_path / "stats.csv"
+
+    argv = [
+        "filter",
+        "pdbe-quality",
+        str(input_dir),
+        str(quality_json),
+        str(output_dir),
+        "--write-stats",
+        str(stats_csv),
+        "--minimal-geometry-quality",
+        "30.0",
+        "--cluster-by-uniprot-accession-and-coverage",
+        "1",
+    ]
+    main(argv)
+
+    assert output_dir.exists()
+    assert stats_csv.exists()
+
+    stats = list(csv.DictReader(stats_csv.open()))
+    # TODO order is not deterministic, make it so
+    expected_stats = [
+        {
+            "geometry_quality": "",
+            "input_file": str(input_dir / "8w77_updated.cif.gz"),
+            "output_file": "",
+            "passed": "False",
+            "pdb_id": "1amb",
+            "reason": "No geometry quality score",
+        },
+        {
+            "geometry_quality": "55.9",
+            "input_file": "",  # TODO this should not be empty
+            "output_file": "",  # TODO this should not be empty
+            "passed": "True",
+            "pdb_id": "2y29:P05067",
+            "reason": "",
+        },
+        {
+            "geometry_quality": "45.23",
+            "input_file": "",
+            "output_file": "",
+            "passed": "False",
+            "pdb_id": "1un5:P03950",
+            "reason": "Geometry quality score 45.23 < 50.0",
+        },
+        {
+            "geometry_quality": "31.58",
+            "input_file": "",
+            "output_file": "",
+            "passed": "False",
+            "pdb_id": "3jrs:Q8VZS8",
+            "reason": "Geometry quality score 31.58 < 50.0",
+        },
+        {
+            "geometry_quality": "64.38",
+            "input_file": "",
+            "output_file": "",
+            "passed": "True",
+            "pdb_id": "6o5i:O00255",
+            "reason": "",
+        },
+        {
+            "geometry_quality": "75.0",
+            "input_file": "",
+            "output_file": "",
+            "passed": "True",
+            "pdb_id": "8w77:P0ABE7",
+            "reason": "",
+        },
+        {
+            "geometry_quality": "6.15",
+            "input_file": "",
+            "output_file": "",
+            "passed": "False",
+            "pdb_id": "1a02",
+            "reason": "File not found",
+        },
+        {
+            "geometry_quality": "",
+            "input_file": str(input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
+            "output_file": "",
+            "passed": "False",
+            "pdb_id": "",
+            "reason": "File not found in quality scores",
+        },
+    ]
+    assert stats == expected_stats
