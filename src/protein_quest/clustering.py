@@ -35,6 +35,8 @@ class ClusterableStructure(Hashable, Protocol):
             sequence in range ``[0, 1]``.
             For example gaps or mutations in structure versus UniProt sequence will lower this value.
         chain_length: Number of residues in the chain mapped to the UniProt sequence.
+        geometry_quality: Geometry quality score (``0.0`` - ``100.0``) or
+            ``None`` if unavailable. Higher is better.
     """
 
     @property
@@ -49,6 +51,8 @@ class ClusterableStructure(Hashable, Protocol):
     def sequence_identity(self) -> float: ...
     @property
     def chain_length(self) -> int: ...
+    @property
+    def geometry_quality(self) -> float | None: ...
 
 
 def structure_overlap(a: ClusterableStructure, b: ClusterableStructure) -> int:
@@ -133,13 +137,14 @@ def _cluster_sort_key[T: ClusterableStructure](cluster: set[T]) -> tuple[int, in
     return (-max_chain_length, start, end, ident)
 
 
-def structure_sort_key(member: ClusterableStructure) -> tuple[float, int, float, int, str]:
+def structure_sort_key(member: ClusterableStructure) -> tuple[float, int, float, int, float, int, str]:
     """Deterministic quality sort key for a cluster member.
 
     1. Sequence identity descending (highest first)
     2. Resolution ascending (lowest first)
-    3. Chain length descending (longest first)
-    4. Identifier ascending (deterministic tie-break)
+    3. Geometry quality descending (highest first; ``None`` sorts after valid values)
+    4. Chain length descending (longest first)
+    5. Identifier ascending (deterministic tie-break)
 
     A failing ``chain_length`` access (for example for PDB results with
     unparsable chain metadata) is treated as ``0`` so such entries can still
@@ -153,13 +158,16 @@ def structure_sort_key(member: ClusterableStructure) -> tuple[float, int, float,
         chain_length = member.chain_length
     except Exception:  # noqa: BLE001 - sort-key fallback for adapters that derive chain_length lazily
         chain_length = 0
-    resolution_kind = 0
-    if member.resolution_value == 0.0:
-        resolution_kind = 1
+    resolution_kind: int = 0 if member.resolution_value != 0.0 else 1
+    geometry_quality = member.geometry_quality
+    geometry_quality_value = geometry_quality if geometry_quality is not None else 0.0
+    geometry_quality_kind: int = 0 if geometry_quality is not None else 1
     return (
         -member.sequence_identity,
         resolution_kind,
         member.resolution_value,
+        geometry_quality_kind,
+        -geometry_quality_value,
         -chain_length,
         member.id,
     )
