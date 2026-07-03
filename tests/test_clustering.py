@@ -366,3 +366,12 @@ class TestFilterStructuresOnClusteredResolution:
 
         assert filtered_ids == ["A1", "B1", "A2"]
         assert len(filtered_ids) == len(set(filtered_ids))
+
+    def test_unknown_selection_strategy_raises(self, sample_structures: list[SimpleStructure]):
+        with pytest.raises(ValueError, match="Unknown selection_strategy: 'invalid_strategy'"):
+            filter_structures_on_clustered_resolution(
+                sample_structures,
+                top=1,
+                # pyrefly: ignore [bad-argument-type]
+                selection_strategy="invalid_strategy",
+            )

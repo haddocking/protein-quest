@@ -380,8 +380,12 @@ def filter_structures_on_clustered_resolution[T: ClusterableStructure](
 
     Raises:
         ClusterCoverageError: If not all clusters are represented in the top results.
+        ValueError: If an unknown selection strategy is provided.
     """
     clusters = cluster_structures(structures)
     if selection_strategy == "per_cluster_top":
         return top_members_per_cluster(clusters, top)
-    return top_members_across_clusters(clusters, top)
+    if selection_strategy == "across_clusters_top":
+        return top_members_across_clusters(clusters, top)
+    msg = f"Unknown selection_strategy: {selection_strategy!r} (allowed: 'across_clusters_top', 'per_cluster_top')"
+    raise ValueError(msg)
