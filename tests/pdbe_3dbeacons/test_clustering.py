@@ -89,7 +89,7 @@ def test_cluster_overviews_per_uniprot_keeps_top_pdbe_and_passes_alphafold_throu
         ],
     )
 
-    [pruned] = cluster_overviews_per_uniprot([summary], top=2)
+    [pruned] = cluster_overviews_per_uniprot([summary], top=1)
 
     assert pruned.uniprot_entry is not None
     assert pruned.uniprot_entry.ac == "P12345"
