@@ -7,7 +7,7 @@ protocol can be clustered.
 import logging
 from collections.abc import Hashable, Iterable, Iterator
 from itertools import islice
-from typing import Protocol
+from typing import Literal, Protocol
 
 import numpy as np
 from scipy.cluster.hierarchy import fcluster, linkage
@@ -313,8 +313,14 @@ def _is_each_cluster_represented_in_top[T](clusters: list[list[T]], top: int) ->
         raise ClusterCoverageError(nr_clusters, top)
 
 
-def top_members_of_clusters[T](clusters: list[list[T]], top: int) -> list[T]:
-    """Return up to ``top`` members by interleaving cluster members round-robin.
+def _validate_top_positive(top: int) -> None:
+    if top <= 0:
+        msg = "Top must be a positive integer."
+        raise ValueError(msg)
+
+
+def top_members_across_clusters[T](clusters: list[list[T]], top: int) -> list[T]:
+    """Return up to ``top`` members across clusters by interleaving cluster members round-robin.
 
     Args:
         clusters: Ordered clusters whose members are also sorted.
@@ -327,14 +333,34 @@ def top_members_of_clusters[T](clusters: list[list[T]], top: int) -> list[T]:
     Raises:
         ClusterCoverageError: If not all clusters are represented in the top results.
     """
-    if top <= 0:
-        msg = "Top must be a positive integer."
-        raise ValueError(msg)
+    _validate_top_positive(top)
     _is_each_cluster_represented_in_top(clusters, top)
     return list(islice(interleave_longest(*clusters), top))
 
 
-def filter_structures_on_clustered_resolution[T: ClusterableStructure](structures: list[T], top: int) -> list[T]:
+def top_members_per_cluster[T](clusters: list[list[T]], top: int) -> list[T]:
+    """Return up to ``top`` members from each cluster, interleaved round-robin.
+
+    Args:
+        clusters: Ordered clusters whose members are also sorted.
+            First cluster and its first member is considered best.
+        top: Maximum number of members to keep from each cluster.
+
+    Returns:
+        Interleaved members after truncating each cluster to ``top`` members.
+    """
+    _validate_top_positive(top)
+    return list(interleave_longest(*(cluster[:top] for cluster in clusters)))
+
+
+TopClusterSelectionStrategy = Literal["across_clusters_top", "per_cluster_top"]
+
+
+def filter_structures_on_clustered_resolution[T: ClusterableStructure](
+    structures: list[T],
+    top: int,
+    selection_strategy: TopClusterSelectionStrategy = "per_cluster_top",
+) -> list[T]:
     """Filter structures by resolution within residue-range clusters.
 
     Looks at how structures uniprot ranges overlap and clusters them by similarity of covered residue ranges.
@@ -345,12 +371,21 @@ def filter_structures_on_clustered_resolution[T: ClusterableStructure](structure
             Each structure must satisfy
             [ClusterableStructure][protein_quest.clustering.ClusterableStructure] protocol.
         top: Number of top results to retain.
+        selection_strategy: Strategy for selecting top results.
+            - ``across_clusters_top``: Take the top N structures across all clusters.
+            - ``per_cluster_top``: Take the top N structures from each cluster.
 
     Returns:
         Filtered list of up to ``top`` structures.
 
     Raises:
         ClusterCoverageError: If not all clusters are represented in the top results.
+        ValueError: If an unknown selection strategy is provided.
     """
     clusters = cluster_structures(structures)
-    return top_members_of_clusters(clusters, top)
+    if selection_strategy == "per_cluster_top":
+        return top_members_per_cluster(clusters, top)
+    if selection_strategy == "across_clusters_top":
+        return top_members_across_clusters(clusters, top)
+    msg = f"Unknown selection_strategy: {selection_strategy!r} (allowed: 'across_clusters_top', 'per_cluster_top')"
+    raise ValueError(msg)

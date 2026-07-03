@@ -52,7 +52,7 @@ def filter_pdbs_on_clustered_resolution(pdbs: list[PdbResult], top: int) -> list
 
     The clusters are sorted by chain length, then by start and end residue, and then by PDB ID.
 
-    The clusters are flattened to the returned list by taking the best of each cluster until clusters are exhausted.
+    The clusters are flattened to the returned list by taking the top members from each cluster.
 
     PDB results with invalid residue range (for example `A=-`) or unset resolution are
     always placed at the end of the returned list.

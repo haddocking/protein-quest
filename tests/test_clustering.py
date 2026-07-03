@@ -11,7 +11,8 @@ from protein_quest.clustering import (
     sort_structures,
     structure_distance,
     structure_union,
-    top_members_of_clusters,
+    top_members_across_clusters,
+    top_members_per_cluster,
 )
 
 
@@ -274,29 +275,61 @@ def test_cluster_structures(structures: list[ClusterableStructure], expected: li
     assert cluster_ids == expected
 
 
-class TestTopMembersOfClusters:
+class TestTopMembersAcrossClusters:
     def test_balanced_clusters_round_robin(self):
-        result = top_members_of_clusters([["A1", "A2"], ["B1", "B2"], ["C1", "C2"]], top=6)
+        result = top_members_across_clusters([["A1", "A2"], ["B1", "B2"], ["C1", "C2"]], top=6)
         assert result == ["A1", "B1", "C1", "A2", "B2", "C2"]
 
     def test_uneven_clusters_skip_exhausted_inputs(self):
-        result = top_members_of_clusters([["A1"], ["B1", "B2", "B3"]], top=4)
+        result = top_members_across_clusters([["A1"], ["B1", "B2", "B3"]], top=4)
         assert result == ["A1", "B1", "B2", "B3"]
 
     def test_matches_documented_example(self):
-        result = top_members_of_clusters([[1, 2, 3], [4, 5], [6, 7, 8]], top=8)
+        result = top_members_across_clusters([[1, 2, 3], [4, 5], [6, 7, 8]], top=8)
         assert result == [1, 4, 6, 2, 5, 7, 3, 8]
 
     def test_empty_clusters_return_empty(self):
-        assert top_members_of_clusters([[], [], []], top=3) == []
+        assert top_members_across_clusters([[], [], []], top=3) == []
 
     def test_top_truncates_result(self):
-        result = top_members_of_clusters([["A1", "A2"], ["B1", "B2"]], top=3)
+        result = top_members_across_clusters([["A1", "A2"], ["B1", "B2"]], top=3)
         assert result == ["A1", "B1", "A2"]
 
     def test_clusters_under_represented_in_top_raises(self):
         with pytest.raises(ClusterCoverageError, match="Not all 2 clusters are represented in the top 1 results"):
-            top_members_of_clusters([["A2"], ["B1"]], top=1)
+            top_members_across_clusters([["A2"], ["B1"]], top=1)
+
+
+class TestTopMembersPerCluster:
+    def test_balanced_clusters_round_robin(self):
+        result = top_members_per_cluster([["A1", "A2"], ["B1", "B2"], ["C1", "C2"]], top=2)
+        assert result == ["A1", "B1", "C1", "A2", "B2", "C2"]
+
+    def test_top_limits_each_cluster_before_interleaving(self):
+        result = top_members_per_cluster([["A1", "A2", "A3"], ["B1", "B2"]], top=2)
+        assert result == ["A1", "B1", "A2", "B2"]
+
+    def test_uneven_clusters_skip_exhausted_inputs(self):
+        result = top_members_per_cluster([["A1"], ["B1", "B2", "B3"]], top=2)
+        assert result == ["A1", "B1", "B2"]
+
+    def test_empty_clusters_return_empty(self):
+        assert top_members_per_cluster([[], [], []], top=3) == []
+
+    @pytest.mark.parametrize("top", [0, -1])
+    def test_non_positive_top_raises(self, top: int):
+        with pytest.raises(ValueError, match="Top must be a positive integer"):
+            top_members_per_cluster([["A1"]], top=top)
+
+
+@pytest.fixture
+def sample_structures() -> list[SimpleStructure]:
+    return [
+        SimpleStructure("A1", 1, 200, resolution_value=1.0, sequence_identity=1.0, chain_length=200),
+        SimpleStructure("A2", 1, 200, resolution_value=2.0, sequence_identity=0.9, chain_length=200),
+        SimpleStructure("B1", 300, 360, resolution_value=1.5, sequence_identity=1.0, chain_length=61),
+        SimpleStructure("B2", 300, 360, resolution_value=2.5, sequence_identity=0.9, chain_length=61),
+    ]
 
 
 class TestFilterStructuresOnClusteredResolution:
@@ -305,16 +338,21 @@ class TestFilterStructuresOnClusteredResolution:
         with pytest.raises(ValueError, match="Top must be a positive integer"):
             filter_structures_on_clustered_resolution([make_structure("1AAA", 1, 100)], top=top)
 
-    def test_interleaved_cluster_order_smoke(self):
-        structures = [
-            SimpleStructure("A1", 1, 200, resolution_value=1.0, sequence_identity=1.0, chain_length=200),
-            SimpleStructure("A2", 1, 200, resolution_value=2.0, sequence_identity=0.9, chain_length=200),
-            SimpleStructure("B1", 300, 360, resolution_value=1.5, sequence_identity=1.0, chain_length=61),
-            SimpleStructure("B2", 300, 360, resolution_value=2.5, sequence_identity=0.9, chain_length=61),
-        ]
+    def test_interleaved_cluster_order_smoke(self, sample_structures: list[SimpleStructure]):
+        filtered = filter_structures_on_clustered_resolution(sample_structures, top=1)
+        assert [member.id for member in filtered] == ["A1", "B1"]
 
-        filtered = filter_structures_on_clustered_resolution(structures, top=3)
+    def test_across_clusters_selection_strategy(self, sample_structures: list[SimpleStructure]):
+        filtered = filter_structures_on_clustered_resolution(
+            sample_structures, top=3, selection_strategy="across_clusters_top"
+        )
         assert [member.id for member in filtered] == ["A1", "B1", "A2"]
+
+    def test_per_cluster_selection_strategy(self, sample_structures: list[SimpleStructure]):
+        filtered = filter_structures_on_clustered_resolution(
+            sample_structures, top=1, selection_strategy="per_cluster_top"
+        )
+        assert [member.id for member in filtered] == ["A1", "B1"]
 
     def test_top_above_available_returns_all_without_duplicates(self):
         structures = [
@@ -328,3 +366,12 @@ class TestFilterStructuresOnClusteredResolution:
 
         assert filtered_ids == ["A1", "B1", "A2"]
         assert len(filtered_ids) == len(set(filtered_ids))
+
+    def test_unknown_selection_strategy_raises(self, sample_structures: list[SimpleStructure]):
+        with pytest.raises(ValueError, match="Unknown selection_strategy: 'invalid_strategy'"):
+            filter_structures_on_clustered_resolution(
+                sample_structures,
+                top=1,
+                # pyrefly: ignore [bad-argument-type]
+                selection_strategy="invalid_strategy",
+            )

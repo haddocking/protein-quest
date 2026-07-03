@@ -16,7 +16,7 @@ from tqdm.auto import tqdm
 from protein_quest.clustering import (
     filter_structures_on_clustered_resolution,
     structure_sort_key,
-    top_members_of_clusters,
+    top_members_across_clusters,
 )
 from protein_quest.errors import ResolutionUnsetError
 from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
@@ -393,7 +393,7 @@ def _sort_by_coverage_and_global_top(
     listed_stats = list(stats)
     sorted_clustered_groups = _cluster_resolution_stats_by_accession(listed_stats)
 
-    flattened = top_members_of_clusters(sorted_clustered_groups, top=len(listed_stats))
+    flattened = top_members_across_clusters(sorted_clustered_groups, top=len(listed_stats))
     for i, result in enumerate(flattened, 1):
         if i <= top:
             result.passed = True
