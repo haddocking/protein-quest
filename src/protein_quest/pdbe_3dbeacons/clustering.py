@@ -54,14 +54,14 @@ def _filter_pdbe_overviews(overviews: list[Overview], top: int) -> list[Overview
 
 
 def cluster_overviews_per_uniprot(summaries: list[UniprotSummary], top: int) -> list[UniprotSummary]:
-    """Cluster PDBe Overviews of each UniProt summary and keep at most ``top`` per accession.
+    """Cluster PDBe Overviews of each UniProt summary and keep at most ``top`` per accession cluster.
 
     Overviews from providers other than PDBe are passed through unchanged
     and appended after the pruned PDBe Overviews.
 
     Args:
         summaries: UniProt summaries to prune.
-        top: Maximum number of PDBe Overviews to retain per UniProt accession.
+        top: Maximum number of PDBe Overviews to retain per UniProt accession cluster.
 
     Returns:
         New list of [UniprotSummary][protein_quest.pdbe_3dbeacons.model.UniprotSummary] with PDBe Overviews pruned.
