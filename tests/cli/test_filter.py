@@ -756,71 +756,62 @@ def test_pdbe_quality_with_clustering(
     assert stats_csv.exists()
 
     stats = list(csv.DictReader(stats_csv.open()))
-    # TODO order is not deterministic, make it so
     expected_stats = [
         {
+            "geometry_quality": "75.0",
+            "input_file": str(tmp_path / "input" / "8w77_updated.cif.gz"),
+            "output_file": str(tmp_path / "output" / "8w77_updated.cif.gz"),
+            "passed": "True",
+            "pdb_id": "8w77",
+            "reason": "",
+        },
+        {
+            "geometry_quality": "64.38",
+            "input_file": str(tmp_path / "input" / "6O5I.cif.gz"),
+            "output_file": str(tmp_path / "output" / "6O5I.cif.gz"),
+            "passed": "True",
+            "pdb_id": "6o5i",
+            "reason": "",
+        },
+        {
+            "geometry_quality": "55.9",
+            "input_file": str(tmp_path / "input" / "2Y29.cif.gz"),
+            "output_file": str(tmp_path / "output" / "2Y29.cif.gz"),
+            "passed": "True",
+            "pdb_id": "2y29",
+            "reason": "",
+        },
+        {
+            "geometry_quality": "45.23",
+            "input_file": str(tmp_path / "input" / "1un5.cif.gz"),
+            "output_file": str(tmp_path / "output" / "1un5.cif.gz"),
+            "passed": "True",
+            "pdb_id": "1un5",
+            "reason": "",
+        },
+        {
+            "geometry_quality": "31.58",
+            "input_file": str(tmp_path / "input" / "3jrs_updated_B2A.cif.gz"),
+            "output_file": str(tmp_path / "output" / "3jrs_updated_B2A.cif.gz"),
+            "passed": "True",
+            "pdb_id": "3jrs",
+            "reason": "",
+        },
+        {
             "geometry_quality": "",
-            "input_file": str(input_dir / "8w77_updated.cif.gz"),
+            "input_file": str(tmp_path / "input" / "1amb_updated.cif.gz"),
             "output_file": "",
             "passed": "False",
             "pdb_id": "1amb",
             "reason": "No geometry quality score",
         },
         {
-            "geometry_quality": "55.9",
-            "input_file": "",  # TODO this should not be empty
-            "output_file": "",  # TODO this should not be empty
-            "passed": "True",
-            "pdb_id": "2y29:P05067",
-            "reason": "",
-        },
-        {
-            "geometry_quality": "45.23",
-            "input_file": "",
-            "output_file": "",
-            "passed": "False",
-            "pdb_id": "1un5:P03950",
-            "reason": "Geometry quality score 45.23 < 50.0",
-        },
-        {
-            "geometry_quality": "31.58",
-            "input_file": "",
-            "output_file": "",
-            "passed": "False",
-            "pdb_id": "3jrs:Q8VZS8",
-            "reason": "Geometry quality score 31.58 < 50.0",
-        },
-        {
-            "geometry_quality": "64.38",
-            "input_file": "",
-            "output_file": "",
-            "passed": "True",
-            "pdb_id": "6o5i:O00255",
-            "reason": "",
-        },
-        {
-            "geometry_quality": "75.0",
-            "input_file": "",
-            "output_file": "",
-            "passed": "True",
-            "pdb_id": "8w77:P0ABE7",
-            "reason": "",
-        },
-        {
-            "geometry_quality": "6.15",
-            "input_file": "",
-            "output_file": "",
-            "passed": "False",
-            "pdb_id": "1a02",
-            "reason": "File not found",
-        },
-        {
             "geometry_quality": "",
-            "input_file": str(input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
+            "input_file": str(tmp_path / "input" / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
             "output_file": "",
             "passed": "False",
-            "pdb_id": "",
-            "reason": "File not found in quality scores",
+            "pdb_id": "af-a0a0c5b5g6-f1",
+            "reason": "No quality score found for PDB ID",
         },
     ]
     assert stats == expected_stats

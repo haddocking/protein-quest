@@ -395,19 +395,19 @@ def pdbe_quality(
         scores = converter.loads(f.read(), dict[str, Scores])
 
     logger.info('Finding structure files in "%s" directory that match ids from PDBe quality scores', input_dir)
-    located_ids = locate_structure_files_by_id(set(scores.keys()), input_dir)
 
     logger.info("Filtering structure files by PDBe quality scores")
+    input_files = sorted(glob_structure_files(input_dir))
     if cluster_by_uniprot_accession_and_coverage is not None:
         results = filter_by_pdbe_quality_clustered(
             scores,
-            located_ids,
+            input_files,
             minimal_geometry_quality=minimal_geometry_quality,
-            top=top,
             pass_given_resolution=pass_given_resolution,
             cluster_by_uniprot_accession_and_coverage=cluster_by_uniprot_accession_and_coverage,
         )
     else:
+        located_ids = locate_structure_files_by_id(set(scores.keys()), input_dir)
         results = filter_by_pdbe_quality(
             scores,
             located_ids,
@@ -422,7 +422,6 @@ def pdbe_quality(
 
     rprint(f"Wrote {len([r for r in results if r.passed])} files to {output_dir} directory.")
     rprint(f"Discarded {len([r for r in results if not r.passed])} files due to any reason.")
-    rprint(f"Discarded {len(located_ids.extras)} files in {input_dir} directory that were not in {quality_json}.")
 
     if write_stats:
         if str(write_stats) != "-":
