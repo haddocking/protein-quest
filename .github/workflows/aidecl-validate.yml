@@ -2,6 +2,8 @@ name: Validate AI Declaration
 
 on:
   push:
+    branches:
+      - main
     paths:
       - aidecl.yaml
   pull_request:
