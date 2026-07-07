@@ -454,6 +454,39 @@ def cluster_and_select_quality_structures(
     return results
 
 
+def filter_unclustered_structures(
+    unclustered_structures: list[UnclusteredStructure],
+    /,
+    *,
+    minimal_geometry_quality: float,
+    top: int | None,
+) -> list[FilterQualityResult]:
+    sorted_unclustered = sorted(unclustered_structures, key=lambda us: us.geometry_quality, reverse=True)
+    passed_unclustered = 0
+    results: list[FilterQualityResult] = []
+    for us in sorted_unclustered:
+        result = _quality_threshold_result(
+            pdb_id=us.pdb_id,
+            input_file=us.input_file,
+            geometry_quality=us.geometry_quality,
+            minimal_geometry_quality=minimal_geometry_quality,
+            passed_reason="No UniProt accession but meets quality threshold",
+            failed_reason_prefix="No UniProt accession and geometry quality",
+        )
+        if result.passed and top is not None and passed_unclustered >= top:
+            result = FilterQualityResult(
+                pdb_id=us.pdb_id,
+                input_file=us.input_file,
+                geometry_quality=us.geometry_quality,
+                passed=False,
+                reason=f"Excluded by top {top} limit for unclustered structures: {result.reason}",
+            )
+        if result.passed:
+            passed_unclustered += 1
+        results.append(result)
+    return results
+
+
 def filter_by_pdbe_quality_clustered(
     scores: dict[str, Scores],
     input_files: Iterable[Path],
@@ -502,28 +535,11 @@ def filter_by_pdbe_quality_clustered(
         minimal_geometry_quality=minimal_geometry_quality,
     )
 
-    sorted_unclustered = sorted(partitions.unclustered_structures, key=lambda us: us.geometry_quality, reverse=True)
-    passed_unclustered = 0
-    for us in sorted_unclustered:
-        result = _quality_threshold_result(
-            pdb_id=us.pdb_id,
-            input_file=us.input_file,
-            geometry_quality=us.geometry_quality,
-            minimal_geometry_quality=minimal_geometry_quality,
-            passed_reason="No UniProt accession but meets quality threshold",
-            failed_reason_prefix="No UniProt accession and geometry quality",
+    results.extend(
+        filter_unclustered_structures(
+            partitions.unclustered_structures, minimal_geometry_quality=minimal_geometry_quality, top=top
         )
-        if result.passed and top is not None and passed_unclustered >= top:
-            result = FilterQualityResult(
-                pdb_id=us.pdb_id,
-                input_file=us.input_file,
-                geometry_quality=us.geometry_quality,
-                passed=False,
-                reason=f"Excluded by top {top} limit for unclustered structures: {result.reason}",
-            )
-        if result.passed:
-            passed_unclustered += 1
-        results.append(result)
+    )
 
     results.extend(partitions.resolution_passed_results)
     results.extend(partitions.no_quality_results)
@@ -538,7 +554,7 @@ def write_quality_stats_csv(
     """Writes a CSV file containing quality statistics for PDB IDs.
 
     Args:
-        results: A list of QualityResult objects containing the quality results for each PDB ID.
+        results: A list of result objects containing the quality results for each PDB ID.
         write_stats: Path to the output CSV file to write statistics.
         output_dir: The directory where the output files are located.
 
