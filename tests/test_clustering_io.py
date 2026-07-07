@@ -22,6 +22,7 @@ class SimpleStructure:
     uniprot_start: int
     uniprot_end: int
     resolution_value: float = 0.0
+    geometry_quality: float | None = None
     sequence_identity: float = 1.0
     chain_length: int = 0
 

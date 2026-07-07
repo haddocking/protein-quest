@@ -94,6 +94,11 @@ class PdbResult:
         except ValueError:
             return 0.0
 
+    @cached_property
+    def geometry_quality(self) -> float | None:
+        """Geometry quality score (``0.0`` - ``100.0``) or ``None`` if unavailable."""
+        return None
+
 
 type PdbResults = dict[str, set[PdbResult]]
 """Dictionary with uniprot accessions as keys and sets of PDB results as values."""

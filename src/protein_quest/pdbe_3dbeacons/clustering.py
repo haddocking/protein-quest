@@ -32,6 +32,7 @@ class OverviewClusterableEntry:
     sequence_identity: float
     chain_length: int
     overview: Overview
+    geometry_quality: float | None = None
 
     @classmethod
     def from_overview(cls, overview: Overview) -> "OverviewClusterableEntry":
