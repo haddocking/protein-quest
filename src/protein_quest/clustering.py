@@ -22,6 +22,33 @@ NO_OVERLAP_DISTANCE = CLUSTER_DISTANCE_THRESHOLD + 1e-6
 """Finite fallback distance used when two ranges do not overlap."""
 
 
+class SortableStructure(Hashable, Protocol):
+    """Protocol describing the minimum interface required for sorting.
+
+    Attributes:
+        id: Identifier of the structure, used as a deterministic tie-breaker.
+        resolution_value: Resolution in Angstrom. ``0.0`` means
+            missing/undesirable so entries with a real resolution rank first.
+        sequence_identity: Sequence identity of the structure to the UniProt
+            sequence in range ``[0, 1]``.
+            For example gaps or mutations in structure versus UniProt sequence will lower this value.
+        chain_length: Number of residues in the chain mapped to the UniProt sequence.
+        geometry_quality: Geometry quality score (``0.0`` - ``100.0``) or
+            ``None`` if unavailable. Higher is better.
+    """
+
+    @property
+    def id(self) -> str: ...
+    @property
+    def resolution_value(self) -> float: ...
+    @property
+    def sequence_identity(self) -> float: ...
+    @property
+    def chain_length(self) -> int: ...
+    @property
+    def geometry_quality(self) -> float | None: ...
+
+
 class ClusterableStructure(Hashable, Protocol):
     """Protocol describing the minimum interface required for clustering.
 
@@ -137,7 +164,7 @@ def _cluster_sort_key[T: ClusterableStructure](cluster: set[T]) -> tuple[int, in
     return (-max_chain_length, start, end, ident)
 
 
-def structure_sort_key(member: ClusterableStructure) -> tuple[float, int, float, int, float, int, str]:
+def structure_sort_key(member: SortableStructure) -> tuple[float, int, float, int, float, int, str]:
     """Deterministic quality sort key for a cluster member.
 
     1. Sequence identity descending (highest first)
@@ -173,7 +200,7 @@ def structure_sort_key(member: ClusterableStructure) -> tuple[float, int, float,
     )
 
 
-def sort_structures[T: ClusterableStructure](structures: Iterable[T]) -> list[T]:
+def sort_structures[T: SortableStructure](structures: Iterable[T]) -> list[T]:
     """Sort structures by quality criteria.
 
     See [structure_sort_key][protein_quest.clustering.structure_sort_key] for sort criteria.

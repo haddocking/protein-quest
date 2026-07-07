@@ -531,10 +531,13 @@ class TestResolution:
 def test_pdbe_quality(
     tmp_path: Path,
     all_cifs: list[Path],
+    bad_cifs: list[Path],
 ):
     input_dir = tmp_path / "input"
     input_dir.mkdir()
     for fixture_name in all_cifs:
+        (input_dir / fixture_name.name).symlink_to(fixture_name)
+    for fixture_name in bad_cifs:
         (input_dir / fixture_name.name).symlink_to(fixture_name)
 
     # Fetched using `protein-quest search pdbe-quality ./cif_fixture.ids ./cif_fixture.qual.json`
@@ -611,59 +614,88 @@ def test_pdbe_quality(
             "input_file": str(input_dir / "8w77_updated.cif.gz"),
             "output_file": str(output_dir / "8w77_updated.cif.gz"),
             "passed": "True",
-            "pdb_id": "8w77",
+            "pdb_id": "8W77",
             "reason": "",
         },
         {
-            "pdb_id": "6o5i",
-            "input_file": str(input_dir / "6O5I.cif.gz"),
-            "geometry_quality": "64.38",
-            "passed": "True",
-            "output_file": str(output_dir / "6O5I.cif.gz"),
-            "reason": "",
-        },
-        {
-            "pdb_id": "2y29",
-            "input_file": str(input_dir / "2Y29.cif.gz"),
             "geometry_quality": "55.9",
-            "passed": "True",
+            "input_file": str(input_dir / "2Y29.cif.gz"),
             "output_file": str(output_dir / "2Y29.cif.gz"),
+            "passed": "True",
+            "pdb_id": "2Y29",
             "reason": "",
         },
         {
-            "pdb_id": "1un5",
-            "input_file": str(input_dir / "1un5.cif.gz"),
-            "geometry_quality": "45.23",
-            "passed": "False",
-            "output_file": "",
-            "reason": "Geometry quality score 45.23 < 50.0",
-        },
-        {
-            "pdb_id": "3jrs",
-            "input_file": str(input_dir / "3jrs_updated_B2A.cif.gz"),
             "geometry_quality": "31.58",
-            "passed": "False",
+            "input_file": str(input_dir / "3jrs_updated_B2A.cif.gz"),
             "output_file": "",
-            "reason": "Geometry quality score 31.58 < 50.0",
+            "passed": "False",
+            "pdb_id": "3JRS",
+            "reason": "Geometry quality 31.58 < 50.0",
         },
         {
-            "pdb_id": "1amb",
-            "input_file": str(input_dir / "1amb_updated.cif.gz"),
+            "geometry_quality": "45.23",
+            "input_file": str(input_dir / "1un5.cif.gz"),
+            "output_file": "",
+            "passed": "False",
+            "pdb_id": "1UN5",
+            "reason": "Geometry quality 45.23 < 50.0",
+        },
+        {
+            "geometry_quality": "64.38",
+            "input_file": str(input_dir / "6O5I.cif.gz"),
+            "output_file": str(output_dir / "6O5I.cif.gz"),
+            "passed": "True",
+            "pdb_id": "6O5I",
+            "reason": "",
+        },
+        {
+            "geometry_quality": "55.9",
+            "input_file": str(input_dir / "no_uniprot.cif"),
+            "output_file": str(output_dir / "no_uniprot.cif"),
+            "passed": "True",
+            "pdb_id": "2Y29",
+            "reason": "",
+        },
+        {
             "geometry_quality": "",
-            "passed": "False",
-            "output_file": "",
-            "reason": "No geometry quality score",
-        },
-        {
-            "pdb_id": "",
             "input_file": str(input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
+            "output_file": str(output_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
+            "passed": "True",
+            "pdb_id": "AF-A0A0C5B5G6-F1",
+            "reason": "AlphaFold structure passes quality filter",
+        },
+        {
             "geometry_quality": "",
-            "passed": "False",
+            "input_file": str(input_dir / "1amb_updated.cif.gz"),
             "output_file": "",
-            "reason": "File not found in quality scores",
+            "passed": "False",
+            "pdb_id": "1AMB",
+            "reason": "Missing geometry quality",
+        },
+        {
+            "geometry_quality": "",
+            "input_file": str(input_dir / "atomless.cif"),
+            "output_file": "",
+            "passed": "False",
+            "pdb_id": " ",
+            "reason": "Failed to extract metadata: No chains found in structure  ",
+        },
+        {
+            "geometry_quality": "",
+            "input_file": str(input_dir / "unreadable.cif"),
+            "output_file": "",
+            "passed": "False",
+            "pdb_id": "",
+            "reason": "Failed to read structure: "
+            f"{input_dir / 'unreadable.cif'}:1:0(0): "
+            "expected block header (data_)",
         },
     ]
     assert stats == expected_stats
+    expected_output_files = {e["output_file"] for e in expected_stats if e["output_file"]}
+    actual_output_files = {str(path) for path in output_dir.iterdir()}
+    assert actual_output_files == expected_output_files
 
 
 def test_pdbe_quality_with_clustering(
@@ -827,3 +859,6 @@ def test_pdbe_quality_with_clustering(
         },
     ]
     assert stats == expected_stats
+    expected_output_files = {e["output_file"] for e in expected_stats if e["output_file"]}
+    actual_output_files = {str(path) for path in output_dir.iterdir()}
+    assert actual_output_files == expected_output_files

@@ -6,7 +6,7 @@ import os
 from typing import TYPE_CHECKING, Annotated
 
 from cyclopts import App, Parameter
-from cyclopts.types import NormFloat, PositiveInt
+from cyclopts.types import NonNegativeInt, NormFloat, PositiveInt
 from rich.panel import Panel
 
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
@@ -26,7 +26,6 @@ from protein_quest.converter import converter
 from protein_quest.filters.chain import filter_files_on_chain
 from protein_quest.filters.quality import (
     filter_by_pdbe_quality,
-    filter_by_pdbe_quality_clustered,
     write_quality_stats_csv,
 )
 from protein_quest.filters.residues import filter_files_on_residues
@@ -37,7 +36,7 @@ from protein_quest.filters.resolution import (
 from protein_quest.filters.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
 from protein_quest.pdbe.ws import Scores
 from protein_quest.structure.chains import ChainIdSystem
-from protein_quest.structure.files import glob_structure_files, locate_structure_file, locate_structure_files_by_id
+from protein_quest.structure.files import glob_structure_files, locate_structure_file
 from protein_quest.utils import copyfile
 
 if TYPE_CHECKING:
@@ -361,7 +360,7 @@ def pdbe_quality(
     *,
     minimal_geometry_quality: float = 50.0,
     top: PositiveInt | None = None,
-    cluster_by_uniprot_accession_and_coverage: PositiveInt | None = None,
+    cluster_by_uniprot_accession_and_coverage: NonNegativeInt = 0,
     pass_given_resolution: Annotated[bool, Parameter(negative="")] = False,
     write_stats: OutputFile | None = None,
     cache: CacheParameter | None = None,
@@ -402,24 +401,14 @@ def pdbe_quality(
 
     logger.info("Filtering structure files by PDBe quality scores")
     input_files = sorted(glob_structure_files(input_dir))
-    if cluster_by_uniprot_accession_and_coverage is not None:
-        results = filter_by_pdbe_quality_clustered(
-            scores,
-            input_files,
-            minimal_geometry_quality=minimal_geometry_quality,
-            top=top,
-            pass_given_resolution=pass_given_resolution,
-            cluster_by_uniprot_accession_and_coverage=cluster_by_uniprot_accession_and_coverage,
-        )
-    else:
-        located_ids = locate_structure_files_by_id(set(scores.keys()), input_dir)
-        results = filter_by_pdbe_quality(
-            scores,
-            located_ids,
-            minimal_geometry_quality=minimal_geometry_quality,
-            top=top,
-            pass_given_resolution=pass_given_resolution,
-        )
+    results = filter_by_pdbe_quality(
+        scores,
+        input_files,
+        minimal_geometry_quality=minimal_geometry_quality,
+        top=top,
+        pass_given_resolution=pass_given_resolution,
+        cluster_by_uniprot_accession_and_coverage=cluster_by_uniprot_accession_and_coverage,
+    )
 
     for result in results:
         if result.passed and result.input_file is not None:
