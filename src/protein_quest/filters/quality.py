@@ -25,15 +25,12 @@ class QualityStructure:
     [ClusterableStructure][protein_quest.clustering.ClusterableStructure] protocol
     so that structures filtered by PDBe quality can participate in residue-range
     clustering.
-
-    Note: geometry_quality is guaranteed to be non-None as structures
-    with None quality are filtered out earlier in the pipeline.
     """
 
     id: str
+    uniprot_accession: str
     uniprot_start: int
     uniprot_end: int
-    resolution_value: float
     sequence_identity: float
     chain_length: int
     geometry_quality: float
@@ -41,6 +38,14 @@ class QualityStructure:
 
     def __hash__(self) -> int:
         return hash((self.id, self.uniprot_start, self.uniprot_end))
+
+    @property
+    def resolution_value(self) -> float:
+        """Return ignored resolultion so cluster member sorting is done on geometry quality
+
+        See [structure_sort_key][protein_quest.clustering.structure_sort_key] for sorting logic.
+        """
+        return 0.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,6 +87,34 @@ class FilterQualityResult:
 class PdbIdGeometryQualityPair(TypedDict):
     pdb_id: str
     geometry_quality: float | None
+
+
+def _quality_threshold_result(
+    *,
+    pdb_id: str,
+    input_file: Path,
+    geometry_quality: float,
+    minimal_geometry_quality: float,
+    passed_reason: str | None = None,
+    failed_reason_prefix: str = "Geometry quality score",
+) -> FilterQualityResult:
+    passed = geometry_quality >= minimal_geometry_quality
+    if passed:
+        return FilterQualityResult(
+            pdb_id=pdb_id,
+            input_file=input_file,
+            geometry_quality=geometry_quality,
+            passed=True,
+            reason=passed_reason,
+        )
+
+    return FilterQualityResult(
+        pdb_id=pdb_id,
+        input_file=input_file,
+        geometry_quality=geometry_quality,
+        passed=False,
+        reason=f"{failed_reason_prefix} {geometry_quality} < {minimal_geometry_quality}",
+    )
 
 
 def _associate_files_with_sorted_scores(
@@ -177,24 +210,14 @@ def filter_by_pdbe_quality(
                     )
                 )
                 continue
-            if score.geometry_quality >= minimal_geometry_quality:
-                results.append(
-                    FilterQualityResult(
-                        pdb_id=pdb_id,
-                        input_file=input_file,
-                        geometry_quality=score.geometry_quality,
-                        passed=True,
-                    )
+            results.append(
+                _quality_threshold_result(
+                    pdb_id=pdb_id,
+                    input_file=input_file,
+                    geometry_quality=score.geometry_quality,
+                    minimal_geometry_quality=minimal_geometry_quality,
                 )
-            else:
-                results.append(
-                    FilterQualityResult(
-                        pdb_id=pdb_id,
-                        input_file=input_file,
-                        geometry_quality=score.geometry_quality,
-                        reason=f"Geometry quality score {score.geometry_quality} < {minimal_geometry_quality}",
-                    )
-                )
+            )
 
     results.extend(
         FilterQualityResult(
@@ -215,52 +238,9 @@ def filter_by_pdbe_quality(
     return results
 
 
-def _build_selected_results(
-    selected_structures: set[QualityStructure],
-    minimal_geometry_quality: float,
-) -> list[FilterQualityResult]:
-    """Build filter results for selected clustered structures.
-
-    Assumes all structures have non-None geometry_quality.
-    """
-    results: list[FilterQualityResult] = []
-    for qs in selected_structures:
-        if qs.geometry_quality >= minimal_geometry_quality:
-            results.append(
-                FilterQualityResult(
-                    pdb_id=qs.id,
-                    input_file=qs.input_file,
-                    geometry_quality=qs.geometry_quality,
-                    passed=True,
-                )
-            )
-        else:
-            results.append(
-                FilterQualityResult(
-                    pdb_id=qs.id,
-                    input_file=qs.input_file,
-                    geometry_quality=qs.geometry_quality,
-                    passed=False,
-                    reason=f"Geometry quality score {qs.geometry_quality} < {minimal_geometry_quality}",
-                )
-            )
-
-    # Sort results deterministically: by geometry_quality descending (None last),
-    # then by pdb_id/input_file for stable ordering within same quality.
-    results.sort(
-        key=lambda r: (
-            r.geometry_quality is None if r.geometry_quality is not None else True,
-            -(r.geometry_quality if r.geometry_quality is not None else 0.0),
-            r.pdb_id or r.input_file.name if r.input_file else "",
-        )
-    )
-
-    return results
-
-
 @dataclass(frozen=True, slots=True)
-class PrepareQualityStructuresResult:
-    """Result of preparing quality structures from scores and located files.
+class QualityClusteringPartitions:
+    """Partitioned structures for clustered PDBe quality filtering.
 
     Attributes:
         clusterable_structures: List of QualityStructure objects with UniProt metadata
@@ -278,14 +258,14 @@ class PrepareQualityStructuresResult:
     resolution_passed_results: list[FilterQualityResult]
 
 
-def prepare_quality_structures(
+def partition_structures_for_quality_clustering(
     input_files: Iterable[Path],
     scores: dict[str, Scores],
     /,
     *,
     pass_given_resolution: bool = False,
-) -> PrepareQualityStructuresResult:
-    """Prepare QualityStructure objects by iterating over structure files and looking up quality scores.
+) -> QualityClusteringPartitions:
+    """Partition structures for clustered PDBe quality filtering.
 
     This function handles all I/O operations by reading structure files to extract
     UniProt metadata. It returns both clustered structures (with UniProt accession)
@@ -297,19 +277,19 @@ def prepare_quality_structures(
     silently skipped.
 
     Args:
-        input_files: Iterable of structure file paths (e.g. from
-            [glob_structure_files][protein_quest.structure.files.glob_structure_files]).
+        input_files: Iterable of structure file paths.
         scores: A dictionary mapping PDB IDs to their corresponding Scores objects.
         pass_given_resolution: If set, structures with a valid resolution will pass
             regardless of other criteria.
 
     Returns:
-        A PrepareQualityStructuresResult object containing:
+        A QualityClusteringPartitions object containing:
         - clusterable_structures: List of QualityStructure objects with UniProt metadata
             and non-None geometry_quality
         - unclustered_structures: List of UnclusteredStructure objects without UniProt accession
             but with non-None geometry_quality for filtering
         - no_quality_results: List of FilterQualityResult objects with None geometry_quality
+            or failed to read structure or extract metadata
         - resolution_passed_results: List of FilterQualityResult objects that passed due to
             valid resolution when pass_given_resolution is True
     """
@@ -333,39 +313,16 @@ def prepare_quality_structures(
             continue
         pdb_id = structure.name.lower()
 
-        if pdb_id not in scores and not (pass_given_resolution and structure.resolution != 0.0):
-            no_quality_results.append(
-                FilterQualityResult(
-                    pdb_id=pdb_id,
-                    input_file=input_file,
-                    passed=False,
-                    reason="No quality score found for PDB ID",
-                )
-            )
-            continue
-
-        score = scores[pdb_id]
+        geometry_quality = scores[pdb_id].geometry_quality if pdb_id in scores else None
 
         if pass_given_resolution and structure.resolution != 0.0:
             resolution_passed_results.append(
                 FilterQualityResult(
                     pdb_id=pdb_id,
                     input_file=input_file,
-                    geometry_quality=score.geometry_quality,
+                    geometry_quality=geometry_quality,
                     passed=True,
                     reason=f"Passed due to valid resolution {structure.resolution}",
-                )
-            )
-            continue
-
-        if score.geometry_quality is None:
-            no_quality_results.append(
-                FilterQualityResult(
-                    pdb_id=pdb_id,
-                    input_file=input_file,
-                    geometry_quality=None,
-                    passed=False,
-                    reason="No geometry quality score",
                 )
             )
             continue
@@ -378,29 +335,40 @@ def prepare_quality_structures(
                 FilterQualityResult(
                     pdb_id=pdb_id,
                     input_file=input_file,
-                    geometry_quality=score.geometry_quality,
+                    geometry_quality=geometry_quality,
                     passed=False,
                     reason=f"Failed to extract UniProt metadata: {e}",
                 )
             )
             continue
-        if metadata is None:
-            unclustered_structures.append(
-                UnclusteredStructure(
-                    input_file=input_file,
-                    pdb_id=pdb_id,
-                    geometry_quality=score.geometry_quality,
-                )
-            )
-            continue
-        if metadata.is_alphafold:
+        if metadata.is_alphafold and geometry_quality is None:
             resolution_passed_results.append(
                 FilterQualityResult(
                     pdb_id=pdb_id,
                     input_file=input_file,
-                    geometry_quality=score.geometry_quality,
+                    geometry_quality=geometry_quality,
                     passed=True,
                     reason="AlphaFold structure passes quality filter",
+                )
+            )
+            continue
+        if geometry_quality is None:
+            no_quality_results.append(
+                FilterQualityResult(
+                    pdb_id=pdb_id,
+                    input_file=input_file,
+                    geometry_quality=None,
+                    passed=False,
+                    reason="Missing geometry quality",
+                )
+            )
+            continue
+        if metadata.uniprot_accession is None:
+            unclustered_structures.append(
+                UnclusteredStructure(
+                    input_file=input_file,
+                    pdb_id=pdb_id,
+                    geometry_quality=geometry_quality,
                 )
             )
             continue
@@ -408,16 +376,16 @@ def prepare_quality_structures(
             QualityStructure(
                 id=pdb_id,
                 input_file=input_file,
+                uniprot_accession=metadata.uniprot_accession,
                 uniprot_start=metadata.uniprot_start,
                 uniprot_end=metadata.uniprot_end,
-                resolution_value=metadata.resolution,
                 sequence_identity=metadata.sequence_identity,
                 chain_length=metadata.chain_length,
-                geometry_quality=score.geometry_quality,
+                geometry_quality=geometry_quality,
             )
         )
 
-    return PrepareQualityStructuresResult(
+    return QualityClusteringPartitions(
         clusterable_structures=clusterable_structures,
         unclustered_structures=unclustered_structures,
         no_quality_results=no_quality_results,
@@ -425,48 +393,67 @@ def prepare_quality_structures(
     )
 
 
-def process_quality_clusters(
+def cluster_and_select_quality_structures(
     clusterable_structures: list[QualityStructure],
-    cluster_by_uniprot_accession_and_coverage: int,
-) -> tuple[set[QualityStructure], set[QualityStructure]]:
-    """Process clusterable structures and select top N per UniProt cluster.
+    top_per_cluster: int,
+    minimal_geometry_quality: float,
+) -> list[FilterQualityResult]:
+    """Cluster structures by UniProt coverage and select passing results.
 
     This function performs pure computation without any I/O operations. It groups
     structures by UniProt accession, clusters them by residue-range overlap, and
-    selects the top N structures per cluster.
+    marks structures as passed when they are either in the top N of their cluster
+    or meet the geometry quality threshold.
 
     Args:
         clusterable_structures: List of QualityStructure objects to cluster.
-        cluster_by_uniprot_accession_and_coverage: Number of top structures to keep
-            per UniProt cluster.
+        top_per_cluster: Maximum number of top structures to keep per UniProt cluster
+            before applying the geometry quality threshold fallback.
+        minimal_geometry_quality: Minimum geometry quality threshold for selection.
 
     Returns:
-        A tuple of (selected_structures, not_selected_structures) where:
-        - selected_structures: Set of QualityStructure objects selected as top N per cluster
-        - not_selected_structures: Set of QualityStructure objects not selected
+        A list of FilterQualityResult objects indicating the selection status of each structure.
     """
-    # Group by UniProt accession first
     accession_groups: dict[str, list[QualityStructure]] = {}
     for qs in clusterable_structures:
-        # Extract UniProt accession from id (format: "PDB_ID:UNIPROT_ACC")
-        uniprot_accession = qs.id.split(":")[-1]
+        uniprot_accession = qs.uniprot_accession
         accession_groups.setdefault(uniprot_accession, []).append(qs)
 
-    # Cluster by residue-range overlap within each UniProt group, select top N per cluster
     all_clusters: list[list[QualityStructure]] = []
     for structures in accession_groups.values():
         if structures:
             clusters = cluster_structures(structures)
             all_clusters.extend(clusters)
 
-    selected_structures: set[QualityStructure] = set()
+    results: list[FilterQualityResult] = []
     for cluster in all_clusters:
         sorted_cluster = sorted(cluster, key=structure_sort_key)
-        for qs in sorted_cluster[:cluster_by_uniprot_accession_and_coverage]:
-            selected_structures.add(qs)
-
-    not_selected = set(clusterable_structures) - selected_structures
-    return selected_structures, not_selected
+        for i, qs in enumerate(sorted_cluster):
+            in_top = i < top_per_cluster
+            ok_quality = qs.geometry_quality >= minimal_geometry_quality
+            if in_top and ok_quality:
+                results.append(
+                    FilterQualityResult(
+                        pdb_id=qs.id,
+                        input_file=qs.input_file,
+                        geometry_quality=qs.geometry_quality,
+                        passed=True,
+                    )
+                )
+            else:
+                results.append(
+                    FilterQualityResult(
+                        pdb_id=qs.id,
+                        input_file=qs.input_file,
+                        geometry_quality=qs.geometry_quality,
+                        passed=False,
+                        reason=(
+                            "Not selected in UniProt cluster (top "
+                            f"{top_per_cluster}) or geometry quality < {minimal_geometry_quality}"
+                        ),
+                    )
+                )
+    return results
 
 
 def filter_by_pdbe_quality_clustered(
@@ -501,68 +488,32 @@ def filter_by_pdbe_quality_clustered(
     Returns:
         A list of FilterQualityResult objects.
     """
-    if cluster_by_uniprot_accession_and_coverage == 0:
-        msg = (
-            "Clustering is disabled. Use filter_by_pdbe_quality() instead of "
-            "filter_by_pdbe_quality_clustered() when "
-            "cluster_by_uniprot_accession_and_coverage is 0."
-        )
-        raise ValueError(msg)
-
-    # Prepare quality structures (I/O operations)
-    quality_result = prepare_quality_structures(input_files, scores, pass_given_resolution=pass_given_resolution)
-
-    results: list[FilterQualityResult] = []
-
-    # Process clusters (pure computation) - now guaranteed to have non-None geometry_quality
-    selected_structures, not_selected = process_quality_clusters(
-        quality_result.clusterable_structures, cluster_by_uniprot_accession_and_coverage
+    partitions = partition_structures_for_quality_clustering(
+        input_files,
+        scores,
+        pass_given_resolution=pass_given_resolution,
     )
 
-    # Build results for selected clustered structures
-    results.extend(_build_selected_results(selected_structures, minimal_geometry_quality))
-
-    # Structures not in top N of their cluster get a "not selected" reason
-    results.extend(
-        FilterQualityResult(
-            pdb_id=qs.id,
-            geometry_quality=qs.geometry_quality,
-            passed=False,
-            reason=f"Not selected in UniProt cluster (top {cluster_by_uniprot_accession_and_coverage})",
-        )
-        for qs in not_selected
+    results = cluster_and_select_quality_structures(
+        partitions.clusterable_structures,
+        top_per_cluster=cluster_by_uniprot_accession_and_coverage,
+        minimal_geometry_quality=minimal_geometry_quality,
     )
 
-    # Unclustered structures (no UniProt accession): apply quality filtering
-    # Now guaranteed to have non-None geometry_quality
-    for us in quality_result.unclustered_structures:
-        if us.geometry_quality >= minimal_geometry_quality:
-            # Meets quality threshold
-            results.append(
-                FilterQualityResult(
-                    pdb_id=us.pdb_id,
-                    input_file=us.input_file,
-                    geometry_quality=us.geometry_quality,
-                    passed=True,
-                    reason="No UniProt accession but meets quality threshold",
-                )
+    for us in partitions.unclustered_structures:
+        results.append(
+            _quality_threshold_result(
+                pdb_id=us.pdb_id,
+                input_file=us.input_file,
+                geometry_quality=us.geometry_quality,
+                minimal_geometry_quality=minimal_geometry_quality,
+                passed_reason="No UniProt accession but meets quality threshold",
+                failed_reason_prefix="No UniProt accession and geometry quality",
             )
-        else:
-            # Fails quality threshold
-            results.append(
-                FilterQualityResult(
-                    pdb_id=us.pdb_id,
-                    input_file=us.input_file,
-                    geometry_quality=us.geometry_quality,
-                    passed=False,
-                    reason=(
-                        f"No UniProt accession and geometry quality {us.geometry_quality} < {minimal_geometry_quality}"
-                    ),
-                )
-            )
+        )
 
-    results.extend(quality_result.no_quality_results)
-    results.extend(quality_result.resolution_passed_results)
+    results.extend(partitions.resolution_passed_results)
+    results.extend(partitions.no_quality_results)
     return results
 
 
