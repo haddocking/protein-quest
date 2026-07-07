@@ -221,14 +221,6 @@ def filter_by_pdbe_quality(
 
     results.extend(
         FilterQualityResult(
-            pdb_id=pdb_id,
-            geometry_quality=scores[pdb_id].geometry_quality,
-            reason="File not found",
-        )
-        for pdb_id in located_ids.not_found
-    )
-    results.extend(
-        FilterQualityResult(
             input_file=extra,
             reason="File not found in quality scores",
         )

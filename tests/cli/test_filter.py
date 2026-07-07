@@ -655,14 +655,6 @@ def test_pdbe_quality(
             "reason": "No geometry quality score",
         },
         {
-            "pdb_id": "1a02",
-            "input_file": "",
-            "geometry_quality": "6.15",
-            "passed": "False",
-            "output_file": "",
-            "reason": "File not found",
-        },
-        {
             "pdb_id": "",
             "input_file": str(input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
             "geometry_quality": "",
