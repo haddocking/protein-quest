@@ -361,8 +361,8 @@ def pdbe_quality(
     *,
     minimal_geometry_quality: float = 50.0,
     top: PositiveInt | None = None,
-    pass_given_resolution: Annotated[bool, Parameter(negative="")] = False,
     cluster_by_uniprot_accession_and_coverage: PositiveInt | None = None,
+    pass_given_resolution: Annotated[bool, Parameter(negative="")] = False,
     write_stats: OutputFile | None = None,
     cache: CacheParameter | None = None,
     _: Common | None = None,
@@ -375,10 +375,14 @@ def pdbe_quality(
             Can be made with `protein-quest search pdbe-quality` command.
         output_dir: Directory to write filtered PDB/mmCIF files. Files are copied without modification.
         minimal_geometry_quality: Minimal geometry quality score to pass the filter.
-        top: Maximum number of files to keep. If not given, top is same as number of files that pass the filter.
-        pass_given_resolution: If set will passthrough files that have a valid resolution.
+        top: Maximum number of structures to keep, ranked by geometry quality (best first).
+            When used with ``--cluster-by-uniprot-accession-and-coverage``, applies only to
+            structures without a UniProt accession; the per-cluster limit is controlled separately
+            by ``--cluster-by-uniprot-accession-and-coverage``.
+            If not given, all structures that meet the quality threshold are kept.
         cluster_by_uniprot_accession_and_coverage: Number of top structures to keep per UniProt cluster.
             Structures are grouped by UniProt accession, then clustered by residue-range overlap.
+        pass_given_resolution: If set will passthrough files that have a valid resolution.
         write_stats: Write filter statistics to file.
             In CSV format with columns:
             `<pdb_id>,<input_file>,<geometry_quality>,<passed>,<output_file>,<reason>`.
@@ -403,6 +407,7 @@ def pdbe_quality(
             scores,
             input_files,
             minimal_geometry_quality=minimal_geometry_quality,
+            top=top,
             pass_given_resolution=pass_given_resolution,
             cluster_by_uniprot_accession_and_coverage=cluster_by_uniprot_accession_and_coverage,
         )

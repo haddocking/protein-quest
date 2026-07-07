@@ -460,6 +460,7 @@ def filter_by_pdbe_quality_clustered(
     /,
     *,
     minimal_geometry_quality: float = 0.0,
+    top: int | None = None,
     pass_given_resolution: bool = False,
     cluster_by_uniprot_accession_and_coverage: int = 1,
 ) -> list[FilterQualityResult]:
@@ -478,6 +479,9 @@ def filter_by_pdbe_quality_clustered(
         input_files: Iterable of structure file paths (e.g. from
             [glob_structure_files][protein_quest.structure.files.glob_structure_files]).
         minimal_geometry_quality: Minimum geometry quality score to pass the filter.
+        top: Maximum number of unclustered structures (those without a UniProt accession)
+            that can pass the filter. Structures are ranked by geometry quality descending
+            and only the top N are allowed to pass. If None, all qualifying structures pass.
         pass_given_resolution: If set, structures with a valid resolution will pass
             regardless of other criteria.
         cluster_by_uniprot_accession_and_coverage: Number of top structures to keep
@@ -498,17 +502,28 @@ def filter_by_pdbe_quality_clustered(
         minimal_geometry_quality=minimal_geometry_quality,
     )
 
-    for us in partitions.unclustered_structures:
-        results.append(
-            _quality_threshold_result(
+    sorted_unclustered = sorted(partitions.unclustered_structures, key=lambda us: us.geometry_quality, reverse=True)
+    passed_unclustered = 0
+    for us in sorted_unclustered:
+        result = _quality_threshold_result(
+            pdb_id=us.pdb_id,
+            input_file=us.input_file,
+            geometry_quality=us.geometry_quality,
+            minimal_geometry_quality=minimal_geometry_quality,
+            passed_reason="No UniProt accession but meets quality threshold",
+            failed_reason_prefix="No UniProt accession and geometry quality",
+        )
+        if result.passed and top is not None and passed_unclustered >= top:
+            result = FilterQualityResult(
                 pdb_id=us.pdb_id,
                 input_file=us.input_file,
                 geometry_quality=us.geometry_quality,
-                minimal_geometry_quality=minimal_geometry_quality,
-                passed_reason="No UniProt accession but meets quality threshold",
-                failed_reason_prefix="No UniProt accession and geometry quality",
+                passed=False,
+                reason=f"Excluded by top {top} limit for unclustered structures: {result.reason}",
             )
-        )
+        if result.passed:
+            passed_unclustered += 1
+        results.append(result)
 
     results.extend(partitions.resolution_passed_results)
     results.extend(partitions.no_quality_results)
