@@ -45,7 +45,6 @@ class QualityStructure:
         """
         return 0.0
 
-
 @dataclass(frozen=True, slots=True)
 class UnclusteredStructure:
     """Structure without UniProt accession that cannot be clustered.
@@ -338,6 +337,18 @@ def filter_unclustered_structures(
     top: int | None,
     cluster: bool = False,
 ) -> list[FilterQualityResult]:
+    """Filter unclustered structures by geometry quality and top N limit.
+
+    Args:
+        unclustered_structures: List of UnclusteredStructure objects to filter.
+        minimal_geometry_quality: Minimum geometry quality threshold for selection.
+        top: Maximum number of unclustered structures that can pass the filter.
+            Structures are ranked by geometry quality descending and only the top N are allowed to pass.
+        cluster: If set, indicates that the filtering is part of a clustering process.
+
+    Returns:
+        A list of FilterQualityResult objects indicating the selection status of each unclustered structure.
+    """
     sorted_unclustered = sort_structures(unclustered_structures)
     passed_unclustered = 0
     results: list[FilterQualityResult] = []

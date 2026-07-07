@@ -687,9 +687,7 @@ def test_pdbe_quality(
             "output_file": "",
             "passed": "False",
             "pdb_id": "",
-            "reason": "Failed to read structure: "
-            f"{input_dir / 'unreadable.cif'}:1:0(0): "
-            "expected block header (data_)",
+            "reason": f"Failed to read structure: {input_dir / 'unreadable.cif'}:1:0(0): expected block header (data_)",
         },
     ]
     assert stats == expected_stats
