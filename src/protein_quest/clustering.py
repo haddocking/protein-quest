@@ -49,37 +49,21 @@ class SortableStructure(Hashable, Protocol):
     def geometry_quality(self) -> float | None: ...
 
 
-class ClusterableStructure(Hashable, Protocol):
+class ClusterableStructure(SortableStructure, Protocol):
     """Protocol describing the minimum interface required for clustering.
 
+    Extends [SortableStructure][protein_quest.clustering.SortableStructure] with
+    residue-range information needed for overlap-based clustering.
+
     Attributes:
-        id: Identifier of the structure, used as a deterministic tie-breaker.
         uniprot_start: Lowest UniProt residue position covered by the structure.
         uniprot_end: Highest UniProt residue position covered by the structure.
-        resolution_value: Resolution in Angstrom. ``0.0`` means
-            missing/undesirable so entries with a real resolution rank first.
-        sequence_identity: Sequence identity of the structure to the UniProt
-            sequence in range ``[0, 1]``.
-            For example gaps or mutations in structure versus UniProt sequence will lower this value.
-        chain_length: Number of residues in the chain mapped to the UniProt sequence.
-        geometry_quality: Geometry quality score (``0.0`` - ``100.0``) or
-            ``None`` if unavailable. Higher is better.
     """
 
-    @property
-    def id(self) -> str: ...
     @property
     def uniprot_start(self) -> int: ...
     @property
     def uniprot_end(self) -> int: ...
-    @property
-    def resolution_value(self) -> float: ...
-    @property
-    def sequence_identity(self) -> float: ...
-    @property
-    def chain_length(self) -> int: ...
-    @property
-    def geometry_quality(self) -> float | None: ...
 
 
 def structure_overlap(a: ClusterableStructure, b: ClusterableStructure) -> int:
