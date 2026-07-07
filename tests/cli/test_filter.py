@@ -599,6 +599,8 @@ def test_pdbe_quality(
         str(input_dir),
         str(quality_json),
         str(output_dir),
+        "--scheduler-address",
+        "sequential",
         "--write-stats",
         str(stats_csv),
     ]
@@ -761,6 +763,8 @@ def test_pdbe_quality_with_clustering(
         str(input_dir),
         str(quality_json),
         str(output_dir),
+        "--scheduler-address",
+        "sequential",
         "--write-stats",
         str(stats_csv),
         "--minimal-geometry-quality",
