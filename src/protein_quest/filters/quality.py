@@ -108,7 +108,7 @@ class QualityClusteringPartitions:
             but with non-None geometry_quality for filtering
         no_quality_results: List of FilterQualityResult objects with None geometry_quality
         resolution_passed_results: List of FilterQualityResult objects that passed due to
-            valid resolution when pass_given_resolution is True
+            valid resolution when pass_given_resolution is True or when the structure is an AlphaFold model.
     """
 
     clusterable_structures: list[QualityStructure] = field(default_factory=list)
