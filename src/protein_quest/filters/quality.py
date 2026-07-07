@@ -3,11 +3,15 @@ import logging
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 from cyclopts.types import StdioPath
+from dask.distributed import Client
+from distributed.deploy.cluster import Cluster
 from tqdm.rich import tqdm
 
 from protein_quest.clustering import cluster_structures, sort_structures
+from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
 from protein_quest.pdbe.ws import Scores
 from protein_quest.structure.formats import read_structure
 from protein_quest.structure.metadata import structure_metadata
@@ -116,6 +120,126 @@ class QualityClusteringPartitions:
     no_quality_results: list[FilterQualityResult] = field(default_factory=list)
     resolution_passed_results: list[FilterQualityResult] = field(default_factory=list)
 
+    def extend(self, others: Iterable["QualityClusteringPartitions"]) -> "QualityClusteringPartitions":
+        """Extend the current partitions with other QualityClusteringPartitions.
+
+        Args:
+            others: An iterable of QualityClusteringPartitions to extend the current partitions with.
+
+        Returns:
+            The current QualityClusteringPartitions instance with extended lists.
+        """
+        for other in others:
+            self.clusterable_structures.extend(other.clusterable_structures)
+            self.unclustered_structures.extend(other.unclustered_structures)
+            self.no_quality_results.extend(other.no_quality_results)
+            self.resolution_passed_results.extend(other.resolution_passed_results)
+        return self
+
+
+def _structure_file2partition(
+    input_file: Path,
+    scores: Mapping[str, Scores],
+    *,
+    pass_given_resolution: bool = False,
+    cluster: bool = True,
+) -> QualityClusteringPartitions:
+    parts = QualityClusteringPartitions()
+
+    try:
+        structure = read_structure(input_file)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Failed to read structure {input_file}: {e}")
+        parts.no_quality_results.append(
+            FilterQualityResult(
+                input_file=input_file,
+                passed=False,
+                reason=f"Failed to read structure: {e}",
+            )
+        )
+        return parts
+
+    pdb_id = structure.name
+    lowered_pdb_id = pdb_id.lower()
+    geometry_quality = scores[lowered_pdb_id].geometry_quality if lowered_pdb_id in scores else None
+
+    if pass_given_resolution and structure.resolution != 0.0:
+        parts.resolution_passed_results.append(
+            FilterQualityResult(
+                pdb_id=pdb_id,
+                input_file=input_file,
+                geometry_quality=geometry_quality,
+                passed=True,
+                reason=f"Passed due to valid resolution {structure.resolution}",
+            )
+        )
+        return parts
+
+    try:
+        metadata = structure_metadata(structure, path=input_file)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Failed to extract metadata from {input_file}: {e}")
+        parts.no_quality_results.append(
+            FilterQualityResult(
+                pdb_id=pdb_id,
+                input_file=input_file,
+                geometry_quality=geometry_quality,
+                passed=False,
+                reason=f"Failed to extract metadata: {e}",
+            )
+        )
+        return parts
+
+    if metadata.is_alphafold and geometry_quality is None:
+        parts.resolution_passed_results.append(
+            FilterQualityResult(
+                pdb_id=pdb_id,
+                input_file=input_file,
+                geometry_quality=geometry_quality,
+                passed=True,
+                reason="AlphaFold structure passes quality filter",
+            )
+        )
+        return parts
+
+    if geometry_quality is None:
+        parts.no_quality_results.append(
+            FilterQualityResult(
+                pdb_id=pdb_id,
+                input_file=input_file,
+                geometry_quality=None,
+                passed=False,
+                reason="Missing geometry quality",
+            )
+        )
+        return parts
+
+    if metadata.uniprot_accession is None or not cluster:
+        parts.unclustered_structures.append(
+            UnclusteredStructure(
+                input_file=input_file,
+                pdb_id=pdb_id,
+                geometry_quality=geometry_quality,
+                chain_length=metadata.chain_length,
+                sequence_identity=metadata.sequence_identity,
+            )
+        )
+        return parts
+
+    parts.clusterable_structures.append(
+        QualityStructure(
+            id=pdb_id,
+            input_file=input_file,
+            uniprot_accession=metadata.uniprot_accession,
+            uniprot_start=metadata.uniprot_start,
+            uniprot_end=metadata.uniprot_end,
+            sequence_identity=metadata.sequence_identity,
+            chain_length=metadata.chain_length,
+            geometry_quality=geometry_quality,
+        )
+    )
+    return parts
+
 
 def partition_structures_for_quality_clustering(
     input_files: Iterable[Path],
@@ -124,6 +248,7 @@ def partition_structures_for_quality_clustering(
     *,
     pass_given_resolution: bool = False,
     cluster: bool = True,
+    scheduler_address: str | Cluster | Literal["sequential"] | None = None,
 ) -> QualityClusteringPartitions:
     """Partition structures for clustered PDBe quality filtering.
 
@@ -144,6 +269,9 @@ def partition_structures_for_quality_clustering(
         cluster: If set, structures with UniProt accession will be clustered by residue-range
             overlap. If not set, all structures with UniProt accession will be treated as
             unclustered.
+        scheduler_address: Address of the Dask scheduler to connect to.
+            If not provided, will create a local cluster.
+            If set to ``sequential`` will run tasks sequentially.
 
     Returns:
         A QualityClusteringPartitions object containing:
@@ -156,109 +284,32 @@ def partition_structures_for_quality_clustering(
         - resolution_passed_results: List of FilterQualityResult objects that passed due to
             valid resolution when pass_given_resolution is True
     """
-    parts = QualityClusteringPartitions()
+    if scheduler_address == "sequential":
+        file_partitions = [
+            _structure_file2partition(
+                input_file,
+                scores,
+                pass_given_resolution=pass_given_resolution,
+                cluster=cluster,
+            )
+            for input_file in tqdm(input_files, desc="Building clusters from PDBe quality", unit="file")
+        ]
+    else:
+        with (
+            configure_dask_scheduler(scheduler_address, name="partition-quality-structures") as dask_cluster,
+            Client(dask_cluster) as client,
+        ):
+            client.forward_logging()
+            file_partitions = dask_map_with_progress(
+                client,
+                _structure_file2partition,
+                list(input_files),
+                scores=scores,
+                pass_given_resolution=pass_given_resolution,
+                cluster=cluster,
+            )
 
-    for input_file in tqdm(input_files, desc="Building clusters from PDBe quality", unit="file"):
-        try:
-            structure = read_structure(input_file)
-        except Exception as e:  # noqa: BLE001
-            logger.warning(f"Failed to read structure {input_file}: {e}")
-            parts.no_quality_results.append(
-                FilterQualityResult(
-                    input_file=input_file,
-                    passed=False,
-                    reason=f"Failed to read structure: {e}",
-                )
-            )
-            continue
-        pdb_id = structure.name
-        lowered_pdb_id = pdb_id.lower()
-        geometry_quality = scores[lowered_pdb_id].geometry_quality if lowered_pdb_id in scores else None
-
-        if pass_given_resolution and structure.resolution != 0.0:
-            parts.resolution_passed_results.append(
-                FilterQualityResult(
-                    pdb_id=pdb_id,
-                    input_file=input_file,
-                    geometry_quality=geometry_quality,
-                    passed=True,
-                    reason=f"Passed due to valid resolution {structure.resolution}",
-                )
-            )
-            continue
-
-        try:
-            metadata = structure_metadata(structure, path=input_file)
-        except Exception as e:  # noqa: BLE001
-            logger.warning(f"Failed to extract metadata from {input_file}: {e}")
-            parts.no_quality_results.append(
-                FilterQualityResult(
-                    pdb_id=pdb_id,
-                    input_file=input_file,
-                    geometry_quality=geometry_quality,
-                    passed=False,
-                    reason=f"Failed to extract metadata: {e}",
-                )
-            )
-            continue
-        if metadata.is_alphafold and geometry_quality is None:
-            parts.resolution_passed_results.append(
-                FilterQualityResult(
-                    pdb_id=pdb_id,
-                    input_file=input_file,
-                    geometry_quality=geometry_quality,
-                    passed=True,
-                    reason="AlphaFold structure passes quality filter",
-                )
-            )
-            continue
-        if geometry_quality is None:
-            parts.no_quality_results.append(
-                FilterQualityResult(
-                    pdb_id=pdb_id,
-                    input_file=input_file,
-                    geometry_quality=None,
-                    passed=False,
-                    reason="Missing geometry quality",
-                )
-            )
-            continue
-        if metadata.uniprot_accession is None:
-            parts.unclustered_structures.append(
-                UnclusteredStructure(
-                    input_file=input_file,
-                    pdb_id=pdb_id,
-                    geometry_quality=geometry_quality,
-                    chain_length=metadata.chain_length,
-                    sequence_identity=metadata.sequence_identity,
-                )
-            )
-            continue
-        if not cluster:
-            parts.unclustered_structures.append(
-                UnclusteredStructure(
-                    input_file=input_file,
-                    pdb_id=pdb_id,
-                    geometry_quality=geometry_quality,
-                    chain_length=metadata.chain_length,
-                    sequence_identity=metadata.sequence_identity,
-                )
-            )
-            continue
-        parts.clusterable_structures.append(
-            QualityStructure(
-                id=pdb_id,
-                input_file=input_file,
-                uniprot_accession=metadata.uniprot_accession,
-                uniprot_start=metadata.uniprot_start,
-                uniprot_end=metadata.uniprot_end,
-                sequence_identity=metadata.sequence_identity,
-                chain_length=metadata.chain_length,
-                geometry_quality=geometry_quality,
-            )
-        )
-
-    return parts
+    return QualityClusteringPartitions().extend(file_partitions)
 
 
 def cluster_and_select_quality_structures(
@@ -388,6 +439,7 @@ def filter_by_pdbe_quality(
     top: int | None = None,
     pass_given_resolution: bool = False,
     cluster_by_uniprot_accession_and_coverage: int = 1,
+    scheduler_address: str | Cluster | Literal["sequential"] | None = None,
 ) -> list[FilterQualityResult]:
     """Filter structure files by PDBe quality with optional UniProt-based clustering.
 
@@ -410,24 +462,32 @@ def filter_by_pdbe_quality(
             regardless of other criteria.
         cluster_by_uniprot_accession_and_coverage: Number of top structures to keep
             per UniProt cluster. If 0, clustering is disabled.
+        scheduler_address: Address of the Dask scheduler to connect to.
+            If not provided, will create a local cluster.
+            If set to ``sequential`` will run tasks sequentially.
 
     Returns:
         A list of FilterQualityResult objects.
     """
     cluster = cluster_by_uniprot_accession_and_coverage > 0
+    logger.info("Partitioning structure files for PDBe quality filtering (cluster=%s)", cluster)
     partitions = partition_structures_for_quality_clustering(
         input_files,
         scores,
         pass_given_resolution=pass_given_resolution,
         cluster=cluster,
+        scheduler_address=scheduler_address,
     )
 
+    logger.info("Clustering and selecting quality structures")
     results = cluster_and_select_quality_structures(
         partitions.clusterable_structures,
         top_per_cluster=cluster_by_uniprot_accession_and_coverage,
         minimal_geometry_quality=minimal_geometry_quality,
     )
 
+    message = "Filtering unclustered structures by PDBe quality" if cluster else "Filtering structures by PDBe quality"
+    logger.info(message)
     results.extend(
         filter_unclustered_structures(
             partitions.unclustered_structures,

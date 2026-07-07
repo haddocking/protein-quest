@@ -362,6 +362,7 @@ def pdbe_quality(
     top: PositiveInt | None = None,
     cluster_by_uniprot_accession_and_coverage: NonNegativeInt = 0,
     pass_given_resolution: Annotated[bool, Parameter(negative="")] = False,
+    scheduler_address: str | None = None,
     write_stats: OutputFile | None = None,
     cache: CacheParameter | None = None,
     _: Common | None = None,
@@ -382,6 +383,9 @@ def pdbe_quality(
         cluster_by_uniprot_accession_and_coverage: Number of top structures to keep per UniProt cluster.
             Structures are grouped by UniProt accession, then clustered by residue-range overlap.
         pass_given_resolution: If set will passthrough files that have a valid resolution.
+        scheduler_address: Address of the Dask scheduler to connect to.
+            If not provided, will create a local cluster.
+            If set to `sequential` will run tasks sequentially.
         write_stats: Write filter statistics to file.
             In CSV format with columns:
             `<pdb_id>,<input_file>,<geometry_quality>,<passed>,<output_file>,<reason>`.
@@ -399,8 +403,8 @@ def pdbe_quality(
 
     logger.info('Finding structure files in "%s" directory that match ids from PDBe quality scores', input_dir)
 
-    logger.info("Filtering structure files by PDBe quality scores")
     input_files = sorted(glob_structure_files(input_dir))
+    logger.info("Filtering structure %d files by PDBe quality scores", len(input_files))
     results = filter_by_pdbe_quality(
         scores,
         input_files,
@@ -408,6 +412,7 @@ def pdbe_quality(
         top=top,
         pass_given_resolution=pass_given_resolution,
         cluster_by_uniprot_accession_and_coverage=cluster_by_uniprot_accession_and_coverage,
+        scheduler_address=scheduler_address,
     )
 
     for result in results:
