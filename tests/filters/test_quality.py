@@ -152,7 +152,7 @@ def test_filter_unclustered_structures_passed_but_outside_top():
             input_file=Path("/a.cif"),
             geometry_quality=80.0,
             passed=True,
-            reason="",
+            reason=None,
         ),
         FilterQualityResult(
             pdb_id="2BBB",
