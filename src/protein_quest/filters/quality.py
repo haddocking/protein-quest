@@ -39,7 +39,7 @@ class QualityStructure:
 
     @property
     def resolution_value(self) -> float:
-        """Return ignored resolultion so cluster member sorting is done on geometry quality
+        """Return ignored resolution so cluster member sorting is done on geometry quality
 
         See [structure_sort_key][protein_quest.clustering.structure_sort_key] for sorting logic.
         """
@@ -65,7 +65,7 @@ class UnclusteredStructure:
 
     @property
     def resolution_value(self) -> float:
-        """Return ignored resolultion so cluster member sorting is done on geometry quality
+        """Return ignored resolution so cluster member sorting is done on geometry quality
 
         See [structure_sort_key][protein_quest.clustering.structure_sort_key] for sorting logic.
         """
@@ -270,13 +270,12 @@ def cluster_and_select_quality_structures(
 
     This function performs pure computation without any I/O operations. It groups
     structures by UniProt accession, clusters them by residue-range overlap, and
-    marks structures as passed when they are either in the top N of their cluster
-    or meet the geometry quality threshold.
-
+    marks structures as passed only when they are in the top N of their cluster
+    and meet the geometry quality threshold.
     Args:
         clusterable_structures: Iterable of QualityStructure objects to cluster.
-        top_per_cluster: Maximum number of top structures to keep per UniProt cluster
-            before applying the geometry quality threshold fallback.
+        top_per_cluster: Maximum number of top structures to keep per UniProt cluster.
+            (Selection still requires geometry_quality >= minimal_geometry_quality.)
         minimal_geometry_quality: Minimum geometry quality threshold for selection.
 
     Returns:
@@ -397,9 +396,8 @@ def filter_by_pdbe_quality(
     selected using the geometry-quality-aware sort key.
 
     This is opt-in via the ``cluster_by_uniprot_accession_and_coverage`` parameter.
-    When not set (or 0), falls back to the standard
-    [filter_by_pdbe_quality][protein_quest.filters.quality.filter_by_pdbe_quality] path.
-
+    When set to 0, UniProt-accessioned structures are not clustered by coverage overlap;
+    instead, they are treated like unclustered structures and ranked globally by geometry quality.
     Args:
         scores: A mapping from PDB IDs to their corresponding Scores objects.
         input_files: Iterable of structure file paths (e.g. from
