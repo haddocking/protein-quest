@@ -8,7 +8,7 @@ from typing import TypedDict
 from cyclopts.types import StdioPath
 from tqdm.rich import tqdm
 
-from protein_quest.clustering import cluster_structures, structure_sort_key
+from protein_quest.clustering import cluster_structures
 from protein_quest.pdbe.ws import Scores
 from protein_quest.structure.files import LocateStructureFilesByIdResult
 from protein_quest.structure.formats import read_structure
@@ -311,9 +311,9 @@ def partition_structures_for_quality_clustering(
                 )
             )
             continue
-        pdb_id = structure.name.lower()
-
-        geometry_quality = scores[pdb_id].geometry_quality if pdb_id in scores else None
+        pdb_id = structure.name
+        lowered_pdb_id = pdb_id.lower()
+        geometry_quality = scores[lowered_pdb_id].geometry_quality if lowered_pdb_id in scores else None
 
         if pass_given_resolution and structure.resolution != 0.0:
             resolution_passed_results.append(
@@ -330,14 +330,14 @@ def partition_structures_for_quality_clustering(
         try:
             metadata = structure_metadata(structure, path=input_file)
         except Exception as e:  # noqa: BLE001
-            logger.warning(f"Failed to extract UniProt metadata from {input_file}: {e}")
+            logger.warning(f"Failed to extract metadata from {input_file}: {e}")
             no_quality_results.append(
                 FilterQualityResult(
                     pdb_id=pdb_id,
                     input_file=input_file,
                     geometry_quality=geometry_quality,
                     passed=False,
-                    reason=f"Failed to extract UniProt metadata: {e}",
+                    reason=f"Failed to extract metadata: {e}",
                 )
             )
             continue
@@ -421,14 +421,12 @@ def cluster_and_select_quality_structures(
 
     all_clusters: list[list[QualityStructure]] = []
     for structures in accession_groups.values():
-        if structures:
-            clusters = cluster_structures(structures)
-            all_clusters.extend(clusters)
+        clusters = cluster_structures(structures)
+        all_clusters.extend(clusters)
 
     results: list[FilterQualityResult] = []
     for cluster in all_clusters:
-        sorted_cluster = sorted(cluster, key=structure_sort_key)
-        for i, qs in enumerate(sorted_cluster):
+        for i, qs in enumerate(cluster):
             in_top = i < top_per_cluster
             ok_quality = qs.geometry_quality >= minimal_geometry_quality
             if in_top and ok_quality:
