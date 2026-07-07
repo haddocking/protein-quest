@@ -45,6 +45,7 @@ class QualityStructure:
         """
         return 0.0
 
+
 @dataclass(frozen=True, slots=True)
 class UnclusteredStructure:
     """Structure without UniProt accession that cannot be clustered.
