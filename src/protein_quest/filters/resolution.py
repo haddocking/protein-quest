@@ -68,6 +68,10 @@ class ResolutionFilterStatistics:
     def resolution_value(self) -> float:
         return self.resolution
 
+    @property
+    def geometry_quality(self) -> float | None:
+        return None
+
     def __hash__(self) -> int:
         return hash(
             (
@@ -313,7 +317,9 @@ def _sort_by_resolution_and_global_top(
     return ranked
 
 
-def _uniprot_group_sort_key(results: list[ResolutionFilterStatistics]) -> tuple[float, int, float, int, str]:
+def _uniprot_group_sort_key(
+    results: list[ResolutionFilterStatistics],
+) -> tuple[float, int, float, int, float, int, str]:
     """Take best best member in best cluster of clusters for a uniprot accession and return its sort key."""
     best_cluster = results[0]
     return structure_sort_key(best_cluster)

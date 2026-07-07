@@ -26,6 +26,7 @@ class SimpleStructure:
     resolution_value: float = 0.0
     sequence_identity: float = 1.0
     chain_length: int = 0
+    geometry_quality: float | None = None
 
 
 def make_structure(ident: str, start: int, end: int) -> SimpleStructure:
@@ -39,6 +40,7 @@ class BrokenChainLengthStructure:
     uniprot_end: int
     resolution_value: float = 0.0
     sequence_identity: float = 1.0
+    geometry_quality: float | None = None
 
     @property
     def chain_length(self) -> int:
@@ -126,6 +128,49 @@ class TestSortStructures:
                 },
                 ["3CCC", "2BBB"],
                 id="sort_by_resolution_unset_last",
+            ),
+            # geometry_quality as tiebreaker: same seq_identity, resolution, chain_length
+            pytest.param(
+                {
+                    SimpleStructure("2BBB", 1, 250, resolution_value=1.0, chain_length=250, geometry_quality=40.0),
+                    SimpleStructure("3CCC", 1, 250, resolution_value=1.0, chain_length=250, geometry_quality=80.0),
+                },
+                ["3CCC", "2BBB"],
+                id="sort_by_geometry_quality_higher_wins",
+            ),
+            pytest.param(
+                {
+                    SimpleStructure("1AAA", 1, 250, resolution_value=1.0, chain_length=250, geometry_quality=90.0),
+                    SimpleStructure("2BBB", 1, 250, resolution_value=1.0, chain_length=250, geometry_quality=50.0),
+                    SimpleStructure("3CCC", 1, 250, resolution_value=1.0, chain_length=250, geometry_quality=10.0),
+                },
+                ["1AAA", "2BBB", "3CCC"],
+                id="sort_by_geometry_quality_three_way",
+            ),
+            pytest.param(
+                {
+                    SimpleStructure("2BBB", 1, 250, resolution_value=1.0, chain_length=250, geometry_quality=None),
+                    SimpleStructure("3CCC", 1, 250, resolution_value=1.0, chain_length=250, geometry_quality=60.0),
+                },
+                ["3CCC", "2BBB"],
+                id="sort_by_geometry_quality_none_sorts_last",
+            ),
+            pytest.param(
+                {
+                    SimpleStructure("2BBB", 1, 250, resolution_value=1.0, chain_length=250, geometry_quality=0.0),
+                    SimpleStructure("3CCC", 1, 250, resolution_value=1.0, chain_length=250, geometry_quality=None),
+                },
+                ["2BBB", "3CCC"],
+                id="sort_by_geometry_quality_zero_before_none",
+            ),
+            pytest.param(
+                {
+                    # geometry_quality breaks chain_length tie
+                    SimpleStructure("2BBB", 1, 100, chain_length=100, geometry_quality=10.0),
+                    SimpleStructure("3CCC", 1, 200, chain_length=200, geometry_quality=10.0),
+                },
+                ["3CCC", "2BBB"],
+                id="geometry_quality_does_not_override_chain_length",
             ),
         ],
     )

@@ -6,7 +6,7 @@ import os
 from typing import TYPE_CHECKING, Annotated
 
 from cyclopts import App, Parameter
-from cyclopts.types import NormFloat, PositiveInt
+from cyclopts.types import NonNegativeInt, NormFloat, PositiveInt
 from rich.panel import Panel
 
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_files_on_confidence
@@ -25,7 +25,10 @@ from protein_quest.cli.common import (
 from protein_quest.converter import converter
 from protein_quest.filters.chain import filter_files_on_chain
 from protein_quest.filters.combined import CombinedFilterQuery, combined_filter
-from protein_quest.filters.quality import filter_by_pdbe_quality, write_quality_stats_csv
+from protein_quest.filters.quality import (
+    filter_by_pdbe_quality,
+    write_quality_stats_csv,
+)
 from protein_quest.filters.residues import filter_files_on_residues
 from protein_quest.filters.resolution import (
     filter_files_on_resolution,
@@ -34,7 +37,7 @@ from protein_quest.filters.resolution import (
 from protein_quest.filters.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
 from protein_quest.pdbe.ws import Scores
 from protein_quest.structure.chains import ChainIdSystem
-from protein_quest.structure.files import glob_structure_files, locate_structure_file, locate_structure_files_by_id
+from protein_quest.structure.files import glob_structure_files, locate_structure_file
 from protein_quest.utils import copyfile
 
 if TYPE_CHECKING:
@@ -358,6 +361,7 @@ def pdbe_quality(
     *,
     minimal_geometry_quality: float = 50.0,
     top: PositiveInt | None = None,
+    cluster_by_uniprot_accession_and_coverage: NonNegativeInt = 0,
     pass_given_resolution: Annotated[bool, Parameter(negative="")] = False,
     write_stats: OutputFile | None = None,
     cache: CacheParameter | None = None,
@@ -371,7 +375,13 @@ def pdbe_quality(
             Can be made with `protein-quest search pdbe-quality` command.
         output_dir: Directory to write filtered PDB/mmCIF files. Files are copied without modification.
         minimal_geometry_quality: Minimal geometry quality score to pass the filter.
-        top: Maximum number of files to keep. If not given, top is same as number of files that pass the filter.
+        top: Maximum number of structures to keep, ranked by geometry quality (best first).
+            When used with ``--cluster-by-uniprot-accession-and-coverage``, applies only to
+            structures without a UniProt accession; the per-cluster limit is controlled separately
+            by ``--cluster-by-uniprot-accession-and-coverage``.
+            If not given, all structures that meet the quality threshold are kept.
+        cluster_by_uniprot_accession_and_coverage: Number of top structures to keep per UniProt cluster.
+            Structures are grouped by UniProt accession, then clustered by residue-range overlap.
         pass_given_resolution: If set will passthrough files that have a valid resolution.
         write_stats: Write filter statistics to file.
             In CSV format with columns:
@@ -389,15 +399,16 @@ def pdbe_quality(
         scores = converter.loads(f.read(), dict[str, Scores])
 
     logger.info('Finding structure files in "%s" directory that match ids from PDBe quality scores', input_dir)
-    located_ids = locate_structure_files_by_id(set(scores.keys()), input_dir)
 
     logger.info("Filtering structure files by PDBe quality scores")
+    input_files = sorted(glob_structure_files(input_dir))
     results = filter_by_pdbe_quality(
         scores,
-        located_ids,
+        input_files,
         minimal_geometry_quality=minimal_geometry_quality,
         top=top,
         pass_given_resolution=pass_given_resolution,
+        cluster_by_uniprot_accession_and_coverage=cluster_by_uniprot_accession_and_coverage,
     )
 
     for result in results:
@@ -406,7 +417,6 @@ def pdbe_quality(
 
     rprint(f"Wrote {len([r for r in results if r.passed])} files to {output_dir} directory.")
     rprint(f"Discarded {len([r for r in results if not r.passed])} files due to any reason.")
-    rprint(f"Discarded {len(located_ids.extras)} files in {input_dir} directory that were not in {quality_json}.")
 
     if write_stats:
         if str(write_stats) != "-":

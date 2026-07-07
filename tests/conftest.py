@@ -72,6 +72,25 @@ def no_uniprot_cif(sample2_cif: Path, tmp_path: Path) -> Path:
 
 
 @pytest.fixture
+def unreadable_cif(tmp_path: Path) -> Path:
+    """Create a CIF file that cannot be read by gemmi."""
+    unreadable_cif_path = tmp_path / "unreadable.cif"
+    unreadable_cif_path.write_text("This is not a valid CIF file.")
+    return unreadable_cif_path
+
+
+@pytest.fixture
+def atomless_cif(tmp_path: Path) -> Path:
+    structure = gemmi.Structure()
+    structure.name = "1ABC"
+    structure.info["_entry.id"] = "1ABC"
+    fn = tmp_path / "atomless.cif"
+    write_structure(structure, fn)
+    # Gemmi has shortcut for atomless structures, which causes name to be  " " when read.
+    return fn
+
+
+@pytest.fixture
 def download_cache_dir() -> Path:
     cache_dir = Path(user_cache_dir("protein-quest-tests"))
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -160,4 +179,18 @@ def all_cifs(
         af_cif,
         nmr_cif,
         em_cif,
+    ]
+
+
+@pytest.fixture
+def bad_cifs(
+    no_uniprot_cif: Path,
+    unreadable_cif: Path,
+    atomless_cif: Path,
+) -> list[Path]:
+    """List of all CIF fixtures that raise an error when read or when metadata is extracted."""
+    return [
+        no_uniprot_cif,
+        unreadable_cif,
+        atomless_cif,
     ]

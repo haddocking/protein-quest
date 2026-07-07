@@ -4,303 +4,15 @@ from pathlib import Path
 import pytest
 from cyclopts.types import StdioPath
 
-from protein_quest.filters.quality import FilterQualityResult, filter_by_pdbe_quality, write_quality_stats_csv
+from protein_quest.filters.quality import (
+    FilterQualityResult,
+    QualityClusteringPartitions,
+    UnclusteredStructure,
+    filter_unclustered_structures,
+    partition_structures_for_quality_clustering,
+    write_quality_stats_csv,
+)
 from protein_quest.pdbe.ws import Scores
-from protein_quest.structure.files import LocateStructureFilesByIdResult
-
-
-class TestFilterByPdbeQuality:
-    @pytest.mark.parametrize(
-        "scores, located_ids, top, expected",
-        [
-            pytest.param({}, LocateStructureFilesByIdResult(), None, [], id="empty"),
-            pytest.param(
-                {
-                    "1AAA": Scores(
-                        geometry_quality=80.0, data_quality=90.0, overall_quality=85.0, experiment_data_available=True
-                    )
-                },
-                LocateStructureFilesByIdResult(found={("1AAA", Path("/fake/input/1AAA.pdb"))}),
-                None,
-                [
-                    FilterQualityResult(
-                        pdb_id="1AAA",
-                        input_file=Path("/fake/input/1AAA.pdb"),
-                        geometry_quality=80.0,
-                        passed=True,
-                    )
-                ],
-                id="passed",
-            ),
-            pytest.param(
-                {
-                    "1AAA": Scores(
-                        geometry_quality=80.0, data_quality=90.0, overall_quality=85.0, experiment_data_available=True
-                    )
-                },
-                LocateStructureFilesByIdResult(not_found={"1AAA"}),
-                None,
-                [
-                    FilterQualityResult(
-                        pdb_id="1AAA",
-                        input_file=None,
-                        geometry_quality=80.0,
-                        passed=False,
-                        reason="File not found",
-                    )
-                ],
-                id="not_found_on_disk",
-            ),
-            pytest.param(
-                {},
-                LocateStructureFilesByIdResult(
-                    extras={Path("/fake/input/1AAA.pdb")},
-                ),
-                None,
-                [
-                    FilterQualityResult(
-                        input_file=Path("/fake/input/1AAA.pdb"),
-                        passed=False,
-                        reason="File not found in quality scores",
-                    )
-                ],
-                id="not_found_in_scores",
-            ),
-            pytest.param(
-                {
-                    "1AAA": Scores(
-                        geometry_quality=None, data_quality=60.0, overall_quality=55.0, experiment_data_available=True
-                    )
-                },
-                LocateStructureFilesByIdResult(
-                    found={("1AAA", Path("/fake/input/1AAA.pdb"))},
-                ),
-                None,
-                [
-                    FilterQualityResult(
-                        pdb_id="1AAA",
-                        input_file=Path("/fake/input/1AAA.pdb"),
-                        geometry_quality=None,
-                        passed=False,
-                        reason="No geometry quality score",
-                    )
-                ],
-                id="no_geometry_quality",
-            ),
-            pytest.param(
-                {
-                    "1AAA": Scores(
-                        geometry_quality=10.0, data_quality=60.0, overall_quality=55.0, experiment_data_available=True
-                    )
-                },
-                LocateStructureFilesByIdResult(
-                    found={("1AAA", Path("/fake/input/1AAA.pdb"))},
-                ),
-                None,
-                [
-                    FilterQualityResult(
-                        pdb_id="1AAA",
-                        input_file=Path("/fake/input/1AAA.pdb"),
-                        geometry_quality=10.0,
-                        passed=False,
-                        reason="Geometry quality score 10.0 < 50.0",
-                    )
-                ],
-                id="gq_to_low",
-            ),
-            pytest.param(
-                {
-                    "3CCC": Scores(
-                        geometry_quality=90.0, data_quality=60.0, overall_quality=55.0, experiment_data_available=True
-                    ),
-                    "2BBB": Scores(
-                        geometry_quality=80.0, data_quality=60.0, overall_quality=55.0, experiment_data_available=True
-                    ),
-                    "1AAA": Scores(
-                        geometry_quality=100.0, data_quality=60.0, overall_quality=55.0, experiment_data_available=True
-                    ),
-                },
-                LocateStructureFilesByIdResult(
-                    found={
-                        ("1AAA", Path("/fake/input/1AAA.pdb")),
-                        ("2BBB", Path("/fake/input/2BBB.pdb")),
-                        ("3CCC", Path("/fake/input/3CCC.pdb")),
-                    },
-                ),
-                None,
-                [
-                    FilterQualityResult(
-                        pdb_id="1AAA",
-                        input_file=Path("/fake/input/1AAA.pdb"),
-                        geometry_quality=100.0,
-                        passed=True,
-                    ),
-                    FilterQualityResult(
-                        pdb_id="3CCC",
-                        input_file=Path("/fake/input/3CCC.pdb"),
-                        geometry_quality=90.0,
-                        passed=True,
-                    ),
-                    FilterQualityResult(
-                        pdb_id="2BBB",
-                        input_file=Path("/fake/input/2BBB.pdb"),
-                        geometry_quality=80.0,
-                        passed=True,
-                    ),
-                ],
-                id="sorted_by_quality",
-            ),
-            pytest.param(
-                {
-                    "3CCC": Scores(
-                        geometry_quality=90, data_quality=0.6, overall_quality=0.55, experiment_data_available=True
-                    ),
-                    "2BBB": Scores(
-                        geometry_quality=80, data_quality=0.6, overall_quality=0.55, experiment_data_available=True
-                    ),
-                    "1AAA": Scores(
-                        geometry_quality=100, data_quality=0.6, overall_quality=0.55, experiment_data_available=True
-                    ),
-                },
-                LocateStructureFilesByIdResult(
-                    found={
-                        ("1AAA", Path("/fake/input/1AAA.pdb")),
-                        ("2BBB", Path("/fake/input/2BBB.pdb")),
-                        ("3CCC", Path("/fake/input/3CCC.pdb")),
-                    },
-                ),
-                2,
-                [
-                    FilterQualityResult(
-                        pdb_id="1AAA",
-                        input_file=Path("/fake/input/1AAA.pdb"),
-                        geometry_quality=100,
-                        passed=True,
-                    ),
-                    FilterQualityResult(
-                        pdb_id="3CCC",
-                        input_file=Path("/fake/input/3CCC.pdb"),
-                        geometry_quality=90,
-                        passed=True,
-                    ),
-                ],
-                id="top2",
-            ),
-            pytest.param(
-                {
-                    "3CCC": Scores(
-                        geometry_quality=90.0, data_quality=60.0, overall_quality=55.0, experiment_data_available=True
-                    ),
-                    "2BBB": Scores(
-                        geometry_quality=None, data_quality=60.0, overall_quality=55.0, experiment_data_available=True
-                    ),
-                    "1AAA": Scores(
-                        geometry_quality=100.0, data_quality=60.0, overall_quality=55.0, experiment_data_available=True
-                    ),
-                },
-                LocateStructureFilesByIdResult(
-                    found={
-                        ("1AAA", Path("/fake/input/1AAA.pdb")),
-                        ("2BBB", Path("/fake/input/2BBB.pdb")),
-                        ("3CCC", Path("/fake/input/3CCC.pdb")),
-                    },
-                ),
-                None,
-                [
-                    FilterQualityResult(
-                        pdb_id="1AAA",
-                        input_file=Path("/fake/input/1AAA.pdb"),
-                        geometry_quality=100.0,
-                        passed=True,
-                    ),
-                    FilterQualityResult(
-                        pdb_id="3CCC",
-                        input_file=Path("/fake/input/3CCC.pdb"),
-                        geometry_quality=90.0,
-                        passed=True,
-                    ),
-                    FilterQualityResult(
-                        pdb_id="2BBB",
-                        input_file=Path("/fake/input/2BBB.pdb"),
-                        geometry_quality=None,
-                        passed=False,
-                        reason="No geometry quality score",
-                    ),
-                ],
-                id="no_geometry_quality_worst",
-            ),
-        ],
-    )
-    def test(
-        self,
-        scores: dict[str, Scores],
-        located_ids: LocateStructureFilesByIdResult,
-        top: int | None,
-        expected: list[FilterQualityResult],
-    ):
-        result = filter_by_pdbe_quality(
-            scores,
-            located_ids,
-            minimal_geometry_quality=50.0,
-            top=top,
-        )
-        assert result == expected
-
-    def test_bypass_with_set_resolution(self, tmp_path: Path, sample_cif: Path):
-        scores = {
-            "1AAA": Scores(geometry_quality=0.1, data_quality=0.6, overall_quality=0.55, experiment_data_available=True)
-        }
-        located_ids = LocateStructureFilesByIdResult(
-            found={("1AAA", sample_cif)},
-        )
-        output_dir = tmp_path / "output"
-        output_dir.mkdir()
-
-        result = filter_by_pdbe_quality(
-            scores,
-            located_ids,
-            minimal_geometry_quality=0.5,
-            pass_given_resolution=True,
-        )
-
-        expected = [
-            FilterQualityResult(
-                pdb_id="1AAA",
-                input_file=sample_cif,
-                geometry_quality=0.1,
-                passed=True,
-                reason="Passed due to valid resolution 2.05",
-            )
-        ]
-        assert result == expected
-
-    def test_bypass_with_unset_resolution(self, tmp_path: Path, nmr_cif: Path):
-        scores = {
-            "1AAA": Scores(geometry_quality=0.1, data_quality=0.6, overall_quality=0.55, experiment_data_available=True)
-        }
-        located_ids = LocateStructureFilesByIdResult(
-            found={("1AAA", nmr_cif)},
-        )
-        output_dir = tmp_path / "output"
-        output_dir.mkdir()
-
-        result = filter_by_pdbe_quality(
-            scores,
-            located_ids,
-            minimal_geometry_quality=0.5,
-            pass_given_resolution=True,
-        )
-
-        expected = [
-            FilterQualityResult(
-                pdb_id="1AAA",
-                input_file=nmr_cif,
-                geometry_quality=0.1,
-                passed=False,
-                reason="Geometry quality score 0.1 < 0.5",
-            )
-        ]
-        assert result == expected
 
 
 @pytest.mark.parametrize(
@@ -372,3 +84,82 @@ def test_write_quality_stats_csv(
         rows = list(reader)
 
     assert rows == expected
+
+
+def test_partition_structures_pass_given_resolution(sample_cif: Path):
+    """Structures with valid resolution bypass quality checks when pass_given_resolution=True."""
+    # sample_cif is 3JRS with resolution=2.05; low geometry_quality should not matter
+    scores = {
+        "3jrs": Scores(
+            geometry_quality=1.0,
+            data_quality=None,
+            overall_quality=None,
+            experiment_data_available=False,
+        )
+    }
+
+    partitions = partition_structures_for_quality_clustering(
+        [sample_cif],
+        scores,
+        pass_given_resolution=True,
+    )
+
+    expected = QualityClusteringPartitions(
+        clusterable_structures=[],
+        unclustered_structures=[],
+        no_quality_results=[],
+        resolution_passed_results=[
+            FilterQualityResult(
+                pdb_id="3JRS",
+                input_file=sample_cif,
+                geometry_quality=1.0,
+                passed=True,
+                reason="Passed due to valid resolution 2.05",
+            )
+        ],
+    )
+    assert partitions == expected
+
+
+def test_filter_unclustered_structures_passed_but_outside_top():
+    """Structures that pass quality but exceed the top limit are rejected."""
+    structures = [
+        UnclusteredStructure(
+            input_file=Path("/a.cif"),
+            pdb_id="1AAA",
+            geometry_quality=80.0,
+            chain_length=100,
+            sequence_identity=1.0,
+        ),
+        UnclusteredStructure(
+            input_file=Path("/b.cif"),
+            pdb_id="2BBB",
+            geometry_quality=70.0,
+            chain_length=100,
+            sequence_identity=1.0,
+        ),
+    ]
+
+    results = filter_unclustered_structures(
+        structures,
+        minimal_geometry_quality=50.0,
+        top=1,
+    )
+
+    expected = [
+        FilterQualityResult(
+            pdb_id="1AAA",
+            input_file=Path("/a.cif"),
+            geometry_quality=80.0,
+            passed=True,
+            reason=None,
+        ),
+        FilterQualityResult(
+            pdb_id="2BBB",
+            input_file=Path("/b.cif"),
+            geometry_quality=70.0,
+            passed=False,
+            reason="Excluded by top 1 limit for unclustered structures",
+        ),
+    ]
+    assert results == expected
