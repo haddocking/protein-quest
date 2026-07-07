@@ -177,3 +177,8 @@ to set up automated checks:
    ```shell
    prek uninstall
    ```
+
+## Are LLMs (Large Language Models) used or allowed to be used?
+
+Yes, see [AIDECL.yaml](aidecl.yaml), just make sure a human always reviews the
+output.

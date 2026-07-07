@@ -1,0 +1,32 @@
+name: Validate AI Declaration
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - aidecl.yaml
+      - .github/workflows/aidecl-validate.yml
+  pull_request:
+    paths:
+      - aidecl.yaml
+      - .github/workflows/aidecl-validate.yml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.3.1
+      - name: Validate AI Declaration
+        # TODO use from pypi when released
+        run: uvx --from=$UVXSOURCE aidecl validate aidecl.yaml
+        env:
+          UVXSOURCE: "git+https://github.com/ai-declaration/cli.git@8c3eb30170b459e2e19a87f821f299de55dadfda"

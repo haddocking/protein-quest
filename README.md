@@ -11,6 +11,7 @@
 [![FAIR checklist badge](https://fairsoftwarechecklist.net/badge.svg)](https://fairsoftwarechecklist.net/v0.2?f=31&a=32113&i=32121&r=133)
 [![fair-software.eu](https://img.shields.io/badge/fair--software.eu-%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F%20%20%E2%97%8F-green)](https://fair-software.eu)
 [![Copy/paste detector](https://raw.githubusercontent.com/kucherenko/jscpd/refs/tags/v3.5.10/assets/jscpd-badge.svg?sanitize=true)](https://github.com/kucherenko/jscpd/)
+![AI Declaration Format](https://img.shields.io/badge/AI_Declaration_Format-validated-blue)
 
 Python package to search/retrieve/filter proteins and protein structures.
 
