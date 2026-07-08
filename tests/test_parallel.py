@@ -50,7 +50,11 @@ class TestMapWithProgress:
                 scheduler_address=None,
                 func=lambda x: x * 2,
                 iterable=[0, 1, 2, 3, 4],
-                map_with_progress_options={"tqdm_desc": "test parallel", "tqdm_unit": "item", "dask_scheduler_name": name},
+                map_with_progress_options={
+                    "tqdm_desc": "test parallel",
+                    "tqdm_unit": "item",
+                    "dask_scheduler_name": name,
+                },
             )
 
             assert result == [0, 2, 4, 6, 8]
