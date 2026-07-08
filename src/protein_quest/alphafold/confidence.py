@@ -4,16 +4,13 @@ import logging
 from collections.abc import Generator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import gemmi
 from cyclopts import Parameter
-from dask.distributed import Client
-from distributed.deploy.cluster import Cluster
-from tqdm.auto import tqdm
 
 from protein_quest.converter import Percentage, PositiveInt, converter
-from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
+from protein_quest.parallel import SchedulerAddress, map_with_progress
 from protein_quest.structure.chains import nr_of_residues_in_total
 from protein_quest.structure.formats import read_structure, write_structure
 from protein_quest.utils import CopyMethod, copyfile
@@ -162,30 +159,12 @@ def filter_file_on_confidence(
     )
 
 
-def _filter_files_on_confidence_sequentially(
-    alphafold_pdb_files: list[Path],
-    query: ConfidenceFilterQuery,
-    filtered_dir: Path,
-    copy_method: CopyMethod = "copy",
-) -> list[ConfidenceFilterResult]:
-    results = []
-    for file in tqdm(
-        alphafold_pdb_files,
-        total=len(alphafold_pdb_files),
-        desc="Filtering on confidence",
-        unit="file",
-    ):
-        result = filter_file_on_confidence(file, query, filtered_dir, copy_method)
-        results.append(result)
-    return results
-
-
 def filter_files_on_confidence(
     alphafold_pdb_files: list[Path],
     query: ConfidenceFilterQuery,
     filtered_dir: Path,
     copy_method: CopyMethod = "copy",
-    scheduler_address: str | Cluster | Literal["sequential"] | None = None,
+    scheduler_address: SchedulerAddress = None,
 ) -> list[ConfidenceFilterResult]:
     """Filter AlphaFoldDB structures based on confidence.
 
@@ -203,21 +182,15 @@ def filter_files_on_confidence(
             and number of residues with pLDDT above the confidence threshold.
     """
     filtered_dir.mkdir(parents=True, exist_ok=True)
-    if scheduler_address == "sequential":
-        return _filter_files_on_confidence_sequentially(
-            alphafold_pdb_files,
-            query,
-            filtered_dir,
-            copy_method=copy_method,
-        )
-
-    with configure_dask_scheduler(scheduler_address, name="filter-confidence") as cluster, Client(cluster) as client:
-        client.forward_logging()
-        return dask_map_with_progress(
-            client,
-            filter_file_on_confidence,
-            alphafold_pdb_files,
-            query=query,
-            filtered_dir=filtered_dir,
-            copy_method=copy_method,
-        )
+    return map_with_progress(
+        scheduler_address,
+        filter_file_on_confidence,
+        alphafold_pdb_files,
+        map_with_progress_options={
+            "tqdm_desc": "Filtering on confidence",
+            "tqdm_unit": "file",
+        },
+        query=query,
+        filtered_dir=filtered_dir,
+        copy_method=copy_method,
+    )

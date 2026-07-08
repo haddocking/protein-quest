@@ -6,7 +6,7 @@ import sys
 import warnings
 from collections.abc import Callable, Collection, Generator
 from contextlib import contextmanager, suppress
-from typing import Any, Concatenate, ParamSpec, cast, override
+from typing import Any, Concatenate, Literal, ParamSpec, TypedDict, cast, override
 
 from dask.distributed import Client, LocalCluster
 from distributed.deploy.cluster import Cluster
@@ -15,6 +15,7 @@ from distributed.diagnostics.progressbar import ProgressBar
 from distributed.utils import LoopRunner
 from psutil import cpu_count
 from tornado.ioloop import IOLoop
+from tqdm.auto import tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -190,3 +191,54 @@ def dask_map_with_progress[T, R, **P](
         MyProgressBar(futures)
     results = client.gather(futures)
     return cast("list[R]", results)
+
+
+class MapWithProgressOptions(TypedDict, total=False):
+    """Options for progress bar and Dask scheduler in [map_with_progress][protein_quest.parallel.map_with_progress].
+
+    Attributes:
+        dask_scheduler_name: Name for the Dask scheduler (default: "map_with_progress").
+        tqdm_desc: Description for the tqdm progress bar (default: "").
+        tqdm_unit: Unit for the tqdm progress bar (default: "it").
+    """
+
+    dask_scheduler_name: str
+    tqdm_desc: str
+    tqdm_unit: str
+
+
+SchedulerAddress = str | Cluster | Literal["sequential"] | None
+
+
+def map_with_progress[T, R, **P](
+    scheduler_address: SchedulerAddress,
+    func: Callable[Concatenate[T, P], R],
+    iterable: Collection[T],
+    map_with_progress_options: MapWithProgressOptions | None = None,
+    *args: P.args,
+    **kwargs: P.kwargs,
+) -> list[R]:
+    """Map a function over an iterable with optional progress bar.
+
+    Wraps sequential execution with tqdm and parallel execution with Dask.
+
+    Args:
+        scheduler_address: "sequential" for local execution, None for local cluster, or existing cluster.
+        func: Function to map.
+        iterable: Collection of items to map over.
+        map_with_progress_options: Options for progress bar and Dask scheduler.
+        *args: Positional arguments passed to func.
+        **kwargs: Keyword arguments passed to func.
+
+    Returns:
+        List of results from func.
+    """
+    opts = map_with_progress_options or {}
+    scheduler_name = opts.get("dask_scheduler_name", "map_with_progress")
+    if scheduler_address == "sequential":
+        desc = opts.get("tqdm_desc", "")
+        unit = opts.get("tqdm_unit", "it")
+        return [func(x, *args, **kwargs) for x in tqdm(iterable, desc=desc, unit=unit)]
+    with configure_dask_scheduler(scheduler_address, name=scheduler_name) as cluster, Client(cluster) as client:
+        client.forward_logging()
+        return dask_map_with_progress(client, func, iterable, *args, **kwargs)

@@ -18,7 +18,6 @@ from protein_quest.filters.resolution import (
     load_resolution_statistics,
     sort_resolution_statistics,
     write_resolution_stats,
-    yield_resolution_statistics,
 )
 
 
@@ -133,7 +132,7 @@ class TestResolutionFilterStatistics:
 class TestYieldResolutionStatistics:
     def test_metadata_in_order(self, sample_cif: Path, sample2_cif: Path, af_cif: Path, nmr_cif: Path):
         input_files = [sample_cif, sample2_cif, af_cif, nmr_cif]
-        results = list(yield_resolution_statistics(input_files))
+        results = load_resolution_statistics(input_files, scheduler_address="sequential")
 
         expected = [
             ResolutionFilterStatistics(
@@ -196,7 +195,7 @@ class TestYieldResolutionStatistics:
         assert results == expected
 
     def test_empty_input(self):
-        assert list(yield_resolution_statistics([])) == []
+        assert load_resolution_statistics([], scheduler_address="sequential") == []
 
 
 class TestLoadResolutionStatistics:
