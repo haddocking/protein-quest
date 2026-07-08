@@ -1,17 +1,13 @@
 import csv
 import logging
-from collections.abc import Iterable, Mapping
+from collections.abc import Collection, Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
 
 from cyclopts.types import StdioPath
-from dask.distributed import Client
-from distributed.deploy.cluster import Cluster
-from tqdm.rich import tqdm
 
 from protein_quest.clustering import cluster_structures, sort_structures
-from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
+from protein_quest.parallel import SchedulerAddress, map_with_progress
 from protein_quest.pdbe.ws import Scores
 from protein_quest.structure.formats import read_structure
 from protein_quest.structure.metadata import structure_metadata
@@ -242,13 +238,13 @@ def _structure_file2partition(
 
 
 def partition_structures_for_quality_clustering(
-    input_files: Iterable[Path],
+    input_files: Collection[Path],
     scores: Mapping[str, Scores],
     /,
     *,
     pass_given_resolution: bool = False,
     cluster: bool = True,
-    scheduler_address: str | Cluster | Literal["sequential"] | None = None,
+    scheduler_address: SchedulerAddress = None,
 ) -> QualityClusteringPartitions:
     """Partition structures for clustered PDBe quality filtering.
 
@@ -284,30 +280,15 @@ def partition_structures_for_quality_clustering(
         - resolution_passed_results: List of FilterQualityResult objects that passed due to
             valid resolution when pass_given_resolution is True
     """
-    if scheduler_address == "sequential":
-        file_partitions = [
-            _structure_file2partition(
-                input_file,
-                scores,
-                pass_given_resolution=pass_given_resolution,
-                cluster=cluster,
-            )
-            for input_file in tqdm(input_files, desc="Building clusters from PDBe quality", unit="file")
-        ]
-    else:
-        with (
-            configure_dask_scheduler(scheduler_address, name="partition-quality-structures") as dask_cluster,
-            Client(dask_cluster) as client,
-        ):
-            client.forward_logging()
-            file_partitions = dask_map_with_progress(
-                client,
-                _structure_file2partition,
-                list(input_files),
-                scores=scores,
-                pass_given_resolution=pass_given_resolution,
-                cluster=cluster,
-            )
+    file_partitions = map_with_progress(
+        scheduler_address,
+        _structure_file2partition,
+        input_files,
+        scores=scores,
+        pass_given_resolution=pass_given_resolution,
+        cluster=cluster,
+        map_with_progress_options={"tqdm_desc": "Building clusters from PDBe quality", "tqdm_unit": "file"},
+    )
 
     return QualityClusteringPartitions().extend(file_partitions)
 
@@ -432,14 +413,14 @@ def filter_unclustered_structures(
 
 def filter_by_pdbe_quality(
     scores: Mapping[str, Scores],
-    input_files: Iterable[Path],
+    input_files: Collection[Path],
     /,
     *,
     minimal_geometry_quality: float = 0.0,
     top: int | None = None,
     pass_given_resolution: bool = False,
     cluster_by_uniprot_accession_and_coverage: int = 1,
-    scheduler_address: str | Cluster | Literal["sequential"] | None = None,
+    scheduler_address: SchedulerAddress = None,
 ) -> list[FilterQualityResult]:
     """Filter structure files by PDBe quality with optional UniProt-based clustering.
 
@@ -452,7 +433,7 @@ def filter_by_pdbe_quality(
     instead, they are treated like unclustered structures and ranked globally by geometry quality.
     Args:
         scores: A mapping from PDB IDs to their corresponding Scores objects.
-        input_files: Iterable of structure file paths (e.g. from
+        input_files: Collection of structure file paths (e.g. from
             [glob_structure_files][protein_quest.structure.files.glob_structure_files]).
         minimal_geometry_quality: Minimum geometry quality score to pass the filter.
         top: Maximum number of unclustered structures (those without a UniProt accession)

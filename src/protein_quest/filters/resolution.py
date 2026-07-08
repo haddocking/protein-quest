@@ -6,12 +6,8 @@ from collections.abc import Generator, Iterable
 from dataclasses import dataclass
 from itertools import tee
 from pathlib import Path
-from typing import Literal
 
 from cyclopts.types import StdioPath
-from dask.distributed import Client
-from distributed.deploy.cluster import Cluster
-from tqdm.auto import tqdm
 
 from protein_quest.clustering import (
     filter_structures_on_clustered_resolution,
@@ -19,7 +15,7 @@ from protein_quest.clustering import (
     top_members_across_clusters,
 )
 from protein_quest.errors import ResolutionUnsetError
-from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
+from protein_quest.parallel import SchedulerAddress, map_with_progress
 from protein_quest.structure.formats import read_structure
 from protein_quest.structure.metadata import structure_metadata
 from protein_quest.utils import CopyMethod, copyfile
@@ -161,7 +157,7 @@ def _load_resolution_statistics_single(input_file: Path) -> ResolutionFilterStat
 
 def load_resolution_statistics(
     input_files: list[Path],
-    scheduler_address: str | Cluster | Literal["sequential"] | None = None,
+    scheduler_address: SchedulerAddress = None,
 ) -> list[ResolutionFilterStatistics]:
     """Load resolution statistics for structure files, optionally in parallel.
 
@@ -175,34 +171,17 @@ def load_resolution_statistics(
         Statistics objects with metadata filled in; ``passed`` is always
         ``False`` and ``output_file`` is always ``None``.
     """
-    if scheduler_address == "sequential" or (scheduler_address is None and not input_files):
-        return list(yield_resolution_statistics(input_files))
-    if scheduler_address is None:
-        with configure_dask_scheduler(None, name="load-resolution-statistics") as cluster, Client(cluster) as client:
-            client.forward_logging()
-            return dask_map_with_progress(client, _load_resolution_statistics_single, input_files)
-    with (
-        configure_dask_scheduler(scheduler_address, name="load-resolution-statistics") as cluster,
-        Client(cluster) as client,
-    ):
-        client.forward_logging()
-        return dask_map_with_progress(client, _load_resolution_statistics_single, input_files)
-
-
-def yield_resolution_statistics(
-    input_files: Iterable[Path],
-) -> Generator[ResolutionFilterStatistics]:
-    """Load resolution statistics for each structure file.
-
-    Args:
-        input_files: Structure files to read metadata from.
-
-    Yields:
-        Statistics objects with metadata filled in; ``passed`` is always
-        ``False`` and ``output_file`` is always ``None``.
-    """
-    for input_file in tqdm(input_files, unit="file"):
-        yield _load_resolution_statistics_single(input_file)
+    if scheduler_address is None and not input_files:
+        return []
+    return map_with_progress(
+        scheduler_address,
+        _load_resolution_statistics_single,
+        input_files,
+        map_with_progress_options={
+            "tqdm_desc": "Loading resolution statistics",
+            "tqdm_unit": "file",
+        },
+    )
 
 
 def _split_on_reason(
@@ -567,7 +546,7 @@ def filter_files_on_resolution(
     min_sequence_identity: float = 1.0,
     lax: bool = False,
     copy_method: CopyMethod = "hardlink",
-    scheduler_address: str | Cluster | Literal["sequential"] | None = None,
+    scheduler_address: SchedulerAddress = None,
 ) -> Generator[ResolutionFilterStatistics]:
     """Filter structure files by resolution rank.
 

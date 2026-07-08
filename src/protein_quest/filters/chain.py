@@ -4,13 +4,8 @@ import logging
 from collections.abc import Collection
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
 
-from dask.distributed import Client
-from distributed.deploy.cluster import Cluster
-from tqdm.auto import tqdm
-
-from protein_quest.parallel import configure_dask_scheduler, dask_map_with_progress
+from protein_quest.parallel import SchedulerAddress, map_with_progress
 from protein_quest.structure.chains import (
     ChainIdSystem,
     get_label2auth_chains,
@@ -89,34 +84,12 @@ def filter_file_on_chain(
         return ChainFilterStatistics(input_file=input_file, chain_id=chain_id, discard_reason=e)
 
 
-def _filter_files_on_chain_sequentially(
-    file2chains: Collection[tuple[Path, str]],
-    output_dir: Path,
-    out_chain: str = "A",
-    chain_system: ChainIdSystem = "auth",
-    copy_method: CopyMethod = "copy",
-    force: bool = False,
-) -> list[ChainFilterStatistics]:
-    results = []
-    for file_and_chain in tqdm(file2chains, unit="file"):
-        result = filter_file_on_chain(
-            file_and_chain,
-            output_dir=output_dir,
-            out_chain=out_chain,
-            chain_system=chain_system,
-            copy_method=copy_method,
-            force=force,
-        )
-        results.append(result)
-    return results
-
-
 def filter_files_on_chain(
     file2chains: Collection[tuple[Path, str]],
     output_dir: Path,
     out_chain: str = "A",
     chain_system: ChainIdSystem = "auth",
-    scheduler_address: str | Cluster | Literal["sequential"] | None = None,
+    scheduler_address: SchedulerAddress = None,
     copy_method: CopyMethod = "copy",
     force: bool = False,
 ) -> list[ChainFilterStatistics]:
@@ -138,33 +111,14 @@ def filter_files_on_chain(
         Result of the filtering process.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
-    if scheduler_address == "sequential":
-        return _filter_files_on_chain_sequentially(
-            file2chains,
-            output_dir,
-            out_chain=out_chain,
-            chain_system=chain_system,
-            copy_method=copy_method,
-            force=force,
-        )
-
-    # TODO make logger.debug in filter_file_on_chain show to user when --log
-    # GPT-5 generated a fairly difficult setup with a WorkerPlugin, need to find a simpler approach
-    with (
-        configure_dask_scheduler(
-            scheduler_address,
-            name="filter-chain",
-        ) as cluster,
-        Client(cluster) as client,
-    ):
-        client.forward_logging()
-        return dask_map_with_progress(
-            client,
-            filter_file_on_chain,
-            file2chains,
-            output_dir=output_dir,
-            out_chain=out_chain,
-            chain_system=chain_system,
-            copy_method=copy_method,
-            force=force,
-        )
+    return map_with_progress(
+        scheduler_address,
+        filter_file_on_chain,
+        file2chains,
+        map_with_progress_options={"tqdm_desc": "Filtering on chain", "tqdm_unit": "file"},
+        output_dir=output_dir,
+        out_chain=out_chain,
+        chain_system=chain_system,
+        copy_method=copy_method,
+        force=force,
+    )
