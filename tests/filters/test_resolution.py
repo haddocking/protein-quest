@@ -132,7 +132,7 @@ class TestResolutionFilterStatistics:
 class TestYieldResolutionStatistics:
     def test_metadata_in_order(self, sample_cif: Path, sample2_cif: Path, af_cif: Path, nmr_cif: Path):
         input_files = [sample_cif, sample2_cif, af_cif, nmr_cif]
-        results = list(load_resolution_statistics(input_files, scheduler_address="sequential"))
+        results = load_resolution_statistics(input_files, scheduler_address="sequential")
 
         expected = [
             ResolutionFilterStatistics(

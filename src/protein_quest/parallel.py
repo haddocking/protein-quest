@@ -238,13 +238,7 @@ def map_with_progress[T, R, **P](
     if scheduler_address == "sequential":
         desc = opts.get("tqdm_desc", "")
         unit = opts.get("tqdm_unit", "it")
-        return list(
-            tqdm(
-                (func(x, *args, **kwargs) for x in iterable),
-                desc=desc,
-                unit=unit,
-            )
-        )
+        return [func(x, *args, **kwargs) for x in tqdm(iterable, desc=desc, unit=unit)]
     with configure_dask_scheduler(scheduler_address, name=scheduler_name) as cluster, Client(cluster) as client:
         client.forward_logging()
-        return dask_map_with_progress(client, func, list(iterable), *args, **kwargs)
+        return dask_map_with_progress(client, func, iterable, *args, **kwargs)

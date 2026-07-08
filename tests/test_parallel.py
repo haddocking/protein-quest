@@ -29,7 +29,7 @@ class TestMapWithProgress:
         captured = capsys.readouterr()
         assert "Completed" in captured.err
 
-    def test_dask_with_adress(self):
+    def test_dask_with_address(self):
         with configure_dask_scheduler(None, name="running-cluster") as cluster:
             scheduler_address = cluster if isinstance(cluster, str) else cluster.scheduler_address
 
