@@ -7,6 +7,7 @@ from pathlib import Path
 from cyclopts.types import StdioPath
 
 from protein_quest.clustering import cluster_structures, sort_structures
+from protein_quest.converter import converter
 from protein_quest.parallel import SchedulerAddress, map_with_progress
 from protein_quest.pdbe.ws import Scores
 from protein_quest.structure.formats import read_structure
@@ -524,3 +525,16 @@ def write_quality_stats_csv(
                     "reason": result.reason,
                 }
             )
+
+
+def read_quality_json(f: Path) -> dict[str, Scores]:
+    """Read a JSON file containing PDBe quality scores.
+
+    Args:
+        f: Path to the JSON file containing PDBe quality scores.
+
+    Returns:
+        A dictionary mapping PDB IDs (lowercase) to their corresponding Scores objects.
+    """
+    with f.open("r", encoding="utf-8") as handle:
+        return converter.loads(handle.read(), dict[str, Scores])

@@ -22,11 +22,11 @@ from protein_quest.cli.common import (
     console,
     write_lines,
 )
-from protein_quest.converter import converter
 from protein_quest.filters.chain import filter_files_on_chain
 from protein_quest.filters.combined import CombinedFilterQuery, combined_filter
 from protein_quest.filters.quality import (
     filter_by_pdbe_quality,
+    read_quality_json,
     write_quality_stats_csv,
 )
 from protein_quest.filters.residues import filter_files_on_residues
@@ -35,7 +35,6 @@ from protein_quest.filters.resolution import (
     write_resolution_stats,
 )
 from protein_quest.filters.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
-from protein_quest.pdbe.ws import Scores
 from protein_quest.structure.chains import ChainIdSystem
 from protein_quest.structure.files import glob_structure_files, locate_structure_file
 from protein_quest.utils import copyfile
@@ -399,8 +398,7 @@ def pdbe_quality(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info('Reading PDBe quality scores from "%s"', quality_json)
-    with quality_json.open("r", encoding="utf-8") as f:
-        scores = converter.loads(f.read(), dict[str, Scores])
+    scores = read_quality_json(quality_json)
 
     logger.info('Finding structure files in "%s" directory that match ids from PDBe quality scores', input_dir)
 
@@ -526,8 +524,9 @@ def combined(
         filters: Combined filtering criteria.
         write_stats: Write filter statistics to file.
             In CSV format with columns:
-            `<input_file>,<id>,<uniprot_accession>,<resolution>,<high_confidence_residues_count>,<total_residue_count>,
-            <method>,<uniprot_start>,<uniprot_end>,<sequence_identity>,<chain_length>,<passed>,<output_file>,
+            `<input_file>,<pdb_id>,<uniprot_accession>,<resolution>,<high_confidence_residues_count>,<total_residue_count>,
+            <method>,<uniprot_start>,<uniprot_end>,<sequence_identity>,<chain_length>
+            ,<geometry_quality>,<passed>,<output_file>,
             <reason_msg>,<reason_type>` columns for resolution filtering.
             Depending on filter way some column can be empty.
             Use `-` for stdout.
@@ -548,17 +547,26 @@ def combined(
     input_files = sorted(glob_structure_files(input_dir))
     nr_total = len(input_files)
     rprint(f"Filtering {nr_total} files in {input_dir} directory using combined filter.")
+    scores = read_quality_json(quality_json)
 
     results = combined_filter(
         input_files=input_files,
-        quality_json=quality_json,
-        output_dir=output_dir,
+        scores=scores,
         filters=filters,
         scheduler_address=scheduler_address,
-        copy_method=cache.copy_method,
     )
 
+    for result in results:
+        if result.passed and result.input_file is not None:
+            copyfile(result.input_file, output_dir / result.input_file.name, cache.copy_method)
+
+    # TODO print stats
+
     if write_stats:
+        if str(write_stats) != "-":
+            write_stats.parent.mkdir(parents=True, exist_ok=True)
+
         # TODO write results to write_stats file handler
+
         if str(write_stats) != "-":
             rprint(f"Statistics written to {write_stats}")
