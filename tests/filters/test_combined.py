@@ -34,6 +34,7 @@ class TestCombinedPartitions:
         others = [CombinedPartitions(), CombinedPartitions()]
 
         actual = root.extend(others)
+
         expected = CombinedPartitions()
         assert actual == expected
 
@@ -50,7 +51,9 @@ def strip_resolution(input_file: Path, output_file: Path):
 @pytest.mark.skip("Remnant for developing strip_resolution")
 def test_strip_resolution(tmp_path: Path, sample2_cif: Path):
     output_file = tmp_path / "output.cif"
+
     strip_resolution(sample2_cif, output_file)
+
     s = read_structure(output_file)
     assert s.resolution == 0.0
 
@@ -68,6 +71,7 @@ class TestCombinedFilter:
         query = CombinedFilterQuery()
         output_dir = tmp_path / "output"
         output_dir.mkdir()
+
         results = combined_filter(input_files, scores, query, output_dir, scheduler_address="sequential")
 
         expected = [
@@ -247,6 +251,7 @@ class TestCombinedFilter:
         query = CombinedFilterQuery()
         output_dir = tmp_path / "output"
         output_dir.mkdir()
+
         results = combined_filter(input_files, scores, query, output_dir, scheduler_address="sequential")
 
         expected = [
@@ -312,6 +317,7 @@ class TestCombinedFilter:
         query = CombinedFilterQuery()
         output_dir = tmp_path / "output"
         output_dir.mkdir()
+
         results = combined_filter([input_file], scores, query, output_dir, scheduler_address="sequential")
 
         expected = [
@@ -352,6 +358,7 @@ class TestCombinedFilter:
         )
         output_dir = tmp_path / "output"
         output_dir.mkdir()
+
         results = combined_filter([input_file], scores, query, output_dir, scheduler_address="sequential")
 
         expected = [
@@ -392,6 +399,7 @@ class TestCombinedFilter:
         )
         output_dir = tmp_path / "output"
         output_dir.mkdir()
+
         results = combined_filter([input_file], scores, query, output_dir, scheduler_address="sequential")
 
         expected = [
@@ -435,6 +443,7 @@ class TestCombinedFilter:
         )
         output_dir = tmp_path / "output"
         output_dir.mkdir()
+
         actual = combined_filter(input_files, scores, query, output_dir, scheduler_address="sequential")
 
         expected = [
@@ -525,6 +534,7 @@ class TestCombinedFilter:
         query = CombinedFilterQuery(
             top_uniprot_cluster=1,
         )
+
         actual = combined_filter(input_files, scores, query, output_dir, scheduler_address="sequential")
 
         expected = [
@@ -584,6 +594,7 @@ class TestCombinedFilter:
         query = CombinedFilterQuery(
             min_geometry_quality=80.0,
         )
+
         actual = combined_filter(input_files, scores, query, output_dir, scheduler_address="sequential")
 
         expected = [
@@ -681,7 +692,9 @@ class TestCombinedFilter:
     def test_uniprotless_resolutionless_with_defaults(self, no_uniprot_cif: Path, tmp_path: Path):
         input_file, scores, output_dir, expected = self.setup_uniprotless_resolution_less(no_uniprot_cif, tmp_path)
         query = CombinedFilterQuery()
+
         actual = combined_filter([input_file], scores, query, output_dir, scheduler_address="sequential")
+
         assert actual == expected
 
     def test_uniprotless_resolutionless_with_scores_in_top(self, no_uniprot_cif: Path, tmp_path: Path):
@@ -689,6 +702,7 @@ class TestCombinedFilter:
         query = CombinedFilterQuery(
             top_non_uniprot=1,
         )
+
         actual = combined_filter([input_file], scores, query, output_dir, scheduler_address="sequential")
 
         expected = [
@@ -707,6 +721,7 @@ class TestCombinedFilter:
             top_non_uniprot=1,
             min_geometry_quality=90.0,
         )
+
         actual = combined_filter([input_file], scores, query, output_dir, scheduler_address="sequential")
 
         expected = [
@@ -844,7 +859,9 @@ def fake_results() -> list[CombinedFilterResult]:
 class TestCombinedFilterSummary:
     def test_zero(self):
         results = []
+
         actual = combined_filter_summary(results)
+
         expected = [
             "Total structures: 0, passed: 0, discarded: 0",
             "",
@@ -859,8 +876,8 @@ class TestCombinedFilterSummary:
         assert actual == expected
 
     def test_nonzero(self, fake_results: list[CombinedFilterResult]):
-
         actual = combined_filter_summary(fake_results)
+
         expected = [
             "Total structures: 5, passed: 2, discarded: 3",
             "",
