@@ -418,7 +418,7 @@ def _top_flat_results(
             fresult = replace(
                 result,
                 passed=False,
-                reason=f"Sorted index {i} > {top_non_uniprot}",
+                reason=f"Sorted index {i + 1} > {top_non_uniprot}",
             )
         processed_flat.append(fresult)
     return processed_flat
@@ -466,7 +466,7 @@ def _top_clustered_results(
             else:
                 reason = []
                 if not in_top:
-                    reason.append(f"Sorted index {i} > {top_uniprot_cluster}")
+                    reason.append(f"Sorted index {i + 1} > {top_uniprot_cluster}")
                 if not ok_quality:
                     reason.append(f"Geometry quality {qs.geometry_quality} below minimum {minimal_geometry_quality}")
                 fresult = CombinedFilterResult(

@@ -272,7 +272,7 @@ class TestCombinedFilter:
                 high_confidence_residues_count=None,
                 geometry_quality=None,
                 passed=False,
-                reason="Sorted index 0 > 0",
+                reason="Sorted index 1 > 0",
                 output_file=None,
             ),
         ]
@@ -463,7 +463,7 @@ class TestCombinedFilter:
                 high_confidence_residues_count=None,
                 geometry_quality=None,
                 passed=False,
-                reason="Sorted index 1 > 1",
+                reason="Sorted index 2 > 1",
                 output_file=None,
             ),
         ]
