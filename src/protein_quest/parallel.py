@@ -208,7 +208,13 @@ class MapWithProgressOptions(TypedDict, total=False):
 
 
 SchedulerAddress = str | Cluster | Literal["sequential"] | None
+"""Dask scheduler address.
 
+* "sequential": Run sequentially without Dask.
+* None: Create a local Dask cluster.
+* str: Address of an existing Dask scheduler.
+* Cluster: An existing Dask cluster object.
+"""
 
 def map_with_progress[T, R, **P](
     scheduler_address: SchedulerAddress,
