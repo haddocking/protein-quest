@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from os import linesep
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any
 
 from cyclopts import Group, Parameter, validators
 from cyclopts.types import NonNegativeFloat, PositiveInt, StdioPath

@@ -216,6 +216,7 @@ SchedulerAddress = str | Cluster | Literal["sequential"] | None
 * Cluster: An existing Dask cluster object.
 """
 
+
 def map_with_progress[T, R, **P](
     scheduler_address: SchedulerAddress,
     func: Callable[Concatenate[T, P], R],
