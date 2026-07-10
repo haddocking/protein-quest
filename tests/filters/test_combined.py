@@ -1,7 +1,8 @@
-from protein_quest.structure.formats import write_structure
 import csv
+from dataclasses import replace
 from pathlib import Path
 
+import gemmi
 import pytest
 from cyclopts.types import StdioPath
 
@@ -35,6 +36,23 @@ class TestCombinedPartitions:
         actual = root.extend(others)
         expected = CombinedPartitions()
         assert actual == expected
+
+
+def strip_resolution(input_file: Path, output_file: Path):
+    s = read_structure(input_file)
+    doc = s.make_mmcif_document(gemmi.MmcifOutputGroups(True, chem_comp=False))
+    block = doc.sole_block()
+    block.set_pair("_refine.ls_d_res_high", "?")
+    body = doc.as_string()
+    output_file.write_text(body)
+
+
+@pytest.mark.skip("Remnant for developing strip_resolution")
+def test_strip_resolution(tmp_path: Path, sample2_cif: Path):
+    output_file = tmp_path / "output.cif"
+    strip_resolution(sample2_cif, output_file)
+    s = read_structure(output_file)
+    assert s.resolution == 0.0
 
 
 class TestCombinedFilter:
@@ -475,10 +493,8 @@ class TestCombinedFilter:
         input_files = []
         for cif in xray_p05067_cifs:
             # Clear resolution so geometry_quality branch is taken
-            s = read_structure(cif)
-            s.resolution = 0.0
-            input_file = input_dir / cif.name
-            write_structure(s, input_file)
+            input_file = input_dir / cif.stem
+            strip_resolution(cif, input_file)
             input_files.append(input_file)
         scores: dict[str, Scores] = {
             "8t89": Scores(
@@ -513,35 +529,12 @@ class TestCombinedFilter:
 
         expected = [
             CombinedFilterResult(
-                input_file=input_dir / "2y2a_updated.cif.gz",
-                pdb_id="2Y2A",
-                metadata=StructureMetadata(
-                    id="2Y2A",
-                    uniprot_accession="P05067",
-                    resolution=1.91,
-                    total_residue_count=10,
-                    is_alphafold=False,
-                    uniprot_start=687,
-                    uniprot_end=692,
-                    sequence_identity=1.0,
-                    chain_length=10,
-                    auth_chain="A",
-                    label_chain="A",
-                    method="X-ray",
-                ),
-                high_confidence_residues_count=None,
-                geometry_quality=68.5,
-                passed=True,
-                reason=None,
-                output_file=output_dir / "2y2a_updated.cif.gz",
-            ),
-            CombinedFilterResult(
-                input_file=input_dir / "2Y29.cif.gz",
+                input_file=input_dir / "2Y29.cif",
                 pdb_id="2Y29",
                 metadata=StructureMetadata(
                     id="2Y29",
                     uniprot_accession="P05067",
-                    resolution=2.3,
+                    resolution=0.0,
                     total_residue_count=8,
                     is_alphafold=False,
                     uniprot_start=687,
@@ -550,12 +543,35 @@ class TestCombinedFilter:
                     chain_length=8,
                     auth_chain="A",
                     label_chain="A",
-                    method="X-ray",
+                    method="Other",
                 ),
                 high_confidence_residues_count=None,
-                geometry_quality=85.0,  # TODO expected this to be in top 1 and other outside top
+                geometry_quality=85.0,
+                passed=True,
+                reason=None,
+                output_file=output_dir / "2Y29.cif",
+            ),
+            CombinedFilterResult(
+                input_file=input_dir / "2y2a_updated.cif",
+                pdb_id="2Y2A",
+                metadata=StructureMetadata(
+                    id="2Y2A",
+                    uniprot_accession="P05067",
+                    resolution=0.0,
+                    total_residue_count=10,
+                    is_alphafold=False,
+                    uniprot_start=687,
+                    uniprot_end=692,
+                    sequence_identity=1.0,
+                    chain_length=10,
+                    auth_chain="A",
+                    label_chain="A",
+                    method="Other",
+                ),
+                high_confidence_residues_count=None,
+                geometry_quality=68.5,
                 passed=False,
-                reason="Sorted index 1 > 1",
+                reason="Sorted index 2 > 1",
                 output_file=None,
             ),
         ]
@@ -572,35 +588,12 @@ class TestCombinedFilter:
 
         expected = [
             CombinedFilterResult(
-                input_file=input_dir / "2y2a_updated.cif.gz",
-                pdb_id="2Y2A",
-                metadata=StructureMetadata(
-                    id="2Y2A",
-                    uniprot_accession="P05067",
-                    resolution=1.91,
-                    total_residue_count=10,
-                    is_alphafold=False,
-                    uniprot_start=687,
-                    uniprot_end=692,
-                    sequence_identity=1.0,
-                    chain_length=10,
-                    auth_chain="A",
-                    label_chain="A",
-                    method="X-ray",
-                ),
-                high_confidence_residues_count=None,
-                geometry_quality=68.5,
-                passed=False,
-                reason="Geometry quality 68.5 below minimum 80.0",
-                output_file=None,
-            ),
-            CombinedFilterResult(
-                input_file=input_dir / "2Y29.cif.gz",
+                input_file=input_dir / "2Y29.cif",
                 pdb_id="2Y29",
                 metadata=StructureMetadata(
                     id="2Y29",
                     uniprot_accession="P05067",
-                    resolution=2.3,
+                    resolution=0.0,
                     total_residue_count=8,
                     is_alphafold=False,
                     uniprot_start=687,
@@ -609,14 +602,120 @@ class TestCombinedFilter:
                     chain_length=8,
                     auth_chain="A",
                     label_chain="A",
-                    method="X-ray",
+                    method="Other",
                 ),
                 high_confidence_residues_count=None,
                 geometry_quality=85.0,
                 passed=True,
                 reason=None,
-                output_file=output_dir / "2Y29.cif.gz",
+                output_file=output_dir / "2Y29.cif",
             ),
+            CombinedFilterResult(
+                input_file=input_dir / "2y2a_updated.cif",
+                pdb_id="2Y2A",
+                metadata=StructureMetadata(
+                    id="2Y2A",
+                    uniprot_accession="P05067",
+                    resolution=0.0,
+                    total_residue_count=10,
+                    is_alphafold=False,
+                    uniprot_start=687,
+                    uniprot_end=692,
+                    sequence_identity=1.0,
+                    chain_length=10,
+                    auth_chain="A",
+                    label_chain="A",
+                    method="Other",
+                ),
+                high_confidence_residues_count=None,
+                geometry_quality=68.5,
+                passed=False,
+                reason="Geometry quality 68.5 below minimum 80.0",
+                output_file=None,
+            ),
+        ]
+        assert actual == expected
+
+    def setup_uniprotless_resolution_less(self, no_uniprot_cif: Path, tmp_path: Path):
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        input_file = input_dir / no_uniprot_cif.name
+        strip_resolution(no_uniprot_cif, input_file)
+        scores: dict[str, Scores] = {
+            "2y29": Scores(
+                geometry_quality=85.0,
+                data_quality=89,
+                experiment_data_available=False,
+                overall_quality=85.0,
+            ),
+        }
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        expected = [
+            CombinedFilterResult(
+                input_file=input_file,
+                pdb_id="2Y29",
+                metadata=StructureMetadata(
+                    id="2Y29",
+                    uniprot_accession=None,
+                    resolution=0.0,
+                    total_residue_count=8,
+                    is_alphafold=False,
+                    uniprot_start=0,
+                    uniprot_end=0,
+                    sequence_identity=0.0,
+                    chain_length=8,
+                    auth_chain="A",
+                    label_chain="A",
+                    method="Other",
+                ),
+                high_confidence_residues_count=None,
+                geometry_quality=85.0,
+                passed=False,
+                reason="Sorted index 1 > 0",
+                output_file=None,
+            )
+        ]
+        return input_file, scores, output_dir, expected
+
+    def test_uniprotless_resolutionless_with_defaults(self, no_uniprot_cif: Path, tmp_path: Path):
+        input_file, scores, output_dir, expected = self.setup_uniprotless_resolution_less(no_uniprot_cif, tmp_path)
+        query = CombinedFilterQuery()
+        actual = combined_filter([input_file], scores, query, output_dir, scheduler_address="sequential")
+        assert actual == expected
+
+    def test_uniprotless_resolutionless_with_scores_in_top(self, no_uniprot_cif: Path, tmp_path: Path):
+        input_file, scores, output_dir, expected_base = self.setup_uniprotless_resolution_less(no_uniprot_cif, tmp_path)
+        query = CombinedFilterQuery(
+            top_non_uniprot=1,
+        )
+        actual = combined_filter([input_file], scores, query, output_dir, scheduler_address="sequential")
+
+        expected = [
+            replace(
+                expected_base[0],
+                passed=True,
+                reason=None,
+                output_file=output_dir / "no_uniprot.cif",
+            )
+        ]
+        assert actual == expected
+
+    def test_uniprotless_resolutionless_with_geometry_quality_too_low(self, no_uniprot_cif: Path, tmp_path: Path):
+        input_file, scores, output_dir, expected_base = self.setup_uniprotless_resolution_less(no_uniprot_cif, tmp_path)
+        query = CombinedFilterQuery(
+            top_non_uniprot=1,
+            min_geometry_quality=90.0,
+        )
+        actual = combined_filter([input_file], scores, query, output_dir, scheduler_address="sequential")
+
+        expected = [
+            replace(
+                expected_base[0],
+                passed=False,
+                reason="Geometry quality 85.0 < 90.0",
+                output_file=None,
+            )
         ]
         assert actual == expected
 
