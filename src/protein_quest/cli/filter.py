@@ -23,7 +23,12 @@ from protein_quest.cli.common import (
     write_lines,
 )
 from protein_quest.filters.chain import filter_files_on_chain
-from protein_quest.filters.combined import CombinedFilterQuery, combined_filter
+from protein_quest.filters.combined import (
+    CombinedFilterQuery,
+    combined_filter,
+    combined_filter_stats,
+    combined_filter_summary,
+)
 from protein_quest.filters.quality import (
     filter_by_pdbe_quality,
     read_quality_json,
@@ -525,9 +530,8 @@ def combined(
         write_stats: Write filter statistics to file.
             In CSV format with columns:
             `<input_file>,<pdb_id>,<uniprot_accession>,<resolution>,<high_confidence_residues_count>,<total_residue_count>,
-            <method>,<uniprot_start>,<uniprot_end>,<sequence_identity>,<chain_length>
-            ,<geometry_quality>,<passed>,<output_file>,
-            <reason_msg>,<reason_type>` columns for resolution filtering.
+            <method>,<is_alphafold>,<uniprot_start>,<uniprot_end>,<sequence_identity>,<chain_length>
+            ,<geometry_quality>,<passed>,<output_file>,<reason>` columns for resolution filtering.
             Depending on filter way some column can be empty.
             Use `-` for stdout.
         scheduler_address: Address of the Dask scheduler to connect to.
@@ -554,19 +558,17 @@ def combined(
         scores=scores,
         filters=filters,
         scheduler_address=scheduler_address,
+        output_dir=output_dir,
+        copy_method=cache.copy_method,
     )
 
-    for result in results:
-        if result.passed and result.input_file is not None:
-            copyfile(result.input_file, output_dir / result.input_file.name, cache.copy_method)
-
-    # TODO print stats
+    rprint(combined_filter_summary(results))
 
     if write_stats:
         if str(write_stats) != "-":
             write_stats.parent.mkdir(parents=True, exist_ok=True)
 
-        # TODO write results to write_stats file handler
+        combined_filter_stats(results, write_stats)
 
         if str(write_stats) != "-":
             rprint(f"Statistics written to {write_stats}")
