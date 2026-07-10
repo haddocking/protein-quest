@@ -85,7 +85,7 @@ class ConfidenceFilterQuery:
     """
 
     confidence: Percentage = 70.0
-    min_residues: PositiveInt = 0
+    min_residues: PositiveInt = 0  # TODO should this be 1?
     max_residues: PositiveInt = 10_000_000
 
 
@@ -116,12 +116,17 @@ class ConfidenceFilterResult:
     filtered_file: Path | None = None
 
 
-def filter_file_on_confidence(
-    file: Path, query: ConfidenceFilterQuery, filtered_dir: Path, copy_method: CopyMethod = "copy"
+def filter_structure_on_confidence(
+    structure: gemmi.Structure,
+    file: Path,
+    query: ConfidenceFilterQuery,
+    filtered_dir: Path,
+    copy_method: CopyMethod = "copy",
 ) -> ConfidenceFilterResult:
     """Filter a single AlphaFoldDB structure file (*.pdb[.gz], *.cif[.gz]) based on confidence.
 
     Args:
+        structure: The AlphaFoldDB structure to filter, already read from `file` into memory.
         file: The path to the PDB file to filter.
         query: The confidence filter query.
         filtered_dir: The directory to save the filtered PDB file.
@@ -131,7 +136,6 @@ def filter_file_on_confidence(
         result with filtered_file property set to Path where filtered PDB file is saved.
             or None if structure was filtered out.
     """
-    structure = read_structure(file)
     residues = set(find_high_confidence_residues(structure, query.confidence))
     count = len(residues)
     if count < query.min_residues or count > query.max_residues:
@@ -157,6 +161,25 @@ def filter_file_on_confidence(
         count=count,
         filtered_file=filtered_file,
     )
+
+
+def filter_file_on_confidence(
+    file: Path, query: ConfidenceFilterQuery, filtered_dir: Path, copy_method: CopyMethod = "copy"
+) -> ConfidenceFilterResult:
+    """Filter a single AlphaFoldDB structure file (*.pdb[.gz], *.cif[.gz]) based on confidence.
+
+    Args:
+        file: The path to the PDB file to filter.
+        query: The confidence filter query.
+        filtered_dir: The directory to save the filtered PDB file.
+        copy_method: How to copy when no residues have to be removed.
+
+    Returns:
+        result with filtered_file property set to Path where filtered PDB file is saved.
+            or None if structure was filtered out.
+    """
+    structure = read_structure(file)
+    return filter_structure_on_confidence(structure, file, query, filtered_dir, copy_method)
 
 
 def filter_files_on_confidence(
