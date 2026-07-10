@@ -1,3 +1,4 @@
+from protein_quest.structure.formats import write_structure
 import csv
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from protein_quest.filters.combined import (
     combined_filter_summary,
 )
 from protein_quest.filters.quality import Scores
+from protein_quest.structure.formats import read_structure
 from protein_quest.structure.metadata import StructureMetadata
 
 
@@ -400,6 +402,223 @@ class TestCombinedFilter:
             )
         ]
         assert results == expected
+
+    def test_top_uniprot_cluster_with_top1_and_xrays(self, xray_p05067_cifs: list[Path], tmp_path: Path):
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        input_files = []
+        for cif in xray_p05067_cifs:
+            input_file = input_dir / cif.name
+            input_file.hardlink_to(cif)
+            input_files.append(input_file)
+        scores: dict[str, Scores] = {}
+        query = CombinedFilterQuery(
+            top_uniprot_cluster=1,
+        )
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        actual = combined_filter(input_files, scores, query, output_dir, scheduler_address="sequential")
+
+        expected = [
+            CombinedFilterResult(
+                input_file=input_dir / "2y2a_updated.cif.gz",
+                pdb_id="2Y2A",
+                metadata=StructureMetadata(
+                    id="2Y2A",
+                    uniprot_accession="P05067",
+                    resolution=1.91,
+                    total_residue_count=10,
+                    is_alphafold=False,
+                    uniprot_start=687,
+                    uniprot_end=692,
+                    sequence_identity=1.0,
+                    chain_length=10,
+                    auth_chain="A",
+                    label_chain="A",
+                    method="X-ray",
+                ),
+                high_confidence_residues_count=None,
+                geometry_quality=None,
+                passed=True,
+                reason=None,
+                output_file=Path(output_dir / "2y2a_updated.cif.gz"),
+            ),
+            CombinedFilterResult(
+                input_file=input_dir / "2Y29.cif.gz",
+                pdb_id="2Y29",
+                metadata=StructureMetadata(
+                    id="2Y29",
+                    uniprot_accession="P05067",
+                    resolution=2.3,
+                    total_residue_count=8,
+                    is_alphafold=False,
+                    uniprot_start=687,
+                    uniprot_end=692,
+                    sequence_identity=1.0,
+                    chain_length=8,
+                    auth_chain="A",
+                    label_chain="A",
+                    method="X-ray",
+                ),
+                high_confidence_residues_count=None,
+                geometry_quality=None,
+                passed=False,
+                reason="Sorted index 1 > 1",
+                output_file=None,
+            ),
+        ]
+        assert actual == expected
+
+    def setup_resolutionless_xrays(self, xray_p05067_cifs: list[Path], tmp_path: Path):
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        input_files = []
+        for cif in xray_p05067_cifs:
+            # Clear resolution so geometry_quality branch is taken
+            s = read_structure(cif)
+            s.resolution = 0.0
+            input_file = input_dir / cif.name
+            write_structure(s, input_file)
+            input_files.append(input_file)
+        scores: dict[str, Scores] = {
+            "8t89": Scores(
+                geometry_quality=70.3,
+                data_quality=71,
+                experiment_data_available=False,
+                overall_quality=70.3,
+            ),
+            "2y2a": Scores(
+                geometry_quality=68.5,
+                data_quality=70,
+                experiment_data_available=False,
+                overall_quality=68.5,
+            ),
+            "2y29": Scores(
+                geometry_quality=85.0,
+                data_quality=89,
+                experiment_data_available=False,
+                overall_quality=85.0,
+            ),
+        }
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        return input_dir, input_files, scores, output_dir
+
+    def test_top_uniprot_cluster_with_top1_and_resolutionless_xrays(self, xray_p05067_cifs: list[Path], tmp_path: Path):
+        input_dir, input_files, scores, output_dir = self.setup_resolutionless_xrays(xray_p05067_cifs, tmp_path)
+        query = CombinedFilterQuery(
+            top_uniprot_cluster=1,
+        )
+        actual = combined_filter(input_files, scores, query, output_dir, scheduler_address="sequential")
+
+        expected = [
+            CombinedFilterResult(
+                input_file=input_dir / "2y2a_updated.cif.gz",
+                pdb_id="2Y2A",
+                metadata=StructureMetadata(
+                    id="2Y2A",
+                    uniprot_accession="P05067",
+                    resolution=1.91,
+                    total_residue_count=10,
+                    is_alphafold=False,
+                    uniprot_start=687,
+                    uniprot_end=692,
+                    sequence_identity=1.0,
+                    chain_length=10,
+                    auth_chain="A",
+                    label_chain="A",
+                    method="X-ray",
+                ),
+                high_confidence_residues_count=None,
+                geometry_quality=68.5,
+                passed=True,
+                reason=None,
+                output_file=output_dir / "2y2a_updated.cif.gz",
+            ),
+            CombinedFilterResult(
+                input_file=input_dir / "2Y29.cif.gz",
+                pdb_id="2Y29",
+                metadata=StructureMetadata(
+                    id="2Y29",
+                    uniprot_accession="P05067",
+                    resolution=2.3,
+                    total_residue_count=8,
+                    is_alphafold=False,
+                    uniprot_start=687,
+                    uniprot_end=692,
+                    sequence_identity=1.0,
+                    chain_length=8,
+                    auth_chain="A",
+                    label_chain="A",
+                    method="X-ray",
+                ),
+                high_confidence_residues_count=None,
+                geometry_quality=85.0,  # TODO expected this to be in top 1 and other outside top
+                passed=False,
+                reason="Sorted index 1 > 1",
+                output_file=None,
+            ),
+        ]
+        assert actual == expected
+
+    def test_top_uniprot_cluster_with_high_qual_and_resolutionless_xrays(
+        self, xray_p05067_cifs: list[Path], tmp_path: Path
+    ):
+        input_dir, input_files, scores, output_dir = self.setup_resolutionless_xrays(xray_p05067_cifs, tmp_path)
+        query = CombinedFilterQuery(
+            min_geometry_quality=80.0,
+        )
+        actual = combined_filter(input_files, scores, query, output_dir, scheduler_address="sequential")
+
+        expected = [
+            CombinedFilterResult(
+                input_file=input_dir / "2y2a_updated.cif.gz",
+                pdb_id="2Y2A",
+                metadata=StructureMetadata(
+                    id="2Y2A",
+                    uniprot_accession="P05067",
+                    resolution=1.91,
+                    total_residue_count=10,
+                    is_alphafold=False,
+                    uniprot_start=687,
+                    uniprot_end=692,
+                    sequence_identity=1.0,
+                    chain_length=10,
+                    auth_chain="A",
+                    label_chain="A",
+                    method="X-ray",
+                ),
+                high_confidence_residues_count=None,
+                geometry_quality=68.5,
+                passed=False,
+                reason="Geometry quality 68.5 below minimum 80.0",
+                output_file=None,
+            ),
+            CombinedFilterResult(
+                input_file=input_dir / "2Y29.cif.gz",
+                pdb_id="2Y29",
+                metadata=StructureMetadata(
+                    id="2Y29",
+                    uniprot_accession="P05067",
+                    resolution=2.3,
+                    total_residue_count=8,
+                    is_alphafold=False,
+                    uniprot_start=687,
+                    uniprot_end=692,
+                    sequence_identity=1.0,
+                    chain_length=8,
+                    auth_chain="A",
+                    label_chain="A",
+                    method="X-ray",
+                ),
+                high_confidence_residues_count=None,
+                geometry_quality=85.0,
+                passed=True,
+                reason=None,
+                output_file=output_dir / "2Y29.cif.gz",
+            ),
+        ]
+        assert actual == expected
 
 
 @pytest.fixture

@@ -19,7 +19,7 @@ def sample_cif() -> Path:
 
 @pytest.fixture
 def sample2_cif() -> Path:
-    """Downloaded from https://www.rcsb.org/structure/2Y29"""
+    """X-ray structure downloaded from https://www.rcsb.org/structure/2Y29"""
     return Path(__file__).parent / "fixtures" / "2Y29.cif.gz"
 
 
@@ -134,6 +134,20 @@ def cif_3jrs() -> Path:
         "3jrs_updated.cif.gz",
         "6117a1ef3d5d655491367588c56747fe9a4c5132dd240401f03f6ad3645d7603",
     )
+
+
+@pytest.fixture
+def cif_2y2a() -> Path:
+    """2y2a x-ray structure with same uniprot accession as sample2_cif fixture aka 2Y29."""
+    return fetch_cif(
+        "2y2a_updated.cif.gz",
+        "eaec5ba1d0b744fc7561e18ecbe1951e875913455450c102f3707519a616d092",
+    )
+
+
+@pytest.fixture
+def xray_p05067_cifs(sample2_cif: Path, cif_2y2a: Path) -> list[Path]:
+    return [sample2_cif, cif_2y2a]
 
 
 @pytest.fixture
