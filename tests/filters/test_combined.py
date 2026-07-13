@@ -48,16 +48,6 @@ def strip_resolution(input_file: Path, output_file: Path):
     output_file.write_text(body)
 
 
-@pytest.mark.skip("Remnant for developing strip_resolution")
-def test_strip_resolution(tmp_path: Path, sample2_cif: Path):
-    output_file = tmp_path / "output.cif"
-
-    strip_resolution(sample2_cif, output_file)
-
-    s = read_structure(output_file)
-    assert s.resolution == 0.0
-
-
 class TestCombinedFilter:
     def test_with_all_good_cifs_without_scores(self, all_cifs: list[Path], tmp_path: Path):
         input_dir = tmp_path / "input"
