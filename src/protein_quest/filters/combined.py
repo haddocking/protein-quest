@@ -7,7 +7,7 @@ from typing import Annotated
 
 import gemmi
 from cyclopts import Parameter
-from cyclopts.types import NormFloat, PositiveInt, StdioPath
+from cyclopts.types import NonNegativeInt, NormFloat, PositiveInt, StdioPath
 from cyclopts.validators import Number
 
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_structure_on_confidence
@@ -36,19 +36,17 @@ class CombinedFilterQuery:
             For example if set to 0.8 then structures that have sequence identity below 0.8 are discarded.
         top_uniprot_cluster: Maximum number of files to keep for structures per cluster per Uniprot accession.
             Alphafold structures are excluded from this limit.
-            The top N structures in each cluster of the resolution clusters.
-            The top N structures in each cluster of the PDBe quality clusters.
         top_non_uniprot: Maximum number of files to keep for structures without Uniprot accession.
 
     """
 
     min_confidence: Annotated[float, Parameter(validator=(Number(lte=100, gte=0)))] = 70.0
-    min_residues: PositiveInt = 0
+    min_residues: NonNegativeInt = 0
     max_residues: PositiveInt = 10_000_000
     min_geometry_quality: float = 50.0
     min_sequence_identity: NormFloat = 1.0
-    top_uniprot_cluster: PositiveInt | None = 1_000
-    top_non_uniprot: PositiveInt | None = 0
+    top_uniprot_cluster: NonNegativeInt = 1_000
+    top_non_uniprot: NonNegativeInt = 0
 
     def confidence_filter_query(self) -> "ConfidenceFilterQuery":
         return ConfidenceFilterQuery(
@@ -460,6 +458,9 @@ def _top_clustered_results(
     for structures in accession_groups.values():
         clusters = cluster_structures(structures)
         all_clusters.extend(clusters)
+
+    if not all_clusters:
+        return []
 
     if top_uniprot_cluster is None:
         top_uniprot_cluster = max(len(cluster) for cluster in all_clusters)
