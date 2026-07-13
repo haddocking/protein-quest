@@ -1,5 +1,5 @@
 import csv
-from asyncio.log import logger
+import logging
 from collections.abc import Iterable
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -17,6 +17,8 @@ from protein_quest.pdbe.ws import Scores
 from protein_quest.structure.formats import read_structure
 from protein_quest.structure.metadata import StructureMetadata, structure_metadata
 from protein_quest.utils import CopyMethod, copyfile
+
+logger = logging.getLogger(__name__)
 
 
 @Parameter(name="*")
