@@ -204,6 +204,7 @@ def _apply_alphafold_filter(
     output_dir: Path,
     copy_method: CopyMethod = "copy",
 ) -> CombinedFilterResult:
+    # See combined_filter docstring for partitioning logic.
     try:
         raw_result = filter_structure_on_confidence(
             structure=structure,
@@ -244,63 +245,15 @@ def _apply_alphafold_filter(
     )
 
 
-def _partition_structure_file_and_apply_alphafold_filter(  # noqa: C901 -- easier to read when all in one function
+def _apply_non_alphafold_filters(
     input_file: Path,
-    /,
-    *,
-    scores: dict[str, Scores],
+    pdb_id: str,
+    metadata: StructureMetadata,
+    geometry_quality: float | None,
     filters: CombinedFilterQuery,
-    output_dir: Path,
-    copy_method: CopyMethod = "hardlink",
+    parts: CombinedPartitions,
 ) -> CombinedPartitions:
-    parts = CombinedPartitions()
-
-    try:
-        structure = read_structure(input_file)
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"Failed to read structure {input_file}: {e}")
-        parts.processed.append(
-            CombinedFilterResult(
-                input_file=input_file,
-                passed=False,
-                reason=f"Failed to read structure: {e}",
-            )
-        )
-        return parts
-
-    pdb_id = structure.name
-    lowered_pdb_id = pdb_id.lower()
-    geometry_quality = scores[lowered_pdb_id].geometry_quality if lowered_pdb_id in scores else None
-
-    try:
-        metadata = structure_metadata(structure, path=input_file)
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"Failed to extract metadata from {input_file}: {e}")
-        parts.processed.append(
-            CombinedFilterResult(
-                pdb_id=pdb_id,
-                input_file=input_file,
-                geometry_quality=geometry_quality,
-                passed=False,
-                reason=f"Failed to extract metadata: {e}",
-            )
-        )
-        return parts
-
-    if metadata.is_alphafold:
-        parts.processed.append(
-            _apply_alphafold_filter(
-                input_file=input_file,
-                structure=structure,
-                metadata=metadata,
-                filters=filters,
-                geometry_quality=geometry_quality,
-                output_dir=output_dir,
-                copy_method=copy_method,
-            )
-        )
-        return parts
-
+    # See combined_filter docstring for partitioning logic.
     if not (filters.min_residues <= metadata.chain_length <= filters.max_residues):
         rrange = f"[{filters.min_residues}, {filters.max_residues}]"
         parts.processed.append(
@@ -392,6 +345,74 @@ def _partition_structure_file_and_apply_alphafold_filter(  # noqa: C901 -- easie
         )
     )
     return parts
+
+
+def _partition_structure_file_and_apply_alphafold_filter(
+    input_file: Path,
+    /,
+    *,
+    scores: dict[str, Scores],
+    filters: CombinedFilterQuery,
+    output_dir: Path,
+    copy_method: CopyMethod = "hardlink",
+) -> CombinedPartitions:
+    # See combined_filter docstring for partitioning logic.
+    parts = CombinedPartitions()
+
+    try:
+        structure = read_structure(input_file)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Failed to read structure {input_file}: {e}")
+        parts.processed.append(
+            CombinedFilterResult(
+                input_file=input_file,
+                passed=False,
+                reason=f"Failed to read structure: {e}",
+            )
+        )
+        return parts
+
+    pdb_id = structure.name
+    lowered_pdb_id = pdb_id.lower()
+    geometry_quality = scores[lowered_pdb_id].geometry_quality if lowered_pdb_id in scores else None
+
+    try:
+        metadata = structure_metadata(structure, path=input_file)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Failed to extract metadata from {input_file}: {e}")
+        parts.processed.append(
+            CombinedFilterResult(
+                pdb_id=pdb_id,
+                input_file=input_file,
+                geometry_quality=geometry_quality,
+                passed=False,
+                reason=f"Failed to extract metadata: {e}",
+            )
+        )
+        return parts
+
+    if metadata.is_alphafold:
+        parts.processed.append(
+            _apply_alphafold_filter(
+                input_file=input_file,
+                structure=structure,
+                metadata=metadata,
+                filters=filters,
+                geometry_quality=geometry_quality,
+                output_dir=output_dir,
+                copy_method=copy_method,
+            )
+        )
+        return parts
+
+    return _apply_non_alphafold_filters(
+        input_file=input_file,
+        pdb_id=pdb_id,
+        metadata=metadata,
+        geometry_quality=geometry_quality,
+        filters=filters,
+        parts=parts,
+    )
 
 
 def _partition_structure_files_and_apply_alphafold_filter(
