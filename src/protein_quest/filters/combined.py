@@ -330,6 +330,13 @@ def _partition_structure_file_and_apply_alphafold_filter(  # noqa: C901 -- easie
         )
         return parts
 
+    # has uniprot with resolution
+    if metadata.uniprot_accession and metadata.resolution != 0.0:
+        parts.uniprot_with_resolution.append(
+            ResolutionOrGeometryQualityClusterableStructure(input_file=input_file, metadata=metadata)
+        )
+        return parts
+
     if metadata.uniprot_accession and geometry_quality is not None:
         parts.uniprot_with_geometry_quality.append(
             ResolutionOrGeometryQualityClusterableStructure(
@@ -337,13 +344,6 @@ def _partition_structure_file_and_apply_alphafold_filter(  # noqa: C901 -- easie
                 metadata=metadata,
                 geometry_quality=geometry_quality,
             )
-        )
-        return parts
-
-    # has uniprot with resolution
-    if metadata.uniprot_accession and metadata.resolution != 0.0:
-        parts.uniprot_with_resolution.append(
-            ResolutionOrGeometryQualityClusterableStructure(input_file=input_file, metadata=metadata)
         )
         return parts
 
