@@ -22,10 +22,16 @@ from protein_quest.cli.common import (
     console,
     write_lines,
 )
-from protein_quest.converter import converter
 from protein_quest.filters.chain import filter_files_on_chain
+from protein_quest.filters.combined import (
+    CombinedFilterQuery,
+    combined_filter,
+    combined_filter_stats,
+    combined_filter_summary,
+)
 from protein_quest.filters.quality import (
     filter_by_pdbe_quality,
+    read_quality_json,
     write_quality_stats_csv,
 )
 from protein_quest.filters.residues import filter_files_on_residues
@@ -34,7 +40,6 @@ from protein_quest.filters.resolution import (
     write_resolution_stats,
 )
 from protein_quest.filters.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
-from protein_quest.pdbe.ws import Scores
 from protein_quest.structure.chains import ChainIdSystem
 from protein_quest.structure.files import glob_structure_files, locate_structure_file
 from protein_quest.utils import copyfile
@@ -398,8 +403,7 @@ def pdbe_quality(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info('Reading PDBe quality scores from "%s"', quality_json)
-    with quality_json.open("r", encoding="utf-8") as f:
-        scores = converter.loads(f.read(), dict[str, Scores])
+    scores = read_quality_json(quality_json)
 
     logger.info('Finding structure files in "%s" directory that match ids from PDBe quality scores', input_dir)
 
@@ -492,3 +496,79 @@ def secondary_structure(
     rprint(f"Wrote {nr_passed} files to {output_dir} directory.")
     if str(write_stats) != "-":
         rprint(f"Statistics written to {write_stats}")
+
+
+@filter_app.command
+def combined(
+    input_dir: InputDir,
+    quality_json: InputFile,
+    output_dir: OutputDir,
+    /,
+    *,
+    filters: CombinedFilterQuery | None = None,
+    write_stats: OutputFile | None = None,
+    scheduler_address: str | None = None,
+    cache: CacheParameter | None = None,
+    _: Common | None = None,
+):
+    """Filter PDB/mmCIF files using a combination of filters.
+
+    This command is a combination of the `protein-quest filter confidence`, `protein-quest filter residue`,
+    `protein-quest filter resolution`, and `protein-quest filter pdbe-quality` commands.
+    As each of those commands accepts a certain source/method of structures.
+    This command accepts all sources/methods of structures and applies the appropriate filters to each.
+
+    For details about filtering see the [documentation](
+    https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/filters/combined.html#protein_quest.filters.combined.combined_filter).
+
+    Args:
+        input_dir: Directory with PDB/mmCIF files.
+        quality_json: JSON file with PDBe quality scores.
+            Can be made with `protein-quest search pdbe-quality` command.
+        output_dir: Directory to write filtered PDB/mmCIF files. Files are copied without modification.
+        filters: Combined filtering criteria.
+        write_stats: Write filter statistics to file.
+            In CSV format with columns:
+            `<input_file>,<pdb_id>,<uniprot_accession>,<resolution>,<high_confidence_residues_count>,<total_residue_count>,
+            <method>,<is_alphafold>,<uniprot_start>,<uniprot_end>,<sequence_identity>,<chain_length>
+            ,<geometry_quality>,<passed>,<output_file>,<reason>` columns for resolution filtering.
+            Depending on filter way some column can be empty.
+            Use `-` for stdout.
+        scheduler_address: Address of the Dask scheduler to connect to.
+            If not provided, will create a local cluster.
+            If set to `sequential` will run tasks sequentially.
+        cache: Cache options including no_cache, cache_dir, and copy_method.
+        _: Common CLI options.
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+    cache = cache or CacheParameter()
+    if filters is None:
+        filters = CombinedFilterQuery()
+
+    if write_stats and str(write_stats) != "-":
+        write_stats.parent.mkdir(parents=True, exist_ok=True)
+
+    input_files = sorted(glob_structure_files(input_dir))
+    nr_total = len(input_files)
+    rprint(f"Filtering {nr_total} files in {input_dir} directory using combined filter.")
+    scores = read_quality_json(quality_json)
+
+    results = combined_filter(
+        input_files=input_files,
+        scores=scores,
+        filters=filters,
+        scheduler_address=scheduler_address,
+        output_dir=output_dir,
+        copy_method=cache.copy_method,
+    )
+
+    rprint(combined_filter_summary(results))
+
+    if write_stats:
+        if str(write_stats) != "-":
+            write_stats.parent.mkdir(parents=True, exist_ok=True)
+
+        combined_filter_stats(results, write_stats)
+
+        if str(write_stats) != "-":
+            rprint(f"Statistics written to {write_stats}")

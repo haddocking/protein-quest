@@ -392,6 +392,10 @@ def _pick_top_from_clusters(
     sorted_clustered_groups: list[list[ResolutionFilterStatistics]],
     top: int,
 ) -> list[ResolutionFilterStatistics]:
+    # Instead of taking the best member for each cluster to fill `top`,
+    # TODO: Take top N of each cluster, to cover each domain of the protein.
+    # For example, given 2 clusters with 5 and 2 members respectively, taking the top 2 should return 4 items,
+    # while currently it returns 2 items, one from each cluster.
     output: list[ResolutionFilterStatistics] = []
     for group_results in sorted_clustered_groups:
         for i, result in enumerate(group_results, 1):

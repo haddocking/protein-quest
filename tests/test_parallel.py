@@ -2,6 +2,7 @@ import pytest
 from distributed import Client
 
 from protein_quest.parallel import MyProgressBar, configure_dask_scheduler, dask_map_with_progress, map_with_progress
+from protein_quest.pdbe.ws import Scores
 
 
 class TestMapWithProgress:
@@ -106,6 +107,34 @@ class TestMapWithProgress:
         )
 
         assert result == [10, 11, 12, 13, 14]
+
+    def test_dask_with_big_kwarg(self):
+        # Scores should be big enough that passing it each time causes dask serialization error
+        # when args/kwargs are not scattered to workers first.
+        # current implementation of dask_map_with_progress does scattering, so passes.
+        score_count = 1190
+        item_count = 2382
+        scores = {
+            f"id{i:05d}": Scores(
+                geometry_quality=1.0,
+                data_quality=1.0,
+                overall_quality=1.0,
+                experiment_data_available=True,
+            )
+            for i in range(score_count)
+        }
+        pdb_ids = [f"id{i % score_count:05d}" for i in range(item_count)]
+
+        def myfunc(pdb_id: str, scores: dict[str, Scores]) -> float | None:
+            score = scores.get(pdb_id)
+            if score is None:
+                return 0.0
+            return score.geometry_quality
+
+        result = map_with_progress(scheduler_address=None, func=myfunc, iterable=pdb_ids, scores=scores)
+
+        assert len(result) == item_count
+        assert set(result) == {1.0}
 
 
 def test_MyProgressBar_interval_env(monkeypatch: pytest.MonkeyPatch):
