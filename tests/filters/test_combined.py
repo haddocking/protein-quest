@@ -76,7 +76,7 @@ class TestCombinedFilter:
 
         expected = [
             CombinedFilterResult(
-                input_file=Path(input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
+                input_file=input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz",
                 pdb_id="AF-A0A0C5B5G6-F1",
                 metadata=StructureMetadata(
                     id="AF-A0A0C5B5G6-F1",
@@ -96,10 +96,10 @@ class TestCombinedFilter:
                 geometry_quality=None,
                 passed=True,
                 reason=None,
-                output_file=Path(output_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz"),
+                output_file=output_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz",
             ),
             CombinedFilterResult(
-                input_file=Path(input_dir / "1amb_updated.cif.gz"),
+                input_file=input_dir / "1amb_updated.cif.gz",
                 pdb_id="1AMB",
                 metadata=StructureMetadata(
                     id="1AMB",
@@ -122,7 +122,7 @@ class TestCombinedFilter:
                 output_file=None,
             ),
             CombinedFilterResult(
-                input_file=Path(input_dir / "3jrs_updated_B2A.cif.gz"),
+                input_file=input_dir / "3jrs_updated_B2A.cif.gz",
                 pdb_id="3JRS",
                 metadata=StructureMetadata(
                     id="3JRS",
@@ -142,10 +142,10 @@ class TestCombinedFilter:
                 geometry_quality=None,
                 passed=True,
                 reason=None,
-                output_file=Path(output_dir / "3jrs_updated_B2A.cif.gz"),
+                output_file=output_dir / "3jrs_updated_B2A.cif.gz",
             ),
             CombinedFilterResult(
-                input_file=Path(input_dir / "2Y29.cif.gz"),
+                input_file=input_dir / "2Y29.cif.gz",
                 pdb_id="2Y29",
                 metadata=StructureMetadata(
                     id="2Y29",
@@ -165,10 +165,10 @@ class TestCombinedFilter:
                 geometry_quality=None,
                 passed=True,
                 reason=None,
-                output_file=Path(output_dir / "2Y29.cif.gz"),
+                output_file=output_dir / "2Y29.cif.gz",
             ),
             CombinedFilterResult(
-                input_file=Path(input_dir / "6O5I.cif.gz"),
+                input_file=input_dir / "6O5I.cif.gz",
                 pdb_id="6O5I",
                 metadata=StructureMetadata(
                     id="6O5I",
@@ -188,10 +188,10 @@ class TestCombinedFilter:
                 geometry_quality=None,
                 passed=True,
                 reason=None,
-                output_file=Path(output_dir / "6O5I.cif.gz"),
+                output_file=output_dir / "6O5I.cif.gz",
             ),
             CombinedFilterResult(
-                input_file=Path(input_dir / "1un5.cif.gz"),
+                input_file=input_dir / "1un5.cif.gz",
                 pdb_id="1UN5",
                 metadata=StructureMetadata(
                     id="1UN5",
@@ -211,10 +211,10 @@ class TestCombinedFilter:
                 geometry_quality=None,
                 passed=True,
                 reason=None,
-                output_file=Path(output_dir / "1un5.cif.gz"),
+                output_file=output_dir / "1un5.cif.gz",
             ),
             CombinedFilterResult(
-                input_file=Path(input_dir / "8w77_updated.cif.gz"),
+                input_file=input_dir / "8w77_updated.cif.gz",
                 pdb_id="8W77",
                 metadata=StructureMetadata(
                     id="8W77",
@@ -234,7 +234,7 @@ class TestCombinedFilter:
                 geometry_quality=None,
                 passed=True,
                 reason=None,
-                output_file=Path(output_dir / "8w77_updated.cif.gz"),
+                output_file=output_dir / "8w77_updated.cif.gz",
             ),
         ]
         assert results == expected
@@ -256,7 +256,7 @@ class TestCombinedFilter:
 
         expected = [
             CombinedFilterResult(
-                input_file=Path(input_dir / "unreadable.cif"),
+                input_file=input_dir / "unreadable.cif",
                 pdb_id=None,
                 metadata=None,
                 high_confidence_residues_count=None,
@@ -266,7 +266,7 @@ class TestCombinedFilter:
                 output_file=None,
             ),
             CombinedFilterResult(
-                input_file=Path(input_dir / "atomless.cif"),
+                input_file=input_dir / "atomless.cif",
                 pdb_id=" ",
                 metadata=None,
                 high_confidence_residues_count=None,
@@ -276,7 +276,7 @@ class TestCombinedFilter:
                 output_file=None,
             ),
             CombinedFilterResult(
-                input_file=Path(input_dir / "no_uniprot.cif"),
+                input_file=input_dir / "no_uniprot.cif",
                 pdb_id="2Y29",
                 metadata=StructureMetadata(
                     id="2Y29",
@@ -342,7 +342,7 @@ class TestCombinedFilter:
                 geometry_quality=70.3,
                 passed=True,
                 reason=None,
-                output_file=Path(output_dir / nmr_cif.name),
+                output_file=output_dir / nmr_cif.name,
             )
         ]
         assert results == expected
@@ -468,7 +468,7 @@ class TestCombinedFilter:
                 geometry_quality=None,
                 passed=True,
                 reason=None,
-                output_file=Path(output_dir / "2y2a_updated.cif.gz"),
+                output_file=output_dir / "2y2a_updated.cif.gz",
             ),
             CombinedFilterResult(
                 input_file=input_dir / "2Y29.cif.gz",
