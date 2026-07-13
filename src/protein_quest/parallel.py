@@ -158,6 +158,15 @@ class MyProgressBar(ProgressBar):
 P = ParamSpec("P")
 
 
+def _apply_with_shared_arguments[T, R](
+    item: T,
+    worker_func: Callable[..., R],
+    args: tuple[Any, ...],
+    kwargs: dict[str, Any],
+) -> R:
+    return worker_func(item, *args, **kwargs)
+
+
 def dask_map_with_progress[T, R, **P](
     client: Client,
     func: Callable[Concatenate[T, P], R],
@@ -167,6 +176,9 @@ def dask_map_with_progress[T, R, **P](
 ) -> list[R]:
     """
     Wrapper for map, progress, and gather of Dask that returns a correctly typed list.
+
+    Shared positional and keyword arguments are scattered once with broadcast
+    before mapping so Dask does not embed the full payload in every task graph entry.
 
     Environment variables:
         - Set interval (in seconds) of progress updates with `TQDM_MININTERVAL`
@@ -178,15 +190,23 @@ def dask_map_with_progress[T, R, **P](
             additional parameters can be provided positionally via ``*args`` or
             as keyword arguments via ``**kwargs``.
         iterable: Collection of arguments to map over.
-        *args: Additional positional arguments to pass to client.map().
-        **kwargs: Additional keyword arguments to pass to client.map().
+        *args: Additional positional arguments to scatter once and pass to each mapped call.
+        **kwargs: Additional keyword arguments to scatter once and pass to each mapped call.
 
     Returns:
         List of results of type returned by `func` function.
     """
     if client.dashboard_link:
         logger.info(f"Follow progress on dask dashboard at: {client.dashboard_link}")
-    futures = client.map(func, iterable, *args, **kwargs)  # pyrefly: ignore[bad-argument-type]
+    shared_args = client.scatter([tuple(args)], broadcast=True)[0]
+    shared_kwargs = client.scatter([dict(kwargs)], broadcast=True)[0]
+    futures = client.map(
+        _apply_with_shared_arguments,
+        iterable,
+        worker_func=func,
+        args=shared_args,
+        kwargs=shared_kwargs,
+    )
     if not os.getenv("TQDM_DISABLE"):
         MyProgressBar(futures)
     results = client.gather(futures)
