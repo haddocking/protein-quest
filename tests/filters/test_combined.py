@@ -59,7 +59,7 @@ def test_strip_resolution(tmp_path: Path, sample2_cif: Path):
 
 
 class TestCombinedFilter:
-    def test_with_all_good_cifs_and_defaults_without_scores(self, all_cifs: list[Path], tmp_path: Path):
+    def test_with_all_good_cifs_without_scores(self, all_cifs: list[Path], tmp_path: Path):
         input_dir = tmp_path / "input"
         input_dir.mkdir()
         input_files = []
@@ -68,7 +68,7 @@ class TestCombinedFilter:
             input_file.hardlink_to(cif)
             input_files.append(input_file)
         scores: dict[str, Scores] = {}
-        query = CombinedFilterQuery()
+        query = CombinedFilterQuery(min_sequence_identity=0.8)
         output_dir = tmp_path / "output"
         output_dir.mkdir()
 
@@ -733,6 +733,71 @@ class TestCombinedFilter:
             )
         ]
         assert actual == expected
+
+    def test_sequence_identity(self, sample_multispan_cif: Path, multi_accession_chain_cif: Path, tmp_path: Path):
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        input_files = []
+        for cif in [sample_multispan_cif, multi_accession_chain_cif]:
+            input_file = input_dir / cif.name
+            input_file.hardlink_to(cif)
+            input_files.append(input_file)
+        scores: dict[str, Scores] = {}
+        query = CombinedFilterQuery(min_sequence_identity=0.9)
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+
+        results = combined_filter(input_files, scores, query, output_dir, scheduler_address="sequential")
+
+        expected = [
+            CombinedFilterResult(
+                input_file=input_dir / "6O5I.cif.gz",
+                pdb_id="6O5I",
+                metadata=StructureMetadata(
+                    id="6O5I",
+                    uniprot_accession="O00255",
+                    resolution=1.24,
+                    total_residue_count=1346,
+                    is_alphafold=False,
+                    uniprot_start=1,
+                    uniprot_end=593,
+                    sequence_identity=0.816,  # is below 0.9
+                    chain_length=1346,
+                    auth_chain="A",
+                    label_chain="A",
+                    method="X-ray",
+                ),
+                high_confidence_residues_count=None,
+                geometry_quality=None,
+                passed=False,
+                reason="Sequence identity 0.816 < 0.9",
+                output_file=None,
+            ),
+            CombinedFilterResult(
+                input_file=input_dir / "1un5.cif.gz",
+                pdb_id="1UN5",
+                metadata=StructureMetadata(
+                    id="1UN5",
+                    uniprot_accession="P03950",
+                    resolution=2.6,
+                    total_residue_count=131,
+                    is_alphafold=False,
+                    uniprot_start=25,
+                    uniprot_end=147,
+                    sequence_identity=0.967,  # is above 0.9
+                    chain_length=131,
+                    auth_chain="A",
+                    label_chain="A",
+                    method="X-ray",
+                ),
+                high_confidence_residues_count=None,
+                geometry_quality=None,
+                passed=True,
+                reason=None,
+                output_file=output_dir / "1un5.cif.gz",
+            ),
+        ]
+        assert results == expected
 
 
 @pytest.fixture

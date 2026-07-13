@@ -7,7 +7,7 @@ from typing import Annotated
 
 import gemmi
 from cyclopts import Parameter
-from cyclopts.types import PositiveInt, StdioPath
+from cyclopts.types import NormFloat, PositiveInt, StdioPath
 from cyclopts.validators import Number
 
 from protein_quest.alphafold.confidence import ConfidenceFilterQuery, filter_structure_on_confidence
@@ -29,6 +29,9 @@ class CombinedFilterQuery:
         min_residues: Min residues in chain A.
         max_residues: Max residues in chain A.
         min_geometry_quality: Minimal geometry quality score to pass the filter.
+        min_sequence_identity: Minimum sequence identity ratio to the Uniprot sequence for a structure to be passed.
+            If not set then discards structures that are not fully identical to the Uniprot sequence.
+            For example if set to 0.8 then structures that have sequence identity below 0.8 are discarded.
         top_uniprot_cluster: Maximum number of files to keep for structures per cluster per Uniprot accession.
             Alphafold structures are excluded from this limit.
             The top N structures in each cluster of the resolution clusters.
@@ -41,6 +44,7 @@ class CombinedFilterQuery:
     min_residues: PositiveInt = 0
     max_residues: PositiveInt = 10_000_000
     min_geometry_quality: float = 50.0
+    min_sequence_identity: NormFloat = 1.0
     top_uniprot_cluster: PositiveInt | None = 1_000
     top_non_uniprot: PositiveInt | None = 0
 
@@ -240,7 +244,7 @@ def _apply_alphafold_filter(
     )
 
 
-def _partition_structure_file_and_apply_alphafold_filter(
+def _partition_structure_file_and_apply_alphafold_filter(  # noqa: C901 -- easier to read when all in one function
     input_file: Path,
     /,
     *,
@@ -311,7 +315,19 @@ def _partition_structure_file_and_apply_alphafold_filter(
         )
         return parts
 
-    # has uniprot with geometry_quality
+    if metadata.uniprot_accession and metadata.sequence_identity < filters.min_sequence_identity:
+        parts.processed.append(
+            CombinedFilterResult(
+                pdb_id=pdb_id,
+                input_file=input_file,
+                geometry_quality=geometry_quality,
+                metadata=metadata,
+                passed=False,
+                reason=f"Sequence identity {metadata.sequence_identity} < {filters.min_sequence_identity}",
+            )
+        )
+        return parts
+
     if metadata.uniprot_accession and geometry_quality is not None:
         parts.uniprot_with_geometry_quality.append(
             ResolutionOrGeometryQualityClusterableStructure(
@@ -535,6 +551,7 @@ def combined_filter(
 
     * All non-AlphaFold structures are filtered by number of residues in chain A.
         See `protein-quest filter residue --help` for details.
+    * All non-AlphaFold structures with Uniprot accession are filtered by sequence identity.
     * AlphaFold structures are filtered by confidence (plDDT) and afterwards by number of residues in chain A.
         See `protein-quest filter confidence --help` for details.
     * Structures with uniprot accession and resolution are filtered
@@ -556,7 +573,9 @@ def combined_filter(
         B -->|No| F[Filter by residues in chain A]
         F --> G{UniProt accession?}
 
-        G -->|Yes| H{Resolution available?}
+        G -->|Yes| U[Filter by sequence identity]
+
+        U --> H{Resolution available?}
         H -->|Yes| I[Group by UniProt accession and cluster by residue ranges]
         I --> J[Sort cluster members by resolution]
         J --> K[Keep up to top_uniprot_cluster per cluster]
