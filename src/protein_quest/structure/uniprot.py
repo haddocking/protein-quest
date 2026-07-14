@@ -317,3 +317,72 @@ def add_uniprot_accessions2structure(
     else:
         logger.info("Injecting UniProt accessions into structure %s: %s", structure.name, missing)
     return _append_uniprot_to_structure(structure, missing)
+
+
+def _subchains2sifts_unp_acc(structure: gemmi.Structure) -> dict[str, list[str]]:
+    sc2ua = {}
+    for entity in structure.entities:
+        entity_uniprots = entity.sifts_unp_acc
+        subchains = entity.subchains
+        for subchain in subchains:
+            sc2ua[subchain] = entity_uniprots
+    return sc2ua
+
+
+def selected_struct_ref_seqs_from_sifts_by_chain(
+    structure: gemmi.Structure, accessions: set[str]
+) -> dict[str, StructRefSeq]:
+    """Construct struct ref seq blocks from SIFTS data.
+
+    With approximate sequence identity based on highest Uniprot position in structure.
+
+    Args:
+        structure: The structure to extract SIFTS data from.
+        accessions: UniProt accessions to match against.
+
+    Returns:
+        Mapping from chain id to selected ``StructRefSeq``.
+    """
+    sc2ua = _subchains2sifts_unp_acc(structure)
+
+    # (chain, uniprot) -> list of uniprot positions in structure
+    chain_ua2up: dict[tuple[str, str], list[int]] = {}
+    for model in structure:
+        for chain in model:
+            polymer = chain.get_polymer()
+            subchain_id = polymer.subchain_id()
+            entity_uniprots = sc2ua[subchain_id]
+            if not entity_uniprots:
+                continue
+            for residue in polymer:
+                # valid sifts_unp looks like ('D', 0, 2865)
+                sifts_unp: tuple[str, int, int] = residue.sifts_unp
+                uniprot_pos = sifts_unp[2]
+                if uniprot_pos == 0:
+                    continue
+                uniprot_accession = entity_uniprots[sifts_unp[1]]
+                if uniprot_accession not in accessions:
+                    continue
+                key = (chain.name, uniprot_accession)
+                if key not in chain_ua2up:
+                    chain_ua2up[key] = []
+                chain_ua2up[key].append(uniprot_pos)
+
+    struct_ref_seqs_by_chain: dict[str, StructRefSeq] = {}
+    for (chain_id, uniprot_accession), uniprot_positions in chain_ua2up.items():
+        uniprot_start = min(uniprot_positions)
+        uniprot_end = max(uniprot_positions)
+        aligned_residue_count = len(uniprot_positions)
+        # Do not know how long uniprot is so use highest mapped position as uniprot length
+        reference_span = uniprot_end
+        sequence_identity = aligned_residue_count / reference_span
+        struct_ref_seqs_by_chain[chain_id] = StructRefSeq(
+            uniprot_accession=uniprot_accession,
+            uniprot_start=uniprot_start,
+            uniprot_end=uniprot_end,
+            chain_id=chain_id,
+            sequence_identity=round(sequence_identity, 4),
+            aligned_residue_count=aligned_residue_count,
+        )
+
+    return struct_ref_seqs_by_chain

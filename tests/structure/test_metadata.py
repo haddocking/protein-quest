@@ -191,6 +191,24 @@ class TestStructureMetadata:
                 ),
                 id="no_uniprot_accession",
             ),
+            pytest.param(
+                "cif_2fui",
+                StructureMetadata(
+                    id="2FUI",
+                    uniprot_accession="Q12830",
+                    resolution=0.0,
+                    total_residue_count=1240,
+                    is_alphafold=False,
+                    uniprot_start=2865,
+                    uniprot_end=2921,
+                    sequence_identity=0.39,
+                    chain_length=62,
+                    auth_chain="A",
+                    label_chain="A",
+                    method="NMR",
+                ),
+                id="just-sift",
+            ),
         ],
     )
     def test_cif_fixtures(self, cif_fixture: str, expected: StructureMetadata, request: pytest.FixtureRequest):
