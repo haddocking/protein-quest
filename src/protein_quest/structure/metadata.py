@@ -187,10 +187,8 @@ def structure_metadata(
             label_chain=auth2label[first_auth_chain],
         )
 
-    struct_ref_seqs_by_chain = selected_struct_ref_seqs_by_chain(structure, accessions)
-    if not struct_ref_seqs_by_chain:
-        # TODO should combine both results?
-        struct_ref_seqs_by_chain = selected_struct_ref_seqs_from_sifts_by_chain(structure, accessions)
+    struct_ref_seqs_by_chain = selected_struct_ref_seqs_from_sifts_by_chain(structure, accessions)
+    struct_ref_seqs_by_chain.update(selected_struct_ref_seqs_by_chain(structure, accessions))
 
     if len(struct_ref_seqs_by_chain) > 1:
         logger.warning(_build_multiple_accessions_message(structure, accessions, path))
