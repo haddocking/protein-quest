@@ -10,6 +10,7 @@ from protein_quest.structure.uniprot import (
     UniprotSource,
     add_uniprot_accessions2structure,
     selected_struct_ref_seqs_by_chain,
+    selected_struct_ref_seqs_from_sifts_by_chain,
     struct_ref_seqs_columns_to_records,
     structure2uniprot_accessions,
     structure_to_uniprot,
@@ -617,3 +618,108 @@ def test_selected_struct_ref_seqs_by_chain_returns_auth_system(cif_8rw8: Path):
         )
     }
     assert result == expected
+
+
+@pytest.mark.parametrize(
+    "cif_fixture, expected",
+    [
+        pytest.param(
+            "cif_2fui",
+            {
+                "A": StructRefSeq(
+                    uniprot_accession="Q12830",
+                    uniprot_start=2865,
+                    uniprot_end=2921,
+                    chain_id="A",
+                    sequence_identity=0.3903,
+                    aligned_residue_count=1140,
+                )
+            },
+            id="single-chain",
+        ),
+        pytest.param(
+            "sample2_cif",
+            {},
+            id="struct-ref-seq-only",
+        ),
+        pytest.param(
+            "multi_entity_cif",
+            {
+                "A": StructRefSeq(
+                    uniprot_accession="P84233",
+                    uniprot_start=37,
+                    uniprot_end=136,
+                    chain_id="A",
+                    sequence_identity=0.7353,
+                    aligned_residue_count=100,
+                ),
+                "B": StructRefSeq(
+                    uniprot_accession="P62806",
+                    uniprot_start=24,
+                    uniprot_end=103,
+                    chain_id="B",
+                    sequence_identity=0.7767,
+                    aligned_residue_count=80,
+                ),
+                "C": StructRefSeq(
+                    uniprot_accession="P0C0S5",
+                    uniprot_start=17,
+                    uniprot_end=119,
+                    chain_id="C",
+                    sequence_identity=0.8655,
+                    aligned_residue_count=103,
+                ),
+                "D": StructRefSeq(
+                    uniprot_accession="P02281",
+                    uniprot_start=32,
+                    uniprot_end=126,
+                    chain_id="D",
+                    sequence_identity=0.754,
+                    aligned_residue_count=95,
+                ),
+                "E": StructRefSeq(
+                    uniprot_accession="P84233",
+                    uniprot_start=34,
+                    uniprot_end=136,
+                    chain_id="E",
+                    sequence_identity=0.7574,
+                    aligned_residue_count=103,
+                ),
+                "F": StructRefSeq(
+                    uniprot_accession="P62806",
+                    uniprot_start=18,
+                    uniprot_end=103,
+                    chain_id="F",
+                    sequence_identity=0.835,
+                    aligned_residue_count=86,
+                ),
+                "G": StructRefSeq(
+                    uniprot_accession="P0C0S5",
+                    uniprot_start=17,
+                    uniprot_end=123,
+                    chain_id="G",
+                    sequence_identity=0.8699,
+                    aligned_residue_count=107,
+                ),
+                "H": StructRefSeq(
+                    uniprot_accession="P02281",
+                    uniprot_start=32,
+                    uniprot_end=126,
+                    chain_id="H",
+                    sequence_identity=0.754,
+                    aligned_residue_count=95,
+                ),
+            },
+            id="multi-entity",
+        ),
+    ],
+)
+def test_selected_struct_ref_seqs_from_sifts_by_chain(
+    cif_fixture: str, expected: dict[str, StructRefSeq], request: pytest.FixtureRequest
+):
+    path = request.getfixturevalue(cif_fixture)
+    structure = read_structure(path)
+    accessions = structure2uniprot_accessions(structure)
+
+    actual = selected_struct_ref_seqs_from_sifts_by_chain(structure, accessions)
+    assert actual == expected

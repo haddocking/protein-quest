@@ -16,6 +16,7 @@ from protein_quest.structure.errors import ChainNotFoundError
 from protein_quest.structure.types import StructureMethod
 from protein_quest.structure.uniprot import (
     selected_struct_ref_seqs_by_chain,
+    selected_struct_ref_seqs_from_sifts_by_chain,
     structure2uniprot_accessions,
 )
 
@@ -188,8 +189,8 @@ def structure_metadata(
 
     struct_ref_seqs_by_chain = selected_struct_ref_seqs_by_chain(structure, accessions)
     if not struct_ref_seqs_by_chain:
-        msg = f"No struct_ref_seq entry with any of {accessions} uniprot accessions found in {structure.name}"
-        raise ValueError(msg)
+        # TODO should combine both results?
+        struct_ref_seqs_by_chain = selected_struct_ref_seqs_from_sifts_by_chain(structure, accessions)
 
     if len(struct_ref_seqs_by_chain) > 1:
         logger.warning(_build_multiple_accessions_message(structure, accessions, path))
