@@ -319,6 +319,16 @@ def add_uniprot_accessions2structure(
     return _append_uniprot_to_structure(structure, missing)
 
 
+def _subchains2sifts_unp_acc(structure: gemmi.Structure) -> dict[str, list[str]]:
+    sc2ua = {}
+    for entity in structure.entities:
+        entity_uniprots = entity.sifts_unp_acc
+        subchains = entity.subchains
+        for subchain in subchains:
+            sc2ua[subchain] = entity_uniprots
+    return sc2ua
+
+
 def selected_struct_ref_seqs_from_sifts_by_chain(
     structure: gemmi.Structure, accessions: set[str]
 ) -> dict[str, StructRefSeq]:
@@ -333,12 +343,7 @@ def selected_struct_ref_seqs_from_sifts_by_chain(
     Returns:
         Mapping from chain id to selected ``StructRefSeq``.
     """
-    sc2ua = {}
-    for entity in structure.entities:
-        entity_uniprots = entity.sifts_unp_acc
-        subchains = entity.subchains
-        for subchain in subchains:
-            sc2ua[subchain] = entity_uniprots
+    sc2ua = _subchains2sifts_unp_acc(structure)
 
     # (chain, uniprot) -> list of uniprot positions in structure
     chain_ua2up: dict[tuple[str, str], list[int]] = {}
@@ -347,6 +352,8 @@ def selected_struct_ref_seqs_from_sifts_by_chain(
             polymer = chain.get_polymer()
             subchain_id = polymer.subchain_id()
             entity_uniprots = sc2ua[subchain_id]
+            if not entity_uniprots:
+                continue
             for residue in polymer:
                 # valid sifts_unp looks like ('D', 0, 2865)
                 sifts_unp: tuple[str, int, int] = residue.sifts_unp

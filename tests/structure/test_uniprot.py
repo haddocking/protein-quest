@@ -712,6 +712,11 @@ def test_selected_struct_ref_seqs_by_chain_returns_auth_system(cif_8rw8: Path):
             },
             id="multi-entity",
         ),
+        pytest.param(
+            "multi_accession_chain_cif",
+            {},
+            id="multi-accession-chain",
+        ),
     ],
 )
 def test_selected_struct_ref_seqs_from_sifts_by_chain(
