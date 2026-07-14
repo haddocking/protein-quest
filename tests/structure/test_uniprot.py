@@ -447,6 +447,12 @@ class TestStructureToUniprot:
                 },
                 id="multi-default",
             ),
+            pytest.param(
+                "cif_2fui",
+                "sifts",
+                {"2FUI": {("A", "Q12830")}},
+                id="just sift",
+            ),
         ],
     )
     def test_sources(

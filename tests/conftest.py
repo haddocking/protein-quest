@@ -146,6 +146,15 @@ def cif_2y2a() -> Path:
 
 
 @pytest.fixture
+def cif_2fui():
+    """2fui x-ray structure with uniprot from just sift."""
+    return fetch_cif(
+        "2fui_updated.cif.gz",
+        "f70adacd1ec1b8bde59c3754a6774cf190a9d3dc0710b6041bab9ad96c7118f5",
+    )
+
+
+@pytest.fixture
 def xray_p05067_cifs(sample2_cif: Path, cif_2y2a: Path) -> list[Path]:
     return [sample2_cif, cif_2y2a]
 
