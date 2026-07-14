@@ -147,7 +147,7 @@ def cif_2y2a() -> Path:
 
 @pytest.fixture
 def cif_2fui():
-    """2fui x-ray structure with uniprot from just sift."""
+    """2fui structure with uniprot in just SIFTS, not in struct_ref block."""
     return fetch_cif(
         "2fui_updated.cif.gz",
         "f70adacd1ec1b8bde59c3754a6774cf190a9d3dc0710b6041bab9ad96c7118f5",
