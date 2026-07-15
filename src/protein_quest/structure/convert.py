@@ -18,7 +18,7 @@ from protein_quest.structure.types import (
     valid_structure_file_extensions,
 )
 from protein_quest.structure.uniprot import add_uniprot_accessions2structure
-from protein_quest.uniprot_chains import Pdb2UniprotChainsMapping
+from protein_quest.uniprot_chains import Pdb2RangeMappings
 from protein_quest.utils import CopyMethod, copyfile
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ def convert_to_cif_files(
     output_dir: Path,
     copy_method: CopyMethod,
     output_format: CifOutputFormat = ".cif",
-    pdb2uniprot: Pdb2UniprotChainsMapping | None = None,
+    pdb2uniprot: Pdb2RangeMappings | None = None,
     chain_system: ChainIdSystem = "auth",
 ) -> Generator[tuple[Path, Path]]:
     """Convert structure files to CIF format.
@@ -62,7 +62,7 @@ def convert_to_cif_file(
     output_dir: Path,
     copy_method: CopyMethod,
     output_format: CifOutputFormat = ".cif",
-    pdb2uniprot: Pdb2UniprotChainsMapping | None = None,
+    pdb2uniprot: Pdb2RangeMappings | None = None,
     chain_system: ChainIdSystem = "auth",
 ) -> Path:
     """Convert a single structure file to CIF format.

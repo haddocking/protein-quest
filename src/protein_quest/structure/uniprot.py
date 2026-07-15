@@ -13,9 +13,9 @@ from protein_quest.structure.chains import (
     retrieve_chain_extraction_provenance,
 )
 from protein_quest.structure.errors import ChainNotFoundError
-from protein_quest.structure.types import Pdb2UniprotMapping, StructRefSeq
+from protein_quest.structure.types import Pdb2RawPairs, StructRefSeq
 from protein_quest.uniprot_chains import (
-    Pdb2UniprotChainsMapping,
+    Pdb2RangeMappings,
     UniprotChainMapping,
     UniprotChainRange,
     all_chain_ids,
@@ -146,7 +146,7 @@ UniprotSource = Literal["both", "sifts", "struct_ref_seq", "fallback"]
 """From which source to extract UniProt accessions from a structure."""
 
 
-def structure_to_uniprot(structure: gemmi.Structure, source: UniprotSource = "fallback") -> Pdb2UniprotMapping:
+def structure_to_uniprot(structure: gemmi.Structure, source: UniprotSource = "fallback") -> Pdb2RawPairs:
     """Extract chain-to-UniProt mapping from a structure.
 
     Args:
@@ -359,7 +359,7 @@ def _rename_chain_based_on_provenance(
 
 def add_uniprot_accessions2structure(
     structure: gemmi.Structure,
-    pdb2uniprot: Pdb2UniprotChainsMapping | None,
+    pdb2uniprot: Pdb2RangeMappings | None,
     *,
     chain_system: ChainIdSystem = "auth",
 ) -> gemmi.Structure:

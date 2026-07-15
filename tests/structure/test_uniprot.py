@@ -5,7 +5,7 @@ import pytest
 
 from protein_quest.structure.chains import ChainIdSystem, write_single_chain_structure_file
 from protein_quest.structure.formats import read_structure
-from protein_quest.structure.types import Pdb2UniprotMapping, StructRefSeq
+from protein_quest.structure.types import Pdb2RawPairs, StructRefSeq
 from protein_quest.structure.uniprot import (
     UniprotSource,
     add_uniprot_accessions2structure,
@@ -15,10 +15,10 @@ from protein_quest.structure.uniprot import (
     structure2uniprot_accessions,
     structure_to_uniprot,
 )
-from protein_quest.uniprot_chains import Pdb2UniprotChainsMapping, UniprotChainMapping, parse_uniprot_chains
+from protein_quest.uniprot_chains import Pdb2RangeMappings, UniprotChainMapping, parse_uniprot_chains
 
 
-def _mapping(pdb_id: str, uniprot_accession: str, uniprot_chains: str) -> Pdb2UniprotChainsMapping:
+def _mapping(pdb_id: str, uniprot_accession: str, uniprot_chains: str) -> Pdb2RangeMappings:
     return {
         pdb_id: {
             UniprotChainMapping(
@@ -47,7 +47,7 @@ def _mapping(pdb_id: str, uniprot_accession: str, uniprot_chains: str) -> Pdb2Un
     ],
 )
 def test_write_single_chain_structure_file_preserves_uniprot_mapping(
-    request: pytest.FixtureRequest, tmp_path: Path, fixture_name: str, chain2keep: str, expected: Pdb2UniprotMapping
+    request: pytest.FixtureRequest, tmp_path: Path, fixture_name: str, chain2keep: str, expected: Pdb2RawPairs
 ):
     input_file = request.getfixturevalue(fixture_name)
     output_file = write_single_chain_structure_file(input_file=input_file, chain2keep=chain2keep, output_dir=tmp_path)
@@ -472,7 +472,7 @@ class TestStructureToUniprot:
         request: pytest.FixtureRequest,
         fixture_name: str,
         source: UniprotSource | None,
-        expected: Pdb2UniprotMapping,
+        expected: Pdb2RawPairs,
     ):
         structure_path = request.getfixturevalue(fixture_name)
         structure = read_structure(structure_path)
@@ -512,7 +512,7 @@ class TestAddUniprotAccessions2Structure:
 
         result2 = structure_to_uniprot(new_structure)
 
-        expected: Pdb2UniprotMapping = {"2Y29": {("A", "P12345")}}
+        expected: Pdb2RawPairs = {"2Y29": {("A", "P12345")}}
         assert result2 == expected
 
         block = new_structure.make_mmcif_block(gemmi.MmcifOutputGroups(False, struct_ref=True))
@@ -531,7 +531,7 @@ class TestAddUniprotAccessions2Structure:
 
         result2 = structure_to_uniprot(new_structure)
 
-        expected: Pdb2UniprotMapping = {"1AMB": {("A", "P05067"), ("A", "P12345")}}
+        expected: Pdb2RawPairs = {"1AMB": {("A", "P05067"), ("A", "P12345")}}
         assert result2 == expected
 
     def test_inject_multiple_ranges_into_nostructref(self, no_uniprot_cif: Path):
@@ -563,7 +563,7 @@ class TestAddUniprotAccessions2Structure:
         new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
         result = structure_to_uniprot(new_structure)
 
-        expected: Pdb2UniprotMapping = {"1A02": {("A", "P01100"), ("A", "P01111")}}
+        expected: Pdb2RawPairs = {"1A02": {("A", "P01100"), ("A", "P01111")}}
         assert result == expected
 
         log = caplog.text
@@ -586,7 +586,7 @@ class TestAddUniprotAccessions2Structure:
 
         result = structure_to_uniprot(new_structure, source="both")
 
-        expected: Pdb2UniprotMapping = {
+        expected: Pdb2RawPairs = {
             "1F66": {
                 (
                     "A",

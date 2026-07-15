@@ -67,8 +67,11 @@ class UniprotChainMapping:
     chain_ranges: UniprotChains
 
 
-type Pdb2UniprotChainsMapping = dict[str, set[UniprotChainMapping]]
-"""Dictionary mapping PDB ID to UniProt chain mappings used for injection."""
+type Pdb2RangeMappings = dict[str, set[UniprotChainMapping]]
+"""Dictionary mapping PDB ID to structured UniProt chain mappings used for injection.
+
+Each mapping carries residue-range information for _struct_ref_seq injection.
+"""
 
 
 def parse_chain_ids(uniprot_chains: str) -> tuple[str, ...]:

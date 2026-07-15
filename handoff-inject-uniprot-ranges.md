@@ -56,7 +56,7 @@ There are many unrelated untracked files in the worktree. Do not clean them up u
 - Replaced the convert CSV ingestion path to read `pdb_id`, `uniprot_accession`, and `uniprot_chains` instead of legacy `chain` input.
 - Introduced structured injection mappings in `src/protein_quest/uniprot_chains.py`:
   - `UniprotChainMapping`
-  - `Pdb2UniprotChainsMapping`
+   - `Pdb2RangeMappings` (renamed from `Pdb2UniprotChainsMapping` per recommendation #1)
 - Updated structure conversion/injection flow to use the structured mapping type while keeping `structure_to_uniprot()` on the existing tuple-based public read shape.
 - Updated `src/protein_quest/structure/uniprot.py` so injected `_struct_ref_seq` rows now write concrete `db_align_beg` and `db_align_end` values derived from `uniprot_chains`.
 - Covered discontinuous ranges and multi-chain expansion in `tests/structure/test_uniprot.py`.

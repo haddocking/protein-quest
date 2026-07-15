@@ -32,7 +32,7 @@ from protein_quest.structure.files import glob_structure_files
 from protein_quest.structure.formats import read_structure
 from protein_quest.structure.types import CifOutputFormat
 from protein_quest.structure.uniprot import structure2uniprot_accessions
-from protein_quest.uniprot_chains import Pdb2UniprotChainsMapping, UniprotChainMapping, parse_uniprot_chains
+from protein_quest.uniprot_chains import Pdb2RangeMappings, UniprotChainMapping, parse_uniprot_chains
 
 rprint = console.print
 
@@ -80,7 +80,7 @@ def uniprot(
         write_lines(output, sorted(uniprot_accessions))
 
 
-def _read_pdb2uniprot_csv(uniprots: Path | None) -> Pdb2UniprotChainsMapping:
+def _read_pdb2uniprot_csv(uniprots: Path | None) -> Pdb2RangeMappings:
     """Read CSV file with PDB id to UniProt chain/range mappings.
 
     Expects 3 columns: `pdb_id,uniprot_accession,uniprot_chains`.
@@ -91,7 +91,7 @@ def _read_pdb2uniprot_csv(uniprots: Path | None) -> Pdb2UniprotChainsMapping:
     Returns:
         Dictionary mapping PDB ID to UniProt chain mappings.
     """
-    uniprot_ref_dict: Pdb2UniprotChainsMapping = {}
+    uniprot_ref_dict: Pdb2RangeMappings = {}
     if uniprots is None:
         return uniprot_ref_dict
 
