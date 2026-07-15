@@ -9,10 +9,15 @@ from protein_quest.pdbe.result import PdbResult
 
 
 def make_pdb(
-    pdb_id: str, uniprot_chains: str, resolution: float | None = 5.0, method: str = "X-Ray_Crystallography"
+    pdb_id: str,
+    uniprot_chains: str,
+    resolution: float | None = 5.0,
+    method: str = "X-Ray_Crystallography",
+    uniprot_accession: str = "P00000",
 ) -> PdbResult:
     return PdbResult(
         id=pdb_id,
+        uniprot_accession=uniprot_accession,
         method=method,
         resolution=str(resolution) if resolution is not None else None,
         uniprot_chains=uniprot_chains,

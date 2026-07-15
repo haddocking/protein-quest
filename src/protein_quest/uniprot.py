@@ -356,10 +356,11 @@ def _flatten_results_pdb(rawresults: Iterable[Any]) -> PdbResults:
         pdb_id = result["pdb_db"]["value"].split("/")[-1]
         method = result["pdb_method"]["value"].split("/")[-1]
         uniprot_chains = result["pdb_chains"]["value"]
-        pdb = PdbResult(id=pdb_id, method=method, uniprot_chains=uniprot_chains)
+        pdb = PdbResult(id=pdb_id, uniprot_accession=protein, method=method, uniprot_chains=uniprot_chains)
         if "pdb_resolution" in result:
             pdb = PdbResult(
                 id=pdb_id,
+                uniprot_accession=protein,
                 method=method,
                 uniprot_chains=uniprot_chains,
                 resolution=result["pdb_resolution"]["value"],

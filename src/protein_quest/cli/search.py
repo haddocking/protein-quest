@@ -82,7 +82,7 @@ def _write_pdbe_csv(path: StdioPath, data: PdbResults):
                     chain_length = None
                 writer.writerow(
                     {
-                        "uniprot_accession": uniprot_accession,
+                        "uniprot_accession": e.uniprot_accession,
                         "pdb_id": e.id,
                         "method": e.method,
                         "resolution": e.resolution or "",

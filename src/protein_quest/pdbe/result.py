@@ -21,6 +21,7 @@ class PdbResult:
 
     Attributes:
         id: PDB ID (for example "1H3O").
+        uniprot_accession: UniProt accession (for example "P05067").
         method: Method used for the PDB entry (for example "X-ray diffraction").
         uniprot_chains: Chains in UniProt format (for example "A/B=1-42,A/B=50-99").
             The chain ids used in string are in 'auth' [chain id system][protein_quest.structure.chains.ChainIdSystem].
@@ -28,6 +29,7 @@ class PdbResult:
     """
 
     id: str
+    uniprot_accession: str
     method: str
     uniprot_chains: str
     resolution: str | None = None
@@ -109,7 +111,10 @@ class PdbResult:
 
 
 type PdbResults = dict[str, set[PdbResult]]
-"""Dictionary with uniprot accessions as keys and sets of PDB results as values."""
+"""Dictionary with uniprot accessions as keys and sets of PDB results as values.
+
+Each PdbResult also carries its own uniprot_accession field for self-contained access.
+"""
 
 
 def _chain_length_or_zero(entry: PdbResult) -> int:

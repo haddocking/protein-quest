@@ -275,7 +275,13 @@ def test_search4pdb():
 
     expected = {
         uniprot_accession: {
-            PdbResult(id="1AAP", method="X-Ray_Crystallography", resolution="1.5", uniprot_chains="A/B=287-344")
+            PdbResult(
+                id="1AAP",
+                uniprot_accession=uniprot_accession,
+                method="X-Ray_Crystallography",
+                resolution="1.5",
+                uniprot_chains="A/B=287-344",
+            )
         }
     }
     assert results == expected
