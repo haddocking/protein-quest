@@ -60,7 +60,7 @@ def test_structure2uniprot_accessions_multiple(multi_accession_cif: Path):
     assert accessions == {"Q13469", "P01100", "P05412"}
 
 
-def test_structure2uniprot_accessions_missing(sample_cif: Path, caplog: pytest.LogCaptureFixture):
+def test_structure2uniprot_accessions_missing(sample_cif: Path):
     # Empty struct_ref category to simulate missing UniProt accessions
     structure_with_unp = read_structure(sample_cif)
     block_without_struct_ref = structure_with_unp.make_mmcif_block(
@@ -71,7 +71,6 @@ def test_structure2uniprot_accessions_missing(sample_cif: Path, caplog: pytest.L
     accessions = structure2uniprot_accessions(structure)
 
     assert accessions == set()
-    assert "No UniProt accessions found in structure 3JRS" in caplog.text
 
 
 @pytest.mark.parametrize(

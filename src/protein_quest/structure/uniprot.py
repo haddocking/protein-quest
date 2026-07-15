@@ -133,8 +133,6 @@ def _extract_chain_uniprots_from_struct_ref_seq(structure: gemmi.Structure) -> s
             auth_chain = struct_ref_seq["pdbx_strand_id"][i]
             chain_uniprots.add((auth_chain, uniprot_accession))
 
-    if not chain_uniprots:
-        logger.warning("No UniProt accessions found in structure %s", structure.name)
     return chain_uniprots
 
 
