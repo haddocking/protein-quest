@@ -384,7 +384,7 @@ class TestFilterFilesOnResolution:
 
     def test_lax_mode_passes_structure_without_resolution(self, af_cif: Path, tmp_path: Path):
         output_dir = tmp_path / "output"
-        results = list(filter_files_on_resolution(input_files=[af_cif], output_dir=output_dir, top=1, lax=True))
+        results = list(filter_files_on_resolution(input_files=[af_cif], output_dir=output_dir, top=1, lax=True, copy_method="symlink"))
 
         expected = ResolutionFilterStatistics(
             id="AF-A0A0C5B5G6-F1",

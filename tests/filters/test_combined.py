@@ -55,7 +55,7 @@ class TestCombinedFilter:
         input_files = []
         for cif in all_cifs:
             input_file = input_dir / cif.name
-            input_file.hardlink_to(cif)
+            input_file.symlink_to(cif)
             input_files.append(input_file)
         scores: dict[str, Scores] = {}
         query = CombinedFilterQuery(min_sequence_identity=0.8)
@@ -235,7 +235,7 @@ class TestCombinedFilter:
         input_files = []
         for cif in bad_cifs:
             input_file = input_dir / cif.name
-            input_file.hardlink_to(cif)
+            input_file.symlink_to(cif)
             input_files.append(input_file)
         scores: dict[str, Scores] = {}
         query = CombinedFilterQuery()
@@ -295,7 +295,7 @@ class TestCombinedFilter:
         input_dir = tmp_path / "input"
         input_dir.mkdir()
         input_file = input_dir / nmr_cif.name
-        input_file.hardlink_to(nmr_cif)
+        input_file.symlink_to(nmr_cif)
         scores: dict[str, Scores] = {
             "1amb": Scores(
                 geometry_quality=70.3,
@@ -341,7 +341,7 @@ class TestCombinedFilter:
         input_dir = tmp_path / "input"
         input_dir.mkdir()
         input_file = input_dir / af_cif.name
-        input_file.hardlink_to(af_cif)
+        input_file.symlink_to(af_cif)
         scores: dict[str, Scores] = {}
         query = CombinedFilterQuery(
             min_residues=20,
@@ -382,7 +382,7 @@ class TestCombinedFilter:
         input_dir = tmp_path / "input"
         input_dir.mkdir()
         input_file = input_dir / sample2_cif.name
-        input_file.hardlink_to(sample2_cif)
+        input_file.symlink_to(sample2_cif)
         scores: dict[str, Scores] = {}
         query = CombinedFilterQuery(
             min_residues=20,
@@ -425,7 +425,7 @@ class TestCombinedFilter:
         input_files = []
         for cif in xray_p05067_cifs:
             input_file = input_dir / cif.name
-            input_file.hardlink_to(cif)
+            input_file.symlink_to(cif)
             input_files.append(input_file)
         scores: dict[str, Scores] = {}
         query = CombinedFilterQuery(
@@ -730,7 +730,7 @@ class TestCombinedFilter:
         input_files = []
         for cif in [sample_multispan_cif, multi_accession_chain_cif]:
             input_file = input_dir / cif.name
-            input_file.hardlink_to(cif)
+            input_file.symlink_to(cif)
             input_files.append(input_file)
         scores: dict[str, Scores] = {}
         query = CombinedFilterQuery(min_sequence_identity=0.9)
