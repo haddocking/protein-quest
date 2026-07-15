@@ -4,6 +4,14 @@ import logging
 from dataclasses import dataclass
 from functools import cached_property
 
+from protein_quest.uniprot_chains import (
+    chain_length,
+    covered_uniprot_range,
+    parse_chain_ids,
+    parse_uniprot_chains,
+    preferred_chain_id,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,7 +38,7 @@ class PdbResult:
 
         The chain ids used in string are in 'auth' [chain id system][protein_quest.structure.chains.ChainIdSystem].
         """
-        return _first_chain_from_uniprot_chains(self.uniprot_chains)
+        return preferred_chain_id(parse_chain_ids(self.uniprot_chains))
 
     @cached_property
     def chain_length(self) -> int:
@@ -43,7 +51,7 @@ class PdbResult:
         (see 3D beacons API definition).
         """
         try:
-            return _chain_length_from_uniprot_chains(self.uniprot_chains)
+            return chain_length(parse_uniprot_chains(self.uniprot_chains))
         except ValueError as e:
             raise PdbChainLengthError(self.id, self.uniprot_chains) from e
 
@@ -51,7 +59,7 @@ class PdbResult:
     def uniprot_start(self) -> int:
         """Lowest UniProt residue position covered by this PDB result."""
         try:
-            start, _ = _uniprot_start_end_from_uniprot_chains(self.uniprot_chains)
+            start, _ = covered_uniprot_range(parse_uniprot_chains(self.uniprot_chains))
         except ValueError as e:
             raise PdbChainLengthError(self.id, self.uniprot_chains) from e
         else:
@@ -61,7 +69,7 @@ class PdbResult:
     def uniprot_end(self) -> int:
         """Highest UniProt residue position covered by this PDB result."""
         try:
-            _, end = _uniprot_start_end_from_uniprot_chains(self.uniprot_chains)
+            _, end = covered_uniprot_range(parse_uniprot_chains(self.uniprot_chains))
         except ValueError as e:
             raise PdbChainLengthError(self.id, self.uniprot_chains) from e
         else:
@@ -110,73 +118,6 @@ def _chain_length_or_zero(entry: PdbResult) -> int:
         return entry.chain_length
     except PdbChainLengthError:
         return 0
-
-
-def _first_chain_from_uniprot_chains(uniprot_chains: str) -> str:
-    """Extracts the first chain identifier from a UniProt chains string.
-
-    The UniProt chains string is formatted (with EBNF notation) as follows:
-
-        chain_group=range(,chain_group=range)*
-
-    where:
-        chain_group := chain_id(/chain_id)*
-        chain_id    := [A-Za-z0-9]+
-        range       := start-end
-        start, end  := integer
-
-    Args:
-        uniprot_chains: A string representing UniProt chains, For example "B/D=1-81".
-
-    Returns:
-        The first chain identifier from the UniProt chain string. For example "B".
-    """
-    chains = uniprot_chains.split("=")
-    parts = chains[0].split("/")
-    chain = parts[0]
-    try:
-        # Workaround for Q9Y2Q5 │ 5YK3 │ 1/B/G=1-124, 1 does not exist but B does
-        int(chain)
-        if len(parts) > 1:
-            return parts[1]
-    except ValueError:
-        # A letter
-        pass
-    return chain
-
-
-def _chain_length_from_uniprot_chains(uniprot_chains: str) -> int:
-    """Calculates the total length of chain from a UniProt chains string.
-
-    See `_first_chain_from_uniprot_chains` for the format of the UniProt chains string.
-
-    Args:
-        uniprot_chains: A string representing UniProt chains, For example "B/D=1-81".
-
-    Returns:
-        The length of the chain in the UniProt chain string. For example 81 for "B/D=1-81".
-    """
-    total_length = 0
-    chains = uniprot_chains.split(",")
-    for chain in chains:
-        _, rangestr = chain.split("=")
-        start, stop = rangestr.split("-")
-        # Residue positions are 1-based so + 1
-        total_length += int(stop) - int(start) + 1
-    return total_length
-
-
-def _uniprot_start_end_from_uniprot_chains(uniprot_chains: str) -> tuple[int, int]:
-    """Extract minimum start and maximum end residue positions from UniProt chains."""
-    starts: list[int] = []
-    ends: list[int] = []
-    for chain in uniprot_chains.split(","):
-        _, rangestr = chain.split("=")
-        start, stop = rangestr.split("-")
-        starts.append(int(start))
-        ends.append(int(stop))
-
-    return min(starts), max(ends)
 
 
 class PdbChainLengthError(ValueError):

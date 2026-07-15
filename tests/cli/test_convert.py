@@ -41,11 +41,11 @@ def test_convert_structures_with_injected_uniprot(no_uniprot_cif: Path, tmp_path
     output_dir = tmp_path / "output"
     pdb2uniprotcsv = tmp_path / "pdb2uniprot.csv"
     with pdb2uniprotcsv.open("w", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["pdb_id", "chain", "uniprot_accession"])
+        writer = csv.DictWriter(handle, fieldnames=["pdb_id", "uniprot_accession", "uniprot_chains"])
         writer.writeheader()
         writer.writerows(
             [
-                {"pdb_id": "2Y29", "chain": "A", "uniprot_accession": "P01100"},
+                {"pdb_id": "2Y29", "uniprot_accession": "P01100", "uniprot_chains": "A=1-100"},
             ]
         )
 
@@ -95,9 +95,9 @@ def test_convert_structures_with_injected_uniprot_chain_system(
     pdb2uniprotcsv = tmp_path / "pdb2uniprot.csv"
     pdb_id = read_structure(cif_8rw8).name
     with pdb2uniprotcsv.open("w", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["pdb_id", "chain", "uniprot_accession"])
+        writer = csv.DictWriter(handle, fieldnames=["pdb_id", "uniprot_accession", "uniprot_chains"])
         writer.writeheader()
-        writer.writerow({"pdb_id": pdb_id, "chain": chain_id, "uniprot_accession": "P12345"})
+        writer.writerow({"pdb_id": pdb_id, "uniprot_accession": "P12345", "uniprot_chains": f"{chain_id}=1-100"})
 
     main(
         [

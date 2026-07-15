@@ -15,6 +15,18 @@ from protein_quest.structure.uniprot import (
     structure2uniprot_accessions,
     structure_to_uniprot,
 )
+from protein_quest.uniprot_chains import Pdb2UniprotChainsMapping, UniprotChainMapping, parse_uniprot_chains
+
+
+def _mapping(pdb_id: str, uniprot_accession: str, uniprot_chains: str) -> Pdb2UniprotChainsMapping:
+    return {
+        pdb_id: {
+            UniprotChainMapping(
+                uniprot_accession=uniprot_accession,
+                chain_ranges=parse_uniprot_chains(uniprot_chains),
+            )
+        }
+    }
 
 
 @pytest.mark.parametrize(
@@ -479,7 +491,7 @@ class TestAddUniprotAccessions2Structure:
 
     def test_missing_id(self, sample2_cif: Path, caplog: pytest.LogCaptureFixture):
         structure = read_structure(sample2_cif)
-        pdb2uniprot = {"1AAA": {("A", "P12345")}}  # wrong PDB ID
+        pdb2uniprot = _mapping("1AAA", "P12345", "A=1-10")  # wrong PDB ID
         new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
 
         assert structure == new_structure
@@ -489,13 +501,13 @@ class TestAddUniprotAccessions2Structure:
 
     def test_verify_ok(self, sample2_cif: Path):
         structure = read_structure(sample2_cif)
-        pdb2uniprot = {"2Y29": {("A", "P05067")}}
+        pdb2uniprot = _mapping("2Y29", "P05067", "A=1-770")
         new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
         assert structure == new_structure
 
     def test_inject_into_nostructref(self, no_uniprot_cif: Path):
         structure = read_structure(no_uniprot_cif)
-        pdb2uniprot = {"2Y29": {("A", "P12345")}}
+        pdb2uniprot = _mapping("2Y29", "P12345", "A=10-20")
         new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
 
         result2 = structure_to_uniprot(new_structure)
@@ -503,15 +515,39 @@ class TestAddUniprotAccessions2Structure:
         expected: Pdb2UniprotMapping = {"2Y29": {("A", "P12345")}}
         assert result2 == expected
 
+        block = new_structure.make_mmcif_block(gemmi.MmcifOutputGroups(False, struct_ref=True))
+        struct_ref_seq = block.get_mmcif_category("_struct_ref_seq.")
+        injected_records = [
+            record
+            for record in struct_ref_seqs_columns_to_records(struct_ref_seq)
+            if record.uniprot_accession == "P12345"
+        ]
+        assert injected_records == [StructRefSeq("P12345", 10, 20, "A", 1.0, 11)]
+
     def test_inject_into_existing_sifts(self, nmr_cif: Path):
         structure = read_structure(nmr_cif)
-        pdb2uniprot = {"1AMB": {("A", "P12345")}}
+        pdb2uniprot = _mapping("1AMB", "P12345", "A=1-100")
         new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
 
         result2 = structure_to_uniprot(new_structure)
 
         expected: Pdb2UniprotMapping = {"1AMB": {("A", "P05067"), ("A", "P12345")}}
         assert result2 == expected
+
+    def test_inject_multiple_ranges_into_nostructref(self, no_uniprot_cif: Path):
+        structure = read_structure(no_uniprot_cif)
+        pdb2uniprot = _mapping("2Y29", "P12345", "A=10-20,A=30-35")
+
+        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+
+        block = new_structure.make_mmcif_block(gemmi.MmcifOutputGroups(False, struct_ref=True))
+        struct_ref_seq = block.get_mmcif_category("_struct_ref_seq.")
+        injected_records = [
+            record
+            for record in struct_ref_seqs_columns_to_records(struct_ref_seq)
+            if record.uniprot_accession == "P12345"
+        ]
+        assert injected_records == [StructRefSeq("P12345", 10, 35, "A", 17 / 26, 17)]
 
     def test_on_single_chain_written(self, multi_accession_cif: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture):
         caplog.set_level("INFO")
@@ -522,7 +558,7 @@ class TestAddUniprotAccessions2Structure:
         )
 
         structure = read_structure(input_file)
-        pdb2uniprot = {"1A02": {("F", "P01111")}}
+        pdb2uniprot = _mapping("1A02", "P01111", "F=1-100")
 
         new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
         result = structure_to_uniprot(new_structure)
@@ -544,7 +580,7 @@ class TestAddUniprotAccessions2Structure:
     )
     def test_multi_entity_cif(self, multi_entity_cif: Path, chain_system: ChainIdSystem, chain_id: str):
         structure = read_structure(multi_entity_cif)
-        pdb2uniprot = {"1F66": {(chain_id, "P12345")}}
+        pdb2uniprot = _mapping("1F66", "P12345", f"{chain_id}=1-100")
 
         new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot, chain_system=chain_system)
 
@@ -597,6 +633,16 @@ class TestAddUniprotAccessions2Structure:
             },
         }
         assert result == expected
+
+    def test_multi_entity_cif_multiple_auth_chains_in_single_mapping(self, multi_entity_cif: Path):
+        structure = read_structure(multi_entity_cif)
+        pdb2uniprot = _mapping("1F66", "P12345", "A/B=1-100")
+
+        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+        result = structure_to_uniprot(new_structure, source="both")
+
+        assert ("A", "P12345") in result["1F66"]
+        assert ("B", "P12345") in result["1F66"]
 
 
 def test_selected_struct_ref_seqs_by_chain_returns_auth_system(cif_8rw8: Path):
