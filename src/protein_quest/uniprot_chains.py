@@ -40,6 +40,7 @@ class UniprotChainRange:
         Numeric leading chain ids are skipped when an alternative chain id exists.
         """
         first_chain = self.chain_ids[0]
+        # Workaround for Q9Y2Q5 │ 5YK3 │ 1/B/G=1-124, 1 does not exist but B does
         try:
             int(first_chain)
         except ValueError:
@@ -136,8 +137,16 @@ def preferred_chain_id(chain_ids: tuple[str, ...]) -> str:
 def parse_uniprot_chains(uniprot_chains: str) -> UniprotChains:
     """Parse a UniProt chains string into chain-group/range assignments.
 
-    The input format is ``chain_group=range(,chain_group=range)*`` where
-    ``chain_group := chain_id(/chain_id)*`` and ``range := start-end``.
+    The UniProt chains string is formatted (with EBNF notation) as follows:
+
+        chain_group=range(,chain_group=range)*
+
+    where:
+
+        chain_group := chain_id(/chain_id)*
+        chain_id    := [A-Za-z0-9]+
+        range       := start-end
+        start, end  := integer
 
     Args:
         uniprot_chains: UniProt chains string such as
