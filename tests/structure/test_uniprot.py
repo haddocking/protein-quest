@@ -541,6 +541,19 @@ class TestAddUniprotAccessions2Structure:
         new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
 
         block = new_structure.make_mmcif_block(gemmi.MmcifOutputGroups(False, struct_ref=True))
+        struct_ref = block.get_mmcif_category("_struct_ref.")
+        # The uniprot accession is injected twice, once for each range,
+        # would have _struct_ref.pdbx_align_begin=[10,30]
+        # but gemmi does not preserve that column, so we just check the other columns are correct
+        expected_struct_ref = {
+            "id": ["1", "2"],
+            "entity_id": ["1", "1"],
+            "db_name": ["UNP", "UNP"],
+            "db_code": [False, False],
+            "pdbx_db_accession": ["P12345", "P12345"],
+            "pdbx_db_isoform": [None, None],
+        }
+        assert struct_ref == expected_struct_ref
         struct_ref_seq = block.get_mmcif_category("_struct_ref_seq.")
         injected_records = [
             record
