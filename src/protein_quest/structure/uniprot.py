@@ -199,6 +199,9 @@ def _group_missing_ranges(
     mapping: UniprotChainMapping, missing_pairs: set[tuple[str, str]]
 ) -> dict[str, list[UniprotChainRange]]:
     # TODO this looks much more complicated than before, verify its needed
+    # we need way to substract wanted mappings (UniprotChainMapping) from existing mappings (StructRefSeq)
+    # current implementation ignores second uniprot on same chain, which is not correct
+    # also StructRefSeq aggregates multiple UniprotChainRange into one record
     grouped_ranges: dict[str, list[UniprotChainRange]] = defaultdict(list)
     for chain_range in mapping.chain_ranges:
         for auth_chain in chain_range.chain_ids:
