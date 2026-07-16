@@ -3,6 +3,7 @@ from pathlib import Path
 import gemmi
 import pytest
 
+from protein_quest.csv_schema import ChainUniprotPair
 from protein_quest.structure.chains import ChainIdSystem, write_single_chain_structure_file
 from protein_quest.structure.formats import read_structure
 from protein_quest.structure.types import Pdb2RawPairs, StructRefSeq
@@ -35,13 +36,13 @@ def _mapping(pdb_id: str, uniprot_accession: str, uniprot_chains: str) -> Pdb2Ra
         pytest.param(
             "cif_3jrs",
             "B",
-            {"3JRS": {("A", "Q8VZS8")}},
+            {"3JRS": {ChainUniprotPair("A", "Q8VZS8")}},
             id="cif_3jrs",
         ),
         pytest.param(
             "multi_entity_cif",
             "B",
-            {"1F66": {("A", "P62806")}},
+            {"1F66": {ChainUniprotPair("A", "P62806")}},
             id="multi_entity_cif",
         ),
     ],
@@ -86,7 +87,7 @@ def test_structure2uniprot_accessions_missing(sample_cif: Path):
 
 
 @pytest.mark.parametrize(
-    ("struct_ref_seqs_columns", "expected_records"),
+    ChainUniprotPair("struct_ref_seqs_columns", "expected_records"),
     [
         pytest.param(
             {
@@ -221,7 +222,7 @@ class TestStructureToUniprot:
                 "sifts",
                 {
                     "1AMB": {
-                        ("A", "P05067"),
+                        ChainUniprotPair("A", "P05067"),
                     }
                 },
                 id="sifts-only",
@@ -229,7 +230,7 @@ class TestStructureToUniprot:
             pytest.param(
                 "sample2_cif",
                 "struct_ref_seq",
-                {"2Y29": {("A", "P05067")}},
+                {"2Y29": {ChainUniprotPair("A", "P05067")}},
                 id="struct-ref-seq-only",
             ),
             pytest.param(
@@ -237,54 +238,18 @@ class TestStructureToUniprot:
                 "both",
                 {
                     "1F66": {
-                        (
-                            "A",
-                            "P84233",
-                        ),
-                        (
-                            "A",
-                            "Q7ZT64",
-                        ),
-                        (
-                            "B",
-                            "P62806",
-                        ),
-                        (
-                            "C",
-                            "P0C0S5",
-                        ),
-                        (
-                            "C",
-                            "P17317",
-                        ),
-                        (
-                            "D",
-                            "P02281",
-                        ),
-                        (
-                            "E",
-                            "P84233",
-                        ),
-                        (
-                            "E",
-                            "Q7ZT64",
-                        ),
-                        (
-                            "F",
-                            "P62806",
-                        ),
-                        (
-                            "G",
-                            "P0C0S5",
-                        ),
-                        (
-                            "G",
-                            "P17317",
-                        ),
-                        (
-                            "H",
-                            "P02281",
-                        ),
+                        ChainUniprotPair("A", "P84233"),
+                        ChainUniprotPair("A", "Q7ZT64"),
+                        ChainUniprotPair("B", "P62806"),
+                        ChainUniprotPair("C", "P0C0S5"),
+                        ChainUniprotPair("C", "P17317"),
+                        ChainUniprotPair("D", "P02281"),
+                        ChainUniprotPair("E", "P84233"),
+                        ChainUniprotPair("E", "Q7ZT64"),
+                        ChainUniprotPair("F", "P62806"),
+                        ChainUniprotPair("G", "P0C0S5"),
+                        ChainUniprotPair("G", "P17317"),
+                        ChainUniprotPair("H", "P02281"),
                     }
                 },
                 id="multi-both-explicit",
@@ -294,38 +259,14 @@ class TestStructureToUniprot:
                 "sifts",
                 {
                     "1F66": {
-                        (
-                            "A",
-                            "P84233",
-                        ),
-                        (
-                            "B",
-                            "P62806",
-                        ),
-                        (
-                            "C",
-                            "P0C0S5",
-                        ),
-                        (
-                            "D",
-                            "P02281",
-                        ),
-                        (
-                            "E",
-                            "P84233",
-                        ),
-                        (
-                            "F",
-                            "P62806",
-                        ),
-                        (
-                            "G",
-                            "P0C0S5",
-                        ),
-                        (
-                            "H",
-                            "P02281",
-                        ),
+                        ChainUniprotPair("A", "P84233"),
+                        ChainUniprotPair("B", "P62806"),
+                        ChainUniprotPair("C", "P0C0S5"),
+                        ChainUniprotPair("D", "P02281"),
+                        ChainUniprotPair("E", "P84233"),
+                        ChainUniprotPair("F", "P62806"),
+                        ChainUniprotPair("G", "P0C0S5"),
+                        ChainUniprotPair("H", "P02281"),
                     }
                 },
                 id="multi-sifts",
@@ -335,38 +276,14 @@ class TestStructureToUniprot:
                 "struct_ref_seq",
                 {
                     "1F66": {
-                        (
-                            "A",
-                            "Q7ZT64",
-                        ),
-                        (
-                            "B",
-                            "P62806",
-                        ),
-                        (
-                            "C",
-                            "P17317",
-                        ),
-                        (
-                            "D",
-                            "P02281",
-                        ),
-                        (
-                            "E",
-                            "Q7ZT64",
-                        ),
-                        (
-                            "F",
-                            "P62806",
-                        ),
-                        (
-                            "G",
-                            "P17317",
-                        ),
-                        (
-                            "H",
-                            "P02281",
-                        ),
+                        ChainUniprotPair("A", "Q7ZT64"),
+                        ChainUniprotPair("B", "P62806"),
+                        ChainUniprotPair("C", "P17317"),
+                        ChainUniprotPair("D", "P02281"),
+                        ChainUniprotPair("E", "Q7ZT64"),
+                        ChainUniprotPair("F", "P62806"),
+                        ChainUniprotPair("G", "P17317"),
+                        ChainUniprotPair("H", "P02281"),
                     }
                 },
                 id="multi-struct_ref_seq",
@@ -376,38 +293,14 @@ class TestStructureToUniprot:
                 "fallback",
                 {
                     "1F66": {
-                        (
-                            "A",
-                            "P84233",
-                        ),
-                        (
-                            "B",
-                            "P62806",
-                        ),
-                        (
-                            "C",
-                            "P0C0S5",
-                        ),
-                        (
-                            "D",
-                            "P02281",
-                        ),
-                        (
-                            "E",
-                            "P84233",
-                        ),
-                        (
-                            "F",
-                            "P62806",
-                        ),
-                        (
-                            "G",
-                            "P0C0S5",
-                        ),
-                        (
-                            "H",
-                            "P02281",
-                        ),
+                        ChainUniprotPair("A", "P84233"),
+                        ChainUniprotPair("B", "P62806"),
+                        ChainUniprotPair("C", "P0C0S5"),
+                        ChainUniprotPair("D", "P02281"),
+                        ChainUniprotPair("E", "P84233"),
+                        ChainUniprotPair("F", "P62806"),
+                        ChainUniprotPair("G", "P0C0S5"),
+                        ChainUniprotPair("H", "P02281"),
                     }
                 },
                 id="multi-fallback-prefers-sifts",
@@ -415,7 +308,7 @@ class TestStructureToUniprot:
             pytest.param(
                 "sample2_cif",
                 "fallback",
-                {"2Y29": {("A", "P05067")}},
+                {"2Y29": {ChainUniprotPair("A", "P05067")}},
                 id="fallback-uses-struct-ref-seq-when-sifts-empty",
             ),
             pytest.param(
@@ -423,38 +316,14 @@ class TestStructureToUniprot:
                 None,
                 {
                     "1F66": {
-                        (
-                            "A",
-                            "P84233",
-                        ),
-                        (
-                            "B",
-                            "P62806",
-                        ),
-                        (
-                            "C",
-                            "P0C0S5",
-                        ),
-                        (
-                            "D",
-                            "P02281",
-                        ),
-                        (
-                            "E",
-                            "P84233",
-                        ),
-                        (
-                            "F",
-                            "P62806",
-                        ),
-                        (
-                            "G",
-                            "P0C0S5",
-                        ),
-                        (
-                            "H",
-                            "P02281",
-                        ),
+                        ChainUniprotPair("A", "P84233"),
+                        ChainUniprotPair("B", "P62806"),
+                        ChainUniprotPair("C", "P0C0S5"),
+                        ChainUniprotPair("D", "P02281"),
+                        ChainUniprotPair("E", "P84233"),
+                        ChainUniprotPair("F", "P62806"),
+                        ChainUniprotPair("G", "P0C0S5"),
+                        ChainUniprotPair("H", "P02281"),
                     }
                 },
                 id="multi-default",
@@ -462,7 +331,7 @@ class TestStructureToUniprot:
             pytest.param(
                 "cif_2fui",
                 "sifts",
-                {"2FUI": {("A", "Q12830")}},
+                {"2FUI": {ChainUniprotPair("A", "Q12830")}},
                 id="just sift",
             ),
         ],
@@ -512,7 +381,7 @@ class TestAddUniprotAccessions2Structure:
 
         result2 = structure_to_uniprot(new_structure)
 
-        expected: Pdb2RawPairs = {"2Y29": {("A", "P12345")}}
+        expected: Pdb2RawPairs = {"2Y29": {ChainUniprotPair("A", "P12345")}}
         assert result2 == expected
 
         block = new_structure.make_mmcif_block(gemmi.MmcifOutputGroups(False, struct_ref=True))
@@ -531,7 +400,7 @@ class TestAddUniprotAccessions2Structure:
 
         result2 = structure_to_uniprot(new_structure)
 
-        expected: Pdb2RawPairs = {"1AMB": {("A", "P05067"), ("A", "P12345")}}
+        expected: Pdb2RawPairs = {"1AMB": {ChainUniprotPair("A", "P05067"), ChainUniprotPair("A", "P12345")}}
         assert result2 == expected
 
     def test_inject_multiple_ranges_into_nostructref(self, no_uniprot_cif: Path):
@@ -563,7 +432,7 @@ class TestAddUniprotAccessions2Structure:
         new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
         result = structure_to_uniprot(new_structure)
 
-        expected: Pdb2RawPairs = {"1A02": {("A", "P01100"), ("A", "P01111")}}
+        expected: Pdb2RawPairs = {"1A02": {ChainUniprotPair("A", "P01100"), ChainUniprotPair("A", "P01111")}}
         assert result == expected
 
         log = caplog.text
@@ -588,48 +457,24 @@ class TestAddUniprotAccessions2Structure:
 
         expected: Pdb2RawPairs = {
             "1F66": {
-                (
-                    "A",
-                    "Q7ZT64",
-                ),
-                (
-                    "B",
-                    "P62806",
-                ),
-                (
+                ChainUniprotPair("A", "Q7ZT64"),
+                ChainUniprotPair("B", "P62806"),
+                ChainUniprotPair(
                     "C",
                     # as requested
                     "P12345",
                 ),
-                (
-                    "C",
-                    "P17317",
-                ),
-                (
-                    "D",
-                    "P02281",
-                ),
-                (
-                    "E",
-                    "Q7ZT64",
-                ),
-                (
-                    "F",
-                    "P62806",
-                ),
-                (
+                ChainUniprotPair("C", "P17317"),
+                ChainUniprotPair("D", "P02281"),
+                ChainUniprotPair("E", "Q7ZT64"),
+                ChainUniprotPair("F", "P62806"),
+                ChainUniprotPair(
                     "G",
                     # Also updates P0C0S5 to requested as G and C auth chains are same entity
                     "P12345",
                 ),
-                (
-                    "G",
-                    "P17317",
-                ),
-                (
-                    "H",
-                    "P02281",
-                ),
+                ChainUniprotPair("G", "P17317"),
+                ChainUniprotPair("H", "P02281"),
             },
         }
         assert result == expected
@@ -641,8 +486,8 @@ class TestAddUniprotAccessions2Structure:
         new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
         result = structure_to_uniprot(new_structure, source="both")
 
-        assert ("A", "P12345") in result["1F66"]
-        assert ("B", "P12345") in result["1F66"]
+        assert ChainUniprotPair("A", "P12345") in result["1F66"]
+        assert ChainUniprotPair("B", "P12345") in result["1F66"]
 
 
 def test_selected_struct_ref_seqs_by_chain_returns_auth_system(cif_8rw8: Path):

@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from typing import Literal, get_args
 
+from protein_quest.csv_schema import ChainUniprotPair
+
 StructureFileExtensions = Literal[
     ".pdb",
     ".pdb.gz",
@@ -25,8 +27,8 @@ cif_output_formats: set[str] = set(get_args(CifOutputFormat))
 StructureMethod = Literal["EM", "NMR", "Predicted", "X-ray", "Other"]
 """Represents the method used to determine the structure."""
 
-Pdb2RawPairs = dict[str, set[tuple[str, str]]]
-"""Dictionary mapping PDB ID to set of raw (chain, UniProt accession) tuples.
+Pdb2RawPairs = dict[str, set[ChainUniprotPair]]
+"""Dictionary mapping PDB ID to set of raw (chain, UniProt accession) pairs.
 
 These are simple pairs without residue-range information.
 The chain name is in the 'auth' [chain ID system][protein_quest.structure.chains.ChainIdSystem].

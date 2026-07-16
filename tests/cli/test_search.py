@@ -82,12 +82,12 @@ class TestPdbe:
 
         result = output_file.read_text()
         expected = dedent("""\
-            uniprot_accession,pdb_id,method,resolution,uniprot_chains,chain,chain_length
-            P00811,9C6P,X-Ray_Crystallography,1.66,A/B=1-377,A,377
-            P00811,9C81,X-Ray_Crystallography,1.7,A/B=1-377,A,377
-            P00811,9C83,X-Ray_Crystallography,2.9,A/B=1-377,A,377
-            P00811,9C84,X-Ray_Crystallography,1.7,A/B=1-377,A,377
-            P00811,9DHL,X-Ray_Crystallography,1.88,A/B=1-377,A,377
+            uniprot_accession,chain_id,pdb_id,method,resolution,uniprot_chains,chain_length
+            P00811,A,9C6P,X-Ray_Crystallography,1.66,A/B=1-377,377
+            P00811,A,9C81,X-Ray_Crystallography,1.7,A/B=1-377,377
+            P00811,A,9C83,X-Ray_Crystallography,2.9,A/B=1-377,377
+            P00811,A,9C84,X-Ray_Crystallography,1.7,A/B=1-377,377
+            P00811,A,9DHL,X-Ray_Crystallography,1.88,A/B=1-377,377
             """)
         assert result == expected
 
@@ -121,9 +121,9 @@ class TestPdbe:
 
         result = output_file.read_text()
         expected = dedent("""\
-            uniprot_accession,pdb_id,method,resolution,uniprot_chains,chain,chain_length
-            P00811,9C6P,X-Ray_Crystallography,1.66,A/B=1-377,A,377
-            P00811,9C81,X-Ray_Crystallography,1.7,A/B=1-377,A,377
+            uniprot_accession,chain_id,pdb_id,method,resolution,uniprot_chains,chain_length
+            P00811,A,9C6P,X-Ray_Crystallography,1.66,A/B=1-377,377
+            P00811,A,9C81,X-Ray_Crystallography,1.7,A/B=1-377,377
             """)
         assert result == expected
 
@@ -143,7 +143,7 @@ class TestPdbe:
 
         main(argv)
 
-        assert len(output_file.read_text()) == 159
+        assert len(output_file.read_text()) == 162
 
         assert "Could not determine chain length for " in caplog.text
         assert "Q9NTW7 / 1X5W chain A from 'A=-'" in caplog.text
@@ -167,7 +167,7 @@ class TestPdbe:
 
         main(argv)
 
-        assert len(output_file.read_text()) == 122
+        assert len(output_file.read_text()) == 125
 
         log = caplog.text
         assert (
@@ -194,7 +194,7 @@ class TestPdbe:
 
         main(argv)
 
-        assert len(output_file.read_text()) == 159
+        assert len(output_file.read_text()) == 162
 
         log = caplog.text
         assert "for completeness not filtering it out" in log
@@ -220,7 +220,7 @@ class TestPdbe:
 
         main(argv)
 
-        assert len(output_file.read_text()) == 159
+        assert len(output_file.read_text()) == 162
 
         log = caplog.text
         assert "Could not determine chain length for Q9NTW7 / 1X5W chain A" in log

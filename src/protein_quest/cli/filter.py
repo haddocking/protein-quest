@@ -302,7 +302,7 @@ def resolution(
             If set to `sequential` will run tasks sequentially.
         write_stats: Write filter statistics to file.
             In CSV format with columns:
-            `<input_file>,<id>,<uniprot_accession>,<resolution>,<total_residue_count>,<is_alphafold>,<uniprot_start>,<uniprot_end>,<sequence_identity>,<chain_length>,<passed>,<output_file>,<discard_reason>,<discard_reason_type>`.
+            `<input_file>,<id>,<uniprot_accession>,<chain_id>,<resolution>,<total_residue_count>,<is_alphafold>,<uniprot_start>,<uniprot_end>,<sequence_identity>,<chain_length>,<passed>,<output_file>,<discard_reason>,<discard_reason_type>`.
             Use `-` for stdout.
         cache: Cache options
         _: Common CLI options.

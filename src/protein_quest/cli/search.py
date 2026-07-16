@@ -25,6 +25,7 @@ from protein_quest.cli.common import (
     console,
 )
 from protein_quest.converter import converter
+from protein_quest.csv_schema import PAIR_FIELDNAMES
 from protein_quest.go import Aspect, GoTerm, search_gene_ontology_term
 from protein_quest.pdbe.clustering import filter_pdbs_on_clustered_resolution
 from protein_quest.pdbe.fetch import read_pdb_ids_from_csv
@@ -67,7 +68,7 @@ def _name_of_path(file: StdioPath) -> str:
 
 def _write_pdbe_csv(path: StdioPath, data: PdbResults):
     """Write PDBe results to CSV."""
-    fieldnames = ("uniprot_accession", "pdb_id", "method", "resolution", "uniprot_chains", "chain", "chain_length")
+    fieldnames = (*PAIR_FIELDNAMES, "method", "resolution", "uniprot_chains", "chain_length")
     with path.open("w", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -83,11 +84,11 @@ def _write_pdbe_csv(path: StdioPath, data: PdbResults):
                 writer.writerow(
                     {
                         "uniprot_accession": e.uniprot_accession,
+                        "chain_id": e.chain,
                         "pdb_id": e.id,
                         "method": e.method,
                         "resolution": e.resolution or "",
                         "uniprot_chains": e.uniprot_chains,
-                        "chain": e.chain,
                         "chain_length": chain_length,
                     }
                 )
@@ -417,7 +418,7 @@ def structure(
         uniprot_accessions: Text file with UniProt accessions (one per line). Use `-` for stdin.
         output_csv: Output CSV with following columns:
             `uniprot_accession`, `provider`, `model_identifier`, `model_url`, `model_format`, `chain`, `residue_count`.
-            The chain values are in 'auth'
+            The chain values are in 'label_asym'
             [chain id system](https://www.bonvinlab.org/protein_quest/autoapi/protein_quest/structure/chains.html#protein_quest.structure.chains.ChainIdSystem).
             Use `-` for stdout.
         source: Source of the structures to search for. Default `pdbe` and `alphafold`.

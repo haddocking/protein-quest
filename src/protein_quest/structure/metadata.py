@@ -17,7 +17,7 @@ from protein_quest.structure.types import StructureMethod
 from protein_quest.structure.uniprot import (
     selected_struct_ref_seqs_by_chain,
     selected_struct_ref_seqs_from_sifts_by_chain,
-    structure2uniprot_accessions,
+    structure2uniprot_pairs,
 )
 
 logger = logging.getLogger(__name__)
@@ -168,7 +168,8 @@ def structure_metadata(
             or if no chains are found in the structure.
         ChainNotFoundError: If the mapped chain from ``_struct_ref_seq`` is
             missing in the structure."""
-    accessions = structure2uniprot_accessions(structure)
+    pairs = structure2uniprot_pairs(structure)
+    accessions = {uniprot for _chain, uniprot in pairs}
     total_residue_count = nr_of_residues_in_total(structure)
     label2auth = get_label2auth_chains(structure)
     auth2label = {auth: label for label, auth in label2auth.items()}

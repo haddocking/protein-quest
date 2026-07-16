@@ -14,6 +14,7 @@ from protein_quest.clustering import (
     structure_sort_key,
     top_members_across_clusters,
 )
+from protein_quest.csv_schema import PAIR_FIELDNAMES
 from protein_quest.errors import ResolutionUnsetError
 from protein_quest.parallel import SchedulerAddress, map_with_progress
 from protein_quest.structure.formats import read_structure
@@ -34,6 +35,7 @@ class ResolutionFilterStatistics:
         input_file: The path to the input file.
         id: Identifier of the structure.
         uniprot_accession: UniProt accession used for grouping.
+        chain_id: Auth chain identifier of the mapped chain.
         resolution: Resolution from the structure file.
         total_residue_count: Total residues across the whole structure.
         is_alphafold: Whether the structure was predicted by AlphaFold.
@@ -49,6 +51,7 @@ class ResolutionFilterStatistics:
     input_file: Path
     id: str
     uniprot_accession: str | None
+    chain_id: str | None
     resolution: float
     total_residue_count: int
     is_alphafold: bool
@@ -74,6 +77,7 @@ class ResolutionFilterStatistics:
                 self.input_file,
                 self.id,
                 self.uniprot_accession,
+                self.chain_id,
                 self.resolution,
                 self.total_residue_count,
                 self.is_alphafold,
@@ -95,6 +99,7 @@ class ResolutionFilterStatistics:
             self.input_file == other.input_file
             and self.id == other.id
             and self.uniprot_accession == other.uniprot_accession
+            and self.chain_id == other.chain_id
             and round(self.resolution, 3) == round(other.resolution, 3)
             and self.total_residue_count == other.total_residue_count
             and self.is_alphafold == other.is_alphafold
@@ -126,6 +131,7 @@ def _load_resolution_statistics_single(input_file: Path) -> ResolutionFilterStat
             input_file=input_file,
             id=metadata.id,
             uniprot_accession=metadata.uniprot_accession,
+            chain_id=metadata.auth_chain,
             resolution=metadata.resolution,
             total_residue_count=metadata.total_residue_count,
             is_alphafold=metadata.is_alphafold,
@@ -142,6 +148,7 @@ def _load_resolution_statistics_single(input_file: Path) -> ResolutionFilterStat
             input_file=input_file,
             id=input_file.stem,
             uniprot_accession=None,
+            chain_id=None,
             resolution=0.0,
             total_residue_count=0,
             is_alphafold=False,
@@ -598,9 +605,8 @@ def write_resolution_stats(stats: Iterable[ResolutionFilterStatistics], output: 
         output: Output file path or "-" for stdout.
     """
     fieldnames = [
+        *PAIR_FIELDNAMES,
         "input_file",
-        "id",
-        "uniprot_accession",
         "resolution",
         "total_residue_count",
         "is_alphafold",
@@ -620,9 +626,10 @@ def write_resolution_stats(stats: Iterable[ResolutionFilterStatistics], output: 
         for stat in stats:
             writer.writerow(
                 {
-                    "input_file": stat.input_file,
-                    "id": stat.id,
                     "uniprot_accession": stat.uniprot_accession or "",
+                    "chain_id": stat.chain_id or "",
+                    "pdb_id": stat.id,
+                    "input_file": stat.input_file,
                     "resolution": stat.resolution,
                     "total_residue_count": stat.total_residue_count,
                     "is_alphafold": stat.is_alphafold,

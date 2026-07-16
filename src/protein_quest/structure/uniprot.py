@@ -7,6 +7,7 @@ from typing import Literal
 
 import gemmi
 
+from protein_quest.csv_schema import ChainUniprotPair
 from protein_quest.structure.chains import (
     ChainIdSystem,
     get_label2auth_chains,
@@ -18,7 +19,6 @@ from protein_quest.uniprot_chains import (
     Pdb2RangeMappings,
     UniprotChainMapping,
     UniprotChainRange,
-    all_chain_ids,
 )
 
 logger = logging.getLogger(__name__)
@@ -106,8 +106,8 @@ def selected_struct_ref_seqs_by_chain(structure: gemmi.Structure, accessions: se
     }
 
 
-def _extract_chain_uniprots_from_sifts(structure: gemmi.Structure) -> set[tuple[str, str]]:
-    chain_uniprots: set[tuple[str, str]] = set()
+def _extract_chain_uniprots_from_sifts(structure: gemmi.Structure) -> set[ChainUniprotPair]:
+    chain_uniprots: set[ChainUniprotPair] = set()
     label2auth = get_label2auth_chains(structure)
     for entity in structure.entities:
         uniprots = entity.sifts_unp_acc
@@ -119,12 +119,12 @@ def _extract_chain_uniprots_from_sifts(structure: gemmi.Structure) -> set[tuple[
             except KeyError:
                 raise ChainNotFoundError(label_subchain, structure.name, set(label2auth.keys())) from None
             for uniprot in uniprots:
-                chain_uniprots.add((auth_subchain, uniprot))
+                chain_uniprots.add(ChainUniprotPair(auth_subchain, uniprot))
     return chain_uniprots
 
 
-def _extract_chain_uniprots_from_struct_ref_seq(structure: gemmi.Structure) -> set[tuple[str, str]]:
-    chain_uniprots: set[tuple[str, str]] = set()
+def _extract_chain_uniprots_from_struct_ref_seq(structure: gemmi.Structure) -> set[ChainUniprotPair]:
+    chain_uniprots: set[ChainUniprotPair] = set()
     block = structure.make_mmcif_block(gemmi.MmcifOutputGroups(False, struct_ref=True))
     struct_ref = block.get_mmcif_category("_struct_ref.")
     struct_ref_seq = block.get_mmcif_category("_struct_ref_seq.")
@@ -137,7 +137,7 @@ def _extract_chain_uniprots_from_struct_ref_seq(structure: gemmi.Structure) -> s
     for i, uniprot_accession in enumerate(struct_ref_seq["pdbx_db_accession"]):
         if uniprot_accession in uniprot_accessions:
             auth_chain = struct_ref_seq["pdbx_strand_id"][i]
-            chain_uniprots.add((auth_chain, uniprot_accession))
+            chain_uniprots.add(ChainUniprotPair(auth_chain, uniprot_accession))
 
     return chain_uniprots
 
@@ -170,7 +170,7 @@ def structure_to_uniprot(structure: gemmi.Structure, source: UniprotSource = "fa
             return {structure.name: sifts_uniprots}
         return {structure.name: _extract_chain_uniprots_from_struct_ref_seq(structure)}
 
-    chain_uniprots: set[tuple[str, str]] = set()
+    chain_uniprots: set[ChainUniprotPair] = set()
     if source in {"both", "sifts"}:
         chain_uniprots.update(_extract_chain_uniprots_from_sifts(structure))
 
@@ -178,6 +178,20 @@ def structure_to_uniprot(structure: gemmi.Structure, source: UniprotSource = "fa
         chain_uniprots.update(_extract_chain_uniprots_from_struct_ref_seq(structure))
 
     return {structure.name: chain_uniprots}
+
+
+def structure2uniprot_pairs(structure: gemmi.Structure) -> set[ChainUniprotPair]:
+    """Extract (chain, UniProt accession) pairs from a gemmi Structure object.
+
+    Logs a warning and returns an empty set if no accessions are found in structure.
+
+    Args:
+        structure: The gemmi Structure object to extract UniProt accessions from.
+
+    Returns:
+        A set of (chain, UniProt accession) pairs found in the structure."""
+    s2cu = structure_to_uniprot(structure)
+    return s2cu.get(structure.name, set())
 
 
 def structure2uniprot_accessions(structure: gemmi.Structure) -> set[str]:
@@ -190,19 +204,18 @@ def structure2uniprot_accessions(structure: gemmi.Structure) -> set[str]:
 
     Returns:
         A set of UniProt accessions found in the structure."""
-    s2cu = structure_to_uniprot(structure)
-    cus = s2cu[structure.name]
-    return {uniprot for _chain, uniprot in cus}
+    pairs = structure2uniprot_pairs(structure)
+    return {pair.uniprot_accession for pair in pairs}
 
 
 def _group_missing_ranges(
-    mapping: UniprotChainMapping, missing_pairs: set[tuple[str, str]]
+    mapping: UniprotChainMapping, missing_pairs: set[ChainUniprotPair]
 ) -> dict[str, list[UniprotChainRange]]:
     # TODO this looks much more complicated than before, verify its needed
     grouped_ranges: dict[str, list[UniprotChainRange]] = defaultdict(list)
     for chain_range in mapping.chain_ranges:
         for auth_chain in chain_range.chain_ids:
-            if (auth_chain, mapping.uniprot_accession) in missing_pairs:
+            if ChainUniprotPair(auth_chain, mapping.uniprot_accession) in missing_pairs:
                 grouped_ranges[auth_chain].append(chain_range)
     return grouped_ranges
 
@@ -237,7 +250,7 @@ def _append_struct_ref_seq_rows(
 
 
 def _append_uniprot_to_structure(
-    structure: gemmi.Structure, chain_mappings: set[UniprotChainMapping], missing_pairs: set[tuple[str, str]]
+    structure: gemmi.Structure, chain_mappings: set[UniprotChainMapping], missing_pairs: set[ChainUniprotPair]
 ) -> gemmi.Structure:
     if not chain_mappings or not missing_pairs:
         return structure
@@ -305,11 +318,12 @@ def _force_auth_system(
     return mappings
 
 
-def _mapping_pairs(mappings: set[UniprotChainMapping]) -> set[tuple[str, str]]:
+def _mapping_pairs(mappings: set[UniprotChainMapping]) -> set[ChainUniprotPair]:
     return {
-        (chain_id, mapping.uniprot_accession)
+        ChainUniprotPair(chain_id, mapping.uniprot_accession)
         for mapping in mappings
-        for chain_id in all_chain_ids(mapping.chain_ranges)
+        for chain_range in mapping.chain_ranges
+        for chain_id in chain_range.chain_ids
     }
 
 
@@ -438,7 +452,7 @@ def selected_struct_ref_seqs_from_sifts_by_chain(
     sc2ua = _subchains2sifts_unp_acc(structure)
 
     # (chain, uniprot) -> list of uniprot positions in structure
-    chain_ua2up: dict[tuple[str, str], list[int]] = {}
+    chain_ua2up: dict[ChainUniprotPair, list[int]] = {}
     for model in structure:
         for chain in model:
             polymer = chain.get_polymer()
@@ -455,7 +469,7 @@ def selected_struct_ref_seqs_from_sifts_by_chain(
                 uniprot_accession = entity_uniprots[sifts_unp[1]]
                 if uniprot_accession not in accessions:
                     continue
-                key = (chain.name, uniprot_accession)
+                key = ChainUniprotPair(chain.name, uniprot_accession)
                 if key not in chain_ua2up:
                     chain_ua2up[key] = []
                 chain_ua2up[key].append(uniprot_pos)

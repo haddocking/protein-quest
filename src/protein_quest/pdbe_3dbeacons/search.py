@@ -237,7 +237,7 @@ async def uniprots2structures(
 
     Returns:
         List of summaries of structures for each uniprot accession.
-        The chain ids returned are in 'auth'
+        The chain ids returned are in 'label_asym'
             [chain id system](https://www.bonvinlab.org/protein_quest/autoapi/protein_quest/structure/chains.html#protein_quest.structure.chains.ChainIdSystem).
 
     """
@@ -264,6 +264,7 @@ async def uniprots2structures(
 
 
 def _find_chain_for_uniprot(uniprot_accession: str, summary: AppUniprotSchemaSummaryItems) -> str:
+    # The returned chain IDs are label_asym identifiers from AppUniprotSchemaEntity.chain_ids
     if entities_of_uniprot := [e for e in summary.entities if e.identifier == uniprot_accession]:
         # Surest way to get the correct chain,
         # only supported by PDBe, SWISS-model and Alphafold DB
@@ -285,7 +286,7 @@ class FlattenedUniprotSummary(TypedDict):
         model_url: URL to download the structure.
         model_format: [Format][protein_quest.pdbe_3dbeacons.model.AppUniprotSchemaModelFormat]
             of the structure file
-        chain: Chain identifier of the structure (first chain of first entity or "A" if no entities or chains).
+        chain: Label_asym chain identifier (first chain of first entity or "A" if none).
         residue_count: Number of residues in the structure
     """
 

@@ -11,6 +11,7 @@ from scipy.cluster.hierarchy import ClusterNode, to_tree
 from tqdm.auto import tqdm
 
 from protein_quest.clustering import ClusterableStructure, cluster_structures_with_intermediates
+from protein_quest.csv_schema import PAIR_FIELDNAMES
 from protein_quest.filters.resolution import ResolutionFilterStatistics
 
 logger = logging.getLogger(__name__)
@@ -81,10 +82,9 @@ def write_clusters_csv(results: list[AccessionClusters], output: Path) -> None:
         writer = csv.DictWriter(
             handle,
             fieldnames=[
-                "uniprot_accession",
+                *PAIR_FIELDNAMES,
                 "cluster_id",
                 "rank_in_cluster",
-                "structure_id",
                 "input_file",
                 "resolution",
                 "sequence_identity",
@@ -101,9 +101,10 @@ def write_clusters_csv(results: list[AccessionClusters], output: Path) -> None:
                     writer.writerow(
                         {
                             "uniprot_accession": result.uniprot_accession,
+                            "chain_id": structure.chain_id or "",
+                            "pdb_id": structure.id,
                             "cluster_id": cluster_id,
                             "rank_in_cluster": rank,
-                            "structure_id": structure.id,
                             "input_file": structure.input_file,
                             "resolution": structure.resolution,
                             "sequence_identity": f"{structure.sequence_identity:.3f}",

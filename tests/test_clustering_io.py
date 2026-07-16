@@ -36,6 +36,7 @@ def make_stat(ident: str, accession: str | None, start: int, end: int) -> Resolu
         input_file=Path(f"{ident}.cif"),
         id=ident,
         uniprot_accession=accession,
+        chain_id=None,
         resolution=1.5,
         total_residue_count=end - start + 1,
         is_alphafold=False,
