@@ -3,6 +3,7 @@
 import logging
 from _collections_abc import Iterable
 from collections import defaultdict, namedtuple
+from dataclasses import dataclass
 from typing import Literal
 
 import gemmi
@@ -14,7 +15,6 @@ from protein_quest.structure.chains import (
     retrieve_chain_extraction_provenance,
 )
 from protein_quest.structure.errors import ChainNotFoundError
-from protein_quest.structure.types import FlattenedUniprotChainMapping
 from protein_quest.uniprot_chains import (
     Pdb2UniprotChainsMapping,
     UniprotChainMapping,
@@ -141,6 +141,28 @@ def uniprot_chain_mappings_from_sifts(structure: gemmi.Structure) -> set[Uniprot
     return {
         UniprotChainMapping(uniprot_accession=acc, chain_ranges=tuple(ranges)) for acc, ranges in acc_to_ranges.items()
     }
+
+
+@dataclass(frozen=True, slots=True)
+class FlattenedUniprotChainMapping:
+    """Collapsed `_struct_ref_seq` like alignment information for one chain.
+
+    Attributes:
+
+        uniprot_accession: The UniProt accession.
+        uniprot_start: The start position of the alignment on the UniProt sequence.
+        uniprot_end: The end position of the alignment on the UniProt sequence.
+        chain_id: The chain ID in the 'auth' [chain ID system][protein_quest.structure.chains.ChainIdSystem].
+        sequence_identity: The sequence identity of the alignment.
+        aligned_residue_count: The number of aligned residues in the alignment.
+    """
+
+    uniprot_accession: str
+    uniprot_start: int
+    uniprot_end: int
+    chain_id: str
+    sequence_identity: float
+    aligned_residue_count: int
 
 
 def flatten_uniprot_chain_mappings(mappings: set[UniprotChainMapping]) -> set[FlattenedUniprotChainMapping]:

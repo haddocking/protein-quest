@@ -4,8 +4,8 @@ import pytest
 
 from protein_quest.structure.chains import ChainExtractionProvenance, ChainIdSystem, write_single_chain_structure_file
 from protein_quest.structure.formats import read_structure
-from protein_quest.structure.types import FlattenedUniprotChainMapping
 from protein_quest.structure.uniprot import (
+    FlattenedUniprotChainMapping,
     UniprotSource,
     add_uniprot_accessions2structure,
     apply_chain_provenance_to_uniprot_mappings,

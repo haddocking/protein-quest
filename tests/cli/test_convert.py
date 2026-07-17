@@ -7,8 +7,7 @@ import pytest
 
 from protein_quest.cli import main
 from protein_quest.structure.formats import read_structure
-from protein_quest.structure.types import FlattenedUniprotChainMapping
-from protein_quest.structure.uniprot import structure_to_uniprot
+from protein_quest.structure.uniprot import FlattenedUniprotChainMapping, structure_to_uniprot
 
 
 def test_convert_structures_to_cifgz(sample_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
