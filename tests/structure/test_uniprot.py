@@ -1,3 +1,5 @@
+import gzip
+import logging
 from pathlib import Path
 
 import pytest
@@ -297,6 +299,26 @@ def test_uniprot_chain_mappings_from_struct_ref_seq(
     actual = uniprot_chain_mappings_from_struct_ref_seq(structure)
 
     assert actual == expected
+
+
+def test_uniprot_chain_mappings_from_struct_ref_seq_none_pos(
+    sample2_cif: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture
+):
+    caplog.set_level(logging.INFO)
+    new_fn = tmp_path / sample2_cif.stem
+    with gzip.open(sample2_cif, "rt") as f_in:
+        body = f_in.read()
+        body = body.replace(
+            "_struct_ref_seq.db_align_beg                  687", "_struct_ref_seq.db_align_beg                  ?"
+        ).replace(
+            "_struct_ref_seq.db_align_end                  692", "_struct_ref_seq.db_align_end                  ?"
+        )
+        new_fn.write_text(body)
+    new_structure = read_structure(new_fn)
+
+    actual = uniprot_chain_mappings_from_struct_ref_seq(new_structure)
+    assert actual == set()
+    assert "Skipping struct_ref_seq row with align_id" in caplog.text
 
 
 @pytest.mark.parametrize(

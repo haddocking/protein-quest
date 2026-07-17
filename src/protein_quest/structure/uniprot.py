@@ -1,8 +1,8 @@
 """UniProt extraction and injection helpers for structures."""
 
 import logging
-from _collections_abc import Iterable
 from collections import defaultdict, namedtuple
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Literal
 
@@ -49,8 +49,16 @@ def uniprot_chain_mappings_from_struct_ref_seq(structure: gemmi.Structure) -> se
     for i, acc in enumerate(struct_ref_seq["pdbx_db_accession"]):
         if acc in unp_accessions:
             chain_id = struct_ref_seq["pdbx_strand_id"][i]
-            beg = int(struct_ref_seq["db_align_beg"][i])
-            end = int(struct_ref_seq["db_align_end"][i])
+            try:
+                beg = int(struct_ref_seq["db_align_beg"][i])
+                end = int(struct_ref_seq["db_align_end"][i])
+            except (ValueError, TypeError):
+                logger.info(
+                    "Skipping struct_ref_seq row with align_id %s of %s due to non-numeric db_align_beg/db_align_end",
+                    struct_ref_seq["align_id"][i],
+                    acc,
+                )
+                continue
             acc_to_ranges[acc].append(
                 UniprotChainRange(
                     chain_ids=(chain_id,),
@@ -175,7 +183,8 @@ def flatten_uniprot_chain_mappings(mappings: set[UniprotChainMapping]) -> set[Fl
         mappings: Set of UniprotChainMapping.
 
     Returns:
-        Set of records with only chain_id and uniprot_accession filled, other fields set to None.
+        Set of flattened per-(accession, chain) records with merged start/end,
+        summed aligned residue counts, and computed sequence identity.
     """
     groups: dict[tuple[str, str], list[UniprotChainRange]] = defaultdict(list)
     for mapping in mappings:
@@ -242,7 +251,8 @@ def structure_to_uniprot(
             Otherwise, return all UniProt mappings for each chain.
 
     Returns:
-        Set of StructRefSeq records with one record per chain and UniProt accession.
+        Set of flattened per-(accession, chain) records with merged start/end,
+        summed aligned residue counts, and computed sequence identity.
     """
     sift_mappings = flatten_uniprot_chain_mappings(uniprot_chain_mappings_from_sifts(structure))
     struct_ref_mappings = flatten_uniprot_chain_mappings(uniprot_chain_mappings_from_struct_ref_seq(structure))
