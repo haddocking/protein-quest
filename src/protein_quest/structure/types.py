@@ -32,8 +32,8 @@ The chain name is in the 'auth' [chain ID system][protein_quest.structure.chains
 """
 
 
-@dataclass(frozen=True)
-class StructRefSeq:
+@dataclass(frozen=True, slots=True)
+class FlattenedUniprotChainMapping:
     """Collapsed `_struct_ref_seq` alignment information for one chain.
 
     Attributes:

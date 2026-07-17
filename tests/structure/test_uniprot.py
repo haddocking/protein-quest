@@ -1,19 +1,20 @@
 from pathlib import Path
 
-import gemmi
 import pytest
 
-from protein_quest.structure.chains import ChainIdSystem, write_single_chain_structure_file
+from protein_quest.structure.chains import ChainExtractionProvenance, ChainIdSystem, write_single_chain_structure_file
 from protein_quest.structure.formats import read_structure
-from protein_quest.structure.types import Pdb2UniprotMapping, StructRefSeq
+from protein_quest.structure.types import FlattenedUniprotChainMapping
 from protein_quest.structure.uniprot import (
     UniprotSource,
     add_uniprot_accessions2structure,
-    selected_struct_ref_seqs_by_chain,
-    selected_struct_ref_seqs_from_sifts_by_chain,
-    struct_ref_seqs_columns_to_records,
+    apply_chain_provenance_to_uniprot_mappings,
+    best_uniprot_per_chain,
+    flatten_uniprot_chain_mappings,
     structure2uniprot_accessions,
     structure_to_uniprot,
+    uniprot_chain_mappings_from_sifts,
+    uniprot_chain_mappings_from_struct_ref_seq,
 )
 from protein_quest.uniprot_chains import Pdb2UniprotChainsMapping, UniprotChainMapping, parse_uniprot_chains
 
@@ -30,456 +31,42 @@ def _mapping(pdb_id: str, uniprot_accession: str, uniprot_chains: str) -> Pdb2Un
 
 
 @pytest.mark.parametrize(
-    ("fixture_name", "chain2keep", "expected"),
+    "cif_fixture, expected",
     [
+        pytest.param("atomless_cif", set(), id="atomless"),
+        pytest.param("no_uniprot_cif", set(), id="no-uniprot"),
+        pytest.param("sample2_cif", {"P05067"}, id="siftless"),
         pytest.param(
-            "cif_3jrs",
-            "B",
-            {"3JRS": {("A", "Q8VZS8")}},
-            id="cif_3jrs",
+            "cif_2fui",
+            {
+                "Q12830",  # from sift
+                "Q7Z7D6",  # from struct_ref_seq
+            },
+            id="1chain",
+        ),
+        pytest.param(
+            "multi_accession_cif",
+            {"Q13469", "P01100", "P05412"},
+            id="multi-accession-separate-chains",
+        ),
+        pytest.param(
+            "multi_accession_chain_cif",
+            {"P03950", "P00656"},
+            id="multi-accession-same-chain",
         ),
         pytest.param(
             "multi_entity_cif",
-            "B",
-            {"1F66": {("A", "P62806")}},
-            id="multi_entity_cif",
+            {"P02281", "P0C0S5", "P62806", "P17317", "P84233", "Q7ZT64"},
+            id="multiaccession-multichain",
         ),
     ],
 )
-def test_write_single_chain_structure_file_preserves_uniprot_mapping(
-    request: pytest.FixtureRequest, tmp_path: Path, fixture_name: str, chain2keep: str, expected: Pdb2UniprotMapping
-):
-    input_file = request.getfixturevalue(fixture_name)
-    output_file = write_single_chain_structure_file(input_file=input_file, chain2keep=chain2keep, output_dir=tmp_path)
-    structure = read_structure(output_file)
-
-    result = structure_to_uniprot(structure)
-
-    assert result == expected
-
-
-def test_structure2uniprot_accessions_present(sample2_cif: Path):
-    structure = read_structure(sample2_cif)
+def test_structure2uniprot_accessions(cif_fixture: str, expected: set[str], request: pytest.FixtureRequest):
+    path = request.getfixturevalue(cif_fixture)
+    structure = read_structure(path)
     accessions = structure2uniprot_accessions(structure)
 
-    assert accessions == {"P05067"}
-
-
-def test_structure2uniprot_accessions_multiple(multi_accession_cif: Path):
-    structure = read_structure(multi_accession_cif)
-    accessions = structure2uniprot_accessions(structure)
-
-    assert accessions == {"Q13469", "P01100", "P05412"}
-
-
-def test_structure2uniprot_accessions_missing(sample_cif: Path):
-    # Empty struct_ref category to simulate missing UniProt accessions
-    structure_with_unp = read_structure(sample_cif)
-    block_without_struct_ref = structure_with_unp.make_mmcif_block(
-        gemmi.MmcifOutputGroups(True, chem_comp=False, struct_ref=False)
-    )
-    structure = gemmi.make_structure_from_block(block_without_struct_ref)
-
-    accessions = structure2uniprot_accessions(structure)
-
-    assert accessions == set()
-
-
-@pytest.mark.parametrize(
-    ("struct_ref_seqs_columns", "expected_records"),
-    [
-        pytest.param(
-            {
-                "align_id": [1],
-                "ref_id": [1],
-                "pdbx_PDB_id_code": ["1ABC"],
-                "pdbx_strand_id": ["A"],
-                "seq_align_beg": [10],
-                "pdbx_seq_align_beg_ins_code": ["?"],
-                "seq_align_end": [15],
-                "pdbx_seq_align_end_ins_code": ["?"],
-                "pdbx_db_accession": ["P12345"],
-                "db_align_beg": [10],
-                "pdbx_db_align_beg_ins_code": ["?"],
-                "db_align_end": [15],
-                "pdbx_db_align_end_ins_code": ["?"],
-                "pdbx_auth_seq_align_beg": [10],
-                "pdbx_auth_seq_align_end": [15],
-            },
-            [StructRefSeq("P12345", 10, 15, "A", 1.0, 6)],
-            id="single-span",
-        ),
-        pytest.param(
-            {
-                "align_id": [1, 2],
-                "ref_id": [1, 2],
-                "pdbx_PDB_id_code": ["1ABC", "1ABC"],
-                "pdbx_strand_id": ["A", "A"],
-                "seq_align_beg": [10, 20],
-                "pdbx_seq_align_beg_ins_code": ["?", "?"],
-                "seq_align_end": [15, 24],
-                "pdbx_seq_align_end_ins_code": ["?", "?"],
-                "pdbx_db_accession": ["P12345", "P12345"],
-                "db_align_beg": [10, 20],
-                "pdbx_db_align_beg_ins_code": ["?", "?"],
-                "db_align_end": [15, 24],
-                "pdbx_db_align_end_ins_code": ["?", "?"],
-                "pdbx_auth_seq_align_beg": [10, 20],
-                "pdbx_auth_seq_align_end": [15, 24],
-            },
-            [StructRefSeq("P12345", 10, 24, "A", 11 / 15, 11)],
-            id="multi-span-single-chain",
-        ),
-        pytest.param(
-            {
-                "align_id": [1, 2],
-                "ref_id": [1, 2],
-                "pdbx_PDB_id_code": ["1ABC", "1ABC"],
-                "pdbx_strand_id": ["A", "B"],
-                "seq_align_beg": [10, 30],
-                "pdbx_seq_align_beg_ins_code": ["?", "?"],
-                "seq_align_end": [15, 35],
-                "pdbx_seq_align_end_ins_code": ["?", "?"],
-                "pdbx_db_accession": ["P12345", "P12345"],
-                "db_align_beg": [10, 30],
-                "pdbx_db_align_beg_ins_code": ["?", "?"],
-                "db_align_end": [15, 35],
-                "pdbx_db_align_end_ins_code": ["?", "?"],
-                "pdbx_auth_seq_align_beg": [10, 30],
-                "pdbx_auth_seq_align_end": [15, 35],
-            },
-            [
-                StructRefSeq("P12345", 10, 15, "A", 1.0, 6),
-                StructRefSeq("P12345", 30, 35, "B", 1.0, 6),
-            ],
-            id="multi-chain",
-        ),
-        pytest.param(
-            {
-                "align_id": [1, 2, 3],
-                "ref_id": [1, 1, 2],
-                "pdbx_PDB_id_code": ["1ABC", "1ABC", "1ABC"],
-                "pdbx_strand_id": ["A", "A", "A"],
-                "seq_align_beg": [10, 20, 100],
-                "pdbx_seq_align_beg_ins_code": ["?", "?", "?"],
-                "seq_align_end": [12, 22, 105],
-                "pdbx_seq_align_end_ins_code": ["?", "?", "?"],
-                "pdbx_db_accession": ["PAAAAA", "PAAAAA", "PBBBBB"],
-                "db_align_beg": [10, 20, 100],
-                "pdbx_db_align_beg_ins_code": ["?", "?", "?"],
-                "db_align_end": [12, 22, 105],
-                "pdbx_db_align_end_ins_code": ["?", "?", "?"],
-                "pdbx_auth_seq_align_beg": [10, 20, 100],
-                "pdbx_auth_seq_align_end": [12, 22, 105],
-            },
-            [
-                StructRefSeq("PAAAAA", 10, 22, "A", 6 / 13, 6),
-                StructRefSeq("PBBBBB", 100, 105, "A", 1.0, 6),
-            ],
-            id="equal-aligned-residues-same-chain",
-        ),
-        pytest.param(
-            {
-                "align_id": [1],
-                "ref_id": [1],
-                "pdbx_PDB_id_code": ["1ABC"],
-                "pdbx_strand_id": ["A"],
-                "seq_align_beg": [42],
-                "pdbx_seq_align_beg_ins_code": ["?"],
-                "seq_align_end": [42],
-                "pdbx_seq_align_end_ins_code": ["?"],
-                "pdbx_db_accession": ["P11111"],
-                "db_align_beg": [42],
-                "pdbx_db_align_beg_ins_code": ["?"],
-                "db_align_end": [42],
-                "pdbx_db_align_end_ins_code": ["?"],
-                "pdbx_auth_seq_align_beg": [42],
-                "pdbx_auth_seq_align_end": [42],
-            },
-            [StructRefSeq("P11111", 42, 42, "A", 1.0, 1)],
-            id="single-residue-inclusive-count",
-        ),
-    ],
-)
-def test_struct_ref_seqs_columns_to_records(
-    struct_ref_seqs_columns: dict[str, list[int | str]], expected_records: list[StructRefSeq]
-):
-    records = struct_ref_seqs_columns_to_records(struct_ref_seqs_columns)
-
-    assert sorted(records, key=lambda r: (r.uniprot_accession, r.chain_id)) == sorted(
-        expected_records,
-        key=lambda r: (r.uniprot_accession, r.chain_id),
-    )
-
-
-class TestStructureToUniprot:
-    @pytest.mark.parametrize(
-        ("fixture_name", "source", "expected"),
-        [
-            pytest.param(
-                "nmr_cif",
-                "sifts",
-                {
-                    "1AMB": {
-                        ("A", "P05067"),
-                    }
-                },
-                id="sifts-only",
-            ),
-            pytest.param(
-                "sample2_cif",
-                "struct_ref_seq",
-                {"2Y29": {("A", "P05067")}},
-                id="struct-ref-seq-only",
-            ),
-            pytest.param(
-                "multi_entity_cif",
-                "both",
-                {
-                    "1F66": {
-                        (
-                            "A",
-                            "P84233",
-                        ),
-                        (
-                            "A",
-                            "Q7ZT64",
-                        ),
-                        (
-                            "B",
-                            "P62806",
-                        ),
-                        (
-                            "C",
-                            "P0C0S5",
-                        ),
-                        (
-                            "C",
-                            "P17317",
-                        ),
-                        (
-                            "D",
-                            "P02281",
-                        ),
-                        (
-                            "E",
-                            "P84233",
-                        ),
-                        (
-                            "E",
-                            "Q7ZT64",
-                        ),
-                        (
-                            "F",
-                            "P62806",
-                        ),
-                        (
-                            "G",
-                            "P0C0S5",
-                        ),
-                        (
-                            "G",
-                            "P17317",
-                        ),
-                        (
-                            "H",
-                            "P02281",
-                        ),
-                    }
-                },
-                id="multi-both-explicit",
-            ),
-            pytest.param(
-                "multi_entity_cif",
-                "sifts",
-                {
-                    "1F66": {
-                        (
-                            "A",
-                            "P84233",
-                        ),
-                        (
-                            "B",
-                            "P62806",
-                        ),
-                        (
-                            "C",
-                            "P0C0S5",
-                        ),
-                        (
-                            "D",
-                            "P02281",
-                        ),
-                        (
-                            "E",
-                            "P84233",
-                        ),
-                        (
-                            "F",
-                            "P62806",
-                        ),
-                        (
-                            "G",
-                            "P0C0S5",
-                        ),
-                        (
-                            "H",
-                            "P02281",
-                        ),
-                    }
-                },
-                id="multi-sifts",
-            ),
-            pytest.param(
-                "multi_entity_cif",
-                "struct_ref_seq",
-                {
-                    "1F66": {
-                        (
-                            "A",
-                            "Q7ZT64",
-                        ),
-                        (
-                            "B",
-                            "P62806",
-                        ),
-                        (
-                            "C",
-                            "P17317",
-                        ),
-                        (
-                            "D",
-                            "P02281",
-                        ),
-                        (
-                            "E",
-                            "Q7ZT64",
-                        ),
-                        (
-                            "F",
-                            "P62806",
-                        ),
-                        (
-                            "G",
-                            "P17317",
-                        ),
-                        (
-                            "H",
-                            "P02281",
-                        ),
-                    }
-                },
-                id="multi-struct_ref_seq",
-            ),
-            pytest.param(
-                "multi_entity_cif",
-                "fallback",
-                {
-                    "1F66": {
-                        (
-                            "A",
-                            "P84233",
-                        ),
-                        (
-                            "B",
-                            "P62806",
-                        ),
-                        (
-                            "C",
-                            "P0C0S5",
-                        ),
-                        (
-                            "D",
-                            "P02281",
-                        ),
-                        (
-                            "E",
-                            "P84233",
-                        ),
-                        (
-                            "F",
-                            "P62806",
-                        ),
-                        (
-                            "G",
-                            "P0C0S5",
-                        ),
-                        (
-                            "H",
-                            "P02281",
-                        ),
-                    }
-                },
-                id="multi-fallback-prefers-sifts",
-            ),
-            pytest.param(
-                "sample2_cif",
-                "fallback",
-                {"2Y29": {("A", "P05067")}},
-                id="fallback-uses-struct-ref-seq-when-sifts-empty",
-            ),
-            pytest.param(
-                "multi_entity_cif",
-                None,
-                {
-                    "1F66": {
-                        (
-                            "A",
-                            "P84233",
-                        ),
-                        (
-                            "B",
-                            "P62806",
-                        ),
-                        (
-                            "C",
-                            "P0C0S5",
-                        ),
-                        (
-                            "D",
-                            "P02281",
-                        ),
-                        (
-                            "E",
-                            "P84233",
-                        ),
-                        (
-                            "F",
-                            "P62806",
-                        ),
-                        (
-                            "G",
-                            "P0C0S5",
-                        ),
-                        (
-                            "H",
-                            "P02281",
-                        ),
-                    }
-                },
-                id="multi-default",
-            ),
-            pytest.param(
-                "cif_2fui",
-                "sifts",
-                {"2FUI": {("A", "Q12830")}},
-                id="just sift",
-            ),
-        ],
-    )
-    def test_sources(
-        self,
-        request: pytest.FixtureRequest,
-        fixture_name: str,
-        source: UniprotSource | None,
-        expected: Pdb2UniprotMapping,
-    ):
-        structure_path = request.getfixturevalue(fixture_name)
-        structure = read_structure(structure_path)
-
-        result = structure_to_uniprot(structure) if source is None else structure_to_uniprot(structure, source=source)
-
-        assert result == expected
+    assert accessions == expected
 
 
 class TestAddUniprotAccessions2Structure:
@@ -510,29 +97,21 @@ class TestAddUniprotAccessions2Structure:
         pdb2uniprot = _mapping("2Y29", "P12345", "A=10-20")
         new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
 
-        result2 = structure_to_uniprot(new_structure)
+        result = structure_to_uniprot(new_structure)
+        slim_result = {(r.chain_id, r.uniprot_accession) for r in result}
 
-        expected: Pdb2UniprotMapping = {"2Y29": {("A", "P12345")}}
-        assert result2 == expected
-
-        block = new_structure.make_mmcif_block(gemmi.MmcifOutputGroups(False, struct_ref=True))
-        struct_ref_seq = block.get_mmcif_category("_struct_ref_seq.")
-        injected_records = [
-            record
-            for record in struct_ref_seqs_columns_to_records(struct_ref_seq)
-            if record.uniprot_accession == "P12345"
-        ]
-        assert injected_records == [StructRefSeq("P12345", 10, 20, "A", 1.0, 11)]
+        expected = {("A", "P12345")}
+        assert slim_result == expected
 
     def test_inject_into_existing_sifts(self, nmr_cif: Path):
         structure = read_structure(nmr_cif)
-        pdb2uniprot = _mapping("1AMB", "P12345", "A=1-100")
+        pdb2uniprot = _mapping("1AMB", "P12345", "A=1-1000")
         new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
 
-        result2 = structure_to_uniprot(new_structure)
-
-        expected: Pdb2UniprotMapping = {"1AMB": {("A", "P05067"), ("A", "P12345")}}
-        assert result2 == expected
+        result = structure_to_uniprot(new_structure)
+        slim_result = {(r.chain_id, r.uniprot_accession) for r in result}
+        expected = {("A", "P12345")}
+        assert slim_result == expected
 
     def test_inject_multiple_ranges_into_nostructref(self, no_uniprot_cif: Path):
         structure = read_structure(no_uniprot_cif)
@@ -540,27 +119,14 @@ class TestAddUniprotAccessions2Structure:
 
         new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
 
-        block = new_structure.make_mmcif_block(gemmi.MmcifOutputGroups(False, struct_ref=True))
-        struct_ref = block.get_mmcif_category("_struct_ref.")
-        # The uniprot accession is injected twice, once for each range,
-        # would have _struct_ref.pdbx_align_begin=[10,30]
-        # but gemmi does not preserve that column, so we just check the other columns
-        expected_struct_ref = {
-            "id": ["1", "2"],
-            "entity_id": ["1", "1"],
-            "db_name": ["UNP", "UNP"],
-            "db_code": [False, False],
-            "pdbx_db_accession": ["P12345", "P12345"],
-            "pdbx_db_isoform": [None, None],
+        result = uniprot_chain_mappings_from_struct_ref_seq(new_structure)
+        expected = {
+            UniprotChainMapping(
+                uniprot_accession="P12345",
+                chain_ranges=parse_uniprot_chains("A=10-20,A=30-35"),
+            ),
         }
-        assert struct_ref == expected_struct_ref
-        struct_ref_seq = block.get_mmcif_category("_struct_ref_seq.")
-        injected_records = [
-            record
-            for record in struct_ref_seqs_columns_to_records(struct_ref_seq)
-            if record.uniprot_accession == "P12345"
-        ]
-        assert injected_records == [StructRefSeq("P12345", 10, 35, "A", 17 / 26, 17)]
+        assert result == expected
 
     def test_on_single_chain_written(self, multi_accession_cif: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture):
         caplog.set_level("INFO")
@@ -571,13 +137,13 @@ class TestAddUniprotAccessions2Structure:
         )
 
         structure = read_structure(input_file)
-        pdb2uniprot = _mapping("1A02", "P01111", "F=1-100")
+        pdb2uniprot = _mapping("1A02", "P01111", "F=1-1000")
 
         new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
         result = structure_to_uniprot(new_structure)
-
-        expected: Pdb2UniprotMapping = {"1A02": {("A", "P01100"), ("A", "P01111")}}
-        assert result == expected
+        slim_result = {(r.chain_id, r.uniprot_accession) for r in result}
+        expected = {("A", "P01111")}
+        assert slim_result == expected
 
         log = caplog.text
         assert "Structure 1A02 has provenance information indicating it was extracted from chain F to A" in log
@@ -593,197 +159,693 @@ class TestAddUniprotAccessions2Structure:
     )
     def test_multi_entity_cif(self, multi_entity_cif: Path, chain_system: ChainIdSystem, chain_id: str):
         structure = read_structure(multi_entity_cif)
-        pdb2uniprot = _mapping("1F66", "P12345", f"{chain_id}=1-100")
+        pdb2uniprot = _mapping("1F66", "P12345", f"{chain_id}=1-1000")
 
         new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot, chain_system=chain_system)
 
         result = structure_to_uniprot(new_structure, source="both")
-
-        expected: Pdb2UniprotMapping = {
-            "1F66": {
-                (
-                    "A",
-                    "Q7ZT64",
-                ),
-                (
-                    "B",
-                    "P62806",
-                ),
-                (
-                    "C",
-                    # as requested
-                    "P12345",
-                ),
-                (
-                    "C",
-                    "P17317",
-                ),
-                (
-                    "D",
-                    "P02281",
-                ),
-                (
-                    "E",
-                    "Q7ZT64",
-                ),
-                (
-                    "F",
-                    "P62806",
-                ),
-                (
-                    "G",
-                    # Also updates P0C0S5 to requested as G and C auth chains are same entity
-                    "P12345",
-                ),
-                (
-                    "G",
-                    "P17317",
-                ),
-                (
-                    "H",
-                    "P02281",
-                ),
-            },
+        slim_result = {(r.chain_id, r.uniprot_accession) for r in result}
+        expected = {
+            (
+                "A",
+                "Q7ZT64",
+            ),
+            (
+                "B",
+                "P62806",
+            ),
+            (
+                "C",
+                # as requested, sifts entry P17317 gets ignored because P12345 is longer
+                "P12345",
+            ),
+            (
+                "D",
+                "P02281",
+            ),
+            (
+                "E",
+                "Q7ZT64",
+            ),
+            (
+                "F",
+                "P62806",
+            ),
+            (
+                "G",
+                # Also updates P0C0S5 to requested as G and C auth chains are same entity
+                "P12345",
+            ),
+            (
+                "H",
+                "P02281",
+            ),
         }
-        assert result == expected
+        assert slim_result == expected
 
     def test_multi_entity_cif_multiple_auth_chains_in_single_mapping(self, multi_entity_cif: Path):
         structure = read_structure(multi_entity_cif)
-        pdb2uniprot = _mapping("1F66", "P12345", "A/B=1-100")
+        pdb2uniprot = _mapping("1F66", "P12345", "A/B=1-1000")
 
         new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
 
         result = structure_to_uniprot(new_structure, source="both")
-
-        assert ("A", "P12345") in result["1F66"]
-        assert ("B", "P12345") in result["1F66"]
-
-
-def test_selected_struct_ref_seqs_by_chain_returns_auth_system(cif_8rw8: Path):
-    structure = read_structure(cif_8rw8)
-    accessions = structure2uniprot_accessions(structure)
-
-    result = selected_struct_ref_seqs_by_chain(structure, accessions)
-
-    # cif_8rw8 fixture has auth chain B and label chain A, we expect auth chain B
-    expected: dict[str, StructRefSeq] = {
-        "B": StructRefSeq(
-            uniprot_accession="O00327",
-            uniprot_start=337,
-            uniprot_end=449,
-            chain_id="B",
-            sequence_identity=1.0,
-            aligned_residue_count=113,
-        )
-    }
-    assert result == expected
+        slim_result = {(r.chain_id, r.uniprot_accession) for r in result}
+        expected = {("A", "P12345"), ("B", "P12345")}
+        assert expected <= slim_result
 
 
 @pytest.mark.parametrize(
     "cif_fixture, expected",
     [
+        pytest.param("atomless_cif", set(), id="atomless"),
+        pytest.param(
+            "no_uniprot_cif",
+            set(),
+            id="no-uniprot",
+        ),
         pytest.param(
             "cif_2fui",
             {
-                "A": StructRefSeq(
-                    uniprot_accession="Q12830",
-                    uniprot_start=2865,
-                    uniprot_end=2921,
-                    chain_id="A",
-                    sequence_identity=0.3903,
-                    aligned_residue_count=1140,
+                UniprotChainMapping(
+                    uniprot_accession="Q7Z7D6",
+                    chain_ranges=parse_uniprot_chains("A=2583-2639"),
                 )
             },
-            id="single-chain",
+            id="1chain",
         ),
         pytest.param(
-            "sample2_cif",
-            {},
-            id="struct-ref-seq-only",
+            "sample_multispan_cif",
+            {
+                UniprotChainMapping(
+                    uniprot_accession="O00255",
+                    chain_ranges=parse_uniprot_chains("A=1-53,A=74-386,A=399-459,A=537-593"),
+                )
+            },
+            id="multispan",
+        ),
+        pytest.param(
+            "multi_accession_cif",
+            {
+                UniprotChainMapping(
+                    uniprot_accession="Q13469",
+                    chain_ranges=parse_uniprot_chains("N=396-678"),
+                ),
+                UniprotChainMapping(
+                    uniprot_accession="P01100",
+                    chain_ranges=parse_uniprot_chains("F=138-193"),
+                ),
+                UniprotChainMapping(
+                    uniprot_accession="P05412",
+                    chain_ranges=parse_uniprot_chains("J=253-308"),
+                ),
+            },
+            id="multi-accession-separate-chains",
+        ),
+        pytest.param(
+            "multi_accession_chain_cif",
+            {
+                UniprotChainMapping(
+                    uniprot_accession="P00656",
+                    chain_ranges=parse_uniprot_chains("A=64-68"),
+                ),
+                UniprotChainMapping(
+                    uniprot_accession="P03950",
+                    chain_ranges=parse_uniprot_chains("A=25-61,A=66-147"),
+                ),
+            },
+            id="multi-accession-same-chain",
+        ),
+        pytest.param(
+            "cif_8rw8",
+            {
+                UniprotChainMapping(
+                    uniprot_accession="O00327",
+                    chain_ranges=parse_uniprot_chains("B=337-449"),  # B is auth chain
+                ),
+            },
+            id="authchain",
+        ),
+    ],
+)
+def test_uniprot_chain_mappings_from_struct_ref_seq(
+    request: pytest.FixtureRequest, cif_fixture: str, expected: set[UniprotChainMapping]
+):
+    path = request.getfixturevalue(cif_fixture)
+    structure = read_structure(path)
+
+    actual = uniprot_chain_mappings_from_struct_ref_seq(structure)
+
+    assert actual == expected
+
+
+@pytest.mark.parametrize(
+    "cif_fixture, expected",
+    [
+        pytest.param("atomless_cif", set(), id="atomless"),
+        pytest.param("sample2_cif", set(), id="siftless"),
+        pytest.param(
+            "cif_2fui",
+            {
+                UniprotChainMapping(
+                    uniprot_accession="Q12830",
+                    chain_ranges=parse_uniprot_chains("A=2865-2921"),
+                )
+            },
+            id="1chain",
+        ),
+        pytest.param(
+            "cif_3jrs",
+            {
+                UniprotChainMapping(
+                    uniprot_accession="Q8VZS8",
+                    chain_ranges=parse_uniprot_chains(
+                        "A=31-158,A=164-209,B=30-157,B=165-209,C=38-51,C=55-138,C=142-157,C=164-209"
+                    ),
+                ),
+            },
+            id="multispan-multichain",
         ),
         pytest.param(
             "multi_entity_cif",
             {
-                "A": StructRefSeq(
-                    uniprot_accession="P84233",
-                    uniprot_start=37,
-                    uniprot_end=136,
-                    chain_id="A",
-                    sequence_identity=0.7353,
-                    aligned_residue_count=100,
-                ),
-                "B": StructRefSeq(
-                    uniprot_accession="P62806",
-                    uniprot_start=24,
-                    uniprot_end=103,
-                    chain_id="B",
-                    sequence_identity=0.7767,
-                    aligned_residue_count=80,
-                ),
-                "C": StructRefSeq(
+                UniprotChainMapping(
                     uniprot_accession="P0C0S5",
-                    uniprot_start=17,
-                    uniprot_end=119,
-                    chain_id="C",
-                    sequence_identity=0.8655,
-                    aligned_residue_count=103,
+                    chain_ranges=parse_uniprot_chains("C=17-119,G=17-123"),
                 ),
-                "D": StructRefSeq(
-                    uniprot_accession="P02281",
-                    uniprot_start=32,
-                    uniprot_end=126,
-                    chain_id="D",
-                    sequence_identity=0.754,
-                    aligned_residue_count=95,
-                ),
-                "E": StructRefSeq(
+                UniprotChainMapping(
                     uniprot_accession="P84233",
-                    uniprot_start=34,
-                    uniprot_end=136,
-                    chain_id="E",
-                    sequence_identity=0.7574,
-                    aligned_residue_count=103,
+                    chain_ranges=parse_uniprot_chains("A=37-136,E=34-136"),
                 ),
-                "F": StructRefSeq(
+                UniprotChainMapping(
                     uniprot_accession="P62806",
-                    uniprot_start=18,
-                    uniprot_end=103,
-                    chain_id="F",
-                    sequence_identity=0.835,
-                    aligned_residue_count=86,
+                    chain_ranges=parse_uniprot_chains("B=24-103,F=18-103"),
                 ),
-                "G": StructRefSeq(
-                    uniprot_accession="P0C0S5",
-                    uniprot_start=17,
-                    uniprot_end=123,
-                    chain_id="G",
-                    sequence_identity=0.8699,
-                    aligned_residue_count=107,
-                ),
-                "H": StructRefSeq(
+                UniprotChainMapping(
                     uniprot_accession="P02281",
-                    uniprot_start=32,
-                    uniprot_end=126,
-                    chain_id="H",
-                    sequence_identity=0.754,
-                    aligned_residue_count=95,
+                    chain_ranges=parse_uniprot_chains("D=32-126,H=32-126"),
                 ),
             },
-            id="multi-entity",
+            id="multiaccession-multichain",
         ),
         pytest.param(
-            "multi_accession_chain_cif",
-            {},
-            id="multi-accession-chain",
+            "cif_6o5i_updated",
+            {
+                UniprotChainMapping(
+                    uniprot_accession="O00255",
+                    chain_ranges=parse_uniprot_chains("A=2-53,A=74-386,A=399-459,A=549-588"),
+                ),
+            },
+            id="multispan",
         ),
     ],
 )
-def test_selected_struct_ref_seqs_from_sifts_by_chain(
-    cif_fixture: str, expected: dict[str, StructRefSeq], request: pytest.FixtureRequest
+def test_uniprot_chain_mappings_from_sifts(
+    request: pytest.FixtureRequest, cif_fixture: str, expected: set[UniprotChainMapping]
 ):
     path = request.getfixturevalue(cif_fixture)
     structure = read_structure(path)
-    accessions = structure2uniprot_accessions(structure)
 
-    actual = selected_struct_ref_seqs_from_sifts_by_chain(structure, accessions)
+    actual = uniprot_chain_mappings_from_sifts(structure)
+
+    assert actual == expected
+
+
+@pytest.mark.parametrize(
+    "mappings, expected",
+    [
+        pytest.param(
+            set(),
+            set(),
+            id="empty",
+        ),
+        pytest.param(
+            {
+                UniprotChainMapping(
+                    uniprot_accession="Q12830",
+                    chain_ranges=parse_uniprot_chains("A=2865-2921"),
+                )
+            },
+            {
+                FlattenedUniprotChainMapping("Q12830", 2865, 2921, "A", 1.0, 57),
+            },
+            id="1chain",
+        ),
+        pytest.param(
+            {
+                UniprotChainMapping(
+                    uniprot_accession="Q8VZS8",
+                    chain_ranges=parse_uniprot_chains(
+                        "A=31-158,A=164-209,B=30-157,B=165-209,C=38-51,C=55-138,C=142-157,C=164-209"
+                    ),
+                ),
+            },
+            {
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="Q8VZS8",
+                    uniprot_start=31,
+                    uniprot_end=209,
+                    chain_id="A",
+                    sequence_identity=0.9720670391061452,
+                    aligned_residue_count=174,
+                ),
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="Q8VZS8",
+                    uniprot_start=30,
+                    uniprot_end=209,
+                    chain_id="B",
+                    sequence_identity=0.9611111111111111,
+                    aligned_residue_count=173,
+                ),
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="Q8VZS8",
+                    uniprot_start=38,
+                    uniprot_end=209,
+                    chain_id="C",
+                    sequence_identity=0.9302325581395349,
+                    aligned_residue_count=160,
+                ),
+            },
+            id="multispan-multichain",
+        ),
+        pytest.param(
+            {
+                UniprotChainMapping(
+                    uniprot_accession="P0C0S5",
+                    chain_ranges=parse_uniprot_chains("C=17-119,G=17-123"),
+                ),
+                UniprotChainMapping(
+                    uniprot_accession="P84233",
+                    chain_ranges=parse_uniprot_chains("A=37-136,E=34-136"),
+                ),
+                UniprotChainMapping(
+                    uniprot_accession="P62806",
+                    chain_ranges=parse_uniprot_chains("B=24-103,F=18-103"),
+                ),
+                UniprotChainMapping(
+                    uniprot_accession="P02281",
+                    chain_ranges=parse_uniprot_chains("D=32-126,H=32-126"),
+                ),
+            },
+            {
+                FlattenedUniprotChainMapping("P0C0S5", 17, 119, "C", 1.0, 103),
+                FlattenedUniprotChainMapping("P0C0S5", 17, 123, "G", 1.0, 107),
+                FlattenedUniprotChainMapping("P84233", 37, 136, "A", 1.0, 100),
+                FlattenedUniprotChainMapping("P84233", 34, 136, "E", 1.0, 103),
+                FlattenedUniprotChainMapping("P62806", 24, 103, "B", 1.0, 80),
+                FlattenedUniprotChainMapping("P62806", 18, 103, "F", 1.0, 86),
+                FlattenedUniprotChainMapping("P02281", 32, 126, "D", 1.0, 95),
+                FlattenedUniprotChainMapping("P02281", 32, 126, "H", 1.0, 95),
+            },
+            id="multiaccession-multichain",
+        ),
+    ],
+)
+def test_flatten_uniprot_chain_mappings(
+    mappings: set[UniprotChainMapping], expected: set[FlattenedUniprotChainMapping]
+):
+    actual = flatten_uniprot_chain_mappings(mappings)
+
+    assert actual == expected
+
+
+@pytest.mark.parametrize(
+    "mappings, expected",
+    [
+        pytest.param(
+            set(),
+            set(),
+            id="empty",
+        ),
+        pytest.param(
+            {
+                FlattenedUniprotChainMapping("P12345", 10, 15, "A", 1.0, 6),
+            },
+            {
+                FlattenedUniprotChainMapping("P12345", 10, 15, "A", 1.0, 6),
+            },
+            id="solo",
+        ),
+        pytest.param(
+            {
+                FlattenedUniprotChainMapping("P12345", 10, 15, "A", 1.0, 6),
+                FlattenedUniprotChainMapping("P67879", 20, 24, "A", 1.0, 5),
+            },
+            {
+                FlattenedUniprotChainMapping("P12345", 10, 15, "A", 1.0, 6),
+            },
+            id="longest",
+        ),
+        pytest.param(
+            {
+                FlattenedUniprotChainMapping("P12345", 10, 14, "A", 1.0, 5),
+                FlattenedUniprotChainMapping("P67879", 20, 24, "A", 1.0, 5),
+            },
+            {
+                FlattenedUniprotChainMapping("P12345", 10, 14, "A", 1.0, 5),
+            },
+            id="same-length-first-alpha",
+        ),
+        pytest.param(
+            {
+                FlattenedUniprotChainMapping("P12345", 10, 15, "A", 1.0, 6),
+                FlattenedUniprotChainMapping("P67879", 20, 24, "B", 1.0, 5),
+            },
+            {
+                FlattenedUniprotChainMapping("P12345", 10, 15, "A", 1.0, 6),
+                FlattenedUniprotChainMapping("P67879", 20, 24, "B", 1.0, 5),
+            },
+            id="2chain-1each",
+        ),
+    ],
+)
+def test_best_uniprot_per_chain(
+    mappings: set[FlattenedUniprotChainMapping], expected: set[FlattenedUniprotChainMapping]
+):
+    actual = best_uniprot_per_chain(mappings)
+
+    assert actual == expected
+
+
+@pytest.mark.parametrize(
+    "cif_fixture, source, expected",
+    [
+        pytest.param(
+            "atomless_cif",
+            "both",
+            set(),
+            id="atomless",
+        ),
+        pytest.param(
+            "sample2_cif",
+            "both",
+            {
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="P05067",
+                    uniprot_start=687,
+                    uniprot_end=692,
+                    chain_id="A",
+                    sequence_identity=1.0,
+                    aligned_residue_count=6,
+                ),
+            },
+            id="1chain-1uniprot",
+        ),
+        pytest.param(
+            "cif_2fui",
+            "sifts",
+            {
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="Q12830",
+                    uniprot_start=2865,
+                    uniprot_end=2921,
+                    chain_id="A",
+                    sequence_identity=1.0,
+                    aligned_residue_count=57,
+                ),
+            },
+            id="1chain-1uniprot-sifts",
+        ),
+        pytest.param(
+            "cif_2fui",
+            "struct_ref_seq",
+            {
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="Q7Z7D6",
+                    uniprot_start=2583,
+                    uniprot_end=2639,
+                    chain_id="A",
+                    sequence_identity=1.0,
+                    aligned_residue_count=57,
+                ),
+            },
+            id="1chain-1uniprot-struct_ref_seq",
+        ),
+        pytest.param(
+            "cif_2fui",
+            "both",
+            {
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="Q12830",  # sifts wins
+                    uniprot_start=2865,
+                    uniprot_end=2921,
+                    chain_id="A",
+                    sequence_identity=1.0,
+                    aligned_residue_count=57,
+                ),
+            },
+            id="1chain-1uniprot-both",
+        ),
+        pytest.param(
+            "cif_2fui",
+            "fallback",
+            {
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="Q12830",  # sifts wins
+                    uniprot_start=2865,
+                    uniprot_end=2921,
+                    chain_id="A",
+                    sequence_identity=1.0,
+                    aligned_residue_count=57,
+                ),
+            },
+            id="1chain-1uniprot-fallback",
+        ),
+        pytest.param(
+            "multi_entity_cif",
+            "both",
+            {
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="Q7ZT64",
+                    uniprot_start=1,
+                    uniprot_end=136,
+                    chain_id="A",
+                    sequence_identity=2.0,
+                    aligned_residue_count=272,
+                ),
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="P62806",
+                    uniprot_start=1,
+                    uniprot_end=102,
+                    chain_id="F",
+                    sequence_identity=1.0,
+                    aligned_residue_count=102,
+                ),
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="P62806",
+                    uniprot_start=1,
+                    uniprot_end=102,
+                    chain_id="B",
+                    sequence_identity=1.0,
+                    aligned_residue_count=102,
+                ),
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="P17317",
+                    uniprot_start=1,
+                    uniprot_end=127,
+                    chain_id="C",
+                    sequence_identity=1.0,
+                    aligned_residue_count=127,
+                ),
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="P02281",
+                    uniprot_start=1,
+                    uniprot_end=125,
+                    chain_id="D",
+                    sequence_identity=1.0,
+                    aligned_residue_count=125,
+                ),
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="Q7ZT64",
+                    uniprot_start=1,
+                    uniprot_end=136,
+                    chain_id="E",
+                    sequence_identity=2.0,
+                    aligned_residue_count=272,
+                ),
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="P02281",
+                    uniprot_start=1,
+                    uniprot_end=125,
+                    chain_id="H",
+                    sequence_identity=1.0,
+                    aligned_residue_count=125,
+                ),
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="P17317",
+                    uniprot_start=1,
+                    uniprot_end=127,
+                    chain_id="G",
+                    sequence_identity=1.0,
+                    aligned_residue_count=127,
+                ),
+            },
+            id="multiaccession-multichain",
+        ),
+        pytest.param(
+            "multi_accession_chain_cif",
+            "both",
+            {
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="P03950",
+                    uniprot_start=25,
+                    uniprot_end=147,
+                    chain_id="A",
+                    sequence_identity=0.967479674796748,
+                    aligned_residue_count=119,
+                ),
+            },
+            id="multi-accession-same-chain",
+        ),
+    ],
+)
+def test_structure_to_uniprot(
+    request: pytest.FixtureRequest, cif_fixture: str, source: UniprotSource, expected: set[FlattenedUniprotChainMapping]
+):
+    path = request.getfixturevalue(cif_fixture)
+    structure = read_structure(path)
+
+    actual = structure_to_uniprot(structure, source=source)
+
+    assert actual == expected
+
+
+def test_structure_to_uniprot_allow_multiple_accessions_per_chain(multi_accession_chain_cif: Path):
+    structure = read_structure(multi_accession_chain_cif)
+
+    actual = structure_to_uniprot(structure, source="both", one_uniprot_per_chain=False)
+
+    expected = {
+        FlattenedUniprotChainMapping(
+            uniprot_accession="P00656",
+            uniprot_start=64,
+            uniprot_end=68,
+            chain_id="A",
+            sequence_identity=1.0,
+            aligned_residue_count=5,
+        ),
+        FlattenedUniprotChainMapping(
+            uniprot_accession="P03950",
+            uniprot_start=25,
+            uniprot_end=147,
+            chain_id="A",
+            sequence_identity=0.967479674796748,
+            aligned_residue_count=119,
+        ),
+    }
+
+    assert actual == expected
+
+
+def test_structure_to_uniprot_bad_source(sample2_cif: Path):
+    structure = read_structure(sample2_cif)
+
+    with pytest.raises(ValueError, match="Invalid source 'badsource'"):
+        # pyrefly: ignore [bad-argument-type]
+        structure_to_uniprot(structure, source="badsource")
+
+
+@pytest.mark.parametrize(
+    "mappings, chain_provenance, expected",
+    [
+        pytest.param(
+            set(),
+            ChainExtractionProvenance("F", "A"),
+            set(),
+            id="empty",
+        ),
+        pytest.param(
+            {
+                UniprotChainMapping(
+                    uniprot_accession="P12345",
+                    chain_ranges=parse_uniprot_chains("F=1-10"),
+                )
+            },
+            ChainExtractionProvenance("F", "A"),
+            {
+                UniprotChainMapping(
+                    uniprot_accession="P12345",
+                    chain_ranges=parse_uniprot_chains("A=1-10"),
+                )
+            },
+            id="rename",
+        ),
+        pytest.param(
+            {
+                UniprotChainMapping(
+                    uniprot_accession="P12345",
+                    chain_ranges=parse_uniprot_chains("F=1-10"),
+                )
+            },
+            ChainExtractionProvenance("G", "A"),
+            {
+                UniprotChainMapping(
+                    uniprot_accession="P12345",
+                    chain_ranges=parse_uniprot_chains("F=1-10"),
+                )
+            },
+            id="no-rename",
+        ),
+        pytest.param(
+            {
+                UniprotChainMapping(
+                    uniprot_accession="P12345",
+                    chain_ranges=parse_uniprot_chains("B/F=1-10"),
+                )
+            },
+            ChainExtractionProvenance("F", "A"),
+            {
+                UniprotChainMapping(
+                    uniprot_accession="P12345",
+                    chain_ranges=parse_uniprot_chains("A/B=1-10"),
+                )
+            },
+            id="rename-half",
+        ),
+        pytest.param(
+            {
+                UniprotChainMapping(
+                    uniprot_accession="P12345",
+                    chain_ranges=parse_uniprot_chains("F=1-10"),
+                ),
+                UniprotChainMapping(
+                    uniprot_accession="P6789",
+                    chain_ranges=parse_uniprot_chains("B=1-10"),
+                ),
+            },
+            ChainExtractionProvenance("F", "A"),
+            {
+                UniprotChainMapping(
+                    uniprot_accession="P12345",
+                    chain_ranges=parse_uniprot_chains("A=1-10"),
+                ),
+                UniprotChainMapping(
+                    uniprot_accession="P6789",
+                    chain_ranges=parse_uniprot_chains("B=1-10"),
+                ),
+            },
+            id="ignores-other",
+        ),
+        pytest.param(
+            {
+                UniprotChainMapping(
+                    uniprot_accession="P12345",
+                    chain_ranges=parse_uniprot_chains("F=1-10,F=20-30"),
+                )
+            },
+            ChainExtractionProvenance("F", "A"),
+            {
+                UniprotChainMapping(
+                    uniprot_accession="P12345",
+                    chain_ranges=parse_uniprot_chains("A=1-10,A=20-30"),
+                )
+            },
+            id="multi-range",
+        ),
+    ],
+)
+def test_apply_chain_provenance_to_uniprot_mappings(
+    mappings: set[UniprotChainMapping], chain_provenance: ChainExtractionProvenance, expected: set[UniprotChainMapping]
+):
+    actual = apply_chain_provenance_to_uniprot_mappings(mappings, chain_provenance)
     assert actual == expected

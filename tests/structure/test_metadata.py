@@ -135,7 +135,7 @@ class TestStructureMetadata:
                     label_chain="A",
                     method="X-ray",
                 ),
-                id="1A02_multi_accessions separate_chains",
+                id="1A02_multi_accessions-separate_chains",
             ),
             pytest.param(
                 "multi_accession_chain_cif",
@@ -201,13 +201,13 @@ class TestStructureMetadata:
                     is_alphafold=False,
                     uniprot_start=2865,
                     uniprot_end=2921,
-                    sequence_identity=0.39,
+                    sequence_identity=1.0,
                     chain_length=62,
                     auth_chain="A",
                     label_chain="A",
                     method="NMR",
                 ),
-                id="just-sift",
+                id="sift-wins",
             ),
         ],
     )
@@ -221,8 +221,7 @@ class TestStructureMetadata:
         structure_metadata(read_structure(multi_accession_cif), path=multi_accession_cif)
 
         message = caplog.text
-        assert "Multiple UniProt accessions found in structure" in message
-        assert "Source path:" in message
+        assert "Multiple UniProt mappings found in structure" in message
         assert "Q13469" in message
         assert "P01100" in message
         assert "P05412" in message

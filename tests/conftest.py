@@ -155,6 +155,15 @@ def cif_2fui():
 
 
 @pytest.fixture
+def cif_6o5i_updated() -> Path:
+    """6o5i structure with multiple struct_ref_seq spans for one chain."""
+    return fetch_cif(
+        "6o5i_updated.cif.gz",
+        "704a97708ad69efa4ecd110eb01fa5f7887fbd6068f9d401875254086fb6020b",
+    )
+
+
+@pytest.fixture
 def xray_p05067_cifs(sample2_cif: Path, cif_2y2a: Path) -> list[Path]:
     return [sample2_cif, cif_2y2a]
 
