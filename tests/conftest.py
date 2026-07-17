@@ -61,7 +61,7 @@ def multi_accession_chain_cif() -> Path:
 
 @pytest.fixture
 def no_uniprot_cif(sample2_cif: Path, tmp_path: Path) -> Path:
-    """2Y29 structure with no UniProt accession."""
+    """2Y29 structure with no UniProt accession in struct_ref block."""
     structure_with_unp = read_structure(sample2_cif)
     block_without_struct_ref = structure_with_unp.make_mmcif_block(
         gemmi.MmcifOutputGroups(True, chem_comp=False, struct_ref=False)
@@ -147,10 +147,19 @@ def cif_2y2a() -> Path:
 
 @pytest.fixture
 def cif_2fui():
-    """2fui structure with uniprot in just SIFTS, not in struct_ref block."""
+    """2fui structure with Q12830 in sifts and Q7Z7D6 in struct_ref block."""
     return fetch_cif(
         "2fui_updated.cif.gz",
         "f70adacd1ec1b8bde59c3754a6774cf190a9d3dc0710b6041bab9ad96c7118f5",
+    )
+
+
+@pytest.fixture
+def cif_6o5i_updated() -> Path:
+    """6o5i structure with multiple struct_ref_seq spans for one chain."""
+    return fetch_cif(
+        "6o5i_updated.cif.gz",
+        "704a97708ad69efa4ecd110eb01fa5f7887fbd6068f9d401875254086fb6020b",
     )
 
 

@@ -30,8 +30,9 @@ from protein_quest.structure.chains import ChainIdSystem
 from protein_quest.structure.convert import convert_to_cif_files
 from protein_quest.structure.files import glob_structure_files
 from protein_quest.structure.formats import read_structure
-from protein_quest.structure.types import CifOutputFormat, Pdb2UniprotMapping
+from protein_quest.structure.types import CifOutputFormat
 from protein_quest.structure.uniprot import structure2uniprot_accessions
+from protein_quest.uniprot_chains import Pdb2UniprotChainsMapping, UniprotChainMapping, parse_uniprot_chains
 
 rprint = console.print
 
@@ -79,18 +80,18 @@ def uniprot(
         write_lines(output, sorted(uniprot_accessions))
 
 
-def _read_pdb2uniprot_csv(uniprots: Path | None) -> Pdb2UniprotMapping:
-    """Read CSV file with PDB id to chain/UniProt mappings.
+def _read_pdb2uniprot_csv(uniprots: Path | None) -> Pdb2UniprotChainsMapping:
+    """Read CSV file with PDB id to UniProt chain/range mappings.
 
-    Expects 3 columns: `pdb_id,chain,uniprot_accession`.
+    Expects 3 columns: `pdb_id,uniprot_accession,uniprot_chains`.
 
     Args:
         uniprots: CSV file with PDB to UniProt mappings. If None, returns empty dictionary.
 
     Returns:
-        Dictionary mapping PDB ID to set of tuples containing chain and UniProt accession.
+        Dictionary mapping PDB ID to UniProt chain mappings.
     """
-    uniprot_ref_dict: Pdb2UniprotMapping = {}
+    uniprot_ref_dict: Pdb2UniprotChainsMapping = {}
     if uniprots is None:
         return uniprot_ref_dict
 
@@ -98,12 +99,17 @@ def _read_pdb2uniprot_csv(uniprots: Path | None) -> Pdb2UniprotMapping:
         reader = csv.DictReader(f)
         for row in reader:
             pdb_id = row["pdb_id"]
-            chain = row["chain"]
             uniprot_accession = row["uniprot_accession"]
-            if pdb_id and chain and uniprot_accession:
+            uniprot_chains = row["uniprot_chains"]
+            if pdb_id and uniprot_accession and uniprot_chains:
                 if pdb_id not in uniprot_ref_dict:
                     uniprot_ref_dict[pdb_id] = set()
-                uniprot_ref_dict[pdb_id].add((chain, uniprot_accession))
+                uniprot_ref_dict[pdb_id].add(
+                    UniprotChainMapping(
+                        uniprot_accession=uniprot_accession,
+                        chain_ranges=parse_uniprot_chains(uniprot_chains),
+                    )
+                )
     return uniprot_ref_dict
 
 
@@ -131,7 +137,7 @@ def structures(
             If not given, files are written to input_dir.
         uniprots: Supply Uniprot to PDB id and chain mappings.
             Adds UniProt accessions to structures that are missing them based on the provided mapping.
-            The supplied file must be in CSV format with 3 columns: `pdb_id,chain,uniprot_accession`.
+            The supplied file must be in CSV format with 3 columns: `pdb_id,uniprot_accession,uniprot_chains`.
             (column order does not matter)
             This CSV file can be generated with `protein-quest search pdbe ...`.
         chain_system: System of chain ids in the input CSV.

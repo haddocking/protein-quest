@@ -595,11 +595,10 @@ def combined_filter(
         C --> D[Filter by residues in chain A]
 
         B -->|No| F[Filter by residues in chain A]
-        F --> G{UniProt accession?}
+        F --> U[Filter by sequence identity]
+        U --> G{UniProt accession?}
 
-        G -->|Yes| U[Filter by sequence identity]
-
-        U --> H{Resolution available?}
+        G -->|Yes| H{Resolution available?}
         H -->|Yes| I[Group by UniProt accession and cluster by residue ranges]
         I --> J[Sort cluster members by resolution]
         J --> K[Keep up to top_uniprot_cluster per cluster]

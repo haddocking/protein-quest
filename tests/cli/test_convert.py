@@ -7,7 +7,7 @@ import pytest
 
 from protein_quest.cli import main
 from protein_quest.structure.formats import read_structure
-from protein_quest.structure.uniprot import structure_to_uniprot
+from protein_quest.structure.uniprot import FlattenedUniprotChainMapping, structure_to_uniprot
 
 
 def test_convert_structures_to_cifgz(sample_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
@@ -41,11 +41,11 @@ def test_convert_structures_with_injected_uniprot(no_uniprot_cif: Path, tmp_path
     output_dir = tmp_path / "output"
     pdb2uniprotcsv = tmp_path / "pdb2uniprot.csv"
     with pdb2uniprotcsv.open("w", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["pdb_id", "chain", "uniprot_accession"])
+        writer = csv.DictWriter(handle, fieldnames=["pdb_id", "uniprot_accession", "uniprot_chains"])
         writer.writeheader()
         writer.writerows(
             [
-                {"pdb_id": "2Y29", "chain": "A", "uniprot_accession": "P01100"},
+                {"pdb_id": "2Y29", "uniprot_accession": "P01100", "uniprot_chains": "A=1-100"},
             ]
         )
 
@@ -67,7 +67,16 @@ def test_convert_structures_with_injected_uniprot(no_uniprot_cif: Path, tmp_path
     assert output_file.exists()
     structure = read_structure(output_file)
     injected_uniprot = structure_to_uniprot(structure)
-    expected = {"2Y29": {("A", "P01100")}}
+    expected = {
+        FlattenedUniprotChainMapping(
+            uniprot_accession="P01100",
+            uniprot_start=1,
+            uniprot_end=100,
+            chain_id="A",
+            sequence_identity=1.0,
+            aligned_residue_count=100,
+        ),
+    }
     assert injected_uniprot == expected
 
 
@@ -95,9 +104,9 @@ def test_convert_structures_with_injected_uniprot_chain_system(
     pdb2uniprotcsv = tmp_path / "pdb2uniprot.csv"
     pdb_id = read_structure(cif_8rw8).name
     with pdb2uniprotcsv.open("w", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["pdb_id", "chain", "uniprot_accession"])
+        writer = csv.DictWriter(handle, fieldnames=["pdb_id", "uniprot_accession", "uniprot_chains"])
         writer.writeheader()
-        writer.writerow({"pdb_id": pdb_id, "chain": chain_id, "uniprot_accession": "P12345"})
+        writer.writerow({"pdb_id": pdb_id, "uniprot_accession": "P12345", "uniprot_chains": f"{chain_id}=1-1000"})
 
     main(
         [
@@ -118,9 +127,10 @@ def test_convert_structures_with_injected_uniprot_chain_system(
     assert output_file.exists()
 
     structure = read_structure(output_file)
-    injected_uniprot = structure_to_uniprot(structure)
-    assert any(uniprot == "P12345" for _, uniprot in injected_uniprot[pdb_id])
-    assert "Expected: {('B', 'P12345')}" in caplog.text
+    injected_uniprot = structure_to_uniprot(structure, one_uniprot_per_chain=False)
+    slim_result = {(r.chain_id, r.uniprot_accession) for r in injected_uniprot}
+    assert slim_result == {("B", "O00327"), ("B", "P12345")}
+    assert "Missing: {ChainUniprotPair(chain_id='B', uniprot_accession='P12345')}." in caplog.text
 
 
 def test_convert_clusters_writes_clusters_output(

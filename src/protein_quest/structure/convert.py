@@ -14,11 +14,11 @@ from protein_quest.structure.formats import (
 )
 from protein_quest.structure.types import (
     CifOutputFormat,
-    Pdb2UniprotMapping,
     cif_output_formats,
     valid_structure_file_extensions,
 )
 from protein_quest.structure.uniprot import add_uniprot_accessions2structure
+from protein_quest.uniprot_chains import Pdb2UniprotChainsMapping
 from protein_quest.utils import CopyMethod, copyfile
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ def convert_to_cif_files(
     output_dir: Path,
     copy_method: CopyMethod,
     output_format: CifOutputFormat = ".cif",
-    pdb2uniprot: Pdb2UniprotMapping | None = None,
+    pdb2uniprot: Pdb2UniprotChainsMapping | None = None,
     chain_system: ChainIdSystem = "auth",
 ) -> Generator[tuple[Path, Path]]:
     """Convert structure files to CIF format.
@@ -39,7 +39,7 @@ def convert_to_cif_files(
         output_dir: Directory to save the converted files.
         copy_method: How to copy when no changes are needed to output file.
         output_format: Output file format to write.
-        pdb2uniprot: Optional dictionary mapping PDB ID to set of tuples containing chain and UniProt accession.
+        pdb2uniprot: Optional dictionary mapping PDB ID to structured UniProt chain mappings.
             If provided, will be used to inject UniProt accessions into structures that lack them.
         chain_system: System of chain ids in ``pdb2uniprot`` mapping.
 
@@ -62,7 +62,7 @@ def convert_to_cif_file(
     output_dir: Path,
     copy_method: CopyMethod,
     output_format: CifOutputFormat = ".cif",
-    pdb2uniprot: Pdb2UniprotMapping | None = None,
+    pdb2uniprot: Pdb2UniprotChainsMapping | None = None,
     chain_system: ChainIdSystem = "auth",
 ) -> Path:
     """Convert a single structure file to CIF format.
@@ -74,7 +74,7 @@ def convert_to_cif_file(
         output_dir: Directory to save the converted file.
         copy_method: How to copy when no changes are needed to output file.
         output_format: Output file format to write.
-        pdb2uniprot: Optional dictionary mapping PDB ID to set of tuples containing chain and UniProt accession.
+        pdb2uniprot: Optional dictionary mapping PDB ID to structured UniProt chain mappings.
             If provided, will not use any shortcuts for copying files and
             will always read and write the structure to ensure UniProt accessions
             are verified and injected if necessary.
