@@ -54,17 +54,6 @@ def _metadata_without_uniprot(
     )
 
 
-def _build_multiple_accessions_message(structure: gemmi.Structure, accessions: set[str], path: Path | None) -> str:
-    msg = (
-        f"Multiple UniProt accessions found in structure {structure.name}: "
-        f"{accessions}. Please resolve this ambiguity before using this "
-        "structure. For example using `protein-quest filter chain` command."
-    )
-    if path is not None:
-        msg = f"{msg} Source path: {path}."
-    return msg
-
-
 @dataclass(frozen=True)
 class StructureMetadata:
     """Metadata extracted from a structure file for ranking and grouping.

@@ -279,35 +279,6 @@ def structure2uniprot_accessions(structure: gemmi.Structure) -> set[str]:
     return {m.uniprot_accession for m in mappings}
 
 
-def _append_struct_ref_seq_rows(
-    struct_ref_seq: dict[str, list[str | int | None]],
-    *,
-    ref_id: str,
-    uniprot_accession: str,
-    chain_ranges: list[UniprotChainRange],
-) -> None:
-    fillable_struct_ref_seq_cols = {
-        "align_id",
-        "ref_id",
-        "pdbx_strand_id",
-        "pdbx_db_accession",
-        "db_align_beg",
-        "db_align_end",
-    }
-    for chain_range in chain_ranges:
-        for chain_id in chain_range.chain_ids:
-            new_seq_id = len(struct_ref_seq["align_id"]) + 1
-            struct_ref_seq["align_id"].append(new_seq_id)
-            struct_ref_seq["ref_id"].append(ref_id)
-            struct_ref_seq["pdbx_strand_id"].append(chain_id)
-            struct_ref_seq["pdbx_db_accession"].append(uniprot_accession)
-            struct_ref_seq["db_align_beg"].append(chain_range.start)
-            struct_ref_seq["db_align_end"].append(chain_range.end)
-            for col, values in struct_ref_seq.items():
-                if col not in fillable_struct_ref_seq_cols:
-                    values.append(None)
-
-
 def _append_uniprot_to_structure(
     structure: gemmi.Structure, chain_mappings: set[UniprotChainMapping]
 ) -> gemmi.Structure:
