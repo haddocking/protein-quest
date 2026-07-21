@@ -50,6 +50,7 @@ def build_sparql_generic_by_uniprot_accessions_query(
 
     Args:
         uniprot_accs: An iterable of UniProt accessions to filter by.
+            Sorted and unique accessions will be used in the query.
         select_clause: The SELECT clause of the SPARQL query, without the "SELECT" keyword.
         where_clause: The WHERE clause of the SPARQL query, without the "WHERE" keyword.
         limit: The maximum number of results to return. Default is 10,000.
@@ -58,7 +59,8 @@ def build_sparql_generic_by_uniprot_accessions_query(
     Returns:
         A string containing the complete SPARQL query.
     """
-    values = " ".join(f'("{ac}")' for ac in uniprot_accs)
+    sorted_auniprot_accs = sorted(set(uniprot_accs))
+    values = " ".join(f'("{ac}")' for ac in sorted_auniprot_accs)
     where_clause2 = dedent(f"""
         # --- Protein Selection ---
         VALUES (?ac) {{ {values}}}
