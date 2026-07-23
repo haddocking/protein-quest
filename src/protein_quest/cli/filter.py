@@ -200,7 +200,7 @@ def chain(
         if str(write_stats) != "-":
             write_stats.parent.mkdir(parents=True, exist_ok=True)
         lines = []
-        for r in results:
+        for r in sorted(results, key=lambda r: (r.input_file.name, r.chain_id)):
             output_fn = r.output_file.name if r.output_file else ""
             lines.append(f"{r.input_file.name},{r.chain_id},A,{r.passed},{r.discard_reason or ''},{output_fn}")
         write_lines(

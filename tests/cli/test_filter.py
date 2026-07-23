@@ -103,14 +103,6 @@ def test_filter_chain_multi_accession_happy_path(
         expected = [
             {
                 "input_file": "1a02.cif.gz",
-                "chain2keep": "N",
-                "output_chain": "A",
-                "passed": "True",
-                "discard_reason": "",
-                "output_file": "1a02_N2A.cif.gz",
-            },
-            {
-                "input_file": "1a02.cif.gz",
                 "chain2keep": "F",
                 "output_chain": "A",
                 "passed": "True",
@@ -124,6 +116,14 @@ def test_filter_chain_multi_accession_happy_path(
                 "passed": "True",
                 "discard_reason": "",
                 "output_file": "1a02_J2A.cif.gz",
+            },
+            {
+                "input_file": "1a02.cif.gz",
+                "chain2keep": "N",
+                "output_chain": "A",
+                "passed": "True",
+                "discard_reason": "",
+                "output_file": "1a02_N2A.cif.gz",
             },
         ]
         assert rows == expected
