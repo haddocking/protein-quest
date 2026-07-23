@@ -199,13 +199,13 @@ def chain(
     if write_stats:
         if str(write_stats) != "-":
             write_stats.parent.mkdir(parents=True, exist_ok=True)
+        lines = []
+        for r in results:
+            output_fn = r.output_file.name if r.output_file else ""
+            lines.append(f"{r.input_file.name},{r.chain_id},A,{r.passed},{r.discard_reason or ''},{output_fn}")
         write_lines(
             write_stats,
-            ["input_file,chain2keep,output_chain,passed,discard_reason,output_file"]
-            + [
-                f"{r.input_file},{r.chain_id},A,{r.passed},{r.discard_reason or ''},{r.output_file or ''}"
-                for r in results
-            ],
+            ["input_file,chain2keep,output_chain,passed,discard_reason,output_file", *lines],
         )
         rprint(f"Statistics written to {write_stats}")
 

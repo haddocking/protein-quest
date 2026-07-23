@@ -42,12 +42,12 @@ def test_filter_chain_happy_path(sample2_cif: Path, tmp_path: Path, capsys: pyte
         rows = list(csv.DictReader(f))
     expected = [
         {
-            "input_file": str(sample2_cif),
+            "input_file": str(sample2_cif.name),
             "chain2keep": "A",
             "output_chain": "A",
             "passed": "True",
             "discard_reason": "",
-            "output_file": str(output_file),
+            "output_file": str(output_file.name),
         }
     ]
     assert rows == expected
@@ -75,6 +75,7 @@ def test_filter_chain_multi_accession_happy_path(
         )
     )
 
+    chain_stats = tmp_path / "chain_stats.csv"
     argv = [
         "filter",
         "chain",
@@ -85,6 +86,8 @@ def test_filter_chain_multi_accession_happy_path(
         "sequential",
         "--copy-method",
         "copy",
+        "--write-stats",
+        str(chain_stats),
     ]
 
     main(argv)
@@ -94,6 +97,36 @@ def test_filter_chain_multi_accession_happy_path(
 
     captured = capsys.readouterr()
     assert "Wrote 3 single-chain PDB/mmCIF files to" in captured.err
+
+    with chain_stats.open() as f:
+        rows = list(csv.DictReader(f))
+        expected = [
+            {
+                "input_file": "1a02.cif.gz",
+                "chain2keep": "N",
+                "output_chain": "A",
+                "passed": "True",
+                "discard_reason": "",
+                "output_file": "1a02_N2A.cif.gz",
+            },
+            {
+                "input_file": "1a02.cif.gz",
+                "chain2keep": "F",
+                "output_chain": "A",
+                "passed": "True",
+                "discard_reason": "",
+                "output_file": "1a02_F2A.cif.gz",
+            },
+            {
+                "input_file": "1a02.cif.gz",
+                "chain2keep": "J",
+                "output_chain": "A",
+                "passed": "True",
+                "discard_reason": "",
+                "output_file": "1a02_J2A.cif.gz",
+            },
+        ]
+        assert rows == expected
 
 
 def test_filter_chain_input_file_notfound(tmp_path: Path):
