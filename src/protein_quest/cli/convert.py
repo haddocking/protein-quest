@@ -123,6 +123,7 @@ def structures(
     uniprots: InputFile | None = None,
     chain_system: ChainIdSystem = "auth",
     cache: CacheParameter | None = None,
+    write_stats: OutputFile | None = None,
     _common: Common | None = None,
 ) -> None:
     """Convert structure files between formats.
@@ -146,6 +147,9 @@ def structures(
             for more information on chain id system.
         output_format: Output format for converted files. Supported values are .cif and .cif.gz.
         cache: Cache options including no_cache, cache_dir, and copy_method.
+        write_stats: Optional output CSV file with per-file conversion statistics.
+            Comma-separated file with "input_file, output_file, injected, uniprot_chains" columns.
+            Use '-' for stdout.
         _common: Common CLI options.
     """
     cache = cache or CacheParameter()
