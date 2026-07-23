@@ -18,7 +18,12 @@ from protein_quest.structure.uniprot import (
     uniprot_chain_mappings_from_sifts,
     uniprot_chain_mappings_from_struct_ref_seq,
 )
-from protein_quest.uniprot_chains import Pdb2UniprotChainsMapping, UniprotChainMapping, parse_uniprot_chains
+from protein_quest.uniprot_chains import (
+    Pdb2UniprotChainsMapping,
+    UniprotChainMapping,
+    UniprotChainMappings,
+    parse_uniprot_chains,
+)
 
 
 def _mapping(pdb_id: str, uniprot_accession: str, uniprot_chains: str) -> Pdb2UniprotChainsMapping:
@@ -75,15 +80,19 @@ class TestAddUniprotAccessions2Structure:
     def test_none(self, sample2_cif: Path):
         structure = read_structure(sample2_cif)
 
-        new_structure = add_uniprot_accessions2structure(structure, None)
+        new_structure, injected, uniprot_chain_mappings = add_uniprot_accessions2structure(structure, None)
         assert structure == new_structure
+        assert injected is False
+        assert uniprot_chain_mappings == set()
 
     def test_missing_id(self, sample2_cif: Path, caplog: pytest.LogCaptureFixture):
         structure = read_structure(sample2_cif)
         pdb2uniprot = _mapping("1AAA", "P12345", "A=1-10")  # wrong PDB ID
-        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+        new_structure, injected, uniprot_chain_mappings = add_uniprot_accessions2structure(structure, pdb2uniprot)
 
         assert structure == new_structure
+        assert injected is False
+        assert uniprot_chain_mappings == set()
         assert (
             "PDB ID 2Y29 not found in pdb2uniprot mapping. Leaving structure unverified and unchanged." in caplog.text
         )
@@ -91,13 +100,23 @@ class TestAddUniprotAccessions2Structure:
     def test_verify_ok(self, sample2_cif: Path):
         structure = read_structure(sample2_cif)
         pdb2uniprot = _mapping("2Y29", "P05067", "A=1-770")
-        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+        new_structure, injected, uniprot_chain_mappings = add_uniprot_accessions2structure(structure, pdb2uniprot)
         assert structure == new_structure
+        assert injected is False
+        assert uniprot_chain_mappings == set()
 
     def test_inject_into_nostructref(self, no_uniprot_cif: Path):
         structure = read_structure(no_uniprot_cif)
         pdb2uniprot = _mapping("2Y29", "P12345", "A=10-20")
-        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+        new_structure, injected, uniprot_chain_mappings = add_uniprot_accessions2structure(structure, pdb2uniprot)
+        assert injected is True
+        expected = {
+            UniprotChainMapping(
+                uniprot_accession="P12345",
+                chain_ranges=parse_uniprot_chains("A=10-20"),
+            ),
+        }
+        assert uniprot_chain_mappings == expected
 
         result = structure_to_uniprot(new_structure)
         slim_result = {(r.chain_id, r.uniprot_accession) for r in result}
@@ -108,7 +127,15 @@ class TestAddUniprotAccessions2Structure:
     def test_inject_into_existing_sifts(self, nmr_cif: Path):
         structure = read_structure(nmr_cif)
         pdb2uniprot = _mapping("1AMB", "P12345", "A=1-1000")
-        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+        new_structure, injected, uniprot_chain_mappings = add_uniprot_accessions2structure(structure, pdb2uniprot)
+        assert injected is True
+        expected = {
+            UniprotChainMapping(
+                uniprot_accession="P12345",
+                chain_ranges=parse_uniprot_chains("A=1-1000"),
+            ),
+        }
+        assert uniprot_chain_mappings == expected
 
         result = structure_to_uniprot(new_structure)
         slim_result = {(r.chain_id, r.uniprot_accession) for r in result}
@@ -119,7 +146,15 @@ class TestAddUniprotAccessions2Structure:
         structure = read_structure(no_uniprot_cif)
         pdb2uniprot = _mapping("2Y29", "P12345", "A=10-20,A=30-35")
 
-        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+        new_structure, injected, uniprot_chain_mappings = add_uniprot_accessions2structure(structure, pdb2uniprot)
+        assert injected is True
+        expected = {
+            UniprotChainMapping(
+                uniprot_accession="P12345",
+                chain_ranges=parse_uniprot_chains("A=10-20,A=30-35"),
+            ),
+        }
+        assert uniprot_chain_mappings == expected
 
         result = uniprot_chain_mappings_from_struct_ref_seq(new_structure)
         expected = {
@@ -141,7 +176,15 @@ class TestAddUniprotAccessions2Structure:
         structure = read_structure(input_file)
         pdb2uniprot = _mapping("1A02", "P01111", "F=1-1000")
 
-        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+        new_structure, injected, uniprot_chain_mappings = add_uniprot_accessions2structure(structure, pdb2uniprot)
+        assert injected is True
+        expected = {
+            UniprotChainMapping(
+                uniprot_accession="P01111",
+                chain_ranges=parse_uniprot_chains("A=1-1000"),
+            ),
+        }
+        assert uniprot_chain_mappings == expected
         result = structure_to_uniprot(new_structure)
         slim_result = {(r.chain_id, r.uniprot_accession) for r in result}
         expected = {("A", "P01111")}
@@ -163,7 +206,17 @@ class TestAddUniprotAccessions2Structure:
         structure = read_structure(multi_entity_cif)
         pdb2uniprot = _mapping("1F66", "P12345", f"{chain_id}=1-1000")
 
-        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot, chain_system=chain_system)
+        new_structure, injected, uniprot_chain_mappings = add_uniprot_accessions2structure(
+            structure, pdb2uniprot, chain_system=chain_system
+        )
+        assert injected is True
+        expected = {
+            UniprotChainMapping(
+                uniprot_accession="P12345",
+                chain_ranges=parse_uniprot_chains("C=1-1000"),
+            ),
+        }
+        assert uniprot_chain_mappings == expected
 
         result = structure_to_uniprot(new_structure, source="both")
         slim_result = {(r.chain_id, r.uniprot_accession) for r in result}
@@ -209,7 +262,15 @@ class TestAddUniprotAccessions2Structure:
         structure = read_structure(multi_entity_cif)
         pdb2uniprot = _mapping("1F66", "P12345", "A/B=1-1000")
 
-        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot)
+        new_structure, injected, uniprot_chain_mappings = add_uniprot_accessions2structure(structure, pdb2uniprot)
+        assert injected is True
+        expected = {
+            UniprotChainMapping(
+                uniprot_accession="P12345",
+                chain_ranges=parse_uniprot_chains("A/B=1-1000"),
+            ),
+        }
+        assert uniprot_chain_mappings == expected
 
         result = structure_to_uniprot(new_structure, source="both")
         slim_result = {(r.chain_id, r.uniprot_accession) for r in result}
@@ -291,7 +352,7 @@ class TestAddUniprotAccessions2Structure:
     ],
 )
 def test_uniprot_chain_mappings_from_struct_ref_seq(
-    request: pytest.FixtureRequest, cif_fixture: str, expected: set[UniprotChainMapping]
+    request: pytest.FixtureRequest, cif_fixture: str, expected: UniprotChainMappings
 ):
     path = request.getfixturevalue(cif_fixture)
     structure = read_structure(path)
@@ -383,7 +444,7 @@ def test_uniprot_chain_mappings_from_struct_ref_seq_none_pos(
     ],
 )
 def test_uniprot_chain_mappings_from_sifts(
-    request: pytest.FixtureRequest, cif_fixture: str, expected: set[UniprotChainMapping]
+    request: pytest.FixtureRequest, cif_fixture: str, expected: UniprotChainMappings
 ):
     path = request.getfixturevalue(cif_fixture)
     structure = read_structure(path)
@@ -483,9 +544,7 @@ def test_uniprot_chain_mappings_from_sifts(
         ),
     ],
 )
-def test_flatten_uniprot_chain_mappings(
-    mappings: set[UniprotChainMapping], expected: set[FlattenedUniprotChainMapping]
-):
+def test_flatten_uniprot_chain_mappings(mappings: UniprotChainMappings, expected: set[FlattenedUniprotChainMapping]):
     actual = flatten_uniprot_chain_mappings(mappings)
 
     assert actual == expected
@@ -867,7 +926,7 @@ def test_structure_to_uniprot_bad_source(sample2_cif: Path):
     ],
 )
 def test_apply_chain_provenance_to_uniprot_mappings(
-    mappings: set[UniprotChainMapping], chain_provenance: ChainExtractionProvenance, expected: set[UniprotChainMapping]
+    mappings: UniprotChainMappings, chain_provenance: ChainExtractionProvenance, expected: UniprotChainMappings
 ):
     actual = apply_chain_provenance_to_uniprot_mappings(mappings, chain_provenance)
     assert actual == expected

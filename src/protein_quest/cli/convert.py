@@ -27,12 +27,16 @@ from protein_quest.clustering_io import (
 )
 from protein_quest.filters.resolution import load_resolution_statistics
 from protein_quest.structure.chains import ChainIdSystem
-from protein_quest.structure.convert import convert_to_cif_files
+from protein_quest.structure.convert import convert_to_cif_files, write_conversion_stats
 from protein_quest.structure.files import glob_structure_files
 from protein_quest.structure.formats import read_structure
 from protein_quest.structure.types import CifOutputFormat
 from protein_quest.structure.uniprot import structure2uniprot_accessions
-from protein_quest.uniprot_chains import Pdb2UniprotChainsMapping, UniprotChainMapping, parse_uniprot_chains
+from protein_quest.uniprot_chains import (
+    Pdb2UniprotChainsMapping,
+    UniprotChainMapping,
+    parse_uniprot_chains,
+)
 
 rprint = console.print
 
@@ -148,7 +152,7 @@ def structures(
         output_format: Output format for converted files. Supported values are .cif and .cif.gz.
         cache: Cache options including no_cache, cache_dir, and copy_method.
         write_stats: Optional output CSV file with per-file conversion statistics.
-            Comma-separated file with "input_file, output_file, injected, uniprot_chains" columns.
+            Comma-separated file with "input_file, output_file, injected, uniprot_chain_mappings" columns.
             Use '-' for stdout.
         _common: Common CLI options.
     """
@@ -161,21 +165,27 @@ def structures(
 
     pdb2uniprot = _read_pdb2uniprot_csv(uniprots)
 
-    for _ in tqdm(
-        convert_to_cif_files(
-            input_files,
-            output_dir,
-            copy_method=cache.copy_method,
-            output_format=output_format,
-            pdb2uniprot=pdb2uniprot,
-            chain_system=chain_system,
-        ),
-        total=len(input_files),
-        unit="file",
-    ):
-        pass
+    results = list(
+        tqdm(
+            convert_to_cif_files(
+                input_files,
+                output_dir,
+                copy_method=cache.copy_method,
+                output_format=output_format,
+                pdb2uniprot=pdb2uniprot,
+                chain_system=chain_system,
+            ),
+            total=len(input_files),
+            unit="file",
+        )
+    )
 
     rprint(f"Converted {len(input_files)} files into {output_dir}.")
+
+    if write_stats:
+        write_conversion_stats(results, write_stats)
+        if str(write_stats) != "-":
+            rprint(f"Statistics written to {write_stats}")
 
 
 @convert_app.command

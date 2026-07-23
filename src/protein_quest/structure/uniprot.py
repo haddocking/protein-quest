@@ -18,6 +18,7 @@ from protein_quest.structure.errors import ChainNotFoundError
 from protein_quest.uniprot_chains import (
     Pdb2UniprotChainsMapping,
     UniprotChainMapping,
+    UniprotChainMappings,
     UniprotChainRange,
     all_chain_ids,
 )
@@ -25,7 +26,7 @@ from protein_quest.uniprot_chains import (
 logger = logging.getLogger(__name__)
 
 
-def uniprot_chain_mappings_from_struct_ref_seq(structure: gemmi.Structure) -> set[UniprotChainMapping]:
+def uniprot_chain_mappings_from_struct_ref_seq(structure: gemmi.Structure) -> UniprotChainMappings:
     """Extract UniProt chain mappings from `_struct_ref_seq` rows.
 
     Args:
@@ -107,7 +108,7 @@ def _subchains2sifts_unp_acc(structure: gemmi.Structure) -> dict[str, list[str]]
     return sc2ua
 
 
-def uniprot_chain_mappings_from_sifts(structure: gemmi.Structure) -> set[UniprotChainMapping]:
+def uniprot_chain_mappings_from_sifts(structure: gemmi.Structure) -> UniprotChainMappings:
     """Extract UniProt chain mappings from SIFTS data.
 
     Args:
@@ -173,7 +174,7 @@ class FlattenedUniprotChainMapping:
     aligned_residue_count: int
 
 
-def flatten_uniprot_chain_mappings(mappings: set[UniprotChainMapping]) -> set[FlattenedUniprotChainMapping]:
+def flatten_uniprot_chain_mappings(mappings: UniprotChainMappings) -> set[FlattenedUniprotChainMapping]:
     """Flatten a set of UniprotChainMapping.
 
     Each (accession, chain) group is collapsed into one record with merged start/end
@@ -289,9 +290,7 @@ def structure2uniprot_accessions(structure: gemmi.Structure) -> set[str]:
     return {m.uniprot_accession for m in mappings}
 
 
-def _append_uniprot_to_structure(
-    structure: gemmi.Structure, chain_mappings: set[UniprotChainMapping]
-) -> gemmi.Structure:
+def _append_uniprot_to_structure(structure: gemmi.Structure, chain_mappings: UniprotChainMappings) -> gemmi.Structure:
     block = structure.make_mmcif_block()
     struct_ref = block.get_mmcif_category("_struct_ref.")
     struct_ref_seq = block.get_mmcif_category("_struct_ref_seq.")
@@ -345,8 +344,8 @@ def _append_uniprot_to_structure(
 
 
 def _force_auth_system(
-    structure: gemmi.Structure, mappings: set[UniprotChainMapping], chain_system: ChainIdSystem
-) -> set[UniprotChainMapping]:
+    structure: gemmi.Structure, mappings: UniprotChainMappings, chain_system: ChainIdSystem
+) -> UniprotChainMappings:
     if chain_system == "label":
         # Translate from label to auth chain ids
         # as all functions expect auth chain ids as input/output.
@@ -371,7 +370,7 @@ def _force_auth_system(
     return mappings
 
 
-def _mapping_pairs(mappings: set[UniprotChainMapping]) -> set[ChainUniprotPair]:
+def _mapping_pairs(mappings: UniprotChainMappings) -> set[ChainUniprotPair]:
     return {
         ChainUniprotPair(chain_id, mapping.uniprot_accession)
         for mapping in mappings
@@ -380,8 +379,8 @@ def _mapping_pairs(mappings: set[UniprotChainMapping]) -> set[ChainUniprotPair]:
 
 
 def apply_chain_provenance_to_uniprot_mappings(
-    mappings: set[UniprotChainMapping], chain_provenance: ChainExtractionProvenance
-) -> set[UniprotChainMapping]:
+    mappings: UniprotChainMappings, chain_provenance: ChainExtractionProvenance
+) -> UniprotChainMappings:
     """Apply chain extraction provenance to a set of UniprotChainMapping.
 
     Args:
@@ -391,7 +390,7 @@ def apply_chain_provenance_to_uniprot_mappings(
     Returns:
         Set of UniprotChainMapping with chain ids updated based on provenance.
     """
-    renamed_mappings: set[UniprotChainMapping] = set()
+    renamed_mappings: UniprotChainMappings = set()
     for mapping in mappings:
         renamed_ranges = []
         for chain_range in mapping.chain_ranges:
@@ -417,8 +416,8 @@ def apply_chain_provenance_to_uniprot_mappings(
 
 
 def _rename_chain_based_on_provenance(
-    structure: gemmi.Structure, mappings: set[UniprotChainMapping]
-) -> set[UniprotChainMapping]:
+    structure: gemmi.Structure, mappings: UniprotChainMappings
+) -> UniprotChainMappings:
     prov = retrieve_chain_extraction_provenance(structure)
 
     if not prov:
@@ -435,10 +434,8 @@ def _rename_chain_based_on_provenance(
     return apply_chain_provenance_to_uniprot_mappings(mappings, chain_provenance)
 
 
-def _filter_mappings_by_pairs(
-    mappings: set[UniprotChainMapping], pairs: set[ChainUniprotPair]
-) -> set[UniprotChainMapping]:
-    filtered_mappings: set[UniprotChainMapping] = set()
+def _filter_mappings_by_pairs(mappings: UniprotChainMappings, pairs: set[ChainUniprotPair]) -> UniprotChainMappings:
+    filtered_mappings: UniprotChainMappings = set()
     for mapping in mappings:
         filtered_ranges = []
         for chain_range in mapping.chain_ranges:
@@ -468,7 +465,7 @@ def add_uniprot_accessions2structure(
     pdb2uniprot: Pdb2UniprotChainsMapping | None,
     *,
     chain_system: ChainIdSystem = "auth",
-) -> gemmi.Structure:
+) -> tuple[gemmi.Structure, bool, UniprotChainMappings]:
     """Add UniProt accessions to a structure if they are missing, based on the provided pdb2uniprot mapping.
 
     If structure has UniProt accession that is not in `pdb2uniprot`, it will be left unchanged.
@@ -483,16 +480,20 @@ def add_uniprot_accessions2structure(
         chain_system: System of chain ids in ``pdb2uniprot`` mapping.
 
     Returns:
-        A gemmi Structure object with UniProt accessions added if they were missing
-        or the structure unchanged if all accessions were already present."""
+        A tuple of (structure, injected, uniprot_mappings) where:
+        - structure: gemmi Structure object with UniProt accessions added if they were missing
+        - injected: bool indicating whether UniProt accessions were injected
+        - uniprot_chain_mappings: set of UniprotChainMapping that were considered for injection (from pdb2uniprot),
+          empty set if none
+    """
     if not pdb2uniprot:
-        return structure
+        return structure, False, set()
     pdb_id = structure.name
     if pdb_id not in pdb2uniprot:
         logger.warning(
             "PDB ID %s not found in pdb2uniprot mapping. Leaving structure unverified and unchanged.", pdb_id
         )
-        return structure
+        return structure, False, set()
 
     expected_mappings = _force_auth_system(structure, pdb2uniprot[pdb_id], chain_system)
     expected_mappings = _rename_chain_based_on_provenance(structure, expected_mappings)
@@ -505,7 +506,7 @@ def add_uniprot_accessions2structure(
 
     missing = expected_pairs - known_pairs
     if not missing:
-        return structure
+        return structure, False, set()
 
     if known_pairs:
         logger.warning(
@@ -520,4 +521,5 @@ def add_uniprot_accessions2structure(
         logger.info("Injecting UniProt accessions into structure %s: %s", structure.name, missing)
 
     missing_mappings = _filter_mappings_by_pairs(expected_mappings, missing)
-    return _append_uniprot_to_structure(structure, missing_mappings)
+    new_structure = _append_uniprot_to_structure(structure, missing_mappings)
+    return new_structure, True, missing_mappings
