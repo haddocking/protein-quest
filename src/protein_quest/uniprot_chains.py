@@ -68,7 +68,10 @@ class UniprotChainMapping:
     chain_ranges: UniprotChains
 
 
-type Pdb2UniprotChainsMapping = dict[str, set[UniprotChainMapping]]
+type UniprotChainMappings = set[UniprotChainMapping]
+"""Set of UniprotChainMapping for a single PDB entry."""
+
+type Pdb2UniprotChainsMapping = dict[str, UniprotChainMappings]
 """Dictionary mapping PDB ID to UniProt chain mappings used for injection."""
 
 
@@ -185,6 +188,25 @@ def format_uniprot_chains(chain_ranges: UniprotChains) -> str:
     return ",".join(
         f"{'/'.join(chain_range.chain_ids)}={chain_range.start}-{chain_range.end}" for chain_range in chain_ranges
     )
+
+
+def format_uniprot_chain_mappings(mappings: UniprotChainMappings) -> str:
+    """Format a set of UniprotChainMapping into a semicolon-separated string.
+
+    Args:
+        mappings: Set of UniprotChainMapping to format.
+
+    Returns:
+        String representation such as ``P12345:A=1-100; Q67890:B=1-200``.
+        Returns empty string if mappings is empty.
+    """
+    if not mappings:
+        return ""
+    chains_parts = [
+        f"{mapping.uniprot_accession}:{format_uniprot_chains(mapping.chain_ranges)}"
+        for mapping in sorted(mappings, key=lambda m: m.uniprot_accession)
+    ]
+    return "; ".join(chains_parts)
 
 
 def first_chain_id(chain_ranges: UniprotChains) -> str:

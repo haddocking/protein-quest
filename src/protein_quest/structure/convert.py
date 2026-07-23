@@ -1,7 +1,9 @@
 """Conversion orchestration for structure files."""
 
+import csv
 import logging
 from collections.abc import Generator, Iterable
+from dataclasses import dataclass
 from pathlib import Path
 
 from protein_quest.structure.chains import ChainIdSystem
@@ -18,10 +20,29 @@ from protein_quest.structure.types import (
     valid_structure_file_extensions,
 )
 from protein_quest.structure.uniprot import add_uniprot_accessions2structure
-from protein_quest.uniprot_chains import Pdb2UniprotChainsMapping
+from protein_quest.uniprot_chains import (
+    Pdb2UniprotChainsMapping,
+    UniprotChainMappings,
+    format_uniprot_chain_mappings,
+)
 from protein_quest.utils import CopyMethod, copyfile
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ConversionStatistics:
+    """Statistics for a single file conversion.
+
+    Attributes:
+        input_file: Path to the input file.
+        output_file: Path to the output file.
+        uniprot_chain_mappings: Set of UniprotChainMapping that were injected, empty set if none.
+    """
+
+    input_file: Path
+    output_file: Path
+    uniprot_chain_mappings: UniprotChainMappings
 
 
 def convert_to_cif_files(
@@ -31,7 +52,7 @@ def convert_to_cif_files(
     output_format: CifOutputFormat = ".cif",
     pdb2uniprot: Pdb2UniprotChainsMapping | None = None,
     chain_system: ChainIdSystem = "auth",
-) -> Generator[tuple[Path, Path]]:
+) -> Generator[ConversionStatistics]:
     """Convert structure files to CIF format.
 
     Args:
@@ -44,9 +65,9 @@ def convert_to_cif_files(
         chain_system: System of chain ids in ``pdb2uniprot`` mapping.
 
     Yields:
-        A tuple of the input file and the output file."""
+        ConversionStatistics for each converted file."""
     for input_file in input_files:
-        output_file = convert_to_cif_file(
+        stats = convert_to_cif_file(
             input_file,
             output_dir,
             copy_method,
@@ -54,7 +75,7 @@ def convert_to_cif_files(
             pdb2uniprot=pdb2uniprot,
             chain_system=chain_system,
         )
-        yield input_file, output_file
+        yield stats
 
 
 def convert_to_cif_file(
@@ -64,7 +85,7 @@ def convert_to_cif_file(
     output_format: CifOutputFormat = ".cif",
     pdb2uniprot: Pdb2UniprotChainsMapping | None = None,
     chain_system: ChainIdSystem = "auth",
-) -> Path:
+) -> ConversionStatistics:
     """Convert a single structure file to CIF format.
 
     Args:
@@ -81,7 +102,7 @@ def convert_to_cif_file(
         chain_system: System of chain ids in ``pdb2uniprot`` mapping.
 
     Returns:
-        Path to the converted file.
+        ConversionStatistics with details about the conversion.
 
     Raises:
         ValueError: If the requested output format is not supported."""
@@ -92,11 +113,16 @@ def convert_to_cif_file(
 
     name, extension = split_name_and_extension(input_file.name)
     output_file = output_dir / f"{name}{output_format}"
+
+    uniprot_chain_mappings: UniprotChainMappings = set()
+
     if output_file.exists():
         logger.info("Output file %s already exists for input file %s. Skipping.", output_file, input_file)
     elif pdb2uniprot or extension in {".pdb", ".pdb.gz", ".ent", ".ent.gz"}:
         structure = read_structure(input_file)
-        new_structure = add_uniprot_accessions2structure(structure, pdb2uniprot, chain_system=chain_system)
+        new_structure, _, uniprot_chain_mappings = add_uniprot_accessions2structure(
+            structure, pdb2uniprot, chain_system=chain_system
+        )
         write_structure(new_structure, output_file)
     elif extension == ".cif":
         if output_format == ".cif":
@@ -123,4 +149,36 @@ def convert_to_cif_file(
             f"Supported extensions are {valid_structure_file_extensions}."
         )
         raise ValueError(msg)
-    return output_file
+
+    return ConversionStatistics(
+        input_file=input_file,
+        output_file=output_file,
+        uniprot_chain_mappings=uniprot_chain_mappings,
+    )
+
+
+def write_conversion_stats(
+    results: Iterable[ConversionStatistics],
+    output_file: Path,
+) -> None:
+    """Write conversion statistics to a CSV file.
+
+    Args:
+        results: Iterable of ConversionStatistics to write.
+        output_file: Path to write the CSV file. Use '-' for stdout.
+    """
+
+    if str(output_file) != "-":
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+    with output_file.open("w", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["input_file", "output_file", "injected", "uniprot_chain_mappings"])
+        writer.writeheader()
+        writer.writerows(
+            {
+                "input_file": str(r.input_file),
+                "output_file": str(r.output_file),
+                "injected": str(bool(r.uniprot_chain_mappings)),
+                "uniprot_chain_mappings": format_uniprot_chain_mappings(r.uniprot_chain_mappings),
+            }
+            for r in results
+        )

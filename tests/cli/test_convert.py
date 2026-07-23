@@ -133,6 +133,173 @@ def test_convert_structures_with_injected_uniprot_chain_system(
     assert "Missing: {ChainUniprotPair(chain_id='B', uniprot_accession='P12345')}." in caplog.text
 
 
+def test_convert_structures_with_stats(sample_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    """Test convert structures command writes statistics file."""
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    local_sample = input_dir / sample_cif.name
+    local_sample.symlink_to(sample_cif)
+    output_dir = tmp_path / "output"
+    stats_fn = tmp_path / "stats.csv"
+
+    main(
+        [
+            "convert",
+            "structures",
+            str(input_dir),
+            "--output-dir",
+            str(output_dir),
+            "--output-format",
+            ".cif.gz",
+            "--write-stats",
+            str(stats_fn),
+        ]
+    )
+
+    # Check output file exists
+    output_file = output_dir / sample_cif.name
+    assert output_file.exists()
+
+    # Check stats file
+    assert stats_fn.exists()
+    with stats_fn.open() as f:
+        rows = list(csv.DictReader(f))
+
+    expected = [
+        {
+            "input_file": str(local_sample),
+            "output_file": str(output_file),
+            "injected": "False",
+            "uniprot_chain_mappings": "",
+        }
+    ]
+    assert rows == expected
+
+    # Check captured output
+    captured = capsys.readouterr()
+    assert "Statistics written to" in captured.err
+
+
+def test_convert_structures_with_stats_and_injection(
+    no_uniprot_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+):
+    """Test convert structures command writes statistics with injection info."""
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    local_cif = input_dir / no_uniprot_cif.name
+    local_cif.symlink_to(no_uniprot_cif)
+    output_dir = tmp_path / "output"
+    stats_fn = tmp_path / "stats.csv"
+
+    pdb2uniprotcsv = tmp_path / "pdb2uniprot.csv"
+    with pdb2uniprotcsv.open("w", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["pdb_id", "uniprot_accession", "uniprot_chains"])
+        writer.writeheader()
+        writer.writerows(
+            [
+                {"pdb_id": "2Y29", "uniprot_accession": "P01100", "uniprot_chains": "A=1-100"},
+            ]
+        )
+
+    main(
+        [
+            "convert",
+            "structures",
+            str(input_dir),
+            "--output-dir",
+            str(output_dir),
+            "--output-format",
+            ".cif.gz",
+            "--uniprots",
+            str(pdb2uniprotcsv),
+            "--write-stats",
+            str(stats_fn),
+        ]
+    )
+
+    # Check output file exists
+    output_file = output_dir / (no_uniprot_cif.name + ".gz")
+    assert output_file.exists()
+
+    # Check stats file
+    assert stats_fn.exists()
+    with stats_fn.open() as f:
+        rows = list(csv.DictReader(f))
+
+    expected = [
+        {
+            "input_file": str(local_cif),
+            "output_file": str(output_file),
+            "injected": "True",
+            "uniprot_chain_mappings": "P01100:A=1-100",
+        }
+    ]
+    assert rows == expected
+
+    # Check captured output
+    captured = capsys.readouterr()
+    assert "Statistics written to" in captured.err
+
+
+def test_convert_structures_with_stats_multiple_ranges(
+    no_uniprot_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+):
+    """Test stats file properly quotes uniprot_chain_mappings with commas (multiple ranges)."""
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    local_cif = input_dir / no_uniprot_cif.name
+    local_cif.symlink_to(no_uniprot_cif)
+    output_dir = tmp_path / "output"
+    stats_fn = tmp_path / "stats.csv"
+
+    pdb2uniprotcsv = tmp_path / "pdb2uniprot.csv"
+    with pdb2uniprotcsv.open("w", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["pdb_id", "uniprot_accession", "uniprot_chains"])
+        writer.writeheader()
+        writer.writerows(
+            [
+                # Multiple ranges separated by commas - should be properly quoted in CSV
+                {"pdb_id": "2Y29", "uniprot_accession": "P12345", "uniprot_chains": "A=10-20,A=30-35"},
+            ]
+        )
+
+    main(
+        [
+            "convert",
+            "structures",
+            str(input_dir),
+            "--output-dir",
+            str(output_dir),
+            "--output-format",
+            ".cif.gz",
+            "--uniprots",
+            str(pdb2uniprotcsv),
+            "--write-stats",
+            str(stats_fn),
+        ]
+    )
+
+    # Check stats file
+    assert stats_fn.exists()
+    with stats_fn.open() as f:
+        rows = list(csv.DictReader(f))
+
+    # CSV reader should properly parse the quoted field with commas
+    expected = [
+        {
+            "input_file": str(local_cif),
+            "output_file": str(output_dir / (no_uniprot_cif.name + ".gz")),
+            "injected": "True",
+            "uniprot_chain_mappings": "P12345:A=10-20,A=30-35",
+        }
+    ]
+    assert rows == expected
+
+    # Check captured output
+    captured = capsys.readouterr()
+    assert "Statistics written to" in captured.err
+
+
 def test_convert_clusters_writes_clusters_output(
     sample2_cif: Path,
     af_cif: Path,
