@@ -15,6 +15,7 @@ def test_filter_chain_happy_path(sample2_cif: Path, tmp_path: Path, capsys: pyte
     chains_fn = tmp_path / "chains.csv"
     chains_fn.write_text("pdb_id,chain\n2Y29,A\n")
 
+    chain_stats = tmp_path / "chain_stats.csv"
     argv = [
         "filter",
         "chain",
@@ -25,6 +26,8 @@ def test_filter_chain_happy_path(sample2_cif: Path, tmp_path: Path, capsys: pyte
         "copy",
         "--scheduler-address",
         "sequential",
+        "--write-stats",
+        str(chain_stats),
     ]
 
     main(argv)
@@ -34,6 +37,20 @@ def test_filter_chain_happy_path(sample2_cif: Path, tmp_path: Path, capsys: pyte
 
     captured = capsys.readouterr()
     assert "Wrote 1 single-chain PDB/mmCIF files to" in captured.err
+
+    with chain_stats.open() as f:
+        rows = list(csv.DictReader(f))
+    expected = [
+        {
+            "input_file": str(sample2_cif),
+            "chain2keep": "A",
+            "output_chain": "A",
+            "passed": "True",
+            "discard_reason": "",
+            "output_file": str(output_file),
+        }
+    ]
+    assert rows == expected
 
 
 def test_filter_chain_multi_accession_happy_path(

@@ -124,6 +124,7 @@ def chain(
     scheduler_address: str | None = None,
     cache: CacheParameter | None = None,
     force: Annotated[bool, Parameter(negative="")] = False,
+    write_stats: OutputFile | None = None,
     _: Common | None = None,
 ) -> None:
     """Filter on chain.
@@ -147,6 +148,10 @@ def chain(
             If not provided, will create a local cluster.
             If set to `sequential` will run tasks sequentially.
         cache: Cache options including no_cache, cache_dir, and copy_method.
+        write_stats: Write filter statistics to file.
+            In CSV format with
+            `<input_file>,<chain2keep>,<output_chain>,<passed>,<discard_reason>,<output_file>` columns.
+            Use `-` for stdout.
         _: Common CLI options.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -190,6 +195,19 @@ def chain(
     for result in results:
         if result.discard_reason:
             rprint(f"[red]Discarding {result.input_file} ({result.discard_reason})[/red]")
+
+    if write_stats:
+        if str(write_stats) != "-":
+            write_stats.parent.mkdir(parents=True, exist_ok=True)
+        write_lines(
+            write_stats,
+            ["input_file,chain2keep,output_chain,passed,discard_reason,output_file"]
+            + [
+                f"{r.input_file},{r.chain_id},A,{r.passed},{r.discard_reason or ''},{r.output_file or ''}"
+                for r in results
+            ],
+        )
+        rprint(f"Statistics written to {write_stats}")
 
 
 @filter_app.command
