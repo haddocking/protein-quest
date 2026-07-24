@@ -154,7 +154,7 @@ def _initialize_dictionary_api(containers: list[Any]) -> DictionaryApi:
         dict_url = "https://raw.githubusercontent.com/wwpdb-dictionaries/mmcif_pdbx/master/dist/mmcif_pdbx_v5_next.dic"
         logger.info("Downloading mmcif dictionary from %s to %s", dict_url, dict_local)
         dict_local.parent.mkdir(parents=True, exist_ok=True)
-        with dict_local.open("wb") as f, urlopen(dict_url) as response:  # noqa: S310 url is hardcoded and https
+        with dict_local.open("wb") as f, urlopen(dict_url) as response:
             f.write(response.read())
     return DictionaryApi(containerList=containers, consolidate=True)
 

@@ -32,7 +32,7 @@ def _metadata_without_uniprot(
         msg = f"No chains found in structure {structure.name}"
         raise ValueError(msg)
     # Use first chain in alphabetical order if no UniProt mapping is found
-    label_chain = sorted(label2auth_chains.keys())[0]
+    label_chain = min(label2auth_chains.keys())
     auth_chain = label2auth_chains[label_chain]
     chain = find_chain_in_structure(structure, auth_chain)
     if chain is None:

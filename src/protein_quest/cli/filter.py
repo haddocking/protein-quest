@@ -580,7 +580,7 @@ def combined(
         copy_method=cache.copy_method,
     )
 
-    rprint(combined_filter_summary(results))
+    rprint("\n".join(combined_filter_summary(results)))
 
     if write_stats:
         if str(write_stats) != "-":
