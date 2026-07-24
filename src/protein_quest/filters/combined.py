@@ -678,17 +678,17 @@ def combined_filter_summary(
         "",  # rich will render newline
         f"AlphaFold structures: {nr_alphafold}, passed: {nr_alphafold_passed}, discarded: {nr_alphafold_discarded}",
         "",
-        f"Structures with UniProt accession: {nr_uniprot}, "
+        (f"Structures with UniProt accession: {nr_uniprot}, "
         f"passed: {nr_uniprot_passed}, "
-        f"discarded: {nr_uniprot_discarded}",
+        f"discarded: {nr_uniprot_discarded}"),
         "",
-        f"Structures with resolution: {nr_resolution}, "
+        (f"Structures with resolution: {nr_resolution}, "
         f"passed: {nr_resolution_passed}, "
-        f"discarded: {nr_resolution_discarded}",
+        f"discarded: {nr_resolution_discarded}"),
         "",
-        f"Structures with geometry quality: {nr_geometry_quality}, "
+        (f"Structures with geometry quality: {nr_geometry_quality}, "
         f"passed: {nr_geometry_quality_passed}, "
-        f"discarded: {nr_geometry_quality_discarded}",
+        f"discarded: {nr_geometry_quality_discarded}"),
     ]
 
 
