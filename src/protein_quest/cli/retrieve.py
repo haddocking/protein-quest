@@ -76,7 +76,7 @@ def pdbe(
             pdb_ids, output_dir, archived=archived, max_parallel_downloads=max_parallel_downloads, cacher=cacher
         )
     )
-    rprint(f"Retrieved {len(result)} PDBe entries")
+    rprint(f"Retrieved {len(result)} PDBe entries, written to {output_dir}")
 
 
 @retrieve_app.command
@@ -140,7 +140,8 @@ def alphafold(
         all_isoforms=all_isoforms,
     )
     total_nr_files = sum(af.nr_of_files() for af in afs)
-    rprint(f"Retrieved {total_nr_files} AlphaFold files and {len(afs)} summaries, written to {output_dir}")
+    total_nr_summaries = sum(1 for af in afs if af.summary is not None)
+    rprint(f"Retrieved {total_nr_files} AlphaFold files and {total_nr_summaries} summaries, written to {output_dir}")
 
 
 @retrieve_app.command
