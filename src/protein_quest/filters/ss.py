@@ -1,7 +1,6 @@
 """Module for dealing with secondary structure."""
 
 import logging
-from collections.abc import Generator, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -247,22 +246,3 @@ def filter_file_on_secondary_structure(
     """
     structure = read_structure(file_path)
     return filter_on_secondary_structure(structure, query)
-
-
-def filter_files_on_secondary_structure(
-    file_paths: Iterable[Path],
-    query: SecondaryStructureFilterQuery,
-) -> Generator[tuple[Path, SecondaryStructureFilterResult]]:
-    """Filter multiple structure files based on secondary structure criteria.
-
-    Args:
-        file_paths: A list of paths to the structure files to analyze.
-        query: The filtering criteria to apply.
-
-    Yields:
-        For each file returns the filtering statistics and whether structure passed.
-    """
-    # TODO check if quick enough in serial mode, if not switch to dask map
-    for file_path in file_paths:
-        result = filter_file_on_secondary_structure(file_path, query)
-        yield file_path, result

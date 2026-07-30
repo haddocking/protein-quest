@@ -9,7 +9,6 @@ from protein_quest.filters.ss import (
     SecondaryStructureFilterResult,
     SecondaryStructureStats,
     filter_file_on_secondary_structure,
-    filter_files_on_secondary_structure,
     filter_on_secondary_structure,
     nr_of_residues_in_helix,
     nr_of_residues_in_sheet,
@@ -131,13 +130,6 @@ def test_filter_file_on_secondary_structure(sample_cif: Path, sample_stats: Seco
     result = filter_file_on_secondary_structure(sample_cif, query)
     expected = SecondaryStructureFilterResult(stats=sample_stats, passed=True)
     assert result == expected
-
-
-def test_filter_files_on_secondary_structure(sample_cif: Path, sample_stats: SecondaryStructureStats):
-    query = SecondaryStructureFilterQuery(abs_min_helix_residues=1)
-    result = filter_files_on_secondary_structure([sample_cif], query)
-    expected = {sample_cif: SecondaryStructureFilterResult(stats=sample_stats, passed=True)}
-    assert dict(result) == expected
 
 
 def test_converter():

@@ -26,6 +26,8 @@ def test_convert_structures_to_cifgz(sample_cif: Path, tmp_path: Path, capsys: p
             str(output_dir),
             "--output-format",
             ".cif.gz",
+            "--scheduler-address",
+            "sequential",
         ]
     )
 
@@ -60,6 +62,8 @@ def test_convert_structures_with_injected_uniprot(no_uniprot_cif: Path, tmp_path
             ".cif.gz",
             "--uniprots",
             str(pdb2uniprotcsv),
+            "--scheduler-address",
+            "sequential",
         ]
     )
 
@@ -119,6 +123,8 @@ def test_convert_structures_with_injected_uniprot_chain_system(
             ".cif.gz",
             "--uniprots",
             str(pdb2uniprotcsv),
+            "--scheduler-address",
+            "sequential",
             *extra_args,
         ]
     )
@@ -153,6 +159,8 @@ def test_convert_structures_with_stats(sample_cif: Path, tmp_path: Path, capsys:
             ".cif.gz",
             "--write-stats",
             str(stats_fn),
+            "--scheduler-address",
+            "sequential",
         ]
     )
 
@@ -214,6 +222,8 @@ def test_convert_structures_with_stats_and_injection(
             str(pdb2uniprotcsv),
             "--write-stats",
             str(stats_fn),
+            "--scheduler-address",
+            "sequential",
         ]
     )
 
@@ -276,6 +286,8 @@ def test_convert_structures_with_stats_multiple_ranges(
             str(pdb2uniprotcsv),
             "--write-stats",
             str(stats_fn),
+            "--scheduler-address",
+            "sequential",
         ]
     )
 
@@ -317,7 +329,7 @@ def test_convert_clusters_writes_clusters_output(
     clusters_fn = tmp_path / "clusters.csv"
     stats_fn = tmp_path / "stats.csv"
 
-    main(["convert", "clusters", str(input_dir), str(clusters_fn)])
+    main(["convert", "clusters", str(input_dir), str(clusters_fn), "--scheduler-address", "sequential"])
 
     assert clusters_fn.exists()
     assert not stats_fn.exists()
@@ -363,6 +375,8 @@ def test_convert_clusters_optional_outputs(
             str(linkage_fn),
             "--dendrogram",
             str(dendrogram_dir),
+            "--scheduler-address",
+            "sequential",
         ]
     )
 
