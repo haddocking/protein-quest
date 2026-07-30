@@ -67,20 +67,29 @@ instructions on how to ask questions and report issues.
 
 ## On the same machine multiple users want to share the same cache. How can we do that?
 
-You can set a shared cache directory that all users have read and write access to. 
+You can set a shared cache directory that all users have read and write access
+to.
 
 1. First make sure all users are member of the same group, for example `pq`.
-2. Create a shared cache directory and set the group ownership and permissions appropriately. For example:
+2. Create a shared cache directory and set the group ownership and permissions
+   appropriately. For example:
+
 ```shell
 mkdir -p /shared/protein-quest-cache
 chgrp -R pq /shared/protein-quest-cache
 chmod -R g+rwxs,o-rwx /shared/protein-quest-cache
 ```
-3. Create a central configuration file located at `/shared/protein-quest-cache/config.toml` with the following content:
+
+1. Create a central configuration file located at
+   `/shared/protein-quest-cache/config.toml` with the following content:
+
 ```toml
 cache_dir = "/shared/protein-quest-cache"
 copy_method = "symlink"
 ```
-4. Tell users to:
-	- Put `PROTEIN_QUEST_CONFIG=/shared/protein-quest-cache/config.toml` in their shell startup file (e.g. `.bashrc` or `.zshrc`).
-	- Set `umask 007` in their shell startup file to ensure that new files are group-writable.
+
+1. Tell users to:
+   - Put `PROTEIN_QUEST_CONFIG=/shared/protein-quest-cache/config.toml` in their
+     shell startup file (e.g. `.bashrc` or `.zshrc`).
+   - Set `umask 007` in their shell startup file to ensure that new files are
+     group-writable.
