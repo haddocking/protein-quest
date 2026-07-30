@@ -270,6 +270,8 @@ def test_filter_secondary_structure(
         "symlink",
         "--write-stats",
         str(stats_fn),
+        "--scheduler-address",
+        "sequential",
     ]
 
     main(argv)

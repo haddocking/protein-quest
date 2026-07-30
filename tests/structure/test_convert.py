@@ -2,26 +2,13 @@ from pathlib import Path
 
 import pytest
 
-from protein_quest.structure.convert import convert_to_cif_file, convert_to_cif_files, read_structure
+from protein_quest.structure.convert import convert_to_cif_file, read_structure
 from protein_quest.structure.formats import gunzip_file, structure2bcif, write_structure
 
 
 def test_convert_cifgz_to_cif(sample_cif: Path, tmp_path: Path):
     stats = convert_to_cif_file(sample_cif, tmp_path, copy_method="symlink")
 
-    assert stats.output_file.exists()
-    assert stats.output_file.name == "3jrs_updated_B2A.cif"
-    assert stats.output_file.stat().st_size > sample_cif.stat().st_size  # uncompressed file is larger
-    assert not stats.output_file.is_symlink()
-    assert stats.output_file.stat().st_nlink == 1  # not a hard link
-
-
-def test_convert_many_cifgz_to_cif(sample_cif: Path, tmp_path: Path):
-    results = list(convert_to_cif_files([sample_cif], tmp_path, copy_method="symlink"))
-
-    assert len(results) == 1
-    stats = results[0]
-    assert stats.input_file == sample_cif
     assert stats.output_file.exists()
     assert stats.output_file.name == "3jrs_updated_B2A.cif"
     assert stats.output_file.stat().st_size > sample_cif.stat().st_size  # uncompressed file is larger
@@ -81,24 +68,6 @@ def test_convert_cif_to_cifgz(sample_cif: Path, tmp_path: Path):
     assert stats.output_file.exists()
     assert stats.output_file.name == "3JRS_B2A.cif.gz"
     assert stats.output_file.stat().st_size > 0
-    assert (
-        read_structure(stats.output_file).make_pdb_string() == read_structure(uncompressed_cif_file).make_pdb_string()
-    )
-
-
-def test_convert_many_cif_to_cifgz(sample_cif: Path, tmp_path: Path):
-    uncompressed_cif_file = tmp_path / "3JRS_B2A.cif"
-    gunzip_file(sample_cif, uncompressed_cif_file)
-
-    results = list(
-        convert_to_cif_files([uncompressed_cif_file], tmp_path, copy_method="symlink", output_format=".cif.gz")
-    )
-
-    assert len(results) == 1
-    stats = results[0]
-    assert stats.input_file == uncompressed_cif_file
-    assert stats.output_file.exists()
-    assert stats.output_file.name == "3JRS_B2A.cif.gz"
     assert (
         read_structure(stats.output_file).make_pdb_string() == read_structure(uncompressed_cif_file).make_pdb_string()
     )

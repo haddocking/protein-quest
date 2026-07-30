@@ -39,7 +39,11 @@ from protein_quest.filters.resolution import (
     filter_files_on_resolution,
     write_resolution_stats,
 )
-from protein_quest.filters.ss import SecondaryStructureFilterQuery, filter_files_on_secondary_structure
+from protein_quest.filters.ss import (
+    SecondaryStructureFilterQuery,
+    filter_file_on_secondary_structure,
+)
+from protein_quest.parallel import map_with_progress
 from protein_quest.structure.chains import ChainIdSystem
 from protein_quest.structure.files import glob_structure_files, locate_structure_file
 from protein_quest.utils import copyfile
@@ -458,6 +462,7 @@ def secondary_structure(
     /,
     *,
     filters: SecondaryStructureFilterQuery | None = None,
+    scheduler_address: str | None = None,
     write_stats: OutputFile | None = None,
     cache: CacheParameter | None = None,
     _: Common | None = None,
@@ -470,6 +475,9 @@ def secondary_structure(
         input_dir: Directory with PDB/mmCIF files.
         output_dir: Directory to write filtered PDB/mmCIF files. Files are copied without modification.
         filters: Secondary structure filtering criteria.
+        scheduler_address: Address of the Dask scheduler to connect to.
+            If not provided, will create a local cluster.
+            If set to `sequential` will run tasks sequentially.
         write_stats: Write filter statistics to file.
             In CSV format with columns:
             `<input_file>,<nr_residues>,<nr_helix_residues>,<nr_sheet_residues>,
@@ -495,7 +503,14 @@ def secondary_structure(
 
     rprint(f"Filtering {nr_total} files in {input_dir} directory by secondary structure.")
     nr_passed = 0
-    for input_file, result in filter_files_on_secondary_structure(input_files, query=filters):
+    results = map_with_progress(
+        scheduler_address,
+        filter_file_on_secondary_structure,
+        input_files,
+        map_with_progress_options={"tqdm_desc": "Filtering on secondary structure", "tqdm_unit": "file"},
+        query=filters,
+    )
+    for input_file, result in zip(input_files, results, strict=True):
         output_file: Path | None = None
         if result.passed:
             output_file = output_dir / input_file.name

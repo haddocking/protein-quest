@@ -26,8 +26,9 @@ from protein_quest.clustering_io import (
     write_stats_csv,
 )
 from protein_quest.filters.resolution import load_resolution_statistics
+from protein_quest.parallel import map_with_progress
 from protein_quest.structure.chains import ChainIdSystem
-from protein_quest.structure.convert import convert_to_cif_files, write_conversion_stats
+from protein_quest.structure.convert import convert_to_cif_file, write_conversion_stats
 from protein_quest.structure.files import glob_structure_files
 from protein_quest.structure.formats import read_structure
 from protein_quest.structure.types import CifOutputFormat
@@ -126,6 +127,7 @@ def structures(
     output_format: CifOutputFormat = ".cif.gz",
     uniprots: InputFile | None = None,
     chain_system: ChainIdSystem = "auth",
+    scheduler_address: str | None = None,
     cache: CacheParameter | None = None,
     write_stats: OutputFile | None = None,
     _common: Common | None = None,
@@ -149,6 +151,9 @@ def structures(
             Set to 'label' to use chain ids assigned by PDB.
             See [docs](https://www.bonvinlab.org/protein_quest/autoapi/protein_quest/structure/chains.html#protein_quest.structure.chains.ChainIdSystem)
             for more information on chain id system.
+        scheduler_address: Address of the Dask scheduler to connect to.
+            If not provided, will create a local cluster.
+            If set to `sequential` will run tasks sequentially.
         output_format: Output format for converted files. Supported values are .cif and .cif.gz.
         cache: Cache options including no_cache, cache_dir, and copy_method.
         write_stats: Optional output CSV file with per-file conversion statistics.
@@ -165,19 +170,19 @@ def structures(
 
     pdb2uniprot = _read_pdb2uniprot_csv(uniprots)
 
-    results = list(
-        tqdm(
-            convert_to_cif_files(
-                input_files,
-                output_dir,
-                copy_method=cache.copy_method,
-                output_format=output_format,
-                pdb2uniprot=pdb2uniprot,
-                chain_system=chain_system,
-            ),
-            total=len(input_files),
-            unit="file",
-        )
+    results = map_with_progress(
+        scheduler_address,
+        convert_to_cif_file,
+        input_files,
+        map_with_progress_options={
+            "tqdm_desc": "Converting structures",
+            "tqdm_unit": "file",
+        },
+        output_dir=output_dir,
+        copy_method=cache.copy_method,
+        output_format=output_format,
+        pdb2uniprot=pdb2uniprot,
+        chain_system=chain_system,
     )
 
     rprint(f"Converted {len(input_files)} files into {output_dir}.")

@@ -2,7 +2,7 @@
 
 import csv
 import logging
-from collections.abc import Generator, Iterable
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -43,39 +43,6 @@ class ConversionStatistics:
     input_file: Path
     output_file: Path
     uniprot_chain_mappings: UniprotChainMappings
-
-
-def convert_to_cif_files(
-    input_files: Iterable[Path],
-    output_dir: Path,
-    copy_method: CopyMethod,
-    output_format: CifOutputFormat = ".cif",
-    pdb2uniprot: Pdb2UniprotChainsMapping | None = None,
-    chain_system: ChainIdSystem = "auth",
-) -> Generator[ConversionStatistics]:
-    """Convert structure files to CIF format.
-
-    Args:
-        input_files: Iterable of structure files to convert.
-        output_dir: Directory to save the converted files.
-        copy_method: How to copy when no changes are needed to output file.
-        output_format: Output file format to write.
-        pdb2uniprot: Optional dictionary mapping PDB ID to structured UniProt chain mappings.
-            If provided, will be used to inject UniProt accessions into structures that lack them.
-        chain_system: System of chain ids in ``pdb2uniprot`` mapping.
-
-    Yields:
-        ConversionStatistics for each converted file."""
-    for input_file in input_files:
-        stats = convert_to_cif_file(
-            input_file,
-            output_dir,
-            copy_method,
-            output_format=output_format,
-            pdb2uniprot=pdb2uniprot,
-            chain_system=chain_system,
-        )
-        yield stats
 
 
 def convert_to_cif_file(
