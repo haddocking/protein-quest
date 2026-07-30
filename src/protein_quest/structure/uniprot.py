@@ -484,7 +484,7 @@ def add_uniprot_accessions2structure(
         - structure: gemmi Structure object with UniProt accessions added if they were missing
         - injected: bool indicating whether UniProt accessions were injected
         - uniprot_chain_mappings: set of UniprotChainMapping that were considered for injection (from pdb2uniprot),
-          empty set if none
+            empty set if none
     """
     if not pdb2uniprot:
         return structure, False, set()

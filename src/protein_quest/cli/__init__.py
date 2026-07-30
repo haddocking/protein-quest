@@ -1,11 +1,13 @@
 """Module for cli parsers and handlers."""
 
 import logging
+import os
 import sys
 from collections.abc import Sequence
 
 import cyclopts
 from cyclopts import App
+from platformdirs import PlatformDirs
 from rich.console import Console
 from rich.traceback import install as install_rich_traceback
 from rocrate_action_recorder.adapters.cyclopts import record_cyclopts
@@ -21,10 +23,28 @@ console = Console(stderr=True)
 rprint = console.print
 logger = logging.getLogger(__name__)
 
+pd = PlatformDirs("protein-quest")
+user_config = pd.user_config_path / "config.toml"
+site_config = pd.site_config_path / "config.toml"
+config = cyclopts.config.Toml(
+    path=os.environ.get("PROTEIN_QUEST_CONFIG", user_config if user_config.exists() else site_config),
+    allow_unknown=True,
+    use_commands_as_keys=False,
+)
+"""Configuration for the CLI.
+
+Read from the following locations (in order of precedence):
+1. Environment variable `PROTEIN_QUEST_CONFIG` pointing to a TOML format config file
+2. User config file: `~/.config/protein-quest/config.toml`
+3. Site config file: `/etc/xdg/protein-quest/config.toml`
+"""
+# TODO make docstring visible in mkdocs
+
 app = App(
     name="protein-quest",
     version=__version__,
     help="Protein Quest CLI",
+    config=config,
 )
 
 app.register_install_completion_command()
