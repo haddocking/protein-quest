@@ -48,8 +48,7 @@ def _iter_cache_command_paths(current_app: Any, prefix: tuple[str, ...] = ()):
         if subapp.default_command and _command_uses_cache_parameter(subapp.default_command):
             yield path
 
-        if subapp._commands:
-            yield from _iter_cache_command_paths(subapp, path)
+        yield from _iter_cache_command_paths(subapp, path)
 
 
 def build_shared_config_template() -> str:

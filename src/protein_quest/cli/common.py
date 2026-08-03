@@ -202,7 +202,7 @@ OutputDir = Annotated[Path, Parameter(validator=validators.Path(file_okay=False)
 """Type for output directory parameters (directory paths)."""
 
 
-def determine_config_file_location() -> Path:
+def determine_config_file_location() -> Path | None:
     """Determine the configuration file location for protein-quest.
 
     Order of precedence:
@@ -210,12 +210,22 @@ def determine_config_file_location() -> Path:
     1. Value of environment variable `PROTEIN_QUEST_CONFIG`
     2. User configuration directory (for example `~/.config/protein-quest/config.toml`)
     3. Site configuration directory (for example `/etc/xdg/protein-quest/config.toml`)
+    4. Returns None if no configuration file is found.
+        Each cyclopts command will use default values defined in its function signature.
 
     Returns:
         Path to the configuration file, either from the environment variable PROTEIN_QUEST_CONFIG,
             or from the user or site configuration directories.
     """
+    env_path = os.environ.get("PROTEIN_QUEST_CONFIG")
+    if env_path:
+        return Path(env_path)
+
     pd = PlatformDirs("protein-quest")
     user_config = pd.user_config_path / "config.toml"
+    if user_config.is_file():
+        return user_config
     site_config = pd.site_config_path / "config.toml"
-    return Path(os.environ.get("PROTEIN_QUEST_CONFIG", user_config if user_config.exists() else site_config))
+    if site_config.is_file():
+        return site_config
+    return None

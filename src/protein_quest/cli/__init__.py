@@ -24,7 +24,8 @@ console = Console(stderr=True)
 rprint = console.print
 logger = logging.getLogger(__name__)
 
-config = cyclopts.config.Toml(determine_config_file_location())
+config_path = determine_config_file_location()
+config = cyclopts.config.Toml(config_path) if config_path else None
 
 app = App(
     name="protein-quest",
