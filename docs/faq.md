@@ -65,6 +65,37 @@ variable to any value.
 Please see the [Contributing](CONTRIBUTING.md#you-have-a-question) document for
 instructions on how to ask questions and report issues.
 
+## I do not like the default values for some parameters. How can I change them?
+
+The simple approach is to specify the parameter values on the command line. If
+you do not want to specify them every time, you can use a configuration file to
+override the default values.
+
+The user configuration file is located at `~/.config/protein-quest/config.toml`.
+See
+[determine_config_file_location](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/cli/common.md#protein_quest.cli.common.determine_config_file_location)
+for more places where the configuration file can be located.
+
+For example, to set the default value for the `--confidence-threshold` parameter
+of the `filter confidence` command to 50, you can add the following to your
+`config.toml` file:
+
+```toml
+[filter.confidence]
+confidence_threshold = 50
+```
+
+The default values displayed in `--help` will remain unchanged, but the values
+in the configuration file will be used when you run commands and do not specify
+those parameters on the command line.
+
+> Configuration file does not play well with RO Crate provenance recording
+>
+> A generated RO Crate (using `--prov` parameter) only stores the parameters
+> used on the command line. It does not keep track of the config file or its
+> contents. Therefore, using a config file for parameters that affect the
+> reproducibility of your workflow is not recommended.
+
 ## On the same machine multiple users want to share the same cache. How can we do that?
 
 You can set a shared cache directory that all users have read and write access
