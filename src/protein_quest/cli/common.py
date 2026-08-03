@@ -1,6 +1,7 @@
 """Common CLI options for protein-quest."""
 
 import logging
+import os
 from collections.abc import Iterable
 from dataclasses import dataclass
 from os import linesep
@@ -9,6 +10,7 @@ from typing import Annotated, Any
 
 from cyclopts import Group, Parameter, validators
 from cyclopts.types import NonNegativeFloat, PositiveInt, StdioPath
+from platformdirs import PlatformDirs
 from rich.console import Console
 from rocrate_action_recorder.adapters.cyclopts import INPUT_DIR, INPUT_FILE, OUTPUT_DIR, OUTPUT_FILE, RECORD_TRIGGER
 
@@ -198,3 +200,22 @@ OutputFile = Annotated[StdioPath, Parameter(validator=StdioPathValidator(dir_oka
 """Type for output file parameters (file paths that can also be "-" for stdout)."""
 OutputDir = Annotated[Path, Parameter(validator=validators.Path(file_okay=False)), OUTPUT_DIR]
 """Type for output directory parameters (directory paths)."""
+
+
+def determine_config_file_location() -> Path:
+    """Determine the configuration file location for protein-quest.
+
+    Order of precedence:
+
+    1. Value of environment variable `PROTEIN_QUEST_CONFIG`
+    2. User configuration directory (for example `~/.config/protein-quest/config.toml`)
+    3. Site configuration directory (for example `/etc/xdg/protein-quest/config.toml`)
+
+    Returns:
+        Path to the configuration file, either from the environment variable PROTEIN_QUEST_CONFIG,
+            or from the user or site configuration directories.
+    """
+    pd = PlatformDirs("protein-quest")
+    user_config = pd.user_config_path / "config.toml"
+    site_config = pd.site_config_path / "config.toml"
+    return Path(os.environ.get("PROTEIN_QUEST_CONFIG", user_config if user_config.exists() else site_config))

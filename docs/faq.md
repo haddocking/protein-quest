@@ -72,24 +72,15 @@ to.
 
 1. First make sure all users are member of the same group, for example `pq`.
 2. Create a shared cache directory and set the group ownership and permissions
-   appropriately. For example:
-
-```shell
-mkdir -p /shared/protein-quest-cache
-chgrp -R pq /shared/protein-quest-cache
-chmod -R g+rwxs,o-rwx /shared/protein-quest-cache
-```
-
-1. Create a central configuration file located at
-   `/shared/protein-quest-cache/config.toml` with the following content:
-
-```toml
-cache_dir = "/shared/protein-quest-cache"
-copy_method = "symlink"
-```
-
-1. Tell users to:
-   - Put `PROTEIN_QUEST_CONFIG=/shared/protein-quest-cache/config.toml` in their
-     shell startup file (e.g. `.bashrc` or `.zshrc`).
-   - Set `umask 007` in their shell startup file to ensure that new files are
-     group-writable.
+   appropriately. For example with
+   `mkdir -p /shared/protein-quest-cache;chgrp -R pq /shared/protein-quest-cache;chmod -R g+rwxs,o-rwx /shared/protein-quest-cache`.
+3. Create a central configuration file located at
+   `/shared/protein-quest-cache/config.toml` with content like
+   [example-shared-config.toml](example-shared-config.toml) file.
+4. Ask users to put in their shell startup file the following line:
+   `PROTEIN_QUEST_CONFIG=/shared/protein-quest-cache/config.toml` to ensure that
+   shared cache is used. Alternatively, users can symlink the shared config file
+   to their home directory as `~/.config/protein-quest/config.toml`.
+5. Also ask users to put in their shell startup file the following line:
+   `umask u=,g=,o=rwx` to ensure that new files can be read/written by yourself
+   and group members (and no access to others).

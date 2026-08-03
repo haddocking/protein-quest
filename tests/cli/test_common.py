@@ -3,7 +3,14 @@ from pathlib import Path
 
 import pytest
 
-from protein_quest.cli.common import CacheParameter, StdioPathValidator, console, setup_logging, to_cacher
+from protein_quest.cli.common import (
+    CacheParameter,
+    StdioPathValidator,
+    console,
+    determine_config_file_location,
+    setup_logging,
+    to_cacher,
+)
 from protein_quest.utils import Cacher, DirectoryCacher, PassthroughCacher
 
 
@@ -123,3 +130,20 @@ class TestSetupLogging:
 def test_to_cacher(param: CacheParameter | None, expected: Cacher):
     cacher = to_cacher(param)
     assert cacher == expected
+
+
+class TestDetermineConfigFileLocation:
+    def test_fallback_to_env_var_from_pytest_configure(self):
+        # env var set in ./conftest.py
+        actual = determine_config_file_location()
+
+        expected = Path("/dummy-config.toml")
+        assert actual == expected
+
+    def test_by_envvar(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("PROTEIN_QUEST_CONFIG", "/my/custom/config.toml")
+
+        actual = determine_config_file_location()
+
+        expected = Path("/my/custom/config.toml")
+        assert actual == expected

@@ -55,6 +55,7 @@ plugins:
           options:
             docstring_style: google
             show_source: false
+
   - mkdocs-jupyter:
       remove_tag_config:
         remove_input_tags:
