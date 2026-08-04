@@ -66,9 +66,6 @@ repos:
     hooks:
       - id: check-github-workflows
       - id: check-citation-file-format
-      # Not checking mkdocs.yml as hook does not support custom YAML tags like !!python/....
-      # see https://github.com/python-jsonschema/check-jsonschema/issues/489
-      # mkdocs schema exists at https://www.schemastore.org/mkdocs-1.6.json
 
   # Tried to use official jscpd repo, but got jscpd not found error
   - repo: local

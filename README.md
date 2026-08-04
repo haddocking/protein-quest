@@ -1,5 +1,6 @@
 # protein-quest
 
+<!-- SPHINX-START -->
 [![Documentation](https://img.shields.io/badge/Documentation-bonvinlab.org-blue?style=flat-square&logo=gitbook)](https://www.bonvinlab.org/protein-quest/)
 [![CI](https://github.com/haddocking/protein-quest/actions/workflows/ci.yml/badge.svg)](https://github.com/haddocking/protein-quest/actions/workflows/ci.yml)
 [![Research Software Directory Badge](https://img.shields.io/badge/rsd-00a3e3.svg)](https://www.research-software.nl/software/protein-quest)
@@ -38,7 +39,7 @@ The package is used by
 
 An example workflow:
 
-```mermaid
+```{mermaid}
 graph TB;
     taxonomy[/Search taxon/] -. taxon_ids .-> searchuniprot[/Search UniprotKB/]
     goterm[/Search GO term/] -. go_ids .-> searchuniprot[/Search UniprotKB/]
@@ -410,6 +411,8 @@ for your shell:
 - **Fish**: `~/.config/fish/completions/protein-quest.fish`
 
 After installation, restart your shell or source your shell configuration file.
+
+<!-- SPHINX-END -->
 
 ## Contributing
 

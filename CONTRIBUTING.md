@@ -113,16 +113,9 @@ uv sync --group docs
 Start the live-reloading docs server with:
 
 ```shell
-uv run mkdocs serve
-```
-
-Build the documentation site with:
-
-```shell
-uv run mkdocs build
-# The site will be built in the `site/` directory.
-# You can preview it with
-python3 -m http.server -d site
+uv run --group docs sphinx-build docs docs/_build
+python3 -m http.server -d docs/_build
+# The docs server will be available at http://localhost:8000
 ```
 
 ## Contributing to tests

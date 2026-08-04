@@ -61,7 +61,7 @@ def make_app() -> App:
 app4docs = make_app()
 """Only used for generating documentation, do not use for any other purpose.
 
-As cyclopts mkdocs plugin does not support an App generator function, only an App instance.
+As cyclopts sphinx plugin does not support an App generator function, only an App instance.
 """
 
 
