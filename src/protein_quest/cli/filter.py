@@ -113,9 +113,9 @@ def confidence(
 
     if write_stats:
         write_lines(write_stats, stats_lines)
+        if str(write_stats) != "-":
+            rprint(f"Statistics written to {write_stats}")
     rprint(f"Filtered {passed_count} mmcif/PDB files by confidence, written to {output_dir} directory")
-    if str(write_stats) != "-":
-        rprint(f"Statistics written to {write_stats}")
 
 
 @filter_app.command
