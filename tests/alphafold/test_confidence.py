@@ -16,13 +16,8 @@ from protein_quest.structure.formats import read_structure
 
 
 @pytest.fixture
-def sample_pdb_file() -> Path:
-    return Path(__file__).parent / "AF-A1YPR0-F1-model_v4.pdb"
-
-
-@pytest.fixture
-def sample_pdb(sample_pdb_file: Path) -> gemmi.Structure:
-    return read_structure(sample_pdb_file)
+def sample_pdb(af_pdb: Path) -> gemmi.Structure:
+    return read_structure(af_pdb)
 
 
 def test_find_high_confidence_residues(sample_pdb: gemmi.Structure):
@@ -41,8 +36,8 @@ def test_filter_out_low_confidence_residues(sample_pdb: gemmi.Structure):
     assert len(new_structure[0][0]) == 22
 
 
-def test_filter_files_on_confidence(sample_pdb_file: Path, tmp_path: Path):
-    input_files = [sample_pdb_file]
+def test_filter_files_on_confidence(af_pdb: Path, tmp_path: Path):
+    input_files = [af_pdb]
     query = ConfidenceFilterQuery(
         confidence=90,
         max_residues=40,
@@ -53,9 +48,9 @@ def test_filter_files_on_confidence(sample_pdb_file: Path, tmp_path: Path):
 
     expected = [
         ConfidenceFilterResult(
-            input_file=sample_pdb_file.name,
+            input_file=af_pdb.name,
             count=22,
-            filtered_file=tmp_path / sample_pdb_file.name,
+            filtered_file=tmp_path / af_pdb.name,
         )
     ]
 

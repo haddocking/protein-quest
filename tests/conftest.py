@@ -30,6 +30,12 @@ def af_cif() -> Path:
 
 
 @pytest.fixture
+def af_pdb() -> Path:
+    """AlphaFold structure for A1YPR0 in PDB format."""
+    return Path(__file__).parent / "fixtures" / "AF-A1YPR0-F1-model_v4.pdb"
+
+
+@pytest.fixture
 def nmr_cif() -> Path:
     """NMR structure for P05067 (1AMB, no resolution)."""
     return Path(__file__).parent / "fixtures" / "1amb_updated.cif.gz"
