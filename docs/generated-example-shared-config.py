@@ -6,7 +6,7 @@ from typing import Annotated, Any, get_args, get_origin, get_type_hints
 
 from cyclopts.docs.base import iterate_commands
 
-from protein_quest.cli import app
+from protein_quest.cli import make_app
 from protein_quest.cli.common import CacheParameter
 
 
@@ -53,6 +53,7 @@ def _iter_cache_command_paths(current_app: Any, prefix: tuple[str, ...] = ()):
 
 def build_shared_config_template() -> str:
     """Build TOML content for shared cache settings across cache-enabled commands."""
+    app = make_app()
     sections = [".".join(path) for path in _iter_cache_command_paths(app)]
 
     if not sections:

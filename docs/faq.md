@@ -72,17 +72,15 @@ you do not want to specify them every time, you can use a configuration file to
 override the default values.
 
 The user configuration file is located at `~/.config/protein-quest/config.toml`.
-See
-[determine_config_file_location](https://www.bonvinlab.org/protein-quest/autoapi/protein_quest/cli/common.md#protein_quest.cli.common.determine_config_file_location)
-for more places where the configuration file can be located.
+Or wherever the `PROTEIN_QUEST_CONFIG` environment variable points to.
 
-For example, to set the default value for the `--confidence-threshold` parameter
-of the `filter confidence` command to 50, you can add the following to your
+For example, to set the default value for the `--confidence` parameter of the
+`filter confidence` command to 50.0, you can add the following to your
 `config.toml` file:
 
 ```toml
 [filter.confidence]
-confidence_threshold = 50
+confidence = 50.0
 ```
 
 The default values displayed in `--help` will remain unchanged, but the values
@@ -104,7 +102,8 @@ to.
 1. First make sure all users are member of the same group, for example `pq`.
 2. Create a shared cache directory and set the group ownership and permissions
    appropriately. For example with
-   `mkdir -p /shared/protein-quest-cache;chgrp -R pq /shared/protein-quest-cache;chmod -R g+rwxs,o-rwx /shared/protein-quest-cache`.
+   `mkdir -p /shared/protein-quest-cache;chgrp -R pq /shared/protein-quest-cache;chmod -R g+rwxs,o-rwx /shared/protein-quest-cache`
+   (the sticky bit, will ensure that new files inherit the group).
 3. Create a central configuration file located at
    `/shared/protein-quest-cache/config.toml` with content like
    [example-shared-config.toml](example-shared-config.toml) file.

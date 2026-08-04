@@ -916,3 +916,35 @@ def test_pdbe_quality_with_clustering(
     expected_output_files = {e["output_file"] for e in expected_stats if e["output_file"]}
     actual_output_files = {str(path) for path in output_dir.iterdir()}
     assert actual_output_files == expected_output_files
+
+
+def test_confidence_with_config_file(
+    tmp_path: Path,
+    config_file_path: Path,
+    af_cif: Path,
+    caplog: pytest.LogCaptureFixture,
+):
+    caplog.set_level("INFO")
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    (input_dir / af_cif.name).symlink_to(af_cif)
+    output_dir = tmp_path / "output"
+    config_file_path.write_text(
+        textwrap.dedent("""\
+            [filter.confidence]
+            confidence = 50.0
+        """)
+    )
+
+    argv = [
+        "filter",
+        "confidence",
+        "--verbose",  # Enable verbose so filter values are logged
+        "--scheduler-address",
+        "sequential",
+        str(input_dir),
+        str(output_dir),
+    ]
+    main(argv)
+
+    assert "confidence=50.0" in caplog.text, "Expected confidence value from config file to be logged"
