@@ -64,3 +64,53 @@ variable to any value.
 
 Please see the [Contributing](CONTRIBUTING.md#you-have-a-question) document for
 instructions on how to ask questions and report issues.
+
+## I do not like the default values for some parameters. How can I change them?
+
+The simple approach is to specify the parameter values on the command line. If
+you do not want to specify them every time, you can use a configuration file to
+override the default values.
+
+The user configuration file is located at `~/.config/protein-quest/config.toml`.
+Or wherever the `PROTEIN_QUEST_CONFIG` environment variable points to.
+
+For example, to set the default value for the `--confidence` parameter of the
+`filter confidence` command to 50.0, you can add the following to your
+`config.toml` file:
+
+```toml
+[filter.confidence]
+confidence = 50.0
+```
+
+The default values displayed in `--help` will remain unchanged, but the values
+in the configuration file will be used when you run commands and do not specify
+those parameters on the command line.
+
+> Configuration file does not play well with RO Crate provenance recording
+>
+> A generated RO Crate (using `--prov` parameter) only stores the parameters
+> used on the command line. It does not keep track of the config file or its
+> contents. Therefore, using a config file for parameters that affect the
+> reproducibility of your workflow is not recommended.
+
+## On the same machine multiple users want to share the same cache. How can we do that?
+
+You can set a shared cache directory that all users have read and write access
+to.
+
+1. First make sure all users are member of the same group, for example `pq`.
+2. Create a shared cache directory and set the group ownership and permissions
+   appropriately. For example with
+   `mkdir -p /shared/protein-quest-cache;chgrp -R pq /shared/protein-quest-cache;chmod -R g+rwxs,o-rwx /shared/protein-quest-cache`
+   (the sticky bit, will ensure that new files inherit the group).
+3. Create a central configuration file located at
+   `/shared/protein-quest-cache/config.toml` with content like
+   [example-shared-config.toml](example-shared-config.toml) file.
+4. Ask users to put in their shell startup file the following line:
+   `PROTEIN_QUEST_CONFIG=/shared/protein-quest-cache/config.toml` to ensure that
+   shared cache is used. Alternatively, users can symlink the shared config file
+   to their home directory as `~/.config/protein-quest/config.toml`.
+5. Also ask users to put in their shell startup file the following line:
+   `umask u=,g=,o=rwx` to ensure that new files can be read/written by yourself
+   and group members (and no access to others).

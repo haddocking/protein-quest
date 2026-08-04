@@ -93,6 +93,7 @@ def confidence(
     input_files = sorted(glob_structure_files(input_dir))
     nr_input_files = len(input_files)
     rprint(f"Starting confidence filtering of {nr_input_files} mmcif/PDB files in {input_dir} directory.")
+    logger.info(filters)
 
     if write_stats and str(write_stats) != "-":
         write_stats.parent.mkdir(parents=True, exist_ok=True)
@@ -112,9 +113,9 @@ def confidence(
 
     if write_stats:
         write_lines(write_stats, stats_lines)
+        if str(write_stats) != "-":
+            rprint(f"Statistics written to {write_stats}")
     rprint(f"Filtered {passed_count} mmcif/PDB files by confidence, written to {output_dir} directory")
-    if str(write_stats) != "-":
-        rprint(f"Statistics written to {write_stats}")
 
 
 @filter_app.command

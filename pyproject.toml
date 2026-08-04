@@ -44,8 +44,8 @@ dependencies = [
     "yarl>=1.20.1",
     "platformdirs>=4.3.8",
     "mmcif>=0.92.0",
-    "rocrate-action-recorder>=0.5.1",
-    "cyclopts>=4.16.1",
+    "rocrate-action-recorder>=0.7.0",
+    "cyclopts>=4.21.0",
     "scipy>=1.17.1",
 ]
 

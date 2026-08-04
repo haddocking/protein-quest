@@ -3,7 +3,13 @@ from pathlib import Path
 
 import pytest
 
-from protein_quest.cli.common import CacheParameter, StdioPathValidator, console, setup_logging, to_cacher
+from protein_quest.cli.common import (
+    CacheParameter,
+    StdioPathValidator,
+    console,
+    setup_logging,
+    to_cacher,
+)
 from protein_quest.utils import Cacher, DirectoryCacher, PassthroughCacher
 
 

@@ -30,6 +30,7 @@ htmlcov/
 .coverage
 .coverage.*
 coverage.xml
+coverage.lcov
 .cache
 .pytest_cache
 .tox/
@@ -87,3 +88,8 @@ downloads-pdbe/
 filtered/
 filtered-chains/
 filtered-ss/
+
+/report/
+/.agents/
+/skills-lock.json
+/.vscode/
