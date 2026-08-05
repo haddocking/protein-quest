@@ -1,0 +1,120 @@
+[project]
+site_url = "https://bonvinlab.org/protein_quest"
+site_name = "Protein Quest"
+
+repo_url = "https://github.com/haddocking/protein-quest"
+repo_name = "haddocking/protein-quest"
+edit_uri = "edit/main/docs/"
+
+nav = [
+  { "Home" = "index.md" },
+  { "FAQ" = "faq.md" },
+  # "cli.md",
+  { "Contributing" = "CONTRIBUTING.md" },
+  {"Notebooks" = [
+    "notebooks/index.md",
+  #   "notebooks/uniprot.ipynb",
+  #   "notebooks/pdbe.ipynb",
+  #   "notebooks/alphafold.ipynb",
+  ]},
+  { "API" = "api.md" },
+]
+
+[project.theme]
+language = "en"
+features = [
+  "announce.dismiss",
+  # "content.action.edit",
+  # "content.action.view",
+  "content.code.annotate",
+  "content.code.copy",
+  "content.code.select",
+  "content.footnote.tooltips",
+  "content.tabs.link",
+  "content.tooltips",
+  # "header.autohide",
+  # "navigation.expand",
+  "navigation.footer",
+  "navigation.indexes",
+  "navigation.instant",
+  "navigation.instant.prefetch",
+  # "navigation.instant.progress",
+  "navigation.path",
+  # "navigation.prune",
+  "navigation.sections",
+  "navigation.tabs",
+  "navigation.tabs.sticky",
+  "navigation.top",
+  "navigation.tracking",
+  "search.highlight",
+  "search.suggest",
+  "toc.follow",
+  # "toc.integrate",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+toggle.icon = "lucide/sun-moon"
+toggle.name = "Switch to light mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "teal"
+accent = "teal"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "teal"
+accent = "teal"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to system preference"
+
+[project.theme.icon]
+repo = "fontawesome/brands/github"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/haddocking/protein-quest"
+
+[project.plugins.mkdocstrings.handlers.python]
+inventories = [
+  "https://docs.python.org/3/objects.inv",
+  "https://docs.aiohttp.org/en/stable/objects.inv",
+  "https://docs.dask.org/en/stable/objects.inv",
+  "https://distributed.dask.org/en/latest/objects.inv",
+  "https://yarl.aio-libs.org/en/latest/objects.inv",
+  "https://cyclopts.readthedocs.io/en/latest/objects.inv",
+  "https://docs.scipy.org/doc/scipy/objects.inv",
+]
+paths = ["src"]
+options = {
+  docstring_style = "google",
+  show_source = false,
+  extensions = ["griffe_typingdoc"],
+  docstring_section_style = "spacy",
+}
+
+
+[project.markdown_extensions]
+pymdownx.superfences = {
+  custom_fences = [
+    {
+      name = "mermaid",
+      class = "mermaid",
+      format = "pymdownx.superfences.fence_code_format",
+    },
+  ],
+}
+pymdownx.snippets = {
+  check_paths = true
+}
+
+# TODO
+# - api module per page, now single page, needs autoapi plugin
+# - cli, when cli.md is included it renders App object, needs plugin
+# - broken links in index.md and CONTRIBUTING.md, due to docs_dir can not be . yet
+# - notebooks, needs plugin

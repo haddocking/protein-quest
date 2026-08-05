@@ -62,7 +62,7 @@ variable to any value.
 
 ## My protein-quest question is not answered here. Where can I get help?
 
-Please see the [Contributing](CONTRIBUTING.md#you-have-a-question) document for
+Please see the [Contributing](../CONTRIBUTING.md#you-have-a-question) document for
 instructions on how to ask questions and report issues.
 
 ## I do not like the default values for some parameters. How can I change them?
