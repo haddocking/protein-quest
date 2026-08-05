@@ -5,7 +5,7 @@ import contextlib
 import csv
 import logging
 import os
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Generator, Iterable, Mapping, Sequence
 from typing import Annotated, Any, Literal, cast
 
 from cyclopts import App, Parameter
@@ -131,7 +131,7 @@ def _write_list_of_dicts_to_csv(file: StdioPath, rows: Sequence[Mapping[str, Any
 
 
 @contextlib.contextmanager
-def write_csv(path: StdioPath):
+def write_csv(path: StdioPath) -> Generator[Any]:
     """Context manager for writing CSV files.
 
     Creates parent directories if they do not exist.
