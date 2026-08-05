@@ -587,38 +587,38 @@ def combined_filter(
     * Structures without Uniprot accession and without resolution are filtered by PDBe quality scores.
     * Structures without Uniprot accession, without resolution and without PDBe quality scores are discarded.
 
-    ```mermaid
-    flowchart TD
-        A[Input PDB/mmCIF files] --> B{AlphaFold structure?}
+    .. md-mermaid::
 
-        B -->|Yes| C[Filter by confidence plDDT]
-        C --> D[Filter by residues in chain A]
+        flowchart TD
+            A[Input PDB/mmCIF files] --> B{AlphaFold structure?}
 
-        B -->|No| F[Filter by residues in chain A]
-        F --> U[Filter by sequence identity]
-        U --> G{UniProt accession?}
+            B -->|Yes| C[Filter by confidence plDDT]
+            C --> D[Filter by residues in chain A]
 
-        G -->|Yes| H{Resolution available?}
-        H -->|Yes| I[Group by UniProt accession and cluster by residue ranges]
-        I --> J[Sort cluster members by resolution]
-        J --> K[Keep up to top_uniprot_cluster per cluster]
+            B -->|No| F[Filter by residues in chain A]
+            F --> U[Filter by sequence identity]
+            U --> G{UniProt accession?}
 
-        H -->|No| L[Group by UniProt accession and cluster by residue ranges]
-        L --> M[Sort cluster members by PDBe quality]
-        M --> N[Keep up to top_uniprot_cluster per cluster]
+            G -->|Yes| H{Resolution available?}
+            H -->|Yes| I[Group by UniProt accession and cluster by residue ranges]
+            I --> J[Sort cluster members by resolution]
+            J --> K[Keep up to top_uniprot_cluster per cluster]
 
-        G -->|No| O{Resolution available?}
-        O -->|No| P[Sort by PDBe quality]
-        P --> R[Select up to top_non_uniprot entries]
-        O -->|Yes| S[Sort by resolution]
-        S --> T[Select up to top_non_uniprot entries]
+            H -->|No| L[Group by UniProt accession and cluster by residue ranges]
+            L --> M[Sort cluster members by PDBe quality]
+            M --> N[Keep up to top_uniprot_cluster per cluster]
 
-        D --> Q[Write output structure files]
-        K --> Q
-        N --> Q
-        R --> Q
-        T --> Q
-    ```
+            G -->|No| O{Resolution available?}
+            O -->|No| P[Sort by PDBe quality]
+            P --> R[Select up to top_non_uniprot entries]
+            O -->|Yes| S[Sort by resolution]
+            S --> T[Select up to top_non_uniprot entries]
+
+            D --> Q[Write output structure files]
+            K --> Q
+            N --> Q
+            R --> Q
+            T --> Q
 
     Arguments:
         input_files: List of input PDB/mmCIF files.

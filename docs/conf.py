@@ -37,6 +37,7 @@ exclude_patterns = [
 
 language = "en"
 
+html_title = "Protein Quest"
 html_theme = "sphinx_immaterial"
 html_static_path = ["_static"]
 html_theme_options = {
@@ -116,10 +117,8 @@ html_theme_options = {
     ],
 }
 
-myst_enable_extensions = [
-    "colon_fence",
-]
 nb_execution_mode = "off"
+myst_enable_extensions = ["colon_fence"]
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
@@ -128,7 +127,7 @@ intersphinx_mapping = {
     "distributed": ("https://distributed.dask.org/en/latest/", None),
     "yarl": ("https://yarl.aio-libs.org/en/latest/", None),
     "cyclopts": ("https://cyclopts.readthedocs.io/en/latest/", None),
-    "scipy": ("https://docs.scipy.org/doc/scipy/reference/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
 }
 
 always_document_param_types = True
@@ -136,7 +135,7 @@ always_document_param_types = True
 autoapi_dirs = ["../src/protein_quest"]
 
 # TODOS
-# - mermaid render
+# - mermaid render, does work in combined.py but not in README.md
 # - solve warnings during build
 # - links in docstrings
 # - link from api doc to source code on GH

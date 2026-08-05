@@ -39,7 +39,7 @@ The package is used by
 
 An example workflow:
 
-```{mermaid}
+```mermaid
 graph TB;
     taxonomy[/Search taxon/] -. taxon_ids .-> searchuniprot[/Search UniprotKB/]
     goterm[/Search GO term/] -. go_ids .-> searchuniprot[/Search UniprotKB/]
