@@ -10,7 +10,7 @@ from protein_quest.structure.formats import read_structure, write_structure
 
 @pytest.fixture
 def sample_cif() -> Path:
-    """Downloaded from https://www.ebi.ac.uk/pdbe/entry-files/download/3jrs_updated.cif.gz
+    """Downloaded from https://www.ebi.ac.uk/pdbe/entry-files/download/3jrs_updated.cif
     and filtered with
     `write_single_chain_structure_file(Path('tests/fixtures/3jrs_updated.cif.gz'), 'B', Path('tests/fixtures/'))`
     """
