@@ -202,9 +202,13 @@ def format_uniprot_chain_mappings(mappings: UniprotChainMappings) -> str:
     """
     if not mappings:
         return ""
+
+    def key(m: UniprotChainMapping) -> str:
+        return m.uniprot_accession
+
     chains_parts = [
         f"{mapping.uniprot_accession}:{format_uniprot_chains(mapping.chain_ranges)}"
-        for mapping in sorted(mappings, key=lambda m: m.uniprot_accession)
+        for mapping in sorted(mappings, key=key)
     ]
     return "; ".join(chains_parts)
 

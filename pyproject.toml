@@ -35,9 +35,9 @@ dependencies = [
     "attrs>=25.3.0",
     "cattrs[orjson]>=24.1.3",
     "dask>=2025.5.1",
-    "distributed>=2025.5.1",
+    "distributed>=2025.5.1; platform_machine != 'wasm32'",
     "gemmi>=0.7.5",
-    "psutil>=7.0.0",
+    "psutil>=7.0.0; platform_machine != 'wasm32'",
     "rich>=14.0.0",
     "sparqlwrapper>=2.0.0",
     "tqdm>=4.67.1",
@@ -66,7 +66,7 @@ mcp = [
 
 [dependency-groups]
 type = [
-    "pyrefly>=1.1.1",
+    "pyrefly>=1.2.0",
     "types-aiofiles>=24.1.0.20250326",
     "types-psutil>=7.2.2.20260518",
     "types-tqdm>=4.67.0.20250513",
@@ -85,9 +85,11 @@ docs = [
     "cyclopts[mkdocs]>=4.5.4",
     "ipykernel>=6.29.5", # For notebook support in VS Code
     "ipywidgets", # For tqdm support in notebooks
+    "marimo>=0.23.16",
     "mkdocs>=1.6.1",
     "mkdocs-autoapi>=0.4.1",
     "mkdocs-jupyter>=0.25.1",
+    "mkdocs-marimo>=0.2.1",
     "mkdocs-material>=9.6.14",
     "mkdocstrings-python>=2.0.2",
 ]
@@ -187,6 +189,16 @@ ignore = [
     # Allow suspicious-url-open-usage
     "S310",
 ]
+"docs/notebooks/*.py" = [
+    # Allow prints
+    "T201",
+    # `import` should be at the top-level of a file
+    "PLC0415",
+    # Found useless expression
+    "B018",
+    # Allow uppercase argument name
+    "N803",
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -212,3 +224,15 @@ project-includes = [
     "**/*.py*",
     "**/*.ipynb",
 ]
+
+[tool.pyrefly.errors]
+implicit-any-lambda = false # remove once https://github.com/facebook/pyrefly/issues/4368 is resolved
+
+[[tool.pyrefly.sub-config]]
+matches = "docs/notebooks/**"
+
+[tool.pyrefly.sub-config.errors]
+implicit-any-parameter = false # Marimo notebooks do not nicely pass typing from one cell to another
+
+[tool.marimo.language_servers.pyrefly]
+enabled = true
