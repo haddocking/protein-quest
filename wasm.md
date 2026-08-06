@@ -12,14 +12,17 @@ caddy file-server -r docs/notebookswasm -l 0.0.0.0:8080
 ```python
 import micropip
 
-gemmi_whl = "http://localhost:8080/gemmi-0.7.6.dev0-cp314-cp314-pyemscripten_2026_0_wasm32.whl"
+gemmi_whl = (
+    "http://localhost:8080/gemmi-0.7.6.dev0-cp314-cp314-pyemscripten_2026_0_wasm32.whl"
+)
 await micropip.install(gemmi_whl)
-mmcif_whl = "http://localhost:8080/mmcif-1.1.1-cp314-cp314-pyemscripten_2026_0_wasm32.whl"
+mmcif_whl = (
+    "http://localhost:8080/mmcif-1.1.1-cp314-cp314-pyemscripten_2026_0_wasm32.whl"
+)
 await micropip.install(mmcif_whl)
 pq_whl = "http://localhost:8080/protein_quest-1.6.0-py3-none-any.whl"
 await micropip.install(pq_whl)
 ```
-
 
 ## psutil
 
@@ -59,26 +62,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
-    - name: Build wheels
-      uses: pypa/cibuildwheel@v4.2.0
-      env:
-        CIBW_BUILD: "cp314-pyodide_wasm32"
-        CIBW_PLATFORM: pyodide
-        CIBW_ARCHS: wasm32
-        # Skip tests, as some others fail for pyodide
-        CIBW_TEST_COMMAND_PYODIDE: "true"
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v4.2.0
+        env:
+          CIBW_BUILD: "cp314-pyodide_wasm32"
+          CIBW_PLATFORM: pyodide
+          CIBW_ARCHS: wasm32
+          # Skip tests, as some others fail for pyodide
+          CIBW_TEST_COMMAND_PYODIDE: "true"
 
-    - uses: actions/upload-artifact@v4
-      with:
-        name: cibw-wheels-wasm
-        path: ./wheelhouse/*.whl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-wheels-wasm
+          path: ./wheelhouse/*.whl
 ```
 
 test
+
 ```python
-gemmi_whl = "http://localhost:8080/gemmi-0.7.6.dev0-cp314-cp314-pyemscripten_2026_0_wasm32.whl"
+gemmi_whl = (
+    "http://localhost:8080/gemmi-0.7.6.dev0-cp314-cp314-pyemscripten_2026_0_wasm32.whl"
+)
 await micropip.install(gemmi_whl)
 import urllib.request
 import gemmi
@@ -95,16 +101,17 @@ git clone  --recurse-submodules https://github.com/rcsb/py-mmcif
 cd py-mmcif
 mkdir -p .github/workflows
 cp ../gemmi/.github/workflows/wheels2wasm.yml .github/workflows/wheels_wasm.yml
-rm  ~/.config/act/actrc 
+rm  ~/.config/act/actrc
 # use large image with cmake
 gh act workflow_dispatch -j build_wasm_wheels --artifact-server-path $PWD/.artifacts
 unzip -d ../protein-quest/docs/notebookswasm/ .artifacts/1/cibw-wheels-wasm/cibw-wheels-wasm.zip
 ```
 
-Needed changes to code see https://github.com/i-VRESSE/py-mmcif fork.
+Needed changes to code see <https://github.com/i-VRESSE/py-mmcif> fork.
 
 test
-```
+
+```python
 from mmcif.api.DictionaryApi import DictionaryApi
 from mmcif.io.BinaryCifReader import BinaryCifReader
 from mmcif.io.BinaryCifWriter import BinaryCifWriter
