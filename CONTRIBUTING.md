@@ -113,13 +113,13 @@ uv sync --group docs
 Start the live-reloading docs server with:
 
 ```shell
-uv run mkdocs serve
+uv run properdocs serve
 ```
 
 Build the documentation site with:
 
 ```shell
-uv run mkdocs build
+uv run properdocs build
 # The site will be built in the `site/` directory.
 # You can preview it with
 python3 -m http.server -d site

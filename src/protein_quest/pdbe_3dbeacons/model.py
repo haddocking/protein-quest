@@ -22,7 +22,7 @@ After generation changes:
 Also document UniprotSummary and its children:
 
 * Use google style docstrings using `Attributes:` section
-* as mkdocs does not understand docstring per property
+* as mkdocstrings does not understand docstring per property
 * make llm do it with following prompts:
 ```
 Document the children of UniprotSummary and AccessionListRequest.
