@@ -1,6 +1,7 @@
 site_name: Protein Quest
 site_url: https://bonvinlab.org/protein_quest
-site_description: Python package to search/retrieve/filter proteins and protein structures.
+site_description:
+  Python package to search/retrieve/filter proteins and protein structures.
 repo_name: haddocking/protein-quest
 repo_url: https://github.com/haddocking/protein-quest
 edit_uri: edit/main/docs/
@@ -11,7 +12,7 @@ theme:
   code:
     fold:
       enabled: true
-  # font: false  # TODO renable with privacy plugin is fixed
+  # font: false  # TODO re-nable with privacy plugin is fixed
   features:
     - navigation.tabs
     - navigation.tabs.sticky
@@ -108,10 +109,12 @@ markdown_extensions:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
-          # TODO and pan/zoom/export
-          # see https://jaywhj.github.io/mkdocs-materialx/reference/diagrams.html?h=mermaid#customization
-          # and https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements
-          # or others
+            # TODO and pan/zoom/export
+            # see https://jaywhj.github.io/mkdocs-materialx/reference/diagrams.html?h=mermaid#customization
+            # and https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements
+            # or others
+
+
   - pymdownx.mark
   - pymdownx.smartsymbols
   - pymdownx.tabbed:
