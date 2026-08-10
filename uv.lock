@@ -2434,6 +2434,7 @@ docs = [
     { name = "mkdocs-marimo" },
     { name = "mkdocs-material" },
     { name = "mkdocstrings-python" },
+    { name = "pymdown-extensions" },
 ]
 type = [
     { name = "pyrefly" },
@@ -2492,6 +2493,7 @@ docs = [
     { name = "mkdocs-marimo", specifier = ">=0.2.1" },
     { name = "mkdocs-material", specifier = ">=9.6.14" },
     { name = "mkdocstrings-python", specifier = ">=2.0.2" },
+    { name = "pymdown-extensions", specifier = ">=11.0.1" },
 ]
 type = [
     { name = "pyrefly", specifier = ">=1.2.0" },
