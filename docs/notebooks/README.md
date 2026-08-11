@@ -15,7 +15,7 @@ be run in cloud notebook environments or locally.
 
 | Notebook       | Google Colab                                                                                                       | notebooks.egi.eu                      | Binder                                                                                                           | nbgitpuller                                                                                                                           |
 | -------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Search UniProt | [Open](https://colab.research.google.com/github/haddocking/protein-quest/blob/main/docs/notebooks/uniprot.ipynb)   | [Open](https://notebooks.egi.eu/hub/) | [Open](https://mybinder.org/v2/gh/haddocking/protein-quest/HEAD?urlpath=lab/tree/docs/notebooks/uniprot.ipynb)   | [Generate link](https://nbgitpuller.readthedocs.io/en/latest/link.html?&repo=https://github.com/haddocking/protein-quest&branch=main) |
+| Search UniProt | [Open](https://colab.research.google.com/github/haddocking/protein-quest/blob/main/docs/notebooks/uniprot.ipynb)   | [Open](https://notebooks.egi.eu/hub/) | [Open](https://mybinder.org/v2/gh/haddocking/protein-quest/HEAD?urlpath=lab/tree/docs/notebooks/uniprot.ipynb)   | [Generate link](https://nbgitpuller.readthedocs.io/en/latest/link.html?repo=https://github.com/haddocking/protein-quest&branch=main) |
 | AlphaFold      | [Open](https://colab.research.google.com/github/haddocking/protein-quest/blob/main/docs/notebooks/alphafold.ipynb) | [Open](https://notebooks.egi.eu/hub/) | [Open](https://mybinder.org/v2/gh/haddocking/protein-quest/HEAD?urlpath=lab/tree/docs/notebooks/alphafold.ipynb) | [Generate link](https://nbgitpuller.readthedocs.io/en/latest/link.html?repo=https://github.com/haddocking/protein-quest&branch=main)  |
 | PDBe           | [Open](https://colab.research.google.com/github/haddocking/protein-quest/blob/main/docs/notebooks/pdbe.ipynb)      | [Open](https://notebooks.egi.eu/hub/) | [Open](https://mybinder.org/v2/gh/haddocking/protein-quest/HEAD?urlpath=lab/tree/docs/notebooks/pdbe.ipynb)      | [Generate link](https://nbgitpuller.readthedocs.io/en/latest/link.html?repo=https://github.com/haddocking/protein-quest&branch=main)  |
 
@@ -35,7 +35,7 @@ be run in cloud notebook environments or locally.
    python -m pip install protein-quest[nb]
    ```
 
-   (The `[nb]` extra installs `ipymolstar` for structure visualization in the
+   (The `[nb]` extra installs `molviewspec` for structure visualization in the
    AlphaFold and PDBe notebooks.)
 
 3. Start Jupyter and open a notebook.
