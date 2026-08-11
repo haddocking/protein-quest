@@ -1,22 +1,37 @@
 site_name: Protein Quest
 site_url: https://bonvinlab.org/protein_quest
+site_description:
+  Python package to search/retrieve/filter proteins and protein structures.
 repo_name: haddocking/protein-quest
 repo_url: https://github.com/haddocking/protein-quest
-watch: [mkdocs.yml, README.md, src/protein_quest]
+edit_uri: edit/main/docs/
+watch: [properdocs.yml, README.md, src/protein_quest]
 use_directory_urls: false
 theme:
-  name: material
+  name: materialx
+  code:
+    fold:
+      enabled: true
+  # font: false  # TODO re-nable with privacy plugin is fixed
   features:
-    - navigation.instant
     - navigation.tabs
     - navigation.tabs.sticky
+    - navigation.footer
+    - navigation.sections
     - content.code.copy
+    - content.action.view
+    - content.action.agents
+    - search.highlight
+    - search.share
+    - toc.follow
+  topbar_style: primary
   palette:
     # Palette toggle for automatic mode
     - media: "(prefers-color-scheme)"
       toggle:
         icon: material/brightness-auto
         name: Switch to light mode
+
     # Palette toggle for light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -25,6 +40,7 @@ theme:
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
+
     # Palette toggle for dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
@@ -33,8 +49,13 @@ theme:
       toggle:
         icon: material/brightness-4
         name: Switch to system preference
+  icon:
+    repo: fontawesome/brands/github
 
 plugins:
+  # - privacy: # FileNotFoundError: [Errno 2] No such file or directory: '.../.cache/plugin/privacy/assets/external/zenodo.org/badge/DOI/10.5281/zenodo.16941288.svg'
+  #     assets_exclude:
+  #       - "https://doi.org/*"
   - search
   - autorefs
   - mkdocs-autoapi:
@@ -63,6 +84,21 @@ plugins:
   - cyclopts
 
 markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      toc_depth: 4
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem
+    # smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
   # Use to render part of README as home
   - pymdownx.snippets:
       base_path: [!relative $config_dir]
@@ -73,6 +109,23 @@ markdown_extensions:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
+            # TODO and pan/zoom/export
+            # see https://jaywhj.github.io/mkdocs-materialx/reference/diagrams.html?h=mermaid#customization
+            # and https://www.npmjs.com/package/@mostlylucid/mermaid-enhancements
+            # or others
+
+
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.tabbed:
+      alternate_style: true
+      combine_header_slug: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
 
 nav:
   - Home: index.md
