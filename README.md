@@ -83,8 +83,8 @@ graph TB;
     convert2clusters:::dashedBorder
 ```
 
-(Dotted nodes and edges are side-quests.) (The Mermaid figure might not be rendered, see
-<https://www.bonvinlab.org/protein-quest/> for rendered version)
+(Dotted nodes and edges are side-quests.) (The Mermaid figure might not be
+rendered, see <https://www.bonvinlab.org/protein-quest/> for rendered version)
 
 ## Install
 
