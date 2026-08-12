@@ -312,6 +312,46 @@ def test_convert_structures_with_stats_multiple_ranges(
     assert "Statistics written to" in captured.err
 
 
+def test_convert_structures_with_empty_polymer(cif_1l5w: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture):
+    caplog.set_level("DEBUG")
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    local_cif = input_dir / cif_1l5w.name
+    local_cif.symlink_to(cif_1l5w)
+    output_dir = tmp_path / "output"
+    pdb2uniprotcsv = tmp_path / "pdb2uniprot.csv"
+    with pdb2uniprotcsv.open("w", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["pdb_id", "uniprot_accession", "uniprot_chains"])
+        writer.writeheader()
+        writer.writerows(
+            [
+                {"pdb_id": "1L5W", "uniprot_accession": "P00490", "uniprot_chains": "A/B=2-797"},
+            ]
+        )
+
+    main(
+        [
+            "convert",
+            "structures",
+            str(input_dir),
+            "--output-dir",
+            str(output_dir),
+            "--output-format",
+            ".cif.gz",
+            "--uniprots",
+            str(pdb2uniprotcsv),
+            "--scheduler-address",
+            "sequential",
+        ]
+    )
+
+    # Check output file exists
+    output_file = output_dir / cif_1l5w.name
+    assert output_file.exists()
+    assert "Skipping empty polymer chain C in structure 1L5W" in caplog.text
+    assert "Skipping empty polymer chain D in structure 1L5W" in caplog.text
+
+
 def test_convert_clusters_writes_clusters_output(
     sample2_cif: Path,
     af_cif: Path,

@@ -122,6 +122,9 @@ def uniprot_chain_mappings_from_sifts(structure: gemmi.Structure) -> UniprotChai
     for model in structure:
         for chain in model:
             polymer = chain.get_polymer()
+            if not polymer:
+                logger.debug("Skipping empty polymer chain %s in structure %s", chain.name, structure.name)
+                continue
             subchain_id = polymer.subchain_id()
             entity_uniprots = sc2ua.get(subchain_id)
             if not entity_uniprots:
