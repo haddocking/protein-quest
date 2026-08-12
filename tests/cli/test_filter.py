@@ -42,12 +42,12 @@ def test_filter_chain_happy_path(sample2_cif: Path, tmp_path: Path, capsys: pyte
         rows = list(csv.DictReader(f))
     expected = [
         {
-            "input_file": str(sample2_cif.name),
+            "input_file": str(sample2_cif),
             "chain2keep": "A",
             "output_chain": "A",
             "passed": "True",
             "discard_reason": "",
-            "output_file": str(output_file.name),
+            "output_file": str(output_file),
         }
     ]
     assert rows == expected
@@ -102,28 +102,28 @@ def test_filter_chain_multi_accession_happy_path(
         rows = list(csv.DictReader(f))
         expected = [
             {
-                "input_file": "1a02.cif.gz",
+                "input_file": str(input_dir / "1a02.cif.gz"),
                 "chain2keep": "F",
                 "output_chain": "A",
                 "passed": "True",
                 "discard_reason": "",
-                "output_file": "1a02_F2A.cif.gz",
+                "output_file": str(tmp_path / "1a02_F2A.cif.gz"),
             },
             {
-                "input_file": "1a02.cif.gz",
+                "input_file": str(input_dir / "1a02.cif.gz"),
                 "chain2keep": "J",
                 "output_chain": "A",
                 "passed": "True",
                 "discard_reason": "",
-                "output_file": "1a02_J2A.cif.gz",
+                "output_file": str(tmp_path / "1a02_J2A.cif.gz"),
             },
             {
-                "input_file": "1a02.cif.gz",
+                "input_file": str(input_dir / "1a02.cif.gz"),
                 "chain2keep": "N",
                 "output_chain": "A",
                 "passed": "True",
                 "discard_reason": "",
-                "output_file": "1a02_N2A.cif.gz",
+                "output_file": str(tmp_path / "1a02_N2A.cif.gz"),
             },
         ]
         assert rows == expected
