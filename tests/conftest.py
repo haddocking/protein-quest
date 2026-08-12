@@ -170,6 +170,15 @@ def cif_6o5i_updated() -> Path:
 
 
 @pytest.fixture
+def cif_1l5w() -> Path:
+    """1l5w structure with sugars on chain C and D."""
+    return fetch_cif(
+        "1l5w_updated.cif.gz",
+        "fe775b512a0816ba098577a13a8bf244b834ceef41f5b7860da02f340dfabb16",
+    )
+
+
+@pytest.fixture
 def xray_p05067_cifs(sample2_cif: Path, cif_2y2a: Path) -> list[Path]:
     return [sample2_cif, cif_2y2a]
 
