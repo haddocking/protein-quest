@@ -180,10 +180,6 @@ def chain(
         msg = f"Some structure files could not be found ({len(errors)} missing), skipping them"
         rprint(Panel(os.linesep.join(map(str, errors)), title=msg, style="red"))
 
-    if not file2chain:
-        msg = "No valid structure files found."
-        raise ValueError(msg)
-
     results = filter_files_on_chain(
         file2chain,
         output_dir,

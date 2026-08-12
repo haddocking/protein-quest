@@ -10,177 +10,220 @@ import pytest
 from protein_quest.cli import main
 
 
-def test_filter_chain_happy_path(sample2_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
-    """Test filter chain command with valid input."""
-    chains_fn = tmp_path / "chains.csv"
-    chains_fn.write_text("pdb_id,chain\n2Y29,A\n")
+class TestFilterChain:
+    def test_happy_path(self, sample2_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+        """Test filter chain command with valid input."""
+        chains_fn = tmp_path / "chains.csv"
+        chains_fn.write_text("pdb_id,chain\n2Y29,A\n")
 
-    chain_stats = tmp_path / "chain_stats.csv"
-    argv = [
-        "filter",
-        "chain",
-        str(chains_fn),
-        str(sample2_cif.parent),
-        str(tmp_path),
-        "--copy-method",
-        "copy",
-        "--scheduler-address",
-        "sequential",
-        "--write-stats",
-        str(chain_stats),
-    ]
+        chain_stats = tmp_path / "chain_stats.csv"
+        argv = [
+            "filter",
+            "chain",
+            str(chains_fn),
+            str(sample2_cif.parent),
+            str(tmp_path),
+            "--copy-method",
+            "copy",
+            "--scheduler-address",
+            "sequential",
+            "--write-stats",
+            str(chain_stats),
+        ]
 
-    main(argv)
+        main(argv)
 
-    output_file = tmp_path / "2Y29_A2A.cif.gz"
-    assert output_file.exists()
+        output_file = tmp_path / "2Y29_A2A.cif.gz"
+        assert output_file.exists()
 
-    captured = capsys.readouterr()
-    assert "Wrote 1 single-chain PDB/mmCIF files to" in captured.err
+        captured = capsys.readouterr()
+        assert "Wrote 1 single-chain PDB/mmCIF files to" in captured.err
 
-    with chain_stats.open() as f:
-        rows = list(csv.DictReader(f))
-    expected = [
-        {
-            "input_file": str(sample2_cif),
-            "chain2keep": "A",
-            "output_chain": "A",
-            "passed": "True",
-            "discard_reason": "",
-            "output_file": str(output_file),
-        }
-    ]
-    assert rows == expected
-
-
-def test_filter_chain_multi_accession_happy_path(
-    multi_accession_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-):
-    """Test filter chain command handles multi-accession structures."""
-    input_dir = tmp_path / "input"
-    input_dir.mkdir()
-    local_multi = input_dir / multi_accession_cif.name
-    local_multi.symlink_to(multi_accession_cif)
-
-    chains_fn = tmp_path / "chains.csv"
-    # 1A02 maps the three UniProt accessions to chains N, F, and J.
-    chains_fn.write_text(
-        textwrap.dedent(
-            """\
-            pdb_id,chain
-            1A02,N
-            1A02,F
-            1A02,J
-            """
-        )
-    )
-
-    chain_stats = tmp_path / "chain_stats.csv"
-    argv = [
-        "filter",
-        "chain",
-        str(chains_fn),
-        str(input_dir),
-        str(tmp_path),
-        "--scheduler-address",
-        "sequential",
-        "--copy-method",
-        "copy",
-        "--write-stats",
-        str(chain_stats),
-    ]
-
-    main(argv)
-
-    output_files = {path.name for path in tmp_path.glob("1a02_*2A.cif.gz")}
-    assert output_files == {"1a02_N2A.cif.gz", "1a02_F2A.cif.gz", "1a02_J2A.cif.gz"}
-
-    captured = capsys.readouterr()
-    assert "Wrote 3 single-chain PDB/mmCIF files to" in captured.err
-
-    with chain_stats.open() as f:
-        rows = list(csv.DictReader(f))
+        with chain_stats.open() as f:
+            rows = list(csv.DictReader(f))
         expected = [
             {
-                "input_file": str(input_dir / "1a02.cif.gz"),
-                "chain2keep": "F",
+                "input_file": str(sample2_cif),
+                "chain2keep": "A",
                 "output_chain": "A",
                 "passed": "True",
                 "discard_reason": "",
-                "output_file": str(tmp_path / "1a02_F2A.cif.gz"),
-            },
-            {
-                "input_file": str(input_dir / "1a02.cif.gz"),
-                "chain2keep": "J",
-                "output_chain": "A",
-                "passed": "True",
-                "discard_reason": "",
-                "output_file": str(tmp_path / "1a02_J2A.cif.gz"),
-            },
-            {
-                "input_file": str(input_dir / "1a02.cif.gz"),
-                "chain2keep": "N",
-                "output_chain": "A",
-                "passed": "True",
-                "discard_reason": "",
-                "output_file": str(tmp_path / "1a02_N2A.cif.gz"),
-            },
+                "output_file": str(output_file),
+            }
         ]
         assert rows == expected
 
+    def test_multi_accession_happy_path(
+        self, multi_accession_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ):
+        """Test filter chain command handles multi-accession structures."""
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        local_multi = input_dir / multi_accession_cif.name
+        local_multi.symlink_to(multi_accession_cif)
 
-def test_filter_chain_input_file_notfound(tmp_path: Path):
-    """Test filter chain command with missing input file."""
-    input_dir = tmp_path / "input"
-    input_dir.mkdir()
-    output_dir = tmp_path / "output"
-    output_dir.mkdir()
-    chains_fn = tmp_path / "chains.csv"
-    chains_fn.write_text("pdb_id,chain\n2Y29,A\n")
+        chains_fn = tmp_path / "chains.csv"
+        # 1A02 maps the three UniProt accessions to chains N, F, and J.
+        chains_fn.write_text(
+            textwrap.dedent(
+                """\
+                pdb_id,chain
+                1A02,N
+                1A02,F
+                1A02,J
+                """
+            )
+        )
 
-    argv = [
-        "filter",
-        "chain",
-        str(chains_fn),
-        str(input_dir),
-        str(output_dir),
-    ]
+        chain_stats = tmp_path / "chain_stats.csv"
+        argv = [
+            "filter",
+            "chain",
+            str(chains_fn),
+            str(input_dir),
+            str(tmp_path),
+            "--scheduler-address",
+            "sequential",
+            "--copy-method",
+            "copy",
+            "--write-stats",
+            str(chain_stats),
+        ]
 
-    with pytest.raises(ValueError, match="No valid structure files found"):
         main(argv)
 
+        output_files = {path.name for path in tmp_path.glob("1a02_*2A.cif.gz")}
+        assert output_files == {"1a02_N2A.cif.gz", "1a02_F2A.cif.gz", "1a02_J2A.cif.gz"}
 
-@pytest.mark.parametrize(
-    ("chain_id", "extra_args"),
-    [
-        pytest.param("B", [], id="defaults-to-auth"),
-        pytest.param("A", ["--chain-system", "label"], id="explicit-label-system"),
-    ],
-)
-def test_filter_chain_system_modes(cif_8rw8: Path, tmp_path: Path, chain_id: str, extra_args: list[str]):
-    input_dir = tmp_path / "input"
-    input_dir.mkdir()
-    local_cif = input_dir / cif_8rw8.name
-    local_cif.symlink_to(cif_8rw8)
+        captured = capsys.readouterr()
+        assert "Wrote 3 single-chain PDB/mmCIF files to" in captured.err
 
-    chains_fn = tmp_path / "chains.csv"
-    chains_fn.write_text(f"pdb_id,chain\n8rw8,{chain_id}\n")
+        with chain_stats.open() as f:
+            rows = list(csv.DictReader(f))
+            expected = [
+                {
+                    "input_file": str(input_dir / "1a02.cif.gz"),
+                    "chain2keep": "F",
+                    "output_chain": "A",
+                    "passed": "True",
+                    "discard_reason": "",
+                    "output_file": str(tmp_path / "1a02_F2A.cif.gz"),
+                },
+                {
+                    "input_file": str(input_dir / "1a02.cif.gz"),
+                    "chain2keep": "J",
+                    "output_chain": "A",
+                    "passed": "True",
+                    "discard_reason": "",
+                    "output_file": str(tmp_path / "1a02_J2A.cif.gz"),
+                },
+                {
+                    "input_file": str(input_dir / "1a02.cif.gz"),
+                    "chain2keep": "N",
+                    "output_chain": "A",
+                    "passed": "True",
+                    "discard_reason": "",
+                    "output_file": str(tmp_path / "1a02_N2A.cif.gz"),
+                },
+            ]
+            assert rows == expected
 
-    argv = [
-        "filter",
-        "chain",
-        str(chains_fn),
-        str(input_dir),
-        str(tmp_path),
-        *extra_args,
-        "--scheduler-address",
-        "sequential",
-    ]
+    def test_missing_input_file(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+        """Test filter chain command with missing input file."""
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        chains_fn = tmp_path / "chains.csv"
+        chains_fn.write_text("pdb_id,chain\n2Y29,A\n")
+        chain_stats = tmp_path / "chain_stats.csv"
 
-    main(argv)
+        argv = [
+            "filter",
+            "chain",
+            str(chains_fn),
+            str(input_dir),
+            str(output_dir),
+            "--scheduler-address",
+            "sequential",
+            "--copy-method",
+            "copy",
+            "--write-stats",
+            str(chain_stats),
+        ]
 
-    output_files = {path.name for path in tmp_path.glob("*8rw8*_B2A.cif.gz")}
-    assert len(output_files) == 1
+        main(argv)
+
+        assert not any(output_dir.iterdir())
+        captured = capsys.readouterr()
+        assert "Some structure files could not be found (1 missing), skipping them" in captured.err
+        assert "No structure file found for 2Y29" in captured.err
+        assert "Wrote 0 single-chain PDB/mmCIF files to" in captured.err
+        with chain_stats.open() as f:
+            assert f.readlines() == ["input_file,chain2keep,output_chain,passed,discard_reason,output_file\n"]
+
+    def test_no_files(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+        chains_fn = tmp_path / "chains.csv"
+        chains_fn.write_text("pdb_id,chain\n")
+        chain_stats = tmp_path / "chain_stats.csv"
+
+        argv = [
+            "filter",
+            "chain",
+            str(chains_fn),
+            str(input_dir),
+            str(output_dir),
+            "--scheduler-address",
+            "sequential",
+            "--copy-method",
+            "copy",
+            "--write-stats",
+            str(chain_stats),
+        ]
+
+        main(argv)
+
+        assert not any(output_dir.iterdir())
+        captured = capsys.readouterr()
+        assert "Wrote 0 single-chain PDB/mmCIF files to" in captured.err
+        with chain_stats.open() as f:
+            assert f.readlines() == ["input_file,chain2keep,output_chain,passed,discard_reason,output_file\n"]
+
+    @pytest.mark.parametrize(
+        ("chain_id", "extra_args"),
+        [
+            pytest.param("B", [], id="defaults-to-auth"),
+            pytest.param("A", ["--chain-system", "label"], id="explicit-label-system"),
+        ],
+    )
+    def test_system_modes(self, cif_8rw8: Path, tmp_path: Path, chain_id: str, extra_args: list[str]):
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        local_cif = input_dir / cif_8rw8.name
+        local_cif.symlink_to(cif_8rw8)
+
+        chains_fn = tmp_path / "chains.csv"
+        chains_fn.write_text(f"pdb_id,chain\n8rw8,{chain_id}\n")
+
+        argv = [
+            "filter",
+            "chain",
+            str(chains_fn),
+            str(input_dir),
+            str(tmp_path),
+            *extra_args,
+            "--scheduler-address",
+            "sequential",
+        ]
+
+        main(argv)
+
+        output_files = {path.name for path in tmp_path.glob("*8rw8*_B2A.cif.gz")}
+        assert len(output_files) == 1
 
 
 def test_filter_residue(sample_cif: Path, sample2_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
