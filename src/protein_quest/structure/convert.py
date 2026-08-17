@@ -90,7 +90,12 @@ def convert_to_cif_file(
         new_structure, _, uniprot_chain_mappings = add_uniprot_accessions2structure(
             structure, pdb2uniprot, chain_system=chain_system
         )
-        write_structure(new_structure, output_file)
+        if structure is new_structure and extension == output_format:
+            msg = "File %s is already in %s format and does not need change, copying to %s"
+            logger.info(msg, input_file, output_format, output_dir)
+            copyfile(input_file, output_file, copy_method)
+        else:
+            write_structure(new_structure, output_file)
     elif extension == ".cif":
         if output_format == ".cif":
             logger.info("File %s is already in .cif format, copying to %s", input_file, output_dir)
