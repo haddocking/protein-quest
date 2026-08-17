@@ -225,6 +225,8 @@ class TestFilterChain:
         output_files = {path.name for path in tmp_path.glob("*8rw8*_B2A.cif.gz")}
         assert len(output_files) == 1
 
+    # TODO add test like test_convert_structures_with_uniprots_keeps_issue_155_accessions that verifies O00482 is still present when filtered on chain A
+
 
 def test_filter_residue(sample_cif: Path, sample2_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     """Test filter residue command."""
