@@ -64,7 +64,7 @@ class CombinedFilterResult:
 
     Parameters:
         input_file: Path to the input structure file.
-        pdb_id: PDB ID of the structure.
+        structure_id: Structure ID of the structure.
         metadata: Structure metadata.
         high_confidence_residues_count: Number of residues with high confidence (plDDT)
             for AlphaFold structures.
@@ -75,7 +75,7 @@ class CombinedFilterResult:
     """
 
     input_file: Path | None = None
-    pdb_id: str | None = None
+    structure_id: str | None = None
     metadata: StructureMetadata | None = None
     high_confidence_residues_count: int | None = None
     geometry_quality: float | None = None
@@ -85,10 +85,10 @@ class CombinedFilterResult:
 
     @property
     def id(self):
-        if not self.pdb_id:
-            msg = "pdb_id is not set"
+        if not self.structure_id:
+            msg = "structure_id is not set"
             raise ValueError(msg)
-        return self.pdb_id
+        return self.structure_id
 
     @property
     def resolution_value(self) -> float:
@@ -215,7 +215,7 @@ def _apply_alphafold_filter(
         )
     except Exception as e:  # noqa: BLE001
         return CombinedFilterResult(
-            pdb_id=metadata.id,
+            structure_id=metadata.id,
             input_file=input_file,
             geometry_quality=geometry_quality,
             metadata=metadata,
@@ -225,7 +225,7 @@ def _apply_alphafold_filter(
 
     if raw_result.filtered_file is None:
         return CombinedFilterResult(
-            pdb_id=metadata.id,
+            structure_id=metadata.id,
             input_file=input_file,
             geometry_quality=geometry_quality,
             metadata=metadata,
@@ -235,7 +235,7 @@ def _apply_alphafold_filter(
         )
 
     return CombinedFilterResult(
-        pdb_id=metadata.id,
+        structure_id=metadata.id,
         input_file=input_file,
         geometry_quality=geometry_quality,
         metadata=metadata,
@@ -247,7 +247,7 @@ def _apply_alphafold_filter(
 
 def _apply_non_alphafold_filters(
     input_file: Path,
-    pdb_id: str,
+    structure_id: str,
     metadata: StructureMetadata,
     geometry_quality: float | None,
     filters: CombinedFilterQuery,
@@ -258,7 +258,7 @@ def _apply_non_alphafold_filters(
         rrange = f"[{filters.min_residues}, {filters.max_residues}]"
         parts.processed.append(
             CombinedFilterResult(
-                pdb_id=pdb_id,
+                structure_id=structure_id,
                 input_file=input_file,
                 geometry_quality=geometry_quality,
                 metadata=metadata,
@@ -271,7 +271,7 @@ def _apply_non_alphafold_filters(
     if metadata.uniprot_accession and metadata.sequence_identity < filters.min_sequence_identity:
         parts.processed.append(
             CombinedFilterResult(
-                pdb_id=pdb_id,
+                structure_id=structure_id,
                 input_file=input_file,
                 geometry_quality=geometry_quality,
                 metadata=metadata,
@@ -303,7 +303,7 @@ def _apply_non_alphafold_filters(
         # TODO add min/max resolution filter? currently sorted and top N selected
         parts.resolution_only.append(
             CombinedFilterResult(
-                pdb_id=pdb_id,
+                structure_id=structure_id,
                 input_file=input_file,
                 metadata=metadata,
             )
@@ -315,7 +315,7 @@ def _apply_non_alphafold_filters(
         if geometry_quality < filters.min_geometry_quality:
             parts.processed.append(
                 CombinedFilterResult(
-                    pdb_id=pdb_id,
+                    structure_id=structure_id,
                     input_file=input_file,
                     geometry_quality=geometry_quality,
                     metadata=metadata,
@@ -326,7 +326,7 @@ def _apply_non_alphafold_filters(
             return parts
         parts.geometry_quality_only.append(
             CombinedFilterResult(
-                pdb_id=pdb_id,
+                structure_id=structure_id,
                 input_file=input_file,
                 geometry_quality=geometry_quality,
                 metadata=metadata,
@@ -336,7 +336,7 @@ def _apply_non_alphafold_filters(
 
     parts.processed.append(
         CombinedFilterResult(
-            pdb_id=pdb_id,
+            structure_id=structure_id,
             input_file=input_file,
             geometry_quality=geometry_quality,
             metadata=metadata,
@@ -372,9 +372,9 @@ def _partition_structure_file_and_apply_alphafold_filter(
         )
         return parts
 
-    pdb_id = structure.name
-    lowered_pdb_id = pdb_id.lower()
-    geometry_quality = scores[lowered_pdb_id].geometry_quality if lowered_pdb_id in scores else None
+    structure_id = structure.name
+    lowered_structure_id = structure_id.lower()
+    geometry_quality = scores[lowered_structure_id].geometry_quality if lowered_structure_id in scores else None
 
     try:
         metadata = structure_metadata(structure, path=input_file)
@@ -382,7 +382,7 @@ def _partition_structure_file_and_apply_alphafold_filter(
         logger.warning(f"Failed to extract metadata from {input_file}: {e}")
         parts.processed.append(
             CombinedFilterResult(
-                pdb_id=pdb_id,
+                structure_id=structure_id,
                 input_file=input_file,
                 geometry_quality=geometry_quality,
                 passed=False,
@@ -407,7 +407,7 @@ def _partition_structure_file_and_apply_alphafold_filter(
 
     return _apply_non_alphafold_filters(
         input_file=input_file,
-        pdb_id=pdb_id,
+        structure_id=structure_id,
         metadata=metadata,
         geometry_quality=geometry_quality,
         filters=filters,
@@ -494,7 +494,7 @@ def _top_clustered_results(
             if in_top and ok_quality:
                 output_file = output_dir / qs.input_file.name
                 fresult = CombinedFilterResult(
-                    pdb_id=qs.id,
+                    structure_id=qs.id,
                     input_file=qs.input_file,
                     geometry_quality=qs.geometry_quality,
                     metadata=qs.metadata,
@@ -510,7 +510,7 @@ def _top_clustered_results(
                 if not ok_quality:
                     reason.append(f"Geometry quality {qs.geometry_quality} below minimum {minimal_geometry_quality}")
                 fresult = CombinedFilterResult(
-                    pdb_id=qs.id,
+                    structure_id=qs.id,
                     input_file=qs.input_file,
                     geometry_quality=qs.geometry_quality,
                     metadata=qs.metadata,
@@ -701,7 +701,7 @@ def combined_filter_summary(
 def combined_filter_stats(results: list[CombinedFilterResult], path: StdioPath):
     fieldnames = [
         "input_file",
-        "pdb_id",
+        "structure_id",
         "uniprot_accession",
         "resolution",
         "high_confidence_residues_count",
@@ -723,7 +723,7 @@ def combined_filter_stats(results: list[CombinedFilterResult], path: StdioPath):
         for result in results:
             row: dict[str, str | Path | int | float | None] = {
                 "input_file": result.input_file,
-                "pdb_id": result.pdb_id,
+                "structure_id": result.structure_id,
                 "geometry_quality": result.geometry_quality,
                 "high_confidence_residues_count": result.high_confidence_residues_count,
                 "resolution": result.resolution_value,

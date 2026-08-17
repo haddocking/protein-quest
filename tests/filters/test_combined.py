@@ -67,7 +67,7 @@ class TestCombinedFilter:
         expected = [
             CombinedFilterResult(
                 input_file=input_dir / "AF-A0A0C5B5G6-F1-model_v6.cif.gz",
-                pdb_id="AF-A0A0C5B5G6-F1",
+                structure_id="AF-A0A0C5B5G6-F1",
                 metadata=StructureMetadata(
                     id="AF-A0A0C5B5G6-F1",
                     uniprot_accession="A0A0C5B5G6",
@@ -90,7 +90,7 @@ class TestCombinedFilter:
             ),
             CombinedFilterResult(
                 input_file=input_dir / "1amb_updated.cif.gz",
-                pdb_id="1AMB",
+                structure_id="1AMB",
                 metadata=StructureMetadata(
                     id="1AMB",
                     uniprot_accession="P05067",
@@ -113,7 +113,7 @@ class TestCombinedFilter:
             ),
             CombinedFilterResult(
                 input_file=input_dir / "3jrs_updated_B2A.cif.gz",
-                pdb_id="3JRS",
+                structure_id="3JRS",
                 metadata=StructureMetadata(
                     id="3JRS",
                     uniprot_accession="Q8VZS8",
@@ -136,7 +136,7 @@ class TestCombinedFilter:
             ),
             CombinedFilterResult(
                 input_file=input_dir / "2Y29.cif.gz",
-                pdb_id="2Y29",
+                structure_id="2Y29",
                 metadata=StructureMetadata(
                     id="2Y29",
                     uniprot_accession="P05067",
@@ -159,7 +159,7 @@ class TestCombinedFilter:
             ),
             CombinedFilterResult(
                 input_file=input_dir / "6O5I.cif.gz",
-                pdb_id="6O5I",
+                structure_id="6O5I",
                 metadata=StructureMetadata(
                     id="6O5I",
                     uniprot_accession="O00255",
@@ -182,7 +182,7 @@ class TestCombinedFilter:
             ),
             CombinedFilterResult(
                 input_file=input_dir / "1un5.cif.gz",
-                pdb_id="1UN5",
+                structure_id="1UN5",
                 metadata=StructureMetadata(
                     id="1UN5",
                     uniprot_accession="P03950",
@@ -205,7 +205,7 @@ class TestCombinedFilter:
             ),
             CombinedFilterResult(
                 input_file=input_dir / "8w77_updated.cif.gz",
-                pdb_id="8W77",
+                structure_id="8W77",
                 metadata=StructureMetadata(
                     id="8W77",
                     uniprot_accession="P0ABE7",
@@ -247,7 +247,7 @@ class TestCombinedFilter:
         expected = [
             CombinedFilterResult(
                 input_file=input_dir / "unreadable.cif",
-                pdb_id=None,
+                structure_id=None,
                 metadata=None,
                 high_confidence_residues_count=None,
                 geometry_quality=None,
@@ -257,7 +257,7 @@ class TestCombinedFilter:
             ),
             CombinedFilterResult(
                 input_file=input_dir / "atomless.cif",
-                pdb_id=" ",
+                structure_id=" ",
                 metadata=None,
                 high_confidence_residues_count=None,
                 geometry_quality=None,
@@ -267,7 +267,7 @@ class TestCombinedFilter:
             ),
             CombinedFilterResult(
                 input_file=input_dir / "no_uniprot.cif",
-                pdb_id="2Y29",
+                structure_id="2Y29",
                 metadata=StructureMetadata(
                     id="2Y29",
                     uniprot_accession=None,
@@ -313,7 +313,7 @@ class TestCombinedFilter:
         expected = [
             CombinedFilterResult(
                 input_file=input_file,
-                pdb_id="1AMB",
+                structure_id="1AMB",
                 metadata=StructureMetadata(
                     id="1AMB",
                     uniprot_accession="P05067",
@@ -354,7 +354,7 @@ class TestCombinedFilter:
         expected = [
             CombinedFilterResult(
                 input_file=input_file,
-                pdb_id="AF-A0A0C5B5G6-F1",
+                structure_id="AF-A0A0C5B5G6-F1",
                 metadata=StructureMetadata(
                     id="AF-A0A0C5B5G6-F1",
                     uniprot_accession="A0A0C5B5G6",
@@ -395,7 +395,7 @@ class TestCombinedFilter:
         expected = [
             CombinedFilterResult(
                 input_file=input_file,
-                pdb_id="2Y29",
+                structure_id="2Y29",
                 metadata=StructureMetadata(
                     id="2Y29",
                     uniprot_accession="P05067",
@@ -439,7 +439,7 @@ class TestCombinedFilter:
         expected = [
             CombinedFilterResult(
                 input_file=input_dir / "2y2a_updated.cif.gz",
-                pdb_id="2Y2A",
+                structure_id="2Y2A",
                 metadata=StructureMetadata(
                     id="2Y2A",
                     uniprot_accession="P05067",
@@ -462,7 +462,7 @@ class TestCombinedFilter:
             ),
             CombinedFilterResult(
                 input_file=input_dir / "2Y29.cif.gz",
-                pdb_id="2Y29",
+                structure_id="2Y29",
                 metadata=StructureMetadata(
                     id="2Y29",
                     uniprot_accession="P05067",
@@ -530,7 +530,7 @@ class TestCombinedFilter:
         expected = [
             CombinedFilterResult(
                 input_file=input_dir / "2Y29.cif",
-                pdb_id="2Y29",
+                structure_id="2Y29",
                 metadata=StructureMetadata(
                     id="2Y29",
                     uniprot_accession="P05067",
@@ -553,7 +553,7 @@ class TestCombinedFilter:
             ),
             CombinedFilterResult(
                 input_file=input_dir / "2y2a_updated.cif",
-                pdb_id="2Y2A",
+                structure_id="2Y2A",
                 metadata=StructureMetadata(
                     id="2Y2A",
                     uniprot_accession="P05067",
@@ -590,7 +590,7 @@ class TestCombinedFilter:
         expected = [
             CombinedFilterResult(
                 input_file=input_dir / "2Y29.cif",
-                pdb_id="2Y29",
+                structure_id="2Y29",
                 metadata=StructureMetadata(
                     id="2Y29",
                     uniprot_accession="P05067",
@@ -613,7 +613,7 @@ class TestCombinedFilter:
             ),
             CombinedFilterResult(
                 input_file=input_dir / "2y2a_updated.cif",
-                pdb_id="2Y2A",
+                structure_id="2Y2A",
                 metadata=StructureMetadata(
                     id="2Y2A",
                     uniprot_accession="P05067",
@@ -655,7 +655,7 @@ class TestCombinedFilter:
         expected = [
             CombinedFilterResult(
                 input_file=input_file,
-                pdb_id="2Y29",
+                structure_id="2Y29",
                 metadata=StructureMetadata(
                     id="2Y29",
                     uniprot_accession=None,
@@ -742,7 +742,7 @@ class TestCombinedFilter:
         expected = [
             CombinedFilterResult(
                 input_file=input_dir / "6O5I.cif.gz",
-                pdb_id="6O5I",
+                structure_id="6O5I",
                 metadata=StructureMetadata(
                     id="6O5I",
                     uniprot_accession="O00255",
@@ -765,7 +765,7 @@ class TestCombinedFilter:
             ),
             CombinedFilterResult(
                 input_file=input_dir / "1un5.cif.gz",
-                pdb_id="1UN5",
+                structure_id="1UN5",
                 metadata=StructureMetadata(
                     id="1UN5",
                     uniprot_accession="P03950",
@@ -795,7 +795,7 @@ def fake_results() -> list[CombinedFilterResult]:
     return [
         CombinedFilterResult(
             input_file=Path("file1.cif"),
-            pdb_id="1ABC",
+            structure_id="1ABC",
             metadata=StructureMetadata(
                 id="1ABC",
                 uniprot_accession="P12345",
@@ -818,7 +818,7 @@ def fake_results() -> list[CombinedFilterResult]:
         ),
         CombinedFilterResult(
             input_file=Path("file2.cif"),
-            pdb_id="2DEF",
+            structure_id="2DEF",
             metadata=StructureMetadata(
                 id="2DEF",
                 uniprot_accession=None,
@@ -841,7 +841,7 @@ def fake_results() -> list[CombinedFilterResult]:
         ),
         CombinedFilterResult(
             input_file=Path("file3.cif"),
-            pdb_id="AF-3GHI",
+            structure_id="AF-3GHI",
             metadata=StructureMetadata(
                 id="AF-3GHI",
                 uniprot_accession="A0ABCD",
@@ -864,7 +864,7 @@ def fake_results() -> list[CombinedFilterResult]:
         ),
         CombinedFilterResult(
             input_file=Path("file4.cif"),
-            pdb_id="4JKL",
+            structure_id="4JKL",
             metadata=StructureMetadata(
                 id="4JKL",
                 uniprot_accession="P99999",
@@ -887,7 +887,7 @@ def fake_results() -> list[CombinedFilterResult]:
         ),
         CombinedFilterResult(
             input_file=Path("file5.cif"),
-            pdb_id="AF-5MNO",
+            structure_id="AF-5MNO",
             metadata=StructureMetadata(
                 id="AF-5MNO",
                 uniprot_accession="A1BCDE",
@@ -965,7 +965,7 @@ def test_combined_filter_stats(fake_results: list[CombinedFilterResult], tmp_pat
                 "method": "X-ray",
                 "output_file": "output/file1.cif",
                 "passed": "True",
-                "pdb_id": "1ABC",
+                "structure_id": "1ABC",
                 "reason": "",
                 "resolution": "2.0",
                 "sequence_identity": "1.0",
@@ -983,7 +983,7 @@ def test_combined_filter_stats(fake_results: list[CombinedFilterResult], tmp_pat
                 "method": "NMR",
                 "output_file": "",
                 "passed": "False",
-                "pdb_id": "2DEF",
+                "structure_id": "2DEF",
                 "reason": "No UniProt accession, no resolution, no geometry quality",
                 "resolution": "0.0",
                 "sequence_identity": "0.0",
@@ -1001,7 +1001,7 @@ def test_combined_filter_stats(fake_results: list[CombinedFilterResult], tmp_pat
                 "method": "Predicted",
                 "output_file": "output/file3.cif",
                 "passed": "True",
-                "pdb_id": "AF-3GHI",
+                "structure_id": "AF-3GHI",
                 "reason": "",
                 "resolution": "0.0",
                 "sequence_identity": "1.0",
@@ -1019,7 +1019,7 @@ def test_combined_filter_stats(fake_results: list[CombinedFilterResult], tmp_pat
                 "method": "X-ray",
                 "output_file": "",
                 "passed": "False",
-                "pdb_id": "4JKL",
+                "structure_id": "4JKL",
                 "reason": "Resolution 4.5 > 4.0",
                 "resolution": "4.5",
                 "sequence_identity": "0.7",
@@ -1037,7 +1037,7 @@ def test_combined_filter_stats(fake_results: list[CombinedFilterResult], tmp_pat
                 "method": "Predicted",
                 "output_file": "",
                 "passed": "False",
-                "pdb_id": "AF-5MNO",
+                "structure_id": "AF-5MNO",
                 "reason": "High confidence residue ratio too low",
                 "resolution": "0.0",
                 "sequence_identity": "1.0",
@@ -1051,7 +1051,7 @@ def test_combined_filter_stats(fake_results: list[CombinedFilterResult], tmp_pat
 
         expected_fieldnames = [
             "input_file",
-            "pdb_id",
+            "structure_id",
             "uniprot_accession",
             "resolution",
             "high_confidence_residues_count",
