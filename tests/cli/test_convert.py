@@ -84,6 +84,55 @@ def test_convert_structures_with_injected_uniprot(no_uniprot_cif: Path, tmp_path
     assert injected_uniprot == expected
 
 
+def test_convert_structures_with_uniprots_keeps_issue_155_accessions(cif_3plz: Path, tmp_path: Path):
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    local_cif = input_dir / cif_3plz.name
+    local_cif.symlink_to(cif_3plz)
+    output_dir = tmp_path / "output"
+
+    pdb2uniprotcsv = tmp_path / "pdb2uniprot.csv"
+    with pdb2uniprotcsv.open("w", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["pdb_id", "uniprot_accession", "uniprot_chains"])
+        writer.writeheader()
+        writer.writerow({"pdb_id": "3PLZ", "uniprot_accession": "Q9UEC0", "uniprot_chains": "A=300-541"})
+
+    main(
+        [
+            "convert",
+            "structures",
+            str(input_dir),
+            "--output-dir",
+            str(output_dir),
+            "--output-format",
+            ".cif.gz",
+            "--uniprots",
+            str(pdb2uniprotcsv),
+            "--scheduler-address",
+            "sequential",
+        ]
+    )
+
+    output_file = output_dir / cif_3plz.name
+    assert output_file.exists()
+
+    structure = read_structure(output_file)
+
+    sift_kept = {
+        (mapping.chain_id, mapping.uniprot_accession)
+        for mapping in structure_to_uniprot(structure, source="sifts", one_uniprot_per_chain=False)
+        if mapping.chain_id == "A"
+    }
+    assert ("A", "Q9UEC0") in sift_kept
+
+    struct_ref_kept = {
+        (mapping.chain_id, mapping.uniprot_accession)
+        for mapping in structure_to_uniprot(structure, source="struct_ref_seq", one_uniprot_per_chain=False)
+        if mapping.chain_id == "A"
+    }
+    assert ("A", "O00482") in struct_ref_kept
+
+
 @pytest.mark.parametrize(
     ("chain_id", "extra_args"),
     [
