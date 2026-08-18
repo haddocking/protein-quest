@@ -134,13 +134,15 @@ def _is_em_method(structure: gemmi.Structure) -> bool:
 
 def _make_mmcif_document(structure: gemmi.Structure) -> gemmi.cif.Document:
     """Create an mmCIF document and preserve EM resolution metadata when needed."""
-    # do not write chem_comp so it is viewable by molstar
-    # see https://github.com/project-gemmi/gemmi/discussions/362
-    doc = structure.make_mmcif_document(gemmi.MmcifOutputGroups(True, chem_comp=False))
+    doc = structure.make_mmcif_document()
     block = doc.sole_block()
 
     _add_em_3d_reconstruction(structure, block)
     _add_sifts_xref_db(structure, block)
+    # TODO set _chem_comp.type from current always False to correct value, see
+    # https://github.com/project-gemmi/gemmi/discussions/362
+    # and
+    # https://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Items/_chem_comp.type.html
     return doc
 
 

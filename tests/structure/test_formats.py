@@ -3,6 +3,7 @@ from pathlib import Path
 
 import gemmi
 import pytest
+from gemmi import cif
 
 from protein_quest.structure.formats import (
     gunzip_file,
@@ -130,3 +131,17 @@ class TestWriteStructure:
         observed_cif_text = gzip.decompress(output_file.read_bytes()).decode("utf-8")
 
         assert "_pdbx_sifts_xref_db." not in observed_cif_text
+
+    def test_retains_chem_comp_id_not_type(self, cif_1l5w: Path, tmp_path: Path):
+        original_block = cif.read_file(str(cif_1l5w)).sole_block()
+        structure = read_structure(cif_1l5w)
+        output_file = tmp_path / "1l5w_roundtrip.cif.gz"
+
+        write_structure(structure, output_file)
+
+        written_block = cif.read_file(str(output_file)).sole_block()
+        expected_block: dict[str, list[str] | list[bool]] = {
+            "id": list(original_block.find_values("_chem_comp.id")),
+        }
+        expected_block["type"] = [False] * len(expected_block["id"])
+        assert written_block.get_mmcif_category("_chem_comp") == expected_block
