@@ -11,20 +11,10 @@ from protein_quest.structure.formats import (
     write_structure,
 )
 from protein_quest.structure.types import valid_structure_file_extensions
+from protein_quest.structure.uniprot import structure_to_uniprot
 
 
-@pytest.mark.parametrize("extension", valid_structure_file_extensions)
-def test_write_structure(sample2_cif: Path, tmp_path: Path, extension: str):
-    structure = read_structure(sample2_cif)
-    output_file = tmp_path / f"bla{extension}"
-
-    write_structure(structure, output_file)
-
-    assert output_file.exists()
-    assert output_file.stat().st_size > 0
-
-
-def test_write_structure_invalid_extension(sample2_cif: Path, tmp_path: Path):
+def test_invalid_extension(sample2_cif: Path, tmp_path: Path):
     structure = read_structure(sample2_cif)
     output_file = tmp_path / "bla.txt"
 
@@ -63,32 +53,80 @@ def test_gunzip_of_non_gz_file(tmp_path: Path):
         gunzip_file(input_file)
 
 
-@pytest.mark.parametrize(
-    ["output_fn"],
-    [
-        ("em_structure.cif",),
-        ("em_structure.cif.gz",),
-    ],
-)
-def test_em_structure_retains_resolution(em_cif: Path, tmp_path: Path, output_fn: str):
-    structure = read_structure(em_cif)
-    assert structure.resolution == 3.61
-    output_file = tmp_path / output_fn
+class TestWriteStructure:
+    @pytest.mark.parametrize("extension", valid_structure_file_extensions)
+    def test_extensions(self, sample2_cif: Path, tmp_path: Path, extension: str):
+        structure = read_structure(sample2_cif)
+        output_file = tmp_path / f"bla{extension}"
 
-    write_structure(structure, output_file)
+        write_structure(structure, output_file)
 
-    written_structure = read_structure(output_file)
+        assert output_file.exists()
+        assert output_file.stat().st_size > 0
 
-    assert written_structure.resolution == 3.61
+    @pytest.mark.parametrize(
+        ["output_fn"],
+        [
+            ("em_structure.cif",),
+            ("em_structure.cif.gz",),
+        ],
+    )
+    def test_em_structure_retains_resolution(self, em_cif: Path, tmp_path: Path, output_fn: str):
+        structure = read_structure(em_cif)
+        assert structure.resolution == 3.61
+        output_file = tmp_path / output_fn
 
+        write_structure(structure, output_file)
 
-def test_em_archived_structure_retains_resolution(fake_archive_em_structure: gemmi.Structure, tmp_path: Path):
-    structure = fake_archive_em_structure
-    assert structure.resolution == 4.2
-    output_file = tmp_path / "em_structure.cif"
+        written_structure = read_structure(output_file)
 
-    write_structure(structure, output_file)
+        assert written_structure.resolution == 3.61
 
-    written_structure = read_structure(output_file)
+    def test_em_archived_structure_retains_resolution(self, fake_archive_em_structure: gemmi.Structure, tmp_path: Path):
+        structure = fake_archive_em_structure
+        assert structure.resolution == 4.2
+        output_file = tmp_path / "em_structure.cif"
 
-    assert written_structure.resolution == 4.2
+        write_structure(structure, output_file)
+
+        written_structure = read_structure(output_file)
+
+        assert written_structure.resolution == 4.2
+
+    def test_keeps_sifts_roundtrip(self, cif_3plz: Path, tmp_path: Path):
+        structure = read_structure(cif_3plz)
+        expected = structure_to_uniprot(structure, source="sifts", one_uniprot_per_chain=False)
+        assert len(expected) == 4
+        output_file = tmp_path / "3plz_roundtrip.cif.gz"
+
+        write_structure(structure, output_file)
+
+        written_structure = read_structure(output_file)
+        result = structure_to_uniprot(written_structure, source="sifts", one_uniprot_per_chain=False)
+        assert len(result) == 4
+
+        assert result == expected
+
+    def test_keeps_sifts_with_empty_polymer_chains(self, cif_1l5w: Path, tmp_path: Path):
+        structure = read_structure(cif_1l5w)
+        expected = structure_to_uniprot(structure, source="sifts", one_uniprot_per_chain=False)
+        assert len(expected) == 2
+        output_file = tmp_path / "1l5w_roundtrip.cif.gz"
+
+        write_structure(structure, output_file)
+
+        written_structure = read_structure(output_file)
+        result = structure_to_uniprot(written_structure, source="sifts", one_uniprot_per_chain=False)
+
+        assert result == expected
+
+    def test_omits_sifts_block_without_sifts(self, sample2_cif: Path, tmp_path: Path):
+        structure = read_structure(sample2_cif)
+        assert structure_to_uniprot(structure, source="sifts", one_uniprot_per_chain=False) == set()
+        output_file = tmp_path / "2y29_roundtrip.cif.gz"
+
+        write_structure(structure, output_file)
+
+        observed_cif_text = gzip.decompress(output_file.read_bytes()).decode("utf-8")
+
+        assert "_pdbx_sifts_xref_db." not in observed_cif_text

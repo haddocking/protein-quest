@@ -21,6 +21,108 @@ from protein_quest.utils import user_cache_root_dir
 logger = logging.getLogger(__name__)
 
 
+def _sifts_polymer_rows(structure: gemmi.Structure) -> dict[str, list[str]]:
+    """Build minimal SIFTS residue rows for mmCIF output.
+
+    Gemmi reconstructs ``Entity.sifts_unp_acc`` and ``Residue.sifts_unp`` from
+    ``_pdbx_sifts_xref_db`` when reading mmCIF. This helper only emits the
+    subset of columns needed for that roundtrip.
+
+    Args:
+        structure: Structure whose polymer residues may contain SIFTS UniProt
+            annotations.
+
+    Returns:
+        Mapping of ``_pdbx_sifts_xref_db`` column names to row values. Returns
+        empty column lists when the structure has no SIFTS residue annotations
+        that can be written safely.
+    """
+    rows: dict[str, list[str]] = {
+        "entity_id": [],
+        "asym_id": [],
+        "seq_id_ordinal": [],
+        "seq_id": [],
+        "observed": [],
+        "unp_res": [],
+        "unp_num": [],
+        "unp_acc": [],
+    }
+    subchain_to_entity = {
+        subchain: entity for entity in structure.entities for subchain in entity.subchains if entity.sifts_unp_acc
+    }
+
+    for model in structure:
+        for chain in model:
+            polymer = chain.get_polymer()
+            if not polymer:
+                continue
+            subchain_id = polymer.subchain_id()
+            entity = subchain_to_entity.get(subchain_id)
+            if entity is None:
+                continue
+
+            for residue in polymer:
+                unp_res, acc_index, unp_num = residue.sifts_unp
+                if unp_num <= 0 or not unp_res:
+                    continue
+                rows["entity_id"].append(entity.name)
+                rows["asym_id"].append(subchain_id)
+                # Gemmi only consumes rows with seq_id_ordinal == 1.
+                rows["seq_id_ordinal"].append("1")
+                rows["seq_id"].append(str(residue.label_seq))
+                rows["observed"].append("y")
+                rows["unp_res"].append(unp_res)
+                rows["unp_num"].append(str(unp_num))
+                rows["unp_acc"].append(entity.sifts_unp_acc[acc_index])
+
+    return rows
+
+
+def _add_sifts_xref_db(structure: gemmi.Structure, block: gemmi.cif.Block):
+    """Append minimal SIFTS residue annotations to an mmCIF block.
+
+    This is needed because the mmCIF document produced by Gemmi is missing the
+    ``_pdbx_sifts_xref_db`` category, even when the input structure still has
+    SIFTS UniProt annotations in memory.
+
+    Args:
+        structure: Structure that may contain in-memory SIFTS annotations on
+            entities and residues.
+        block: mmCIF block produced for ``structure`` that should receive the
+            ``_pdbx_sifts_xref_db`` category when SIFTS rows are available.
+    """
+    rows = _sifts_polymer_rows(structure)
+    if not rows["entity_id"]:
+        return
+    block.set_mmcif_category("_pdbx_sifts_xref_db.", rows)
+
+
+def _add_em_3d_reconstruction(structure: gemmi.Structure, block: gemmi.cif.Block):
+    """Append EM reconstruction resolution metadata to an mmCIF block.
+
+    This is needed because Gemmi reads EM resolution from
+    ``_em_3d_reconstruction.resolution`` into ``Structure.resolution``, but the
+    generated mmCIF document does not recreate that category automatically.
+
+    Args:
+        structure: Structure whose EM resolution metadata may need to be
+            restored to the output mmCIF block.
+        block: mmCIF block produced for ``structure`` that should receive the
+            ``_em_3d_reconstruction`` fields when they are missing.
+    """
+    if structure.resolution <= 0 or not _is_em_method(structure):
+        return
+    if block.get_mmcif_category("_em_3d_reconstruction.resolution"):
+        msg = (
+            "Gemmi has support for _em_3d_reconstruction, please create "
+            "issue to remove _add_em_3d_reconstruction function"
+        )
+        raise ValueError(msg)
+    block.set_pair("_em_3d_reconstruction.entry_id", structure.name)
+    block.set_pair("_em_3d_reconstruction.id", "1")
+    block.set_pair("_em_3d_reconstruction.resolution", str(structure.resolution))
+
+
 def _is_em_method(structure: gemmi.Structure) -> bool:
     # Could have used ./metadata.py::_structure_method, but do not to prevent circular import
     try:
@@ -35,14 +137,10 @@ def _make_mmcif_document(structure: gemmi.Structure) -> gemmi.cif.Document:
     # do not write chem_comp so it is viewable by molstar
     # see https://github.com/project-gemmi/gemmi/discussions/362
     doc = structure.make_mmcif_document(gemmi.MmcifOutputGroups(True, chem_comp=False))
-    # Gemmi reads EM resolution into Structure.resolution from
-    # _em_3d_reconstruction.resolution, but does not emit that category again.
-    if structure.resolution > 0 and _is_em_method(structure):
-        block = doc.sole_block()
-        if not block.find_value("_em_3d_reconstruction.resolution"):
-            block.set_pair("_em_3d_reconstruction.entry_id", structure.name)
-            block.set_pair("_em_3d_reconstruction.id", "1")
-            block.set_pair("_em_3d_reconstruction.resolution", str(structure.resolution))
+    block = doc.sole_block()
+
+    _add_em_3d_reconstruction(structure, block)
+    _add_sifts_xref_db(structure, block)
     return doc
 
 
