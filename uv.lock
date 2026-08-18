@@ -2378,6 +2378,7 @@ docs = [
     { name = "mkdocs-jupyter" },
     { name = "mkdocs-materialx" },
     { name = "mkdocstrings-python" },
+    { name = "molviewspec" },
     { name = "properdocs" },
 ]
 type = [
@@ -2436,6 +2437,7 @@ docs = [
     { name = "mkdocs-jupyter", specifier = ">=0.25.1" },
     { name = "mkdocs-materialx", specifier = ">=10.2.0" },
     { name = "mkdocstrings-python", specifier = ">=2.0.2" },
+    { name = "molviewspec", specifier = ">=1.8.1" },
     { name = "properdocs", specifier = ">=1.6.7" },
 ]
 type = [
