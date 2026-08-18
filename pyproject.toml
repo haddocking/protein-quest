@@ -93,6 +93,7 @@ docs = [
     "mkdocs-jupyter>=0.25.1",
     "mkdocs-materialx>=10.2.0",
     "mkdocstrings-python>=2.0.2",
+    "molviewspec>=1.8.1",
     "properdocs>=1.6.7",
 ]
 

@@ -45,6 +45,97 @@ class ConversionStatistics:
     uniprot_chain_mappings: UniprotChainMappings
 
 
+def _validate_output_format(output_format: CifOutputFormat) -> None:
+    if output_format not in cif_output_formats:
+        msg = f"Unsupported output format {output_format}. Supported output formats are: {cif_output_formats}."
+        raise ValueError(msg)
+
+
+def _new_conversion_statistics(
+    input_file: Path,
+    output_file: Path,
+    uniprot_chain_mappings: UniprotChainMappings | None = None,
+) -> ConversionStatistics:
+    return ConversionStatistics(
+        input_file=input_file,
+        output_file=output_file,
+        uniprot_chain_mappings=set() if uniprot_chain_mappings is None else uniprot_chain_mappings,
+    )
+
+
+def _handle_existing_output_file(input_file: Path, output_file: Path) -> ConversionStatistics:
+    logger.info("Output file %s already exists for input file %s. Skipping.", output_file, input_file)
+    return _new_conversion_statistics(input_file, output_file)
+
+
+def _handle_pdb_like_input(
+    input_file: Path,
+    output_file: Path,
+    output_format: CifOutputFormat,
+    copy_method: CopyMethod,
+    pdb2uniprot: Pdb2UniprotChainsMapping | None,
+    chain_system: ChainIdSystem,
+    extension: str,
+) -> ConversionStatistics:
+    structure = read_structure(input_file)
+    new_structure, _, uniprot_chain_mappings = add_uniprot_accessions2structure(
+        structure, pdb2uniprot, chain_system=chain_system
+    )
+    if structure is new_structure and extension == output_format:
+        msg = "File %s is already in %s format and does not need change, copying to %s"
+        logger.info(msg, input_file, output_format, output_file.parent)
+        copyfile(input_file, output_file, copy_method)
+        return _new_conversion_statistics(input_file, output_file, uniprot_chain_mappings)
+
+    write_structure(new_structure, output_file)
+    return _new_conversion_statistics(input_file, output_file, uniprot_chain_mappings)
+
+
+def _handle_cif_input(
+    input_file: Path,
+    output_file: Path,
+    output_format: CifOutputFormat,
+    copy_method: CopyMethod,
+) -> ConversionStatistics:
+    if output_format == ".cif":
+        logger.info("File %s is already in .cif format, copying to %s", input_file, output_file.parent)
+        copyfile(input_file, output_file, copy_method)
+        return _new_conversion_statistics(input_file, output_file)
+
+    structure = read_structure(input_file)
+    write_structure(structure, output_file)
+    return _new_conversion_statistics(input_file, output_file)
+
+
+def _handle_cif_gz_input(
+    input_file: Path,
+    output_file: Path,
+    output_format: CifOutputFormat,
+    copy_method: CopyMethod,
+) -> ConversionStatistics:
+    if output_format == ".cif":
+        gunzip_file(input_file, output_file=output_file, keep_original=True)
+        return _new_conversion_statistics(input_file, output_file)
+
+    copyfile(input_file, output_file, copy_method)
+    return _new_conversion_statistics(input_file, output_file)
+
+
+def _handle_bcif_input(
+    input_file: Path,
+    output_file: Path,
+    output_format: CifOutputFormat,
+) -> ConversionStatistics:
+    if output_format == ".cif":
+        with output_file.open("w") as f:
+            f.write(bcif2cif(input_file))
+        return _new_conversion_statistics(input_file, output_file)
+
+    structure = read_structure(input_file)
+    write_structure(structure, output_file)
+    return _new_conversion_statistics(input_file, output_file)
+
+
 def convert_to_cif_file(
     input_file: Path,
     output_dir: Path,
@@ -74,54 +165,39 @@ def convert_to_cif_file(
     Raises:
         ValueError: If the requested output format is not supported."""
     logger.debug("Converting %s", input_file)
-    if output_format not in cif_output_formats:
-        msg = f"Unsupported output format {output_format}. Supported output formats are: {cif_output_formats}."
-        raise ValueError(msg)
+    _validate_output_format(output_format)
 
     name, extension = split_name_and_extension(input_file.name)
     output_file = output_dir / f"{name}{output_format}"
 
-    uniprot_chain_mappings: UniprotChainMappings = set()
-
     if output_file.exists():
-        logger.info("Output file %s already exists for input file %s. Skipping.", output_file, input_file)
-    elif pdb2uniprot or extension in {".pdb", ".pdb.gz", ".ent", ".ent.gz"}:
-        structure = read_structure(input_file)
-        new_structure, _, uniprot_chain_mappings = add_uniprot_accessions2structure(
-            structure, pdb2uniprot, chain_system=chain_system
-        )
-        write_structure(new_structure, output_file)
-    elif extension == ".cif":
-        if output_format == ".cif":
-            logger.info("File %s is already in .cif format, copying to %s", input_file, output_dir)
-            copyfile(input_file, output_file, copy_method)
-        else:
-            structure = read_structure(input_file)
-            write_structure(structure, output_file)
-    elif extension == ".cif.gz":
-        if output_format == ".cif":
-            gunzip_file(input_file, output_file=output_file, keep_original=True)
-        else:
-            copyfile(input_file, output_file, copy_method)
-    elif extension == ".bcif":
-        if output_format == ".cif":
-            with output_file.open("w") as f:
-                f.write(bcif2cif(input_file))
-        else:
-            structure = read_structure(input_file)
-            write_structure(structure, output_file)
-    else:
-        msg = (
-            f"Unsupported file extension {extension} in {input_file}. "
-            f"Supported extensions are {valid_structure_file_extensions}."
-        )
-        raise ValueError(msg)
+        return _handle_existing_output_file(input_file, output_file)
 
-    return ConversionStatistics(
-        input_file=input_file,
-        output_file=output_file,
-        uniprot_chain_mappings=uniprot_chain_mappings,
+    if pdb2uniprot or extension in {".pdb", ".pdb.gz", ".ent", ".ent.gz"}:
+        return _handle_pdb_like_input(
+            input_file=input_file,
+            output_file=output_file,
+            output_format=output_format,
+            copy_method=copy_method,
+            pdb2uniprot=pdb2uniprot,
+            chain_system=chain_system,
+            extension=extension,
+        )
+
+    if extension == ".cif":
+        return _handle_cif_input(input_file, output_file, output_format, copy_method)
+
+    if extension == ".cif.gz":
+        return _handle_cif_gz_input(input_file, output_file, output_format, copy_method)
+
+    if extension == ".bcif":
+        return _handle_bcif_input(input_file, output_file, output_format)
+
+    msg = (
+        f"Unsupported file extension {extension} in {input_file}. "
+        f"Supported extensions are {valid_structure_file_extensions}."
     )
+    raise ValueError(msg)
 
 
 def write_conversion_stats(

@@ -170,6 +170,15 @@ def cif_6o5i_updated() -> Path:
 
 
 @pytest.fixture
+def cif_3plz() -> Path:
+    """3PLZ structure with both Q9UEC0 and O00482 UniProt accessions on the same chain."""
+    return fetch_cif(
+        "3plz_updated.cif.gz",
+        "4f706acddcdaca54e3a28cb59dcd362c111536f566f2a15803b15996d3717de7",
+    )
+
+
+@pytest.fixture
 def cif_1l5w() -> Path:
     """1l5w structure with sugars on chain C and D."""
     return fetch_cif(

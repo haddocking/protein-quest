@@ -818,6 +818,18 @@ def test_structure_to_uniprot_allow_multiple_accessions_per_chain(multi_accessio
     assert actual == expected
 
 
+def test_structure_to_uniprot_issue_155_keeps_all_accessions_for_single_chain(cif_3plz: Path):
+    """Regression test for issue #155: mixed SIFTS + struct_ref_seq data should keep both accessions."""
+    structure = read_structure(cif_3plz)
+
+    actual = structure_to_uniprot(structure, source="both", one_uniprot_per_chain=False)
+
+    assert {(mapping.chain_id, mapping.uniprot_accession) for mapping in actual if mapping.chain_id == "A"} == {
+        ("A", "Q9UEC0"),
+        ("A", "O00482"),
+    }
+
+
 def test_structure_to_uniprot_bad_source(sample2_cif: Path):
     structure = read_structure(sample2_cif)
 

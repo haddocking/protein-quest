@@ -8,6 +8,28 @@ from pathlib import Path
 import pytest
 
 from protein_quest.cli import main
+from protein_quest.structure.formats import read_structure
+from protein_quest.structure.uniprot import FlattenedUniprotChainMapping, structure_to_uniprot
+
+
+def normalize_uniprot_chain_mappings(
+    mappings: dict[str, set[FlattenedUniprotChainMapping]],
+) -> dict[str, set[FlattenedUniprotChainMapping]]:
+    normalized: dict[str, set[FlattenedUniprotChainMapping]] = {}
+    for source, source_mappings in mappings.items():
+        normalized[source] = {
+            FlattenedUniprotChainMapping(
+                uniprot_accession=mapping.uniprot_accession,
+                uniprot_start=mapping.uniprot_start,
+                uniprot_end=mapping.uniprot_end,
+                chain_id=mapping.chain_id,
+                sequence_identity=round(mapping.sequence_identity, 4),
+                aligned_residue_count=mapping.aligned_residue_count,
+            )
+            for mapping in source_mappings
+        }
+
+    return normalized
 
 
 class TestFilterChain:
@@ -224,6 +246,60 @@ class TestFilterChain:
 
         output_files = {path.name for path in tmp_path.glob("*8rw8*_B2A.cif.gz")}
         assert len(output_files) == 1
+
+    def test_keeps_sifts(self, cif_3plz: Path, tmp_path: Path):
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        output_dir = tmp_path / "output"
+
+        local_cif = input_dir / cif_3plz.name
+        local_cif.symlink_to(cif_3plz)
+        chains_fn = tmp_path / "chains.csv"
+        chains_fn.write_text("pdb_id,chain\n3plz,A\n")
+
+        argv = [
+            "filter",
+            "chain",
+            str(chains_fn),
+            str(input_dir),
+            str(output_dir),
+            "--scheduler-address",
+            "sequential",
+        ]
+
+        main(argv)
+
+        output_file = output_dir / "3plz_updated_A2A.cif.gz"
+        assert output_file.exists()
+
+        structure = read_structure(output_file)
+        result_uniprots = {
+            "struct_ref_seq": structure_to_uniprot(structure, source="struct_ref_seq", one_uniprot_per_chain=False),
+            "sifts": structure_to_uniprot(structure, source="sifts", one_uniprot_per_chain=False),
+        }
+        expected = {
+            "struct_ref_seq": {
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="Q9UEC0",
+                    uniprot_start=300,
+                    uniprot_end=541,
+                    chain_id="A",
+                    sequence_identity=1.0,
+                    aligned_residue_count=242,
+                ),
+            },
+            "sifts": {
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="O00482",
+                    uniprot_start=300,
+                    uniprot_end=538,
+                    chain_id="A",
+                    sequence_identity=0.9665,
+                    aligned_residue_count=231,
+                ),
+            },
+        }
+        assert normalize_uniprot_chain_mappings(result_uniprots) == normalize_uniprot_chain_mappings(expected)
 
 
 def test_filter_residue(sample_cif: Path, sample2_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
