@@ -12,6 +12,26 @@ from protein_quest.structure.formats import read_structure
 from protein_quest.structure.uniprot import FlattenedUniprotChainMapping, structure_to_uniprot
 
 
+def normalize_uniprot_chain_mappings(
+    mappings: dict[str, set[FlattenedUniprotChainMapping]],
+) -> dict[str, set[FlattenedUniprotChainMapping]]:
+    normalized: dict[str, set[FlattenedUniprotChainMapping]] = {}
+    for source, source_mappings in mappings.items():
+        normalized[source] = {
+            FlattenedUniprotChainMapping(
+                uniprot_accession=mapping.uniprot_accession,
+                uniprot_start=mapping.uniprot_start,
+                uniprot_end=mapping.uniprot_end,
+                chain_id=mapping.chain_id,
+                sequence_identity=round(mapping.sequence_identity, 4),
+                aligned_residue_count=mapping.aligned_residue_count,
+            )
+            for mapping in source_mappings
+        }
+
+    return normalized
+
+
 class TestFilterChain:
     def test_happy_path(self, sample2_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
         """Test filter chain command with valid input."""
@@ -274,12 +294,12 @@ class TestFilterChain:
                     uniprot_start=300,
                     uniprot_end=538,
                     chain_id="A",
-                    sequence_identity=0.9665271966527197,  # TODO make portable by comparing with pytest approx helpers via dict
+                    sequence_identity=0.9665,
                     aligned_residue_count=231,
                 ),
             },
         }
-        assert result_uniprots == expected
+        assert normalize_uniprot_chain_mappings(result_uniprots) == normalize_uniprot_chain_mappings(expected)
 
 
 def test_filter_residue(sample_cif: Path, sample2_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
