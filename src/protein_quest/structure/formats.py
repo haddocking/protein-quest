@@ -112,7 +112,7 @@ def _add_em_3d_reconstruction(structure: gemmi.Structure, block: gemmi.cif.Block
     """
     if structure.resolution <= 0 or not _is_em_method(structure):
         return
-    if block.get_mmcif_category("_em_3d_reconstruction.resolution"):
+    if block.get_mmcif_category("_em_3d_reconstruction."):
         msg = (
             "Gemmi has support for _em_3d_reconstruction, please create "
             "issue to remove _add_em_3d_reconstruction function"
