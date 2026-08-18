@@ -232,6 +232,26 @@ def best_uniprot_per_chain(mappings: set[FlattenedUniprotChainMapping]) -> set[F
     return result
 
 
+def _prefer_sifts_uniprot_per_chain(
+    sift_mappings: set[FlattenedUniprotChainMapping],
+    struct_ref_mappings: set[FlattenedUniprotChainMapping],
+) -> set[FlattenedUniprotChainMapping]:
+    sift_groups: dict[str, set[FlattenedUniprotChainMapping]] = defaultdict(set)
+    struct_ref_groups: dict[str, set[FlattenedUniprotChainMapping]] = defaultdict(set)
+
+    for mapping in sift_mappings:
+        sift_groups[mapping.chain_id].add(mapping)
+    for mapping in struct_ref_mappings:
+        struct_ref_groups[mapping.chain_id].add(mapping)
+
+    result: set[FlattenedUniprotChainMapping] = set()
+    for chain_id in sift_groups.keys() | struct_ref_groups.keys():
+        candidates = sift_groups.get(chain_id) or struct_ref_groups[chain_id]
+        result.update(best_uniprot_per_chain(candidates))
+
+    return result
+
+
 UniprotSource = Literal["both", "sifts", "struct_ref_seq", "fallback"]
 """From which source to extract UniProt accessions from a structure."""
 
@@ -248,10 +268,13 @@ def structure_to_uniprot(
             - ``sifts``: Read from entity ``sifts_unp_acc`` values.
             - ``struct_ref_seq``: Read from ``_struct_ref_seq`` filtered by
                 ``_struct_ref`` records with ``db_name=UNP``.
-            - ``both``: Merge SIFTS and struct_ref_seq results.
+            - ``both``: Prefer SIFTS mappings per chain; if a chain has no SIFTS
+                mapping, use ``_struct_ref_seq``. Within the chosen source,
+                prefer higher aligned residue count and then alphabetical accession.
             - ``fallback``: Return SIFTS when available, otherwise ``struct_ref_seq``.
         one_uniprot_per_chain: If True, return only the best UniProt per chain,
             based on highest aligned residue count, with ties broken alphabetically by accession.
+            When ``source='both'``, SIFTS is preferred over ``_struct_ref_seq`` for each chain.
             Otherwise, return all UniProt mappings for each chain.
 
     Returns:
@@ -267,6 +290,8 @@ def structure_to_uniprot(
     elif source == "struct_ref_seq":
         mappings = struct_ref_mappings
     elif source == "both":
+        if one_uniprot_per_chain:
+            return _prefer_sifts_uniprot_per_chain(sift_mappings, struct_ref_mappings)
         mappings = sift_mappings | struct_ref_mappings
     elif source == "fallback":
         mappings = sift_mappings or struct_ref_mappings

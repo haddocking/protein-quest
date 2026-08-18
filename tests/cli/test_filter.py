@@ -611,8 +611,8 @@ class TestResolution:
                 "sequence_identity": "1.000",
                 "total_residue_count": "260",
                 "uniprot_accession": "P0ABE7",
-                "uniprot_end": "127",
-                "uniprot_start": "23",
+                "uniprot_end": "13",
+                "uniprot_start": "4",
             },
             {
                 "chain_length": "131",

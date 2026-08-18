@@ -598,6 +598,17 @@ def test_flatten_uniprot_chain_mappings(mappings: UniprotChainMappings, expected
             },
             id="2chain-1each",
         ),
+        pytest.param(
+            {
+                FlattenedUniprotChainMapping("P12345", 10, 14, "A", 1.0, 5),
+                FlattenedUniprotChainMapping("P67879", 20, 24, "A", 1.0, 5),
+                FlattenedUniprotChainMapping("P99999", 20, 25, "A", 1.0, 6),
+            },
+            {
+                FlattenedUniprotChainMapping("P99999", 20, 25, "A", 1.0, 6),
+            },
+            id="same-chain-prefers-highest-residue-count-before-alpha",
+        ),
     ],
 )
 def test_best_uniprot_per_chain(
@@ -697,68 +708,68 @@ def test_best_uniprot_per_chain(
             "both",
             {
                 FlattenedUniprotChainMapping(
-                    uniprot_accession="Q7ZT64",
-                    uniprot_start=1,
+                    uniprot_accession="P84233",
+                    uniprot_start=37,
                     uniprot_end=136,
                     chain_id="A",
-                    sequence_identity=2.0,
-                    aligned_residue_count=272,
+                    sequence_identity=1.0,
+                    aligned_residue_count=100,
                 ),
                 FlattenedUniprotChainMapping(
                     uniprot_accession="P62806",
-                    uniprot_start=1,
-                    uniprot_end=102,
+                    uniprot_start=18,
+                    uniprot_end=103,
                     chain_id="F",
                     sequence_identity=1.0,
-                    aligned_residue_count=102,
+                    aligned_residue_count=86,
                 ),
                 FlattenedUniprotChainMapping(
                     uniprot_accession="P62806",
-                    uniprot_start=1,
-                    uniprot_end=102,
+                    uniprot_start=24,
+                    uniprot_end=103,
                     chain_id="B",
                     sequence_identity=1.0,
-                    aligned_residue_count=102,
+                    aligned_residue_count=80,
                 ),
                 FlattenedUniprotChainMapping(
-                    uniprot_accession="P17317",
-                    uniprot_start=1,
-                    uniprot_end=127,
+                    uniprot_accession="P0C0S5",
+                    uniprot_start=17,
+                    uniprot_end=119,
                     chain_id="C",
                     sequence_identity=1.0,
-                    aligned_residue_count=127,
+                    aligned_residue_count=103,
                 ),
                 FlattenedUniprotChainMapping(
                     uniprot_accession="P02281",
-                    uniprot_start=1,
-                    uniprot_end=125,
+                    uniprot_start=32,
+                    uniprot_end=126,
                     chain_id="D",
                     sequence_identity=1.0,
-                    aligned_residue_count=125,
+                    aligned_residue_count=95,
                 ),
                 FlattenedUniprotChainMapping(
-                    uniprot_accession="Q7ZT64",
-                    uniprot_start=1,
+                    uniprot_accession="P84233",
+                    uniprot_start=34,
                     uniprot_end=136,
                     chain_id="E",
-                    sequence_identity=2.0,
-                    aligned_residue_count=272,
+                    sequence_identity=1.0,
+                    aligned_residue_count=103,
                 ),
                 FlattenedUniprotChainMapping(
                     uniprot_accession="P02281",
-                    uniprot_start=1,
-                    uniprot_end=125,
+                    uniprot_start=32,
+                    uniprot_end=126,
                     chain_id="H",
                     sequence_identity=1.0,
-                    aligned_residue_count=125,
+                    aligned_residue_count=95,
                 ),
                 FlattenedUniprotChainMapping(
-                    uniprot_accession="P17317",
-                    uniprot_start=1,
-                    uniprot_end=127,
+                    uniprot_accession="P0C0S5",
+                    uniprot_start=17,
+                    uniprot_end=123,
                     chain_id="G",
                     sequence_identity=1.0,
-                    aligned_residue_count=127,
+                    aligned_residue_count=107,
                 ),
             },
             id="multiaccession-multichain",
@@ -827,6 +838,48 @@ def test_structure_to_uniprot_issue_155_keeps_all_accessions_for_single_chain(ci
     assert {(mapping.chain_id, mapping.uniprot_accession) for mapping in actual if mapping.chain_id == "A"} == {
         ("A", "Q9UEC0"),
         ("A", "O00482"),
+    }
+
+
+def test_structure_to_uniprot_issue_155_prefers_sifts_by_default(cif_3plz: Path):
+    structure = read_structure(cif_3plz)
+
+    actual = structure_to_uniprot(structure, source="both")
+
+    assert {
+        (mapping.chain_id, mapping.uniprot_accession, mapping.aligned_residue_count)
+        for mapping in actual
+        if mapping.chain_id == "A"
+    } == {
+        ("A", "O00482", 231),
+    }
+
+
+def test_structure_to_uniprot_em_cif_differs_between_sifts_and_struct_ref_seq(em_cif: Path):
+    structure = read_structure(em_cif)
+
+    sifts = structure_to_uniprot(structure, source="sifts", one_uniprot_per_chain=False)
+    struct_ref_seq = structure_to_uniprot(structure, source="struct_ref_seq", one_uniprot_per_chain=False)
+
+    assert sifts == {
+        FlattenedUniprotChainMapping(
+            uniprot_accession="P0ABE7",
+            uniprot_start=4,
+            uniprot_end=13,
+            chain_id="A",
+            sequence_identity=1.0,
+            aligned_residue_count=10,
+        )
+    }
+    assert struct_ref_seq == {
+        FlattenedUniprotChainMapping(
+            uniprot_accession="P0ABE7",
+            uniprot_start=23,
+            uniprot_end=127,
+            chain_id="A",
+            sequence_identity=1.0,
+            aligned_residue_count=105,
+        )
     }
 
 

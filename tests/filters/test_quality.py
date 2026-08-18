@@ -246,8 +246,8 @@ class TestPartitionStructuresForQualityClustering:
                 QualityStructure(
                     id="8W77",
                     uniprot_accession="P0ABE7",
-                    uniprot_start=23,
-                    uniprot_end=127,
+                    uniprot_start=4,
+                    uniprot_end=13,
                     sequence_identity=1.0,
                     chain_length=260,
                     geometry_quality=75.0,
