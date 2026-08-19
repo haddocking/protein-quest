@@ -160,7 +160,7 @@ def structure_metadata(
         ChainNotFoundError: If the chain specified in the UniProt mapping is not found in the structure.
     """
     total_residue_count = nr_of_residues_in_total(structure)
-    uniprot_mappings = structure_to_uniprot(structure)
+    uniprot_mappings = structure_to_uniprot(structure, structure_file=path)
 
     if not uniprot_mappings:
         msg = f"No UniProt mapping found in structure {structure.name}"

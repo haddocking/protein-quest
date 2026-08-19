@@ -246,9 +246,9 @@ class TestPartitionStructuresForQualityClustering:
                 QualityStructure(
                     id="8W77",
                     uniprot_accession="P0ABE7",
-                    uniprot_start=23,
+                    uniprot_start=4,
                     uniprot_end=127,
-                    sequence_identity=1.0,
+                    sequence_identity=0.927,
                     chain_length=260,
                     geometry_quality=75.0,
                     input_file=em_cif,

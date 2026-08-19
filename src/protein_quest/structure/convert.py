@@ -79,7 +79,7 @@ def _handle_pdb_like_input(
 ) -> ConversionStatistics:
     structure = read_structure(input_file)
     new_structure, _, uniprot_chain_mappings = add_uniprot_accessions2structure(
-        structure, pdb2uniprot, chain_system=chain_system
+        structure, pdb2uniprot, chain_system=chain_system, structure_file=input_file
     )
     if structure is new_structure and extension == output_format:
         msg = "File %s is already in %s format and does not need change, copying to %s"

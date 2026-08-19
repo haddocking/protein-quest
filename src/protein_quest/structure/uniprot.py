@@ -28,6 +28,49 @@ from protein_quest.uniprot_chains import (
 logger = logging.getLogger(__name__)
 
 
+def _looks_like_mmcif_file(structure_file: Path | None) -> bool:
+    if structure_file is None:
+        return False
+    return structure_file.suffix == ".cif" or structure_file.suffixes[-2:] == [".cif", ".gz"]
+
+
+def _sift_mappings_from_source(
+    structure: gemmi.Structure,
+    structure_file: Path | None = None,
+    *,
+    best_only: bool = True,
+) -> UniprotChainMappings:
+    if structure_file is not None and _looks_like_mmcif_file(structure_file):
+        return _label_mappings_to_auth_system(
+            structure,
+            uniprot_chain_mappings_from_cif(structure_file, best_only=best_only),
+        )
+    return uniprot_chain_mappings_from_sifts(structure)
+
+
+def _label_mappings_to_auth_system(
+    structure: gemmi.Structure, mappings: UniprotChainMappings
+) -> UniprotChainMappings:
+    label2auth = get_label2auth_chains(structure)
+    try:
+        return {
+            UniprotChainMapping(
+                uniprot_accession=mapping.uniprot_accession,
+                chain_ranges=tuple(
+                    UniprotChainRange(
+                        chain_ids=tuple(label2auth[label_chain] for label_chain in chain_range.chain_ids),
+                        start=chain_range.start,
+                        end=chain_range.end,
+                    )
+                    for chain_range in mapping.chain_ranges
+                ),
+            )
+            for mapping in mappings
+        }
+    except KeyError as e:
+        raise ChainNotFoundError(e.args[0], structure.name, set(label2auth.keys())) from None
+
+
 def uniprot_chain_mappings_from_cif(structure_file: Path, best_only: bool = True) -> UniprotChainMappings:
     """Extract UniProt chain mappings from raw ``_pdbx_sifts_unp_segments`` rows.
 
@@ -271,8 +314,12 @@ def best_uniprot_per_chain(mappings: set[FlattenedUniprotChainMapping]) -> set[F
         if len(chain_seqs) == 1:
             result.add(chain_seqs[0])
         else:
-            result.add(min(chain_seqs, key=lambda s: (-s.aligned_residue_count, s.uniprot_accession)))
+            result.add(min(chain_seqs, key=_best_uniprot_sort_key))
     return result
+
+
+def _best_uniprot_sort_key(mapping: FlattenedUniprotChainMapping) -> tuple[int, str]:
+    return (-mapping.aligned_residue_count, mapping.uniprot_accession)
 
 
 UniprotSource = Literal["both", "sifts", "struct_ref_seq", "fallback"]
@@ -280,7 +327,10 @@ UniprotSource = Literal["both", "sifts", "struct_ref_seq", "fallback"]
 
 
 def structure_to_uniprot(
-    structure: gemmi.Structure, source: UniprotSource = "both", one_uniprot_per_chain: bool = True
+    structure: gemmi.Structure,
+    source: UniprotSource = "both",
+    one_uniprot_per_chain: bool = True,
+    structure_file: Path | None = None,
 ) -> set[FlattenedUniprotChainMapping]:
     """Extract UniProt chain mappings from a structure.
 
@@ -296,12 +346,15 @@ def structure_to_uniprot(
         one_uniprot_per_chain: If True, return only the best UniProt per chain,
             based on highest aligned residue count, with ties broken alphabetically by accession.
             Otherwise, return all UniProt mappings for each chain.
+        structure_file: Optional source mmCIF path. When provided for ``.cif`` or
+            ``.cif.gz`` files, SIFTS mappings are extracted from raw
+            ``_pdbx_sifts_unp_segments`` rows before Gemmi drops information.
 
     Returns:
         Set of flattened per-(accession, chain) records with merged start/end,
         summed aligned residue counts, and computed sequence identity.
     """
-    sift_mappings = flatten_uniprot_chain_mappings(uniprot_chain_mappings_from_sifts(structure))
+    sift_mappings = flatten_uniprot_chain_mappings(_sift_mappings_from_source(structure, structure_file))
     struct_ref_mappings = flatten_uniprot_chain_mappings(uniprot_chain_mappings_from_struct_ref_seq(structure))
 
     mappings: set[FlattenedUniprotChainMapping] = set()
@@ -322,17 +375,18 @@ def structure_to_uniprot(
     return mappings
 
 
-def structure2uniprot_accessions(structure: gemmi.Structure) -> set[str]:
+def structure2uniprot_accessions(structure: gemmi.Structure, structure_file: Path | None = None) -> set[str]:
     """Extract UniProt accessions from a gemmi Structure object.
 
     Logs a warning and returns an empty set if no accessions are found in structure.
 
     Args:
         structure: The gemmi Structure object to extract UniProt accessions from.
+        structure_file: Optional source mmCIF path to preserve raw SIFTS segment data.
 
     Returns:
         A set of UniProt accessions found in the structure."""
-    mappings = structure_to_uniprot(structure, one_uniprot_per_chain=False)
+    mappings = structure_to_uniprot(structure, one_uniprot_per_chain=False, structure_file=structure_file)
     return {m.uniprot_accession for m in mappings}
 
 
@@ -511,6 +565,7 @@ def add_uniprot_accessions2structure(
     pdb2uniprot: Pdb2UniprotChainsMapping | None,
     *,
     chain_system: ChainIdSystem = "auth",
+    structure_file: Path | None = None,
 ) -> tuple[gemmi.Structure, bool, UniprotChainMappings]:
     """Add UniProt accessions to a structure if they are missing, based on the provided pdb2uniprot mapping.
 
@@ -524,6 +579,8 @@ def add_uniprot_accessions2structure(
             If provided, will be used to inject UniProt accessions into the structure if they are missing.
             If None, the structure is returned unchanged.
         chain_system: System of chain ids in ``pdb2uniprot`` mapping.
+        structure_file: Optional source mmCIF path to preserve raw SIFTS segment data
+            when checking which UniProt mappings are already present.
 
     Returns:
         A tuple of (structure, injected, uniprot_mappings) where:
@@ -545,7 +602,7 @@ def add_uniprot_accessions2structure(
     expected_mappings = _rename_chain_based_on_provenance(structure, expected_mappings)
     expected_pairs = _mapping_pairs(expected_mappings)
 
-    sift_mappings = uniprot_chain_mappings_from_sifts(structure)
+    sift_mappings = _sift_mappings_from_source(structure, structure_file)
     struct_ref_mappings = uniprot_chain_mappings_from_struct_ref_seq(structure)
     known_mappings = sift_mappings | struct_ref_mappings
     known_pairs = _mapping_pairs(known_mappings)

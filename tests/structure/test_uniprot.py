@@ -72,7 +72,7 @@ def _mapping(pdb_id: str, uniprot_accession: str, uniprot_chains: str) -> Pdb2Un
 def test_structure2uniprot_accessions(cif_fixture: str, expected: set[str], request: pytest.FixtureRequest):
     path = request.getfixturevalue(cif_fixture)
     structure = read_structure(path)
-    accessions = structure2uniprot_accessions(structure)
+    accessions = structure2uniprot_accessions(structure, structure_file=path)
 
     assert accessions == expected
 
@@ -1025,6 +1025,23 @@ def test_structure_to_uniprot_allow_multiple_accessions_per_chain(multi_accessio
     }
 
     assert actual == expected
+
+
+def test_structure_to_uniprot_uses_raw_cif_sifts_segments_when_path_provided(em_cif: Path):
+    structure = read_structure(em_cif)
+
+    actual = structure_to_uniprot(structure, source="sifts", structure_file=em_cif)
+
+    assert actual == {
+        FlattenedUniprotChainMapping(
+            uniprot_accession="P0ABE7",
+            uniprot_start=4,
+            uniprot_end=127,
+            chain_id="A",
+            sequence_identity=0.9274193548387096,
+            aligned_residue_count=115,
+        )
+    }
 
 
 def test_structure_to_uniprot_issue_155_keeps_all_accessions_for_single_chain(cif_3plz: Path):

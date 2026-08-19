@@ -75,6 +75,7 @@ def _sifts_polymer_rows(structure: gemmi.Structure) -> dict[str, list[str]]:
                 rows["unp_num"].append(str(unp_num))
                 rows["unp_acc"].append(entity.sifts_unp_acc[acc_index])
 
+    # TODO also write _pdbx_sifts_unp_segments as uniprot_chain_mappings_from_cif reads those
     return rows
 
 
