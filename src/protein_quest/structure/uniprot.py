@@ -4,6 +4,7 @@ import logging
 from collections import defaultdict, namedtuple
 from collections.abc import Iterable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
 
 import gemmi
@@ -15,6 +16,7 @@ from protein_quest.structure.chains import (
     retrieve_chain_extraction_provenance,
 )
 from protein_quest.structure.errors import ChainNotFoundError
+from protein_quest.structure.formats import read_structure_as_cif_block
 from protein_quest.uniprot_chains import (
     Pdb2UniprotChainsMapping,
     UniprotChainMapping,
@@ -24,6 +26,47 @@ from protein_quest.uniprot_chains import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def uniprot_chain_mappings_from_cif(structure_file: Path, best_only: bool = True) -> UniprotChainMappings:
+    """Extract UniProt chain mappings from raw ``_pdbx_sifts_unp_segments`` rows.
+
+    Args:
+        structure_file: Path to an mmCIF file readable by ``gemmi.cif.read_file``.
+        best_only: If True, only return rows where ``best_mapping`` is ``y``.
+
+    Returns:
+        Set of UniProt chain mappings with ranges per chain. Empty if no SIFTS
+        segment data is found.
+    """
+    block = read_structure_as_cif_block(structure_file)
+    if block is None:
+        return set()
+    sifts_segments = block.get_mmcif_category("_pdbx_sifts_unp_segments.")
+    if not sifts_segments:
+        # This happens for archived cif files from rcdb/pdbe or homegrown files.
+        return set()
+
+    acc_to_ranges: dict[str, list[UniprotChainRange]] = defaultdict(list)
+    for i, acc in enumerate(sifts_segments["unp_acc"]):
+        if best_only and sifts_segments["best_mapping"][i] != "y":
+            continue
+        chain_id = sifts_segments["asym_id"][i]
+        try:
+            start = int(sifts_segments["unp_start"][i])
+            end = int(sifts_segments["unp_end"][i])
+        except (ValueError, TypeError):
+            logger.info(
+                "Skipping pdbx_sifts_unp_segments row with accession %s in %s due to non-numeric unp_start/unp_end",
+                acc,
+                structure_file,
+            )
+            continue
+        acc_to_ranges[acc].append(UniprotChainRange(chain_ids=(chain_id,), start=start, end=end))
+
+    return {
+        UniprotChainMapping(uniprot_accession=acc, chain_ranges=tuple(ranges)) for acc, ranges in acc_to_ranges.items()
+    }
 
 
 def uniprot_chain_mappings_from_struct_ref_seq(structure: gemmi.Structure) -> UniprotChainMappings:

@@ -8,6 +8,7 @@ from gemmi import cif
 from protein_quest.structure.formats import (
     gunzip_file,
     read_structure,
+    read_structure_as_cif_block,
     structure2cifgz,
     write_structure,
 )
@@ -33,6 +34,58 @@ def test_read_structure(sample2_cif: Path, tmp_path: Path, extension: str):
     structure_from_extension = read_structure(thefile)
 
     assert structure_from_extension.make_pdb_string() == structure_from_cif.make_pdb_string()
+
+
+def test_read_structure_as_cif_block(sample2_cif: Path):
+    block = read_structure_as_cif_block(sample2_cif)
+
+    assert block is not None
+    assert block.name == "2Y29"
+
+def test_read_structure_as_cif_block_no_blocks(comments_only_cif: Path):
+    block = read_structure_as_cif_block(comments_only_cif)
+
+    assert block is None
+
+@pytest.mark.parametrize("extension", [".bcif", ".bcif.gz"])
+def test_read_structure_as_cif_block_binary_formats(sample2_cif: Path, tmp_path: Path, extension: str):
+    structure = read_structure(sample2_cif)
+    thefile = tmp_path / f"foo{extension}"
+    write_structure(structure, thefile)
+
+    block = read_structure_as_cif_block(thefile)
+
+    assert block is not None
+    assert block.name == "2Y29"
+
+
+def test_read_structure_as_cif_block_logs_read_error(af_pdb: Path, caplog: pytest.LogCaptureFixture):
+    caplog.set_level("INFO")
+
+    block = read_structure_as_cif_block(af_pdb)
+
+    assert block is None
+    assert "Unable to read mmCIF block from" in caplog.text
+    assert str(af_pdb) in caplog.text
+    assert "expected block header (data_)" in caplog.text
+
+
+@pytest.mark.parametrize("extension", [".bcif", ".bcif.gz"])
+def test_read_structure_as_cif_block_logs_binary_read_error(
+    tmp_path: Path, extension: str, caplog: pytest.LogCaptureFixture
+):
+    caplog.set_level("INFO")
+    bad_file = tmp_path / f"bad{extension}"
+    if extension == ".bcif":
+        bad_file.write_bytes(b"not a bcif")
+    else:
+        bad_file.write_bytes(gzip.compress(b"not a bcif"))
+
+    block = read_structure_as_cif_block(bad_file)
+
+    assert block is None
+    assert "Unable to read mmCIF block from" in caplog.text
+    assert str(bad_file) in caplog.text
 
 
 def test_structure2cifgz(sample2_cif: Path):

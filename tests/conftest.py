@@ -1,3 +1,4 @@
+import gzip
 from pathlib import Path
 
 import gemmi
@@ -94,6 +95,25 @@ def atomless_cif(tmp_path: Path) -> Path:
     write_structure(structure, fn)
     # Gemmi has shortcut for atomless structures, which causes name to be  " " when read.
     return fn
+
+
+@pytest.fixture
+def comments_only_cif(tmp_path: Path) -> Path:
+    """A syntactically valid CIF file with no data blocks."""
+    path = tmp_path / "comments_only.cif"
+    path.write_text("#\n#\n")
+    return path
+
+
+@pytest.fixture
+def malformed_sifts_segments_cif(em_cif: Path, tmp_path: Path) -> Path:
+    """EM CIF with one non-numeric `_pdbx_sifts_unp_segments.unp_start` value."""
+    path = tmp_path / "malformed_sifts_segments.cif"
+    with gzip.open(em_cif, "rt") as handle:
+        body = handle.read()
+    body = body.replace("1 A P0ABE7 1 1 4 13 227 236 y 0.85", "1 A P0ABE7 1 1 ? 13 227 236 y 0.85")
+    path.write_text(body)
+    return path
 
 
 @pytest.fixture

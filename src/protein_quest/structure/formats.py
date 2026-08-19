@@ -197,6 +197,58 @@ def read_structure(file: Path) -> gemmi.Structure:
     return gemmi.read_structure(str(file))
 
 
+def _bcif_to_cif_block(file: Path, *, source_file: Path | None = None) -> gemmi.cif.Block | None:
+    source = source_file or file
+    cif_content = bcif2cif(file)
+    if not cif_content:
+        logger.info("Unable to read mmCIF block from %s: empty CIF content after BCIF conversion", source)
+        return None
+    try:
+        doc = gemmi.cif.read_string(cif_content)
+    except ValueError as exc:
+        logger.info("Unable to read mmCIF block from %s: %s", source, exc)
+        return None
+    return doc.sole_block() if len(doc) else None
+
+
+def _bcif_gz_to_cif_block(file: Path) -> gemmi.cif.Block | None:
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".bcif", delete=True) as tmp_bcif:
+            tmp_path = Path(tmp_bcif.name)
+            gunzip_file(file, output_file=tmp_path, keep_original=True)
+            return _bcif_to_cif_block(tmp_path, source_file=file)
+    except (OSError, EOFError) as exc:
+        logger.info("Unable to read mmCIF block from %s: %s", file, exc)
+        return None
+
+
+def read_structure_as_cif_block(file: Path) -> gemmi.cif.Block | None:
+    """Read a structure file as a raw mmCIF block when possible.
+
+    Useful because Gemmi structure objects do not preserve all mmCIF categories.
+
+    Args:
+        file: Path to an input file intended to be readable by
+            ``gemmi.cif.read_file``.
+
+    Returns:
+        The sole mmCIF block from the file, or ``None`` when the file cannot be
+        parsed as mmCIF or contains no blocks.
+    """
+    if file.name.endswith(".bcif"):
+        return _bcif_to_cif_block(file)
+    if file.name.endswith(".bcif.gz"):
+        return _bcif_gz_to_cif_block(file)
+    try:
+        doc = gemmi.cif.read_file(str(file))
+    except ValueError as exc:
+        logger.info("Unable to read mmCIF block from %s: %s", file, exc)
+        return None
+    if len(doc) == 0:
+        return None
+    return doc.sole_block()
+
+
 def bcif2cif(bcif_file: Path) -> str:
     """Convert a binary CIF (bcif) file to a CIF string.
 
