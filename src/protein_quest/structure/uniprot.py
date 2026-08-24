@@ -254,7 +254,7 @@ def structure_to_uniprot(
             based on highest aligned residue count, with ties broken alphabetically by accession.
             Otherwise, return all UniProt mappings for each chain.
         structure: The structure containing SIFTS and/or ``_struct_ref_seq`` data.
-            Can be passed if caller already read strcture.
+            Can be passed if caller already read structure.
             If not passed will use [protein_quest.structure.formats.read_structure][] to read `structure_file`.
 
     Returns:
@@ -498,7 +498,7 @@ def add_uniprot_accessions2structure(
             If provided, will be used to inject UniProt accessions into the structure if they are missing.
             If None, the structure is returned unchanged.
         structure: The gemmi Structure object to add UniProt accessions to.
-            Can be passed if caller already read strcture.
+            Can be passed if caller already read structure.
             If not passed will use [protein_quest.structure.formats.read_structure][] to read `structure_file`.
         chain_system: System of chain ids in ``pdb2uniprot`` mapping.
 
