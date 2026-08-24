@@ -22,7 +22,6 @@ from protein_quest.uniprot_chains import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
     from pathlib import Path
 
     from protein_quest.structure.chains import ChainExtractionProvenance, ChainIdSystem
