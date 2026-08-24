@@ -733,6 +733,67 @@ def test_best_uniprot_per_chain(
             },
             id="multi-accession-same-chain",
         ),
+        pytest.param(
+            "em_cif",
+            "both",
+            {
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="P0ABE7",
+                    uniprot_start=4,
+                    uniprot_end=127,
+                    chain_id="A",
+                    sequence_identity=0.9274193548387096,
+                    aligned_residue_count=115,
+                )
+            },
+            id="em-cif-both",
+        ),
+        pytest.param(
+            "em_cif",
+            "fallback",
+            {
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="P0ABE7",
+                    uniprot_start=4,
+                    uniprot_end=127,
+                    chain_id="A",
+                    sequence_identity=0.9274193548387096,
+                    aligned_residue_count=115,
+                )
+            },
+            id="em-cif-fallback",
+        ),
+        pytest.param(
+            "em_cif",
+            "sifts",
+            {
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="P0ABE7",
+                    uniprot_start=4,
+                    uniprot_end=127,
+                    chain_id="A",
+                    sequence_identity=0.9274193548387096,
+                    aligned_residue_count=115,
+                )
+            },
+            id="em-cif-sifts",
+        ),
+        pytest.param(
+            "em_cif",
+            "struct_ref_seq",
+            {
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="P0ABE7",
+                    # Notice that for other sources, the start is 4, but in struct_ref_seq, it is 23
+                    uniprot_start=23,
+                    uniprot_end=127,
+                    chain_id="A",
+                    sequence_identity=1.0,
+                    aligned_residue_count=105,
+                )
+            },
+            id="em-cif-struct_ref_seq",
+        ),
     ],
 )
 def test_structure_to_uniprot(
