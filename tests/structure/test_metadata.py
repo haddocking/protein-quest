@@ -3,7 +3,7 @@ from pathlib import Path
 import gemmi
 import pytest
 
-from protein_quest.structure.formats import read_structure
+from protein_quest.structure.formats import read_structure, write_structure
 from protein_quest.structure.metadata import StructureMetadata, structure_metadata
 
 
@@ -213,12 +213,12 @@ class TestStructureMetadata:
     )
     def test_cif_fixtures(self, cif_fixture: str, expected: StructureMetadata, request: pytest.FixtureRequest):
         path = request.getfixturevalue(cif_fixture)
-        result = structure_metadata(read_structure(path), path=path)
+        result = structure_metadata(path, structure=read_structure(path))
 
         assert result == expected
 
     def test_multiple_accessions_warns(self, multi_accession_cif: Path, caplog: pytest.LogCaptureFixture):
-        structure_metadata(read_structure(multi_accession_cif), path=multi_accession_cif)
+        structure_metadata(multi_accession_cif, structure=read_structure(multi_accession_cif))
 
         message = caplog.text
         assert "Multiple UniProt mappings found in structure" in message
@@ -226,15 +226,19 @@ class TestStructureMetadata:
         assert "P01100" in message
         assert "P05412" in message
 
-    def test_empty_structure(self):
+    def test_empty_structure(self, tmp_path: Path):
         structure = gemmi.Structure()
         structure.name = "EMPTY"
+        path = tmp_path / "empty.cif"
+        write_structure(structure, path)
 
         with pytest.raises(ValueError, match="No chains found in structure EMPTY"):
-            structure_metadata(structure)
+            structure_metadata(path, structure=structure)
 
-    def test_archived_em_structure(self, fake_archive_em_structure: gemmi.Structure):
-        result = structure_metadata(fake_archive_em_structure)
+    def test_archived_em_structure(self, fake_archive_em_structure: gemmi.Structure, tmp_path: Path):
+        path = tmp_path / "1abc.cif"
+        write_structure(fake_archive_em_structure, path)
+        result = structure_metadata(path, structure=fake_archive_em_structure)
 
         expected = StructureMetadata(
             id="1ABC",

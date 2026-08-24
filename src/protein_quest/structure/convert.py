@@ -12,14 +12,18 @@ from protein_quest.structure.formats import (
     bcif2cif,
     gunzip_file,
     read_structure,
+    read_structure_as_cif_block,
     write_structure,
 )
+from protein_quest.structure.sifts import uniprot_chain_mappings_from_cif
 from protein_quest.structure.types import (
     CifOutputFormat,
     cif_output_formats,
     valid_structure_file_extensions,
 )
-from protein_quest.structure.uniprot import add_uniprot_accessions2structure
+from protein_quest.structure.uniprot import (
+    add_uniprot_accessions2structure,
+)
 from protein_quest.uniprot_chains import (
     Pdb2UniprotChainsMapping,
     UniprotChainMappings,
@@ -79,7 +83,7 @@ def _handle_pdb_like_input(
 ) -> ConversionStatistics:
     structure = read_structure(input_file)
     new_structure, _, uniprot_chain_mappings = add_uniprot_accessions2structure(
-        structure, pdb2uniprot, chain_system=chain_system, structure_file=input_file
+        input_file, pdb2uniprot, structure=structure, chain_system=chain_system
     )
     if structure is new_structure and extension == output_format:
         msg = "File %s is already in %s format and does not need change, copying to %s"
@@ -87,6 +91,9 @@ def _handle_pdb_like_input(
         copyfile(input_file, output_file, copy_method)
         return _new_conversion_statistics(input_file, output_file, uniprot_chain_mappings)
 
+    # No need to deal with sifts unp mapping because pdb does not have any
+    # and generated cif also does not have any.
+    # pdb2uniprot will update struct_ref_seq.
     write_structure(new_structure, output_file)
     return _new_conversion_statistics(input_file, output_file, uniprot_chain_mappings)
 
@@ -103,7 +110,14 @@ def _handle_cif_input(
         return _new_conversion_statistics(input_file, output_file)
 
     structure = read_structure(input_file)
-    write_structure(structure, output_file)
+    # Gemmi does not retain SIFTS category, copy over SIFTS category on cif block level.
+    block = read_structure_as_cif_block(input_file)
+    uniprot_chain_mappings = uniprot_chain_mappings_from_cif(block) if block is not None else set()
+    write_structure(
+        structure,
+        output_file,
+        uniprot_chain_mappings=uniprot_chain_mappings,
+    )
     return _new_conversion_statistics(input_file, output_file)
 
 
@@ -132,7 +146,14 @@ def _handle_bcif_input(
         return _new_conversion_statistics(input_file, output_file)
 
     structure = read_structure(input_file)
-    write_structure(structure, output_file)
+    # Gemmi does not retain SIFTS category, copy over SIFTS category on cif block level.
+    block = read_structure_as_cif_block(input_file)
+    uniprot_chain_mappings = uniprot_chain_mappings_from_cif(block) if block is not None else set()
+    write_structure(
+        structure,
+        output_file,
+        uniprot_chain_mappings=uniprot_chain_mappings,
+    )
     return _new_conversion_statistics(input_file, output_file)
 
 

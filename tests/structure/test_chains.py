@@ -21,6 +21,7 @@ from protein_quest.structure.chains import (
 )
 from protein_quest.structure.errors import ChainNotFoundError
 from protein_quest.structure.formats import read_structure
+from protein_quest.structure.uniprot import FlattenedUniprotChainMapping, structure_to_uniprot
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +80,26 @@ def test_write_single_chain_structure_file_happypath(sample2_cif: Path, tmp_path
     assert provenance.out_chain == "Z"
 
 
+def test_write_single_chain_structure_file_converts_auth_and_label_chain_ids(cif_8rw8: Path, tmp_path: Path):
+    input_structure = read_structure(cif_8rw8)
+    assert get_label2auth_chains(input_structure) == {"A": "B"}
+
+    output_file = write_single_chain_structure_file(
+        input_file=cif_8rw8,
+        chain2keep="B",
+        output_dir=tmp_path,
+        out_chain="Z",
+    )
+
+    structure = read_structure(output_file)
+    assert len(structure) == 1
+    assert len(structure[0]) == 1
+    assert structure[0]["Z"].name == "Z"
+    assert get_label2auth_chains(structure) == {"Z": "Z"}
+    assert find_chain_in_structure(structure, "Z", chain_system="auth") is not None
+    assert find_chain_in_structure(structure, "Z", chain_system="label") is not None
+
+
 def test_write_single_chain_structure_file_with_secondary_structure(sample_cif: Path, tmp_path: Path):
     output_file = write_single_chain_structure_file(
         input_file=sample_cif,
@@ -88,6 +109,28 @@ def test_write_single_chain_structure_file_with_secondary_structure(sample_cif: 
     structure = read_structure(output_file)
     assert len(structure.helices) == 6
     assert len(structure.sheets) == 1
+
+
+def test_write_single_chain_structure_file_keeps_and_renames_sifts(cif_3plz: Path, tmp_path: Path):
+    output_file = write_single_chain_structure_file(
+        input_file=cif_3plz,
+        chain2keep="A",
+        output_dir=tmp_path,
+    )
+
+    structure = read_structure(output_file)
+    actual = structure_to_uniprot(output_file, structure=structure, source="sifts", one_uniprot_per_chain=False)
+
+    assert actual == {
+        FlattenedUniprotChainMapping(
+            uniprot_accession="O00482",
+            uniprot_start=300,
+            uniprot_end=541,
+            chain_id="A",
+            sequence_identity=1.0,
+            aligned_residue_count=242,
+        )
+    }
 
 
 def test_write_single_chain_structure_file_force_rewrites_single_chain(sample2_cif: Path, tmp_path: Path):

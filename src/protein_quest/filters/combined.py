@@ -377,7 +377,7 @@ def _partition_structure_file_and_apply_alphafold_filter(
     geometry_quality = scores[lowered_structure_id].geometry_quality if lowered_structure_id in scores else None
 
     try:
-        metadata = structure_metadata(structure, path=input_file)
+        metadata = structure_metadata(input_file, structure=structure)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"Failed to extract metadata from {input_file}: {e}")
         parts.processed.append(

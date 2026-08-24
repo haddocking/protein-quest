@@ -408,17 +408,22 @@ class TestFilterFilesOnResolution:
         assert results == [expected]
         assert results[0].output_file is not None and results[0].output_file.exists()
 
-    def test_lax_mode_passes_structure_without_uniprot_accession(self, no_uniprot_cif: Path):
-        output_dir = no_uniprot_cif.parent / "output"
+    def test_lax_mode_passes_structure_without_uniprot_accession(self, no_uniprot_cif: Path, tmp_path: Path):
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        local_no_uniprot = input_dir / no_uniprot_cif.name
+        local_no_uniprot.symlink_to(no_uniprot_cif)
+
+        output_dir = tmp_path / "output"
         results = list(
             filter_files_on_resolution(
-                input_files=[no_uniprot_cif], output_dir=output_dir, top=1, lax=True, min_sequence_identity=0.0
+                input_files=[local_no_uniprot], output_dir=output_dir, top=1, lax=True, min_sequence_identity=0.0
             )
         )
 
         expected = ResolutionFilterStatistics(
             id="2Y29",
-            input_file=no_uniprot_cif,
+            input_file=local_no_uniprot,
             uniprot_accession=None,
             resolution=2.3,
             total_residue_count=8,
@@ -428,8 +433,8 @@ class TestFilterFilesOnResolution:
             sequence_identity=0.0,
             chain_length=8,
             passed=True,
-            output_file=output_dir / no_uniprot_cif.name,
-            discard_reason=NoUniProtAccessionError(no_uniprot_cif),
+            output_file=output_dir / local_no_uniprot.name,
+            discard_reason=NoUniProtAccessionError(local_no_uniprot),
         )
         assert results == [expected]
         assert results[0].output_file is not None and results[0].output_file.exists()

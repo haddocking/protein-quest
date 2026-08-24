@@ -173,7 +173,7 @@ def _structure_file2partition(
         return parts
 
     try:
-        metadata = structure_metadata(structure, path=input_file)
+        metadata = structure_metadata(input_file, structure=structure)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"Failed to extract metadata from {input_file}: {e}")
         parts.no_quality_results.append(

@@ -16,86 +16,11 @@ from mmcif.io.BinaryCifWriter import BinaryCifWriter
 from mmcif.io.PdbxReader import PdbxReader
 from mmcif.io.PdbxWriter import PdbxWriter
 
+from protein_quest.structure.sifts import uniprot_chain_mappings_to_cif
+from protein_quest.uniprot_chains import UniprotChainMappings
 from protein_quest.utils import user_cache_root_dir
 
 logger = logging.getLogger(__name__)
-
-
-def _sifts_polymer_rows(structure: gemmi.Structure) -> dict[str, list[str]]:
-    """Build minimal SIFTS residue rows for mmCIF output.
-
-    Gemmi reconstructs ``Entity.sifts_unp_acc`` and ``Residue.sifts_unp`` from
-    ``_pdbx_sifts_xref_db`` when reading mmCIF. This helper only emits the
-    subset of columns needed for that roundtrip.
-
-    Args:
-        structure: Structure whose polymer residues may contain SIFTS UniProt
-            annotations.
-
-    Returns:
-        Mapping of ``_pdbx_sifts_xref_db`` column names to row values. Returns
-        empty column lists when the structure has no SIFTS residue annotations
-        that can be written safely.
-    """
-    rows: dict[str, list[str]] = {
-        "entity_id": [],
-        "asym_id": [],
-        "seq_id_ordinal": [],
-        "seq_id": [],
-        "observed": [],
-        "unp_res": [],
-        "unp_num": [],
-        "unp_acc": [],
-    }
-    subchain_to_entity = {
-        subchain: entity for entity in structure.entities for subchain in entity.subchains if entity.sifts_unp_acc
-    }
-
-    for model in structure:
-        for chain in model:
-            polymer = chain.get_polymer()
-            if not polymer:
-                continue
-            subchain_id = polymer.subchain_id()
-            entity = subchain_to_entity.get(subchain_id)
-            if entity is None:
-                continue
-
-            for residue in polymer:
-                unp_res, acc_index, unp_num = residue.sifts_unp
-                if unp_num <= 0 or not unp_res:
-                    continue
-                rows["entity_id"].append(entity.name)
-                rows["asym_id"].append(subchain_id)
-                # Gemmi only consumes rows with seq_id_ordinal == 1.
-                rows["seq_id_ordinal"].append("1")
-                rows["seq_id"].append(str(residue.label_seq))
-                rows["observed"].append("y")
-                rows["unp_res"].append(unp_res)
-                rows["unp_num"].append(str(unp_num))
-                rows["unp_acc"].append(entity.sifts_unp_acc[acc_index])
-
-    # TODO also write _pdbx_sifts_unp_segments as uniprot_chain_mappings_from_cif reads those
-    return rows
-
-
-def _add_sifts_xref_db(structure: gemmi.Structure, block: gemmi.cif.Block):
-    """Append minimal SIFTS residue annotations to an mmCIF block.
-
-    This is needed because the mmCIF document produced by Gemmi is missing the
-    ``_pdbx_sifts_xref_db`` category, even when the input structure still has
-    SIFTS UniProt annotations in memory.
-
-    Args:
-        structure: Structure that may contain in-memory SIFTS annotations on
-            entities and residues.
-        block: mmCIF block produced for ``structure`` that should receive the
-            ``_pdbx_sifts_xref_db`` category when SIFTS rows are available.
-    """
-    rows = _sifts_polymer_rows(structure)
-    if not rows["entity_id"]:
-        return
-    block.set_mmcif_category("_pdbx_sifts_xref_db.", rows)
 
 
 def _add_em_3d_reconstruction(structure: gemmi.Structure, block: gemmi.cif.Block):
@@ -133,21 +58,26 @@ def _is_em_method(structure: gemmi.Structure) -> bool:
     return "electron microscopy" in experimental_method
 
 
-def _make_mmcif_document(structure: gemmi.Structure) -> gemmi.cif.Document:
+def _make_mmcif_document(
+    structure: gemmi.Structure,
+    *,
+    uniprot_chain_mappings: UniprotChainMappings | None = None,
+) -> gemmi.cif.Document:
     """Create an mmCIF document and preserve EM resolution metadata when needed."""
     doc = structure.make_mmcif_document()
     block = doc.sole_block()
 
     _add_em_3d_reconstruction(structure, block)
-    _add_sifts_xref_db(structure, block)
-    # TODO set _chem_comp.type from current always False to correct value, see
-    # https://github.com/project-gemmi/gemmi/discussions/362
-    # and
-    # https://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Items/_chem_comp.type.html
+    if uniprot_chain_mappings:
+        uniprot_chain_mappings_to_cif(uniprot_chain_mappings, block)
     return doc
 
 
-def write_structure(structure: gemmi.Structure, path: Path):
+def write_structure(
+    structure: gemmi.Structure,
+    path: Path,
+    uniprot_chain_mappings: UniprotChainMappings | None = None,
+):
     """Write a gemmi structure to a file.
 
     Args:
@@ -156,6 +86,8 @@ def write_structure(structure: gemmi.Structure, path: Path):
             The format depends on the file extension.
             See [StructureFileExtensions][protein_quest.structure.types.StructureFileExtensions]
             for supported extensions.
+        uniprot_chain_mappings: Optional UniProt chain mappings in label system to
+            emit as ``_pdbx_sifts_unp_segments`` for mmCIF outputs.
 
     Raises:
         ValueError: If the file extension is not supported."""
@@ -167,14 +99,14 @@ def write_structure(structure: gemmi.Structure, path: Path):
         with gzip.open(path, "wt") as f:
             f.write(body)
     elif path.name.endswith(".cif"):
-        doc = _make_mmcif_document(structure)
+        doc = _make_mmcif_document(structure, uniprot_chain_mappings=uniprot_chain_mappings)
         doc.write_file(str(path))
     elif path.name.endswith(".cif.gz"):
-        path.write_bytes(structure2cifgz(structure))
+        path.write_bytes(structure2cifgz(structure, uniprot_chain_mappings=uniprot_chain_mappings))
     elif path.name.endswith(".bcif"):
-        structure2bcif(structure, path)
+        structure2bcif(structure, path, uniprot_chain_mappings=uniprot_chain_mappings)
     elif path.name.endswith(".bcif.gz"):
-        structure2bcifgz(structure, path)
+        structure2bcifgz(structure, path, uniprot_chain_mappings=uniprot_chain_mappings)
     else:
         msg = f"Unsupported file extension in {path.name}."
         raise ValueError(msg)
@@ -312,7 +244,11 @@ def _initialize_dictionary_api(containers: list[Any]) -> DictionaryApi:
     return DictionaryApi(containerList=containers, consolidate=True)
 
 
-def structure2bcif(structure: gemmi.Structure, bcif_file: Path):
+def structure2bcif(
+    structure: gemmi.Structure,
+    bcif_file: Path,
+    uniprot_chain_mappings: UniprotChainMappings | None = None,
+):
     """Write a gemmi Structure object to a binary CIF (bcif) file.
 
     This is slower than other formats because gemmi does not support writing bcif files directly.
@@ -320,8 +256,10 @@ def structure2bcif(structure: gemmi.Structure, bcif_file: Path):
 
     Args:
         structure: The gemmi Structure object to write.
-        bcif_file: Path to the output binary CIF file."""
-    doc = _make_mmcif_document(structure)
+        bcif_file: Path to the output binary CIF file.
+        uniprot_chain_mappings: Optional UniProt chain mappings in label system to
+            emit as ``_pdbx_sifts_unp_segments`` for mmCIF outputs."""
+    doc = _make_mmcif_document(structure, uniprot_chain_mappings=uniprot_chain_mappings)
     containers: list[Any] = []
     with StringIO(doc.as_string()) as sio:
         reader = PdbxReader(sio)
@@ -331,15 +269,20 @@ def structure2bcif(structure: gemmi.Structure, bcif_file: Path):
     writer.serialize(str(bcif_file), containers)
 
 
-def structure2cifgz(structure: gemmi.Structure) -> bytes:
+def structure2cifgz(
+    structure: gemmi.Structure,
+    uniprot_chain_mappings: UniprotChainMappings | None = None,
+) -> bytes:
     """Render a gemmi Structure as gzipped mmCIF bytes.
 
     Args:
         structure: The gemmi Structure object to render.
+        uniprot_chain_mappings: Optional UniProt chain mappings in label system to
+            emit as ``_pdbx_sifts_unp_segments`` for mmCIF outputs.
 
     Returns:
         Gzipped mmCIF bytes."""
-    doc = _make_mmcif_document(structure)
+    doc = _make_mmcif_document(structure, uniprot_chain_mappings=uniprot_chain_mappings)
     return gzip.compress(doc.as_string().encode("utf-8"))
 
 
@@ -367,7 +310,11 @@ def gunzip_file(gz_file: Path, output_file: Path | None = None, keep_original: b
     return out_file
 
 
-def structure2bcifgz(structure: gemmi.Structure, bcif_gz_file: Path):
+def structure2bcifgz(
+    structure: gemmi.Structure,
+    bcif_gz_file: Path,
+    uniprot_chain_mappings: UniprotChainMappings | None = None,
+):
     """Write a gemmi Structure object to a binary CIF gzipped (bcif.gz) file.
 
     This is slower than other formats because gemmi does not support writing bcif files directly.
@@ -376,9 +323,11 @@ def structure2bcifgz(structure: gemmi.Structure, bcif_gz_file: Path):
 
     Args:
         structure: The gemmi Structure object to write.
-        bcif_gz_file: Path to the output binary CIF gzipped file."""
+        bcif_gz_file: Path to the output binary CIF gzipped file.
+        uniprot_chain_mappings: Optional UniProt chain mappings in label system to
+            emit as ``_pdbx_sifts_unp_segments`` for mmCIF outputs."""
     with tempfile.NamedTemporaryFile(suffix=".bcif", delete=True) as tmp_bcif:
         tmp_path = Path(tmp_bcif.name)
-        structure2bcif(structure, tmp_path)
+        structure2bcif(structure, tmp_path, uniprot_chain_mappings=uniprot_chain_mappings)
         with tmp_path.open("rb") as f_in, gzip.open(bcif_gz_file, "wb") as f_out:
             shutil.copyfileobj(f_in, f_out)

@@ -13,7 +13,9 @@ StructureFileExtensions = Literal[
     ".bcif.gz",
 ]
 """Type of supported structure file extensions."""
-valid_structure_file_extensions: set[str] = set(get_args(StructureFileExtensions))
+ordered_structure_file_extensions: tuple[str, ...] = get_args(StructureFileExtensions)
+"""Ordered structure file extensions in preferred lookup/write precedence."""
+valid_structure_file_extensions: frozenset[str] = frozenset(ordered_structure_file_extensions)
 """Set of valid structure file extensions."""
 
 CifOutputFormat = Literal[".cif", ".cif.gz"]

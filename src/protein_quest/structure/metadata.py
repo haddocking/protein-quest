@@ -13,6 +13,7 @@ from protein_quest.structure.chains import (
     nr_of_residues_in_total,
 )
 from protein_quest.structure.errors import ChainNotFoundError
+from protein_quest.structure.formats import read_structure
 from protein_quest.structure.types import StructureMethod
 from protein_quest.structure.uniprot import (
     ChainUniprotPair,
@@ -132,9 +133,8 @@ def _structure_method(structure: Structure) -> StructureMethod:
 
 
 def structure_metadata(
-    structure: gemmi.Structure,
-    *,
-    path: Path | None = None,
+    path: Path,
+    structure: gemmi.Structure | None = None,
 ) -> "StructureMetadata":
     """Extract metadata from a Gemmi structure.
 
@@ -149,8 +149,9 @@ def structure_metadata(
     with `uniprot_accession=None` and first chain in alphabetical order.
 
     Args:
-        structure: A Gemmi structure.
-        path: Optional source path used only for error context.
+        path: Source path used for UniProt extraction and error context.
+        structure: Optional pre-read Gemmi structure. When omitted, the
+            structure is read from ``path``.
 
     Returns:
         A ``StructureMetadata`` instance.
@@ -159,8 +160,9 @@ def structure_metadata(
         ValueError: If no UniProt mapping is found in the structure.
         ChainNotFoundError: If the chain specified in the UniProt mapping is not found in the structure.
     """
+    structure = read_structure(path) if structure is None else structure
     total_residue_count = nr_of_residues_in_total(structure)
-    uniprot_mappings = structure_to_uniprot(structure, structure_file=path)
+    uniprot_mappings = structure_to_uniprot(path, structure=structure)
 
     if not uniprot_mappings:
         msg = f"No UniProt mapping found in structure {structure.name}"
