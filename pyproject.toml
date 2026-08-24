@@ -105,7 +105,11 @@ build-backend = "hatchling.build"
 include = [
   "/src",
   "CITATION.cff",
+  "aidecl.yaml",
 ]
+
+[tool.hatch.build.targets.wheel.extra-metadata]
+"aidecl.yaml" = "aidecl.yaml"
 
 [tool.hatch.version]
 path = "src/protein_quest/__version__.py"

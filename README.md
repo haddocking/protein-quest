@@ -417,3 +417,9 @@ After installation, restart your shell or source your shell configuration file.
 
 For development information and contribution guidelines, please see
 [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Was AI used or allowed to be used in this repository?
+
+Yes, see
+[aidecl.yaml](https://github.com/haddocking/protein-quest/raw/refs/heads/main/aidecl.yaml),
+just make sure a human always reviews the output.
