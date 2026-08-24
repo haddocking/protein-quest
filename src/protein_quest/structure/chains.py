@@ -15,7 +15,6 @@ from protein_quest.structure.errors import ChainNotFoundError
 from protein_quest.structure.files import split_name_and_extension
 from protein_quest.structure.formats import read_structure, read_structure_as_cif_block, write_structure
 from protein_quest.structure.sifts import uniprot_chain_mappings_from_cif
-from protein_quest.structure.uniprot import _auth_mappings_to_label_system
 from protein_quest.uniprot_chains import UniprotChainMapping, UniprotChainMappings, UniprotChainRange
 from protein_quest.utils import CopyMethod, copyfile
 
@@ -96,6 +95,49 @@ def get_label2auth_chains(structure: gemmi.Structure) -> dict[str, str]:
         if label_asym_id not in label2auth:
             label2auth[label_asym_id] = auth_asym_id
     return label2auth
+
+
+def _label_mappings_to_auth_system(structure: gemmi.Structure, mappings: UniprotChainMappings) -> UniprotChainMappings:
+    label2auth = get_label2auth_chains(structure)
+    try:
+        return {
+            UniprotChainMapping(
+                uniprot_accession=mapping.uniprot_accession,
+                chain_ranges=tuple(
+                    UniprotChainRange(
+                        chain_ids=tuple(label2auth[label_chain] for label_chain in chain_range.chain_ids),
+                        start=chain_range.start,
+                        end=chain_range.end,
+                    )
+                    for chain_range in mapping.chain_ranges
+                ),
+            )
+            for mapping in mappings
+        }
+    except KeyError as e:
+        raise ChainNotFoundError(e.args[0], structure.name, set(label2auth.keys())) from None
+
+
+def _auth_mappings_to_label_system(structure: gemmi.Structure, mappings: UniprotChainMappings) -> UniprotChainMappings:
+    label2auth = get_label2auth_chains(structure)
+    auth2label = {auth: label for label, auth in label2auth.items()}
+    try:
+        return {
+            UniprotChainMapping(
+                uniprot_accession=mapping.uniprot_accession,
+                chain_ranges=tuple(
+                    UniprotChainRange(
+                        chain_ids=tuple(auth2label[auth_chain] for auth_chain in chain_range.chain_ids),
+                        start=chain_range.start,
+                        end=chain_range.end,
+                    )
+                    for chain_range in mapping.chain_ranges
+                ),
+            )
+            for mapping in mappings
+        }
+    except KeyError as e:
+        raise ChainNotFoundError(e.args[0], structure.name, set(auth2label.keys())) from None
 
 
 def find_chain_in_structure(

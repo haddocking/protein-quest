@@ -9,7 +9,7 @@ import pytest
 
 from protein_quest.cli import main
 from protein_quest.structure.formats import read_structure
-from protein_quest.structure.uniprot import FlattenedUniprotChainMapping, structure_to_uniprot
+from protein_quest.structure.uniprot_extraction import FlattenedUniprotChainMapping, structure_to_uniprot
 
 
 def normalize_uniprot_chain_mappings(

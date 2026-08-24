@@ -51,7 +51,7 @@ from protein_quest.pdbe.result import PdbResult
 from protein_quest.structure.chains import nr_residues_in_chain, write_single_chain_structure_file
 from protein_quest.structure.convert import convert_to_cif_file
 from protein_quest.structure.files import glob_structure_files
-from protein_quest.structure.uniprot import structure2uniprot_accessions
+from protein_quest.structure.uniprot_extraction import structure2uniprot_accessions
 from protein_quest.taxonomy import search_taxon
 from protein_quest.uniprot import (
     Query,

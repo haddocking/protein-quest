@@ -31,7 +31,7 @@ from protein_quest.structure.chains import ChainIdSystem
 from protein_quest.structure.convert import convert_to_cif_file, write_conversion_stats
 from protein_quest.structure.files import glob_structure_files
 from protein_quest.structure.types import CifOutputFormat
-from protein_quest.structure.uniprot import structure2uniprot_accessions
+from protein_quest.structure.uniprot_extraction import structure2uniprot_accessions
 from protein_quest.uniprot_chains import (
     Pdb2UniprotChainsMapping,
     UniprotChainMapping,

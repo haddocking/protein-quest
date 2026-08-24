@@ -15,10 +15,7 @@ from protein_quest.structure.chains import (
 from protein_quest.structure.errors import ChainNotFoundError
 from protein_quest.structure.formats import read_structure
 from protein_quest.structure.types import StructureMethod
-from protein_quest.structure.uniprot import (
-    ChainUniprotPair,
-    structure_to_uniprot,
-)
+from protein_quest.structure.uniprot_extraction import ChainUniprotPair, structure_to_uniprot
 
 logger = logging.getLogger(__name__)
 

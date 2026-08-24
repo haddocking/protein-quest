@@ -14,7 +14,7 @@ from protein_quest.structure.formats import (
 )
 from protein_quest.structure.sifts import uniprot_chain_mappings_from_cif
 from protein_quest.structure.types import valid_structure_file_extensions
-from protein_quest.structure.uniprot import structure_to_uniprot
+from protein_quest.structure.uniprot_extraction import structure_to_uniprot
 
 
 def test_invalid_extension(sample2_cif: Path, tmp_path: Path):

@@ -21,9 +21,7 @@ from protein_quest.structure.types import (
     cif_output_formats,
     valid_structure_file_extensions,
 )
-from protein_quest.structure.uniprot import (
-    add_uniprot_accessions2structure,
-)
+from protein_quest.structure.uniprot_injection import add_uniprot_accessions2structure
 from protein_quest.uniprot_chains import (
     Pdb2UniprotChainsMapping,
     UniprotChainMappings,
