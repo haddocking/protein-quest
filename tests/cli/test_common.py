@@ -2,9 +2,11 @@ import logging
 from pathlib import Path
 
 import pytest
+from cyclopts import App, ValidationError
 
 from protein_quest.cli.common import (
     CacheParameter,
+    OutputDir,
     StdioPathValidator,
     console,
     setup_logging,
@@ -129,3 +131,17 @@ class TestSetupLogging:
 def test_to_cacher(param: CacheParameter | None, expected: Cacher):
     cacher = to_cacher(param)
     assert cacher == expected
+
+
+def test_output_dir_must_not_exist(tmp_path: Path):
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+
+    app = App(exit_on_error=False)
+
+    @app.default
+    def main(output_dir: OutputDir, /):
+        pass
+
+    with pytest.raises(ValidationError, match="already exists"):
+        app([str(output_dir)])
