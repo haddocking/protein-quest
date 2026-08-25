@@ -70,9 +70,17 @@ repos:
       # see https://github.com/python-jsonschema/check-jsonschema/issues/489
       # mkdocs schema exists at https://www.schemastore.org/mkdocs-1.6.json
 
-  # Tried to use official jscpd repo, but got jscpd not found error
   - repo: local
     hooks:
+      - id: forbid-monkeypatch
+        name: forbid non-cwd/env monkeypatch usage
+        entry: python3 .github/precommit-hooks/check_monkeypatch.py
+        language: system
+        files: ^tests/.*\.py$
+        pass_filenames: true
+        require_serial: true
+
+      # Tried to use official jscpd repo, but got jscpd not found error
       - id: jscpd
         name: jscpd code duplication checker
         entry: npx cpd@5.0.4
