@@ -3,7 +3,7 @@
 import asyncio
 from typing import Annotated
 
-from cyclopts import App, Parameter
+from cyclopts import App, Group, Parameter, validators
 
 from protein_quest.alphafold.fetch import (
     DownloadableFormat,
@@ -32,6 +32,11 @@ rprint = console.print
 
 retrieve_app = App(name="retrieve", help="Retrieve structure files")
 
+pdbe_archive_mode_group = Group(
+    validator=validators.MutuallyExclusive(),
+    default_parameter=Parameter(negative="", show_default=False),
+)
+
 
 @retrieve_app.command
 def pdbe(
@@ -41,7 +46,11 @@ def pdbe(
     *,
     archived: Annotated[
         bool,
-        Parameter(negative=""),
+        Parameter(group=pdbe_archive_mode_group),
+    ] = False,
+    beta_archive: Annotated[
+        bool,
+        Parameter(group=pdbe_archive_mode_group),
     ] = False,
     max_parallel_downloads: BatchSize = 5,
     cache: CacheParameter | None = None,
@@ -62,6 +71,8 @@ def pdbe(
             By default downloads an updated version of the PDB archive mmCIF format file.
             The updated version is generated with standardisation of vocabularies,
             and addition of connectivity information for every chemical compound present in the PDB entry.
+        beta_archive: Retrieve files from the wwPDB beta archive.
+            Allows 4 character PDB IDs or extended PDB IDs and downloads mmCIF files like ``pdb_00001abc.cif.gz``.
         max_parallel_downloads: Maximum number of parallel downloads.
         cache: Cache options including no_cache, cache_dir, and copy_method.
         _: Common CLI options.
@@ -73,7 +84,12 @@ def pdbe(
 
     result = asyncio.run(
         pdbe_fetch.fetch(
-            pdb_ids, output_dir, archived=archived, max_parallel_downloads=max_parallel_downloads, cacher=cacher
+            pdb_ids,
+            output_dir,
+            archived=archived,
+            beta_archive=beta_archive,
+            max_parallel_downloads=max_parallel_downloads,
+            cacher=cacher,
         )
     )
     rprint(f"Retrieved {len(result)} PDBe entries, written to {output_dir}")

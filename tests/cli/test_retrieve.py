@@ -24,3 +24,24 @@ def test_retrieve_structure_happy_path(tmp_path: Path, capsys: pytest.CaptureFix
     assert "downloaded=1" in captured.err
     assert "converted=0" in captured.err
     assert "cached=0" in captured.err
+
+
+def test_retrieve_pdbe_archive_modes_are_mutually_exclusive(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    input_csv = tmp_path / "pdbe.csv"
+    input_csv.write_text("pdb_id\n2Y29\n")
+    output_dir = tmp_path / "downloads"
+
+    with pytest.raises(SystemExit):
+        main(
+            [
+                "retrieve",
+                "pdbe",
+                str(input_csv),
+                str(output_dir),
+                "--archived",
+                "--beta-archive",
+            ]
+        )
+
+    captured = capsys.readouterr()
+    assert "Mutually exclusive arguments" in captured.err
