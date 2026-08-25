@@ -9,4 +9,4 @@ rule:
 constraints:
   METHOD:
     not:
-      regex: ^(chdir|setenv|delenv|unsetenv|undo)$
+      regex: ^(chdir|setenv|delenv|undo)$
