@@ -9,7 +9,7 @@ import pytest
 
 from protein_quest.cli import main
 from protein_quest.structure.formats import read_structure
-from protein_quest.structure.uniprot import FlattenedUniprotChainMapping, structure_to_uniprot
+from protein_quest.structure.uniprot_extraction import FlattenedUniprotChainMapping, structure_to_uniprot
 
 
 def normalize_uniprot_chain_mappings(
@@ -35,6 +35,11 @@ def normalize_uniprot_chain_mappings(
 class TestFilterChain:
     def test_happy_path(self, sample2_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
         """Test filter chain command with valid input."""
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        local_sample2 = input_dir / sample2_cif.name
+        local_sample2.symlink_to(sample2_cif)
+
         chains_fn = tmp_path / "chains.csv"
         chains_fn.write_text("pdb_id,chain\n2Y29,A\n")
 
@@ -43,7 +48,7 @@ class TestFilterChain:
             "filter",
             "chain",
             str(chains_fn),
-            str(sample2_cif.parent),
+            str(input_dir),
             str(tmp_path),
             "--copy-method",
             "copy",
@@ -65,7 +70,7 @@ class TestFilterChain:
             rows = list(csv.DictReader(f))
         expected = [
             {
-                "input_file": str(sample2_cif),
+                "input_file": str(local_sample2),
                 "chain2keep": "A",
                 "output_chain": "A",
                 "passed": "True",
@@ -274,8 +279,12 @@ class TestFilterChain:
 
         structure = read_structure(output_file)
         result_uniprots = {
-            "struct_ref_seq": structure_to_uniprot(structure, source="struct_ref_seq", one_uniprot_per_chain=False),
-            "sifts": structure_to_uniprot(structure, source="sifts", one_uniprot_per_chain=False),
+            "struct_ref_seq": structure_to_uniprot(
+                output_file, structure=structure, source="struct_ref_seq", one_uniprot_per_chain=False
+            ),
+            "sifts": structure_to_uniprot(
+                output_file, structure=structure, source="sifts", one_uniprot_per_chain=False
+            ),
         }
         expected = {
             "struct_ref_seq": {
@@ -292,10 +301,10 @@ class TestFilterChain:
                 FlattenedUniprotChainMapping(
                     uniprot_accession="O00482",
                     uniprot_start=300,
-                    uniprot_end=538,
+                    uniprot_end=541,
                     chain_id="A",
-                    sequence_identity=0.9665,
-                    aligned_residue_count=231,
+                    sequence_identity=1.0,
+                    aligned_residue_count=242,
                 ),
             },
         }
@@ -599,24 +608,8 @@ class TestResolution:
                 "uniprot_start": "687",
             },
             {
-                "chain_length": "260",
-                "discard_reason": "Rank 3 > top 2",
-                "discard_reason_type": "OutsideTopError",
-                "id": "8W77",
-                "input_file": str(input_dir / "8w77_updated.cif.gz"),
-                "is_alphafold": "False",
-                "output_file": "",
-                "passed": "False",
-                "resolution": "3.61",
-                "sequence_identity": "1.000",
-                "total_residue_count": "260",
-                "uniprot_accession": "P0ABE7",
-                "uniprot_end": "127",
-                "uniprot_start": "23",
-            },
-            {
                 "chain_length": "131",
-                "discard_reason": "Rank 4 > top 2",
+                "discard_reason": "Rank 3 > top 2",
                 "discard_reason_type": "OutsideTopError",
                 "id": "1UN5",
                 "input_file": str(input_dir / "1un5.cif.gz"),
@@ -629,6 +622,22 @@ class TestResolution:
                 "uniprot_accession": "P03950",
                 "uniprot_end": "147",
                 "uniprot_start": "25",
+            },
+            {
+                "chain_length": "260",
+                "discard_reason": "Rank 4 > top 2",
+                "discard_reason_type": "OutsideTopError",
+                "id": "8W77",
+                "input_file": str(input_dir / "8w77_updated.cif.gz"),
+                "is_alphafold": "False",
+                "output_file": "",
+                "passed": "False",
+                "resolution": "3.61",
+                "sequence_identity": "0.927",
+                "total_residue_count": "260",
+                "uniprot_accession": "P0ABE7",
+                "uniprot_end": "127",
+                "uniprot_start": "4",
             },
             {
                 "chain_length": "1346",
@@ -783,14 +792,6 @@ def test_pdbe_quality(
     stats = list(csv.DictReader(stats_csv.open()))
     expected_stats = [
         {
-            "geometry_quality": "75.0",
-            "input_file": str(input_dir / "8w77_updated.cif.gz"),
-            "output_file": str(output_dir / "8w77_updated.cif.gz"),
-            "passed": "True",
-            "pdb_id": "8W77",
-            "reason": "",
-        },
-        {
             "geometry_quality": "55.9",
             "input_file": str(input_dir / "2Y29.cif.gz"),
             "output_file": str(output_dir / "2Y29.cif.gz"),
@@ -813,6 +814,14 @@ def test_pdbe_quality(
             "passed": "False",
             "pdb_id": "1UN5",
             "reason": "Geometry quality 45.23 < 50.0",
+        },
+        {
+            "geometry_quality": "75.0",
+            "input_file": str(input_dir / "8w77_updated.cif.gz"),
+            "output_file": str(output_dir / "8w77_updated.cif.gz"),
+            "passed": "True",
+            "pdb_id": "8W77",
+            "reason": "",
         },
         {
             "geometry_quality": "64.38",

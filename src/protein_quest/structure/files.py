@@ -3,7 +3,7 @@
 from collections.abc import Generator
 from pathlib import Path
 
-from protein_quest.structure.types import valid_structure_file_extensions
+from protein_quest.structure.types import ordered_structure_file_extensions
 
 
 def split_name_and_extension(name: str) -> tuple[str, str]:
@@ -51,7 +51,7 @@ def locate_structure_file(root: Path, pdb_id: str) -> Path:
 
     Raises:
         FileNotFoundError: If no structure file is found for the given PDB ID."""
-    for ext in valid_structure_file_extensions:
+    for ext in ordered_structure_file_extensions:
         candidates = (
             root / f"{pdb_id}{ext}",
             root / f"{pdb_id.lower()}{ext}",
@@ -77,5 +77,5 @@ def glob_structure_files(input_dir: Path) -> Generator[Path]:
 
     Yields:
         Paths to the found structure files."""
-    for ext in valid_structure_file_extensions:
+    for ext in ordered_structure_file_extensions:
         yield from input_dir.glob(f"*{ext}")

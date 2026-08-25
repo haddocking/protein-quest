@@ -8,11 +8,13 @@ from gemmi import cif
 from protein_quest.structure.formats import (
     gunzip_file,
     read_structure,
+    read_structure_as_cif_block,
     structure2cifgz,
     write_structure,
 )
+from protein_quest.structure.sifts import uniprot_chain_mappings_from_cif
 from protein_quest.structure.types import valid_structure_file_extensions
-from protein_quest.structure.uniprot import structure_to_uniprot
+from protein_quest.structure.uniprot_extraction import structure_to_uniprot
 
 
 def test_invalid_extension(sample2_cif: Path, tmp_path: Path):
@@ -33,6 +35,60 @@ def test_read_structure(sample2_cif: Path, tmp_path: Path, extension: str):
     structure_from_extension = read_structure(thefile)
 
     assert structure_from_extension.make_pdb_string() == structure_from_cif.make_pdb_string()
+
+
+def test_read_structure_as_cif_block(sample2_cif: Path):
+    block = read_structure_as_cif_block(sample2_cif)
+
+    assert block is not None
+    assert block.name == "2Y29"
+
+
+def test_read_structure_as_cif_block_no_blocks(comments_only_cif: Path):
+    block = read_structure_as_cif_block(comments_only_cif)
+
+    assert block is None
+
+
+@pytest.mark.parametrize("extension", [".bcif", ".bcif.gz"])
+def test_read_structure_as_cif_block_binary_formats(sample2_cif: Path, tmp_path: Path, extension: str):
+    structure = read_structure(sample2_cif)
+    thefile = tmp_path / f"foo{extension}"
+    write_structure(structure, thefile)
+
+    block = read_structure_as_cif_block(thefile)
+
+    assert block is not None
+    assert block.name == "2Y29"
+
+
+def test_read_structure_as_cif_block_logs_read_error(af_pdb: Path, caplog: pytest.LogCaptureFixture):
+    caplog.set_level("INFO")
+
+    block = read_structure_as_cif_block(af_pdb)
+
+    assert block is None
+    assert "Unable to read mmCIF block from" in caplog.text
+    assert str(af_pdb) in caplog.text
+    assert "expected block header (data_)" in caplog.text
+
+
+@pytest.mark.parametrize("extension", [".bcif", ".bcif.gz"])
+def test_read_structure_as_cif_block_logs_binary_read_error(
+    tmp_path: Path, extension: str, caplog: pytest.LogCaptureFixture
+):
+    caplog.set_level("INFO")
+    bad_file = tmp_path / f"bad{extension}"
+    if extension == ".bcif":
+        bad_file.write_bytes(b"not a bcif")
+    else:
+        bad_file.write_bytes(gzip.compress(b"not a bcif"))
+
+    block = read_structure_as_cif_block(bad_file)
+
+    assert block is None
+    assert "Unable to read mmCIF block from" in caplog.text
+    assert str(bad_file) in caplog.text
 
 
 def test_structure2cifgz(sample2_cif: Path):
@@ -96,34 +152,46 @@ class TestWriteStructure:
 
     def test_keeps_sifts_roundtrip(self, cif_3plz: Path, tmp_path: Path):
         structure = read_structure(cif_3plz)
-        expected = structure_to_uniprot(structure, source="sifts", one_uniprot_per_chain=False)
+        expected = structure_to_uniprot(cif_3plz, structure=structure, source="sifts", one_uniprot_per_chain=False)
         assert len(expected) == 4
         output_file = tmp_path / "3plz_roundtrip.cif.gz"
+        block = read_structure_as_cif_block(cif_3plz)
 
-        write_structure(structure, output_file)
+        assert block is not None
+
+        write_structure(structure, output_file, uniprot_chain_mappings=uniprot_chain_mappings_from_cif(block))
 
         written_structure = read_structure(output_file)
-        result = structure_to_uniprot(written_structure, source="sifts", one_uniprot_per_chain=False)
+        result = structure_to_uniprot(
+            output_file, structure=written_structure, source="sifts", one_uniprot_per_chain=False
+        )
         assert len(result) == 4
 
         assert result == expected
 
     def test_keeps_sifts_with_empty_polymer_chains(self, cif_1l5w: Path, tmp_path: Path):
         structure = read_structure(cif_1l5w)
-        expected = structure_to_uniprot(structure, source="sifts", one_uniprot_per_chain=False)
+        expected = structure_to_uniprot(cif_1l5w, structure=structure, source="sifts", one_uniprot_per_chain=False)
         assert len(expected) == 2
         output_file = tmp_path / "1l5w_roundtrip.cif.gz"
+        block = read_structure_as_cif_block(cif_1l5w)
 
-        write_structure(structure, output_file)
+        assert block is not None
+
+        write_structure(structure, output_file, uniprot_chain_mappings=uniprot_chain_mappings_from_cif(block))
 
         written_structure = read_structure(output_file)
-        result = structure_to_uniprot(written_structure, source="sifts", one_uniprot_per_chain=False)
+        result = structure_to_uniprot(
+            output_file, structure=written_structure, source="sifts", one_uniprot_per_chain=False
+        )
 
         assert result == expected
 
     def test_omits_sifts_block_without_sifts(self, sample2_cif: Path, tmp_path: Path):
         structure = read_structure(sample2_cif)
-        assert structure_to_uniprot(structure, source="sifts", one_uniprot_per_chain=False) == set()
+        assert (
+            structure_to_uniprot(sample2_cif, structure=structure, source="sifts", one_uniprot_per_chain=False) == set()
+        )
         output_file = tmp_path / "2y29_roundtrip.cif.gz"
 
         write_structure(structure, output_file)

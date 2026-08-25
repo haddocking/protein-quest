@@ -7,7 +7,7 @@ import pytest
 
 from protein_quest.cli import main
 from protein_quest.structure.formats import read_structure
-from protein_quest.structure.uniprot import FlattenedUniprotChainMapping, structure_to_uniprot
+from protein_quest.structure.uniprot_extraction import FlattenedUniprotChainMapping, structure_to_uniprot
 
 
 def test_convert_structures_to_cifgz(sample_cif: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
@@ -70,7 +70,7 @@ def test_convert_structures_with_injected_uniprot(no_uniprot_cif: Path, tmp_path
     output_file = output_dir / (no_uniprot_cif.name + ".gz")
     assert output_file.exists()
     structure = read_structure(output_file)
-    injected_uniprot = structure_to_uniprot(structure)
+    injected_uniprot = structure_to_uniprot(output_file, structure=structure)
     expected = {
         FlattenedUniprotChainMapping(
             uniprot_accession="P01100",
@@ -121,12 +121,16 @@ def test_convert_structures_with_uniprots_keeps_issue_155_accessions(
     structure = read_structure(output_file)
     struct_ref_kept = {
         (mapping.chain_id, mapping.uniprot_accession)
-        for mapping in structure_to_uniprot(structure, source="struct_ref_seq", one_uniprot_per_chain=False)
+        for mapping in structure_to_uniprot(
+            output_file, structure=structure, source="struct_ref_seq", one_uniprot_per_chain=False
+        )
         if mapping.chain_id == "A"
     }
     sift_kept = {
         (mapping.chain_id, mapping.uniprot_accession)
-        for mapping in structure_to_uniprot(structure, source="sifts", one_uniprot_per_chain=False)
+        for mapping in structure_to_uniprot(
+            output_file, structure=structure, source="sifts", one_uniprot_per_chain=False
+        )
         if mapping.chain_id == "A"
     }
     expected = {"struct_ref_seq": {("A", "Q9UEC0")}, "sifts": {("A", "O00482")}}
@@ -188,7 +192,7 @@ def test_convert_structures_with_injected_uniprot_chain_system(
     assert output_file.exists()
 
     structure = read_structure(output_file)
-    injected_uniprot = structure_to_uniprot(structure, one_uniprot_per_chain=False)
+    injected_uniprot = structure_to_uniprot(output_file, structure=structure, one_uniprot_per_chain=False)
     slim_result = {(r.chain_id, r.uniprot_accession) for r in injected_uniprot}
     assert slim_result == {("B", "O00327"), ("B", "P12345")}
     assert "Missing: {ChainUniprotPair(chain_id='B', uniprot_accession='P12345')}." in caplog.text
@@ -403,8 +407,6 @@ def test_convert_structures_with_empty_polymer(cif_1l5w: Path, tmp_path: Path, c
     # Check output file exists
     output_file = output_dir / cif_1l5w.name
     assert output_file.exists()
-    assert "Skipping empty polymer chain C in structure 1L5W" in caplog.text
-    assert "Skipping empty polymer chain D in structure 1L5W" in caplog.text
 
 
 def test_convert_clusters_writes_clusters_output(

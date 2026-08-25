@@ -13,7 +13,9 @@ from protein_quest.__version__ import __version__
 from protein_quest.converter import converter
 from protein_quest.structure.errors import ChainNotFoundError
 from protein_quest.structure.files import split_name_and_extension
-from protein_quest.structure.formats import read_structure, write_structure
+from protein_quest.structure.formats import read_structure, read_structure_as_cif_block, write_structure
+from protein_quest.structure.sifts import uniprot_chain_mappings_from_cif
+from protein_quest.uniprot_chains import UniprotChainMapping, UniprotChainMappings, UniprotChainRange
 from protein_quest.utils import CopyMethod, copyfile
 
 logger = logging.getLogger(__name__)
@@ -93,6 +95,49 @@ def get_label2auth_chains(structure: gemmi.Structure) -> dict[str, str]:
         if label_asym_id not in label2auth:
             label2auth[label_asym_id] = auth_asym_id
     return label2auth
+
+
+def _label_mappings_to_auth_system(structure: gemmi.Structure, mappings: UniprotChainMappings) -> UniprotChainMappings:
+    label2auth = get_label2auth_chains(structure)
+    try:
+        return {
+            UniprotChainMapping(
+                uniprot_accession=mapping.uniprot_accession,
+                chain_ranges=tuple(
+                    UniprotChainRange(
+                        chain_ids=tuple(label2auth[label_chain] for label_chain in chain_range.chain_ids),
+                        start=chain_range.start,
+                        end=chain_range.end,
+                    )
+                    for chain_range in mapping.chain_ranges
+                ),
+            )
+            for mapping in mappings
+        }
+    except KeyError as e:
+        raise ChainNotFoundError(e.args[0], structure.name, set(label2auth.keys())) from None
+
+
+def _auth_mappings_to_label_system(structure: gemmi.Structure, mappings: UniprotChainMappings) -> UniprotChainMappings:
+    label2auth = get_label2auth_chains(structure)
+    auth2label = {auth: label for label, auth in label2auth.items()}
+    try:
+        return {
+            UniprotChainMapping(
+                uniprot_accession=mapping.uniprot_accession,
+                chain_ranges=tuple(
+                    UniprotChainRange(
+                        chain_ids=tuple(auth2label[auth_chain] for auth_chain in chain_range.chain_ids),
+                        start=chain_range.start,
+                        end=chain_range.end,
+                    )
+                    for chain_range in mapping.chain_ranges
+                ),
+            )
+            for mapping in mappings
+        }
+    except KeyError as e:
+        raise ChainNotFoundError(e.args[0], structure.name, set(auth2label.keys())) from None
 
 
 def find_chain_in_structure(
@@ -271,6 +316,64 @@ def _extract_source_entity_id(structure: Structure, chain_name: str) -> str:
     return next(iter(remaining_entity_ids))
 
 
+def _filter_and_rename_sifts_mappings_for_single_chain(
+    structure: gemmi.Structure,
+    mappings: UniprotChainMappings,
+    chain2keep: str,
+    out_chain: str,
+) -> UniprotChainMappings:
+    """Project raw SIFTS segment mappings onto a single-chain output structure.
+
+    ``uniprot_chain_mappings_from_cif()`` reads raw
+    ``_pdbx_sifts_unp_segments`` rows from the source file using label chain
+    ids. After ``make_single_chain_structure()`` keeps one auth chain and
+    renames it to ``out_chain``, those original segment rows are no longer
+    valid for the written file unless we rewrite them.
+
+    This helper keeps only SIFTS ranges that belong to the selected auth chain,
+    then rewrites every surviving range to the single output chain id in auth
+    chain space. ``write_single_chain_structure_file()`` converts the result to
+    label space with ``_auth_mappings_to_label_system()`` just before writing,
+    so chain-filtered outputs retain usable ``_pdbx_sifts_unp_segments`` data.
+
+    Args:
+        structure: Source structure used to translate label chain ids to auth
+            chain ids.
+        mappings: Raw SIFTS mappings read from the source file, in label chain
+            id system.
+        chain2keep: Auth chain id selected for extraction.
+        out_chain: Auth chain id used in the written single-chain output.
+
+    Returns:
+        Filtered and renamed SIFTS mappings in auth chain-id system, where
+        every retained range points at ``out_chain``.
+    """
+    label2auth = get_label2auth_chains(structure)
+    kept_label_chains = {label for label, auth in label2auth.items() if auth == chain2keep}
+    if not kept_label_chains:
+        return set()
+
+    renamed_mappings: UniprotChainMappings = set()
+    for mapping in mappings:
+        renamed_ranges = [
+            UniprotChainRange(
+                chain_ids=(out_chain,),
+                start=chain_range.start,
+                end=chain_range.end,
+            )
+            for chain_range in mapping.chain_ranges
+            if any(chain_id in kept_label_chains for chain_id in chain_range.chain_ids)
+        ]
+        if renamed_ranges:
+            renamed_mappings.add(
+                UniprotChainMapping(
+                    uniprot_accession=mapping.uniprot_accession,
+                    chain_ranges=tuple(renamed_ranges),
+                )
+            )
+    return renamed_mappings
+
+
 def make_single_chain_structure(
     input_structure: gemmi.Structure,
     chain2keep: str,
@@ -390,6 +493,14 @@ def write_single_chain_structure_file(
         ChainNotFoundError: If the specified chain is not found in the input file."""
     logger.debug("chain2keep: %s, out_chain: %s", chain2keep, out_chain)
     structure = read_structure(input_file)
+    block = read_structure_as_cif_block(input_file)
+
+    sifts_mappings = _filter_and_rename_sifts_mappings_for_single_chain(
+        structure,
+        uniprot_chain_mappings_from_cif(block) if block is not None else set(),
+        chain2keep,
+        out_chain,
+    )
     new_structure = make_single_chain_structure(
         structure,
         chain2keep,
@@ -416,7 +527,11 @@ def write_single_chain_structure_file(
         copyfile(input_file, output_file, copy_method)
         return output_file
 
-    write_structure(new_structure, output_file)
+    write_structure(
+        new_structure,
+        output_file,
+        uniprot_chain_mappings=_auth_mappings_to_label_system(new_structure, sifts_mappings),
+    )
 
     return output_file
 

@@ -30,9 +30,8 @@ from protein_quest.parallel import map_with_progress
 from protein_quest.structure.chains import ChainIdSystem
 from protein_quest.structure.convert import convert_to_cif_file, write_conversion_stats
 from protein_quest.structure.files import glob_structure_files
-from protein_quest.structure.formats import read_structure
 from protein_quest.structure.types import CifOutputFormat
-from protein_quest.structure.uniprot import structure2uniprot_accessions
+from protein_quest.structure.uniprot_extraction import structure2uniprot_accessions
 from protein_quest.uniprot_chains import (
     Pdb2UniprotChainsMapping,
     UniprotChainMapping,
@@ -73,15 +72,13 @@ def uniprot(
     if grouped:
         lines = []
         for input_file in tqdm(input_files, unit="file"):
-            s = read_structure(input_file)
-            uniprot_accessions = structure2uniprot_accessions(s)
+            uniprot_accessions = structure2uniprot_accessions(input_file)
             lines.extend([f"{input_file},{uniprot_accession}" for uniprot_accession in sorted(uniprot_accessions)])
         write_lines(output, lines)
     else:
         uniprot_accessions: set[str] = set()
         for input_file in tqdm(input_files, unit="file"):
-            s = read_structure(input_file)
-            uniprot_accessions.update(structure2uniprot_accessions(s))
+            uniprot_accessions.update(structure2uniprot_accessions(input_file))
         write_lines(output, sorted(uniprot_accessions))
 
 

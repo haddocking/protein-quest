@@ -16,7 +16,6 @@ from protein_quest.clustering import (
 )
 from protein_quest.errors import ResolutionUnsetError
 from protein_quest.parallel import SchedulerAddress, map_with_progress
-from protein_quest.structure.formats import read_structure
 from protein_quest.structure.metadata import structure_metadata
 from protein_quest.utils import CopyMethod, copyfile
 
@@ -121,7 +120,7 @@ def _load_resolution_statistics_single(input_file: Path) -> ResolutionFilterStat
         returns statistics with default values and ``discard_reason`` set.
     """
     try:
-        metadata = structure_metadata(read_structure(input_file), path=input_file)
+        metadata = structure_metadata(input_file)
         return ResolutionFilterStatistics(
             input_file=input_file,
             id=metadata.id,
