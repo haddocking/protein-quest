@@ -70,3 +70,42 @@ def test_retrieve_pdbe_writes_stats(tmp_path: Path):
         assert list(csv.DictReader(handle)) == [
             {"pdb_id": "2Y29", "output_file": str(output_dir / "2y29_updated.cif.gz")},
         ]
+
+
+@pytest.mark.vcr
+def test_retrieve_alphafold_writes_stats(tmp_path: Path):
+    input_csv = tmp_path / "alphafold.csv"
+    input_csv.write_text("af_id\nP05067\n")
+    output_dir = tmp_path / "downloads"
+    stats_file = tmp_path / "stats" / "alphafold.csv"
+
+    main(
+        [
+            "retrieve",
+            "alphafold",
+            str(input_csv),
+            str(output_dir),
+            "--db-version",
+            "6",
+            "--write-stats",
+            str(stats_file),
+        ]
+    )
+
+    with stats_file.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    assert rows == [
+        {
+            "uniprot_accession": "P05067",
+            "summary_file": "",
+            "bcif_file": "",
+            "cif_file": str(output_dir / "AF-P05067-F1-model_v6.cif"),
+            "pdb_file": "",
+            "pae_doc_file": "",
+            "am_annotations_file": "",
+            "am_annotations_hg19_file": "",
+            "am_annotations_hg38_file": "",
+            "msa_file": "",
+            "plddt_doc_file": "",
+        },
+    ]

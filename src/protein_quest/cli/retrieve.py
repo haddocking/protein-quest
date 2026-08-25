@@ -9,6 +9,7 @@ from typing import Annotated
 from cyclopts import App, Group, Parameter, validators
 
 from protein_quest.alphafold.fetch import (
+    AlphaFoldEntry,
     DownloadableFormat,
     read_af_ids_from_csv,
 )
@@ -35,7 +36,6 @@ rprint = console.print
 
 
 def _write_pdbe_stats(result: Mapping[str, Path], output: OutputFile) -> None:
-    """Write the PDBe IDs and resulting file paths to CSV."""
     if str(output) != "-":
         output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", newline="", encoding="utf-8") as handle:
@@ -43,6 +43,29 @@ def _write_pdbe_stats(result: Mapping[str, Path], output: OutputFile) -> None:
         writer.writeheader()
         for pdb_id, output_file in sorted(result.items()):
             writer.writerow({"pdb_id": pdb_id, "output_file": output_file})
+
+
+def _write_alphafold_stats(afs: list[AlphaFoldEntry], output: OutputFile) -> None:
+    fieldnames = (
+        "uniprot_accession",
+        "summary_file",
+        "bcif_file",
+        "cif_file",
+        "pdb_file",
+        "pae_doc_file",
+        "am_annotations_file",
+        "am_annotations_hg19_file",
+        "am_annotations_hg38_file",
+        "msa_file",
+        "plddt_doc_file",
+    )
+    if str(output) != "-":
+        output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for af in afs:
+            writer.writerow({name: getattr(af, name) for name in fieldnames})
 
 
 retrieve_app = App(name="retrieve", help="Retrieve structure files")
@@ -134,6 +157,7 @@ def alphafold(
     ] = False,
     max_parallel_downloads: BatchSize = 5,
     cache: CacheParameter | None = None,
+    write_stats: OutputFile | None = None,
     _: Common | None = None,
 ) -> None:
     """Retrieve AlphaFold files for IDs in CSV.
@@ -154,6 +178,7 @@ def alphafold(
         all_isoforms: Return all isoforms.
         max_parallel_downloads: Maximum number of parallel downloads.
         cache: Cache options including no_cache, cache_dir, and copy_method.
+        write_stats: Write a CSV with `uniprot_accession` and file path columns. Use `-` for stdout.
         _: Common CLI options.
     """
     if format_ is None:
@@ -179,6 +204,10 @@ def alphafold(
     total_nr_files = sum(af.nr_of_files() for af in afs)
     total_nr_summaries = sum(1 for af in afs if af.summary is not None)
     rprint(f"Retrieved {total_nr_files} AlphaFold files and {total_nr_summaries} summaries, written to {output_dir}")
+    if write_stats:
+        _write_alphafold_stats(afs, write_stats)
+        if str(write_stats) != "-":
+            rprint(f"Statistics written to {write_stats}")
 
 
 @retrieve_app.command
