@@ -1,11 +1,15 @@
 """Retrieve subcommands for protein-quest."""
 
 import asyncio
+import csv
+from collections.abc import Mapping
+from pathlib import Path
 from typing import Annotated
 
-from cyclopts import App, Parameter
+from cyclopts import App, Group, Parameter, validators
 
 from protein_quest.alphafold.fetch import (
+    AlphaFoldEntry,
     DownloadableFormat,
     read_af_ids_from_csv,
 )
@@ -18,6 +22,7 @@ from protein_quest.cli.common import (
     Common,
     InputFile,
     OutputDir,
+    OutputFile,
     console,
     to_cacher,
 )
@@ -30,7 +35,45 @@ from protein_quest.pdbe_3dbeacons.retrieve import read_retrieve_structure_rows, 
 rprint = console.print
 
 
+def _write_pdbe_stats(result: Mapping[str, Path], output: OutputFile) -> None:
+    if str(output) != "-":
+        output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["pdb_id", "output_file"])
+        writer.writeheader()
+        for pdb_id, output_file in sorted(result.items()):
+            writer.writerow({"pdb_id": pdb_id, "output_file": output_file})
+
+
+def _write_alphafold_stats(afs: list[AlphaFoldEntry], output: OutputFile) -> None:
+    fieldnames = (
+        "uniprot_accession",
+        "summary_file",
+        "bcif_file",
+        "cif_file",
+        "pdb_file",
+        "pae_doc_file",
+        "am_annotations_file",
+        "am_annotations_hg19_file",
+        "am_annotations_hg38_file",
+        "msa_file",
+        "plddt_doc_file",
+    )
+    if str(output) != "-":
+        output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for af in afs:
+            writer.writerow({name: getattr(af, name) for name in fieldnames})
+
+
 retrieve_app = App(name="retrieve", help="Retrieve structure files")
+
+pdbe_archive_mode_group = Group(
+    validator=validators.MutuallyExclusive(),
+    default_parameter=Parameter(negative="", show_default=False),
+)
 
 
 @retrieve_app.command
@@ -41,10 +84,15 @@ def pdbe(
     *,
     archived: Annotated[
         bool,
-        Parameter(negative=""),
+        Parameter(group=pdbe_archive_mode_group),
+    ] = False,
+    beta_archive: Annotated[
+        bool,
+        Parameter(group=pdbe_archive_mode_group),
     ] = False,
     max_parallel_downloads: BatchSize = 5,
     cache: CacheParameter | None = None,
+    write_stats: OutputFile | None = None,
     _: Common | None = None,
 ) -> None:
     """Retrieve mmCIF files from PDBe for PDB IDs in CSV.
@@ -62,8 +110,11 @@ def pdbe(
             By default downloads an updated version of the PDB archive mmCIF format file.
             The updated version is generated with standardisation of vocabularies,
             and addition of connectivity information for every chemical compound present in the PDB entry.
+        beta_archive: Retrieve files from the wwPDB beta archive.
+            Allows 4 character PDB IDs or extended PDB IDs and downloads mmCIF files like ``pdb_00001abc.cif.gz``.
         max_parallel_downloads: Maximum number of parallel downloads.
         cache: Cache options including no_cache, cache_dir, and copy_method.
+        write_stats: Write a CSV with `pdb_id` and `output_file` columns. Use `-` for stdout.
         _: Common CLI options.
     """
     pdb_ids = read_pdb_ids_from_csv(pdbe_csv)
@@ -73,10 +124,19 @@ def pdbe(
 
     result = asyncio.run(
         pdbe_fetch.fetch(
-            pdb_ids, output_dir, archived=archived, max_parallel_downloads=max_parallel_downloads, cacher=cacher
+            pdb_ids,
+            output_dir,
+            archived=archived,
+            beta_archive=beta_archive,
+            max_parallel_downloads=max_parallel_downloads,
+            cacher=cacher,
         )
     )
     rprint(f"Retrieved {len(result)} PDBe entries, written to {output_dir}")
+    if write_stats:
+        _write_pdbe_stats(result, write_stats)
+        if str(write_stats) != "-":
+            rprint(f"Statistics written to {write_stats}")
 
 
 @retrieve_app.command
@@ -97,6 +157,7 @@ def alphafold(
     ] = False,
     max_parallel_downloads: BatchSize = 5,
     cache: CacheParameter | None = None,
+    write_stats: OutputFile | None = None,
     _: Common | None = None,
 ) -> None:
     """Retrieve AlphaFold files for IDs in CSV.
@@ -117,6 +178,7 @@ def alphafold(
         all_isoforms: Return all isoforms.
         max_parallel_downloads: Maximum number of parallel downloads.
         cache: Cache options including no_cache, cache_dir, and copy_method.
+        write_stats: Write a CSV with `uniprot_accession` and file path columns. Use `-` for stdout.
         _: Common CLI options.
     """
     if format_ is None:
@@ -142,6 +204,10 @@ def alphafold(
     total_nr_files = sum(af.nr_of_files() for af in afs)
     total_nr_summaries = sum(1 for af in afs if af.summary is not None)
     rprint(f"Retrieved {total_nr_files} AlphaFold files and {total_nr_summaries} summaries, written to {output_dir}")
+    if write_stats:
+        _write_alphafold_stats(afs, write_stats)
+        if str(write_stats) != "-":
+            rprint(f"Statistics written to {write_stats}")
 
 
 @retrieve_app.command

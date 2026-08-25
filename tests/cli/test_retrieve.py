@@ -1,5 +1,6 @@
 """Retrieve CLI tests for protein-quest."""
 
+import csv
 from pathlib import Path
 
 import pytest
@@ -24,3 +25,87 @@ def test_retrieve_structure_happy_path(tmp_path: Path, capsys: pytest.CaptureFix
     assert "downloaded=1" in captured.err
     assert "converted=0" in captured.err
     assert "cached=0" in captured.err
+
+
+def test_retrieve_pdbe_archive_modes_are_mutually_exclusive(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    input_csv = tmp_path / "pdbe.csv"
+    input_csv.write_text("pdb_id\n2Y29\n")
+    output_dir = tmp_path / "downloads"
+
+    with pytest.raises(SystemExit):
+        main(
+            [
+                "retrieve",
+                "pdbe",
+                str(input_csv),
+                str(output_dir),
+                "--archived",
+                "--beta-archive",
+            ]
+        )
+
+    captured = capsys.readouterr()
+    assert "Mutually exclusive arguments" in captured.err
+
+
+@pytest.mark.vcr
+def test_retrieve_pdbe_writes_stats(tmp_path: Path):
+    input_csv = tmp_path / "pdbe.csv"
+    input_csv.write_text("pdb_id\n2Y29\n")
+    output_dir = tmp_path / "downloads"
+    stats_file = tmp_path / "stats" / "pdbe.csv"
+
+    main(
+        [
+            "retrieve",
+            "pdbe",
+            str(input_csv),
+            str(output_dir),
+            "--write-stats",
+            str(stats_file),
+        ]
+    )
+
+    with stats_file.open(newline="", encoding="utf-8") as handle:
+        assert list(csv.DictReader(handle)) == [
+            {"pdb_id": "2Y29", "output_file": str(output_dir / "2y29_updated.cif.gz")},
+        ]
+
+
+@pytest.mark.vcr
+def test_retrieve_alphafold_writes_stats(tmp_path: Path):
+    input_csv = tmp_path / "alphafold.csv"
+    input_csv.write_text("af_id\nP05067\n")
+    output_dir = tmp_path / "downloads"
+    stats_file = tmp_path / "stats" / "alphafold.csv"
+
+    main(
+        [
+            "retrieve",
+            "alphafold",
+            str(input_csv),
+            str(output_dir),
+            "--db-version",
+            "6",
+            "--write-stats",
+            str(stats_file),
+        ]
+    )
+
+    with stats_file.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    assert rows == [
+        {
+            "uniprot_accession": "P05067",
+            "summary_file": "",
+            "bcif_file": "",
+            "cif_file": str(output_dir / "AF-P05067-F1-model_v6.cif"),
+            "pdb_file": "",
+            "pae_doc_file": "",
+            "am_annotations_file": "",
+            "am_annotations_hg19_file": "",
+            "am_annotations_hg38_file": "",
+            "msa_file": "",
+            "plddt_doc_file": "",
+        },
+    ]

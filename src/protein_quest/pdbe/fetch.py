@@ -6,7 +6,24 @@ from pathlib import Path
 from protein_quest.utils import Cacher, read_ids_from_csv, retrieve_files, run_async
 
 
-def _map_id_mmcif(pdb_id: str, archived: bool = False) -> tuple[str, str]:
+def _to_beta_archive_id(pdb_id: str) -> str:
+    """Convert a PDB identifier to a wwPDB beta archive extended ID.
+
+    Legacy 4-character PDB IDs are converted by prepending ``pdb_0000``.
+
+    Args:
+        pdb_id: Legacy or extended PDB identifier.
+
+    Returns:
+        Lowercase extended PDB ID suitable for beta archive file names.
+    """
+    normalized = pdb_id.lower()
+    if len(normalized) == 4:
+        return f"pdb_0000{normalized}"
+    return normalized
+
+
+def _map_id_mmcif(pdb_id: str, archived: bool = False, beta_archive: bool = False) -> tuple[str, str]:
     """
     Map PDB id to a download gzipped mmCIF url and file.
 
@@ -14,14 +31,24 @@ def _map_id_mmcif(pdb_id: str, archived: bool = False) -> tuple[str, str]:
     "https://www.ebi.ac.uk/pdbe/entry-files/download/8was_updated.cif.gz" and the file will be "8was_updated.cif.gz".
     If archived is True, the url will be
     "https://www.ebi.ac.uk/pdbe/entry-files/download/8was.cif.gz" and the file will be "8was.cif.gz".
+    If beta_archive is True, the url will be
+    "https://files-beta.wwpdb.org/download/pdb_00008was.cif.gz" and the file will be
+    "pdb_00008was.cif.gz".
 
     Args:
         pdb_id: The PDB ID to map.
         archived: Whether to fetch archived versions of the files or default updated version.
+        beta_archive: Whether to fetch files from wwPDB beta archive using extended PDB IDs.
 
     Returns:
         A tuple containing the URL to download the mmCIF file and the filename.
     """
+    if beta_archive:
+        beta_id = _to_beta_archive_id(pdb_id)
+        fn = f"{beta_id}.cif.gz"
+        url = f"https://files-beta.wwpdb.org/download/{fn}"
+        return url, fn
+
     fn = f"{pdb_id.lower()}_updated.cif.gz"
     if archived:
         fn = f"{pdb_id.lower()}.cif.gz"
@@ -35,6 +62,7 @@ async def fetch(
     /,
     *,
     archived: bool = False,
+    beta_archive: bool = False,
     max_parallel_downloads: int = 5,
     cacher: Cacher | None = None,
 ) -> Mapping[str, Path]:
@@ -46,6 +74,8 @@ async def fetch(
         archived: Whether to fetch archived versions of the files or default updated version.
             The updated version is generated with standardisation of vocabularies,
             and addition of connectivity information for every chemical compound present in the PDB entry.
+        beta_archive: Whether to fetch from wwPDB beta archive.
+            This mode uses extended PDB IDs and downloads ``<extended_pdb_id>.cif.gz`` files.
         max_parallel_downloads: The maximum number of parallel downloads.
         cacher: An optional cacher to use for caching downloaded files.
 
@@ -56,7 +86,7 @@ async def fetch(
     # The future result, is in a different order than the input ids,
     # so we need to map the ids to the urls and filenames.
 
-    id2urls = {pdb_id: _map_id_mmcif(pdb_id, archived=archived) for pdb_id in ids}
+    id2urls = {pdb_id: _map_id_mmcif(pdb_id, archived=archived, beta_archive=beta_archive) for pdb_id in ids}
     urls = list(id2urls.values())
     id2paths = {pdb_id: save_dir / fn for pdb_id, (_, fn) in id2urls.items()}
 
@@ -65,7 +95,13 @@ async def fetch(
 
 
 def sync_fetch(
-    ids: Iterable[str], save_dir: Path, /, *, archived: bool = False, max_parallel_downloads: int = 5
+    ids: Iterable[str],
+    save_dir: Path,
+    /,
+    *,
+    archived: bool = False,
+    beta_archive: bool = False,
+    max_parallel_downloads: int = 5,
 ) -> Mapping[str, Path]:
     """Synchronously fetches mmCIF files from the PDBe database.
 
@@ -75,12 +111,22 @@ def sync_fetch(
         archived: Whether to fetch archived versions of the files or default updated version.
             The updated version is generated with standardisation of vocabularies,
             and addition of connectivity information for every chemical compound present in the PDB entry.
+        beta_archive: Whether to fetch from wwPDB beta archive.
+            This mode uses extended PDB IDs and downloads ``<extended_pdb_id>.cif.gz`` files.
         max_parallel_downloads: The maximum number of parallel downloads.
 
     Returns:
         A dict of id and paths to the downloaded mmCIF files.
     """
-    return run_async(fetch(ids, save_dir, archived=archived, max_parallel_downloads=max_parallel_downloads))
+    return run_async(
+        fetch(
+            ids,
+            save_dir,
+            archived=archived,
+            beta_archive=beta_archive,
+            max_parallel_downloads=max_parallel_downloads,
+        )
+    )
 
 
 def read_pdb_ids_from_csv(file: Path) -> set[str]:

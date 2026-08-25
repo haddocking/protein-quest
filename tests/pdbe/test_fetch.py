@@ -29,6 +29,25 @@ async def test_fetch_archived(tmp_path: Path):
     assert results == expected
 
 
+@pytest.mark.asyncio
+@pytest.mark.default_cassette("test_fetch_beta_archive.yaml")
+@pytest.mark.vcr
+@pytest.mark.parametrize(
+    ("theid", "expected_filename"),
+    [
+        ("2Y29", "pdb_00002y29.cif.gz"),
+        ("PDB_00002Y29", "pdb_00002y29.cif.gz"),
+    ],
+)
+async def test_fetch_beta_archive(tmp_path: Path, theid: str, expected_filename: str):
+    ids = [theid]
+
+    results = await fetch(ids, tmp_path, beta_archive=True)
+
+    expected = {theid: tmp_path / expected_filename}
+    assert results == expected
+
+
 @pytest.mark.default_cassette("test_fetch.yaml")
 @pytest.mark.vcr
 def test_sync_fetch(tmp_path: Path):
@@ -50,6 +69,24 @@ def test_sync_fetch_archived(tmp_path: Path):
     results = sync_fetch(ids, tmp_path, archived=True)
 
     expected = {theid: tmp_path / f"{theid.lower()}.cif.gz"}
+    assert results == expected
+
+
+@pytest.mark.default_cassette("test_fetch_beta_archive.yaml")
+@pytest.mark.vcr
+@pytest.mark.parametrize(
+    ("theid", "expected_filename"),
+    [
+        ("2Y29", "pdb_00002y29.cif.gz"),
+        ("PDB_00002Y29", "pdb_00002y29.cif.gz"),
+    ],
+)
+def test_sync_fetch_beta_archive(tmp_path: Path, theid: str, expected_filename: str):
+    ids = [theid]
+
+    results = sync_fetch(ids, tmp_path, beta_archive=True)
+
+    expected = {theid: tmp_path / expected_filename}
     assert results == expected
 
 
