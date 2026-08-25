@@ -196,5 +196,5 @@ InputDir = Annotated[Path, Parameter(validator=validators.Path(exists=True, file
 """Type for input directory parameters (directory paths)."""
 OutputFile = Annotated[StdioPath, Parameter(validator=StdioPathValidator(dir_okay=False)), OUTPUT_FILE]
 """Type for output file parameters (file paths that can also be "-" for stdout)."""
-OutputDir = Annotated[Path, Parameter(validator=validators.Path(file_okay=False)), OUTPUT_DIR]
+OutputDir = Annotated[Path, Parameter(validator=validators.Path(file_okay=False, dir_okay=False)), OUTPUT_DIR]
 """Type for output directory parameters (directory paths)."""
