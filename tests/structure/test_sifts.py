@@ -186,7 +186,9 @@ def test_uniprot_chain_mappings_from_cif_best_only_false(
     path = request.getfixturevalue(cif_fixture)
     block = read_structure_as_cif_block(path)
 
-    actual = uniprot_chain_mappings_from_cif(block, best_only=False) if block is not None else set()
+    actual = (
+        uniprot_chain_mappings_from_cif(block, best_only=False, strip_isoform=False) if block is not None else set()
+    )
 
     assert actual == expected
 

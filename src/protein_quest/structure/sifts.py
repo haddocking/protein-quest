@@ -14,12 +14,15 @@ from protein_quest.uniprot_chains import UniprotChainMapping, UniprotChainMappin
 logger = logging.getLogger(__name__)
 
 
-def uniprot_chain_mappings_from_cif(block: gemmi.cif.Block, best_only: bool = True) -> UniprotChainMappings:
+def uniprot_chain_mappings_from_cif(
+    block: gemmi.cif.Block, best_only: bool = True, strip_isoform: bool = True
+) -> UniprotChainMappings:
     """Extract UniProt chain mappings from raw ``_pdbx_sifts_unp_segments`` rows.
 
     Args:
         block: mmCIF block containing ``_pdbx_sifts_unp_segments`` rows.
         best_only: If True, only return rows where ``best_mapping`` is ``y``.
+        strip_isoform: If True, strip isoform suffixes from UniProt accessions (e.g. ``O00255-1`` -> ``O00255``).
 
     Returns:
         Set of UniProt chain mappings with ranges per chain. Empty if no SIFTS
@@ -46,7 +49,7 @@ def uniprot_chain_mappings_from_cif(block: gemmi.cif.Block, best_only: bool = Tr
             )
             continue
         base_acc = acc
-        if "-" in acc:
+        if strip_isoform and "-" in acc:
             base_acc = acc.split("-")[0]
             logger.info(
                 f"_pdbx_sifts_unp_segments.unp_acc is isoform, stripping to base accession: {acc} -> {base_acc}"
