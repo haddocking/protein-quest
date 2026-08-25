@@ -199,6 +199,15 @@ def cif_3plz() -> Path:
 
 
 @pytest.fixture
+def cif_4gpq() -> Path:
+    """4GPQ structure with isoform O00255-1 as uniprot accession."""
+    return fetch_cif(
+        "4gpq_updated.cif.gz",
+        "97e2c39f6431a70af3c8fe29c2590599fdab6f8662f385503b3107f97cc15a01",
+    )
+
+
+@pytest.fixture
 def cif_1l5w() -> Path:
     """1l5w structure with sugars on chain C and D."""
     return fetch_cif(

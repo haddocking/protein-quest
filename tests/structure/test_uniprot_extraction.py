@@ -484,6 +484,21 @@ def test_best_uniprot_per_chain(
             id="multi-accession-same-chain",
         ),
         pytest.param(
+            "cif_4gpq",
+            "sifts",
+            {
+                FlattenedUniprotChainMapping(
+                    uniprot_accession="O00255",
+                    uniprot_start=1,
+                    uniprot_end=598,
+                    chain_id="A",
+                    sequence_identity=1.0,
+                    aligned_residue_count=598,
+                ),
+            },
+            id="4gpq-both",
+        ),
+        pytest.param(
             "em_cif",
             "both",
             {
@@ -600,6 +615,15 @@ def test_structure_to_uniprot_uses_raw_cif_sifts_segments_when_path_provided(em_
             aligned_residue_count=115,
         )
     }
+
+
+def test_structure_to_uniprot_logs_isoform_stripping(cif_4gpq: Path, caplog: pytest.LogCaptureFixture):
+    caplog.set_level(logging.INFO)
+    structure = read_structure(cif_4gpq)
+
+    _ = structure_to_uniprot(cif_4gpq, structure=structure, source="sifts")
+
+    assert "_pdbx_sifts_unp_segments.unp_acc is isoform, stripping to base accession: O00255-1 -> O00255" in caplog.text
 
 
 def test_structure_to_uniprot_issue_155_keeps_all_accessions_for_single_chain(cif_3plz: Path):

@@ -45,7 +45,13 @@ def uniprot_chain_mappings_from_cif(block: gemmi.cif.Block, best_only: bool = Tr
                 block.name,
             )
             continue
-        acc_to_ranges.setdefault(acc, []).append(UniprotChainRange(chain_ids=(chain_id,), start=start, end=end))
+        base_acc = acc
+        if "-" in acc:
+            base_acc = acc.split("-")[0]
+            logger.info(
+                f"_pdbx_sifts_unp_segments.unp_acc is isoform, stripping to base accession: {acc} -> {base_acc}"
+            )
+        acc_to_ranges.setdefault(base_acc, []).append(UniprotChainRange(chain_ids=(chain_id,), start=start, end=end))
 
     return {
         UniprotChainMapping(uniprot_accession=acc, chain_ranges=tuple(ranges)) for acc, ranges in acc_to_ranges.items()
