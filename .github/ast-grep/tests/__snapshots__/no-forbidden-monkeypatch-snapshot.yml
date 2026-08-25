@@ -1,0 +1,26 @@
+id: no-forbidden-monkeypatch
+snapshots:
+  ? |-
+    def test_attr(monkeypatch):
+        monkeypatch.delattr(obj, "name")
+  : labels:
+      - source: monkeypatch.delattr(obj, "name")
+        style: primary
+        start: 32
+        end: 64
+  ? |-
+    def test_http(monkeypatch):
+        monkeypatch.setattr("requests.get", mock)
+  : labels:
+      - source: monkeypatch.setattr("requests.get", mock)
+        style: primary
+        start: 32
+        end: 73
+  ? |-
+    def test_item(monkeypatch):
+        monkeypatch.setitem(d, "k", "v")
+  : labels:
+      - source: monkeypatch.setitem(d, "k", "v")
+        style: primary
+        start: 32
+        end: 64

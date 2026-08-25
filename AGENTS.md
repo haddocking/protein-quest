@@ -1,3 +1,5 @@
+# AGENTS
+
 When modifying code, run these checks:
 
 ```shell
