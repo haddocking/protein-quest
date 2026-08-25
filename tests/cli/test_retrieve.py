@@ -1,5 +1,6 @@
 """Retrieve CLI tests for protein-quest."""
 
+import csv
 from pathlib import Path
 
 import pytest
@@ -45,3 +46,27 @@ def test_retrieve_pdbe_archive_modes_are_mutually_exclusive(tmp_path: Path, caps
 
     captured = capsys.readouterr()
     assert "Mutually exclusive arguments" in captured.err
+
+
+@pytest.mark.vcr
+def test_retrieve_pdbe_writes_stats(tmp_path: Path):
+    input_csv = tmp_path / "pdbe.csv"
+    input_csv.write_text("pdb_id\n2Y29\n")
+    output_dir = tmp_path / "downloads"
+    stats_file = tmp_path / "stats" / "pdbe.csv"
+
+    main(
+        [
+            "retrieve",
+            "pdbe",
+            str(input_csv),
+            str(output_dir),
+            "--write-stats",
+            str(stats_file),
+        ]
+    )
+
+    with stats_file.open(newline="", encoding="utf-8") as handle:
+        assert list(csv.DictReader(handle)) == [
+            {"pdb_id": "2Y29", "output_file": str(output_dir / "2y29_updated.cif.gz")},
+        ]
