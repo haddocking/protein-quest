@@ -108,7 +108,8 @@ def _handle_cif_input(
         return _new_conversion_statistics(input_file, output_file)
 
     structure = read_structure(input_file)
-    # Gemmi does not retain SIFTS category, copy over SIFTS category on cif block level.
+    # Gemmi structure does not retain raw SIFTS segment data;
+    # extract UniProt segment mappings from the mmCIF block and write them back.
     block = read_structure_as_cif_block(input_file)
     uniprot_chain_mappings = uniprot_chain_mappings_from_cif(block) if block is not None else set()
     write_structure(
@@ -144,7 +145,8 @@ def _handle_bcif_input(
         return _new_conversion_statistics(input_file, output_file)
 
     structure = read_structure(input_file)
-    # Gemmi does not retain SIFTS category, copy over SIFTS category on cif block level.
+    # Gemmi structure does not retain raw SIFTS segment data;
+    # extract UniProt segment mappings from the mmCIF block and write them back.
     block = read_structure_as_cif_block(input_file)
     uniprot_chain_mappings = uniprot_chain_mappings_from_cif(block) if block is not None else set()
     write_structure(
