@@ -43,13 +43,14 @@ class TestFilterChain:
         chains_fn = tmp_path / "chains.csv"
         chains_fn.write_text("pdb_id,chain\n2Y29,A\n")
 
+        output_dir = tmp_path / "output"
         chain_stats = tmp_path / "chain_stats.csv"
         argv = [
             "filter",
             "chain",
             str(chains_fn),
             str(input_dir),
-            str(tmp_path),
+            str(output_dir),
             "--copy-method",
             "copy",
             "--scheduler-address",
@@ -60,7 +61,7 @@ class TestFilterChain:
 
         main(argv)
 
-        output_file = tmp_path / "2Y29_A2A.cif.gz"
+        output_file = output_dir / "2Y29_A2A.cif.gz"
         assert output_file.exists()
 
         captured = capsys.readouterr()
@@ -88,6 +89,7 @@ class TestFilterChain:
         input_dir.mkdir()
         local_multi = input_dir / multi_accession_cif.name
         local_multi.symlink_to(multi_accession_cif)
+        output_dir = tmp_path / "output"
 
         chains_fn = tmp_path / "chains.csv"
         # 1A02 maps the three UniProt accessions to chains N, F, and J.
@@ -108,7 +110,7 @@ class TestFilterChain:
             "chain",
             str(chains_fn),
             str(input_dir),
-            str(tmp_path),
+            str(output_dir),
             "--scheduler-address",
             "sequential",
             "--copy-method",
@@ -119,7 +121,7 @@ class TestFilterChain:
 
         main(argv)
 
-        output_files = {path.name for path in tmp_path.glob("1a02_*2A.cif.gz")}
+        output_files = {path.name for path in output_dir.glob("1a02_*2A.cif.gz")}
         assert output_files == {"1a02_N2A.cif.gz", "1a02_F2A.cif.gz", "1a02_J2A.cif.gz"}
 
         captured = capsys.readouterr()
@@ -134,7 +136,7 @@ class TestFilterChain:
                     "output_chain": "A",
                     "passed": "True",
                     "discard_reason": "",
-                    "output_file": str(tmp_path / "1a02_F2A.cif.gz"),
+                    "output_file": str(output_dir / "1a02_F2A.cif.gz"),
                 },
                 {
                     "input_file": str(input_dir / "1a02.cif.gz"),
@@ -142,7 +144,7 @@ class TestFilterChain:
                     "output_chain": "A",
                     "passed": "True",
                     "discard_reason": "",
-                    "output_file": str(tmp_path / "1a02_J2A.cif.gz"),
+                    "output_file": str(output_dir / "1a02_J2A.cif.gz"),
                 },
                 {
                     "input_file": str(input_dir / "1a02.cif.gz"),
@@ -150,7 +152,7 @@ class TestFilterChain:
                     "output_chain": "A",
                     "passed": "True",
                     "discard_reason": "",
-                    "output_file": str(tmp_path / "1a02_N2A.cif.gz"),
+                    "output_file": str(output_dir / "1a02_N2A.cif.gz"),
                 },
             ]
             assert rows == expected
@@ -160,7 +162,6 @@ class TestFilterChain:
         input_dir = tmp_path / "input"
         input_dir.mkdir()
         output_dir = tmp_path / "output"
-        output_dir.mkdir()
         chains_fn = tmp_path / "chains.csv"
         chains_fn.write_text("pdb_id,chain\n2Y29,A\n")
         chain_stats = tmp_path / "chain_stats.csv"
@@ -193,7 +194,6 @@ class TestFilterChain:
         input_dir = tmp_path / "input"
         input_dir.mkdir()
         output_dir = tmp_path / "output"
-        output_dir.mkdir()
         chains_fn = tmp_path / "chains.csv"
         chains_fn.write_text("pdb_id,chain\n")
         chain_stats = tmp_path / "chain_stats.csv"
@@ -232,6 +232,7 @@ class TestFilterChain:
         input_dir.mkdir()
         local_cif = input_dir / cif_8rw8.name
         local_cif.symlink_to(cif_8rw8)
+        output_dir = tmp_path / "output"
 
         chains_fn = tmp_path / "chains.csv"
         chains_fn.write_text(f"pdb_id,chain\n8rw8,{chain_id}\n")
@@ -241,7 +242,7 @@ class TestFilterChain:
             "chain",
             str(chains_fn),
             str(input_dir),
-            str(tmp_path),
+            str(output_dir),
             *extra_args,
             "--scheduler-address",
             "sequential",
@@ -249,7 +250,7 @@ class TestFilterChain:
 
         main(argv)
 
-        output_files = {path.name for path in tmp_path.glob("*8rw8*_B2A.cif.gz")}
+        output_files = {path.name for path in output_dir.glob("*8rw8*_B2A.cif.gz")}
         assert len(output_files) == 1
 
     def test_keeps_sifts(self, cif_3plz: Path, tmp_path: Path):
@@ -320,7 +321,6 @@ def test_filter_residue(sample_cif: Path, sample2_cif: Path, tmp_path: Path, cap
     local_sample2 = input_dir / sample2_cif.name
     local_sample2.symlink_to(sample2_cif)
     output_dir = tmp_path / "output"
-    output_dir.mkdir()
     stats_fn = tmp_path / "stats.csv"
 
     argv = [
@@ -384,7 +384,6 @@ def test_filter_secondary_structure(
     local_sample2 = input_dir / sample2_cif.name
     local_sample2.symlink_to(sample2_cif)
     output_dir = tmp_path / "output"
-    output_dir.mkdir()
     stats_fn = tmp_path / "ss_stats.csv"
 
     argv = [
@@ -691,11 +690,15 @@ class TestResolution:
         assert stats == expected_stats
 
     def test_rejects_zero_top(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        output_dir = tmp_path / "output"
+
         argv = [
             "filter",
             "resolution",
-            str(tmp_path),
-            str(tmp_path),
+            str(input_dir),
+            str(output_dir),
             "--top",
             "0",
         ]
