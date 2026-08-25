@@ -170,7 +170,7 @@ def structure_to_uniprot(
             ``_pdbx_sifts_unp_segments`` rows as structure does not contain that info.
         source: UniProt source to read from.
 
-            - ``sifts``: Read from entity ``sifts_unp_acc`` values.
+            - ``sifts``: Read from ``_pdbx_sifts_unp_segments`` rows in the input mmCIF.
             - ``struct_ref_seq``: Read from ``_struct_ref_seq`` filtered by
                 ``_struct_ref`` records with ``db_name=UNP``.
             - ``both``: Merge SIFTS and struct_ref_seq results.
@@ -218,7 +218,7 @@ def structure_to_uniprot(
 
 
 def structure2uniprot_accessions(structure_file: Path) -> set[str]:
-    """Extract UniProt accessions from a gemmi Structure object.
+    """Extract UniProt accessions from a structure file.
 
     Logs a warning and returns an empty set if no accessions are found in structure.
 
