@@ -77,7 +77,7 @@ repos:
         entry:
           ast-grep scan --color never --config .github/ast-grep/sgconfig.yml
         language: python
-        additional_dependencies: ["ast-grep-cli"]
+        additional_dependencies: ["ast-grep-cli==0.45.2"]
         files: ^tests/.*\.py$
         pass_filenames: true
         require_serial: true
