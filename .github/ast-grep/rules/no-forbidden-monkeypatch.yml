@@ -1,0 +1,12 @@
+id: no-forbidden-monkeypatch
+language: Python
+severity: error
+message:
+  Only monkeypatch.chdir/setenv/delenv/undo are allowed; record HTTP calls with
+  pytest-recording instead
+rule:
+  pattern: monkeypatch.$METHOD($$$ARGS)
+constraints:
+  METHOD:
+    not:
+      regex: ^(chdir|setenv|delenv|undo)$

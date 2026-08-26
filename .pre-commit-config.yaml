@@ -70,9 +70,18 @@ repos:
       # see https://github.com/python-jsonschema/check-jsonschema/issues/489
       # mkdocs schema exists at https://www.schemastore.org/mkdocs-1.6.json
 
-  # Tried to use official jscpd repo, but got jscpd not found error
   - repo: local
     hooks:
+      - id: ast-grep
+        name: ast-grep
+        entry: ast-grep scan --config .github/ast-grep/sgconfig.yml
+        language: python
+        additional_dependencies: ["ast-grep-cli==0.45.2"]
+        files: ^tests/.*\.py$
+        pass_filenames: true
+        require_serial: true
+
+      # Tried to use official jscpd repo, but got jscpd not found error
       - id: jscpd
         name: jscpd code duplication checker
         entry: npx cpd@5.0.4

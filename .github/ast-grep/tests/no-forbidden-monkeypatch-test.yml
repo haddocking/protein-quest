@@ -1,0 +1,39 @@
+id: no-forbidden-monkeypatch
+valid:
+  - |-
+    def test_cwd(monkeypatch):
+        monkeypatch.chdir("/tmp")
+  - |-
+    def test_env(monkeypatch):
+        monkeypatch.setenv("X", "y")
+        monkeypatch.delenv("X")
+        monkeypatch.undo()
+  - |-
+    def test_allowed_methods(monkeypatch):
+        monkeypatch.chdir("/tmp")
+        monkeypatch.setenv("X", "y", prepend=":")
+        monkeypatch.delenv("X", raising=False)
+        monkeypatch.undo()
+  - |-
+    def test_other_fixture(mpk):
+        mpk.setattr("requests.get", mock)
+invalid:
+  - |-
+    def test_http(monkeypatch):
+        monkeypatch.setattr("requests.get", mock)
+  - |-
+    def test_attr(monkeypatch):
+        monkeypatch.delattr(obj, "name")
+  - |-
+    def test_item(monkeypatch):
+        monkeypatch.setitem(d, "k", "v")
+  - |-
+    def test_delitem(monkeypatch):
+        monkeypatch.delitem(d, "k")
+  - |-
+    def test_syspath(monkeypatch):
+        monkeypatch.syspath_prepend(path)
+  - |-
+    def test_context(monkeypatch):
+        with monkeypatch.context() as nested:
+            nested.setenv("X", "y")
