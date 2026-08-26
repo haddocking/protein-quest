@@ -72,8 +72,8 @@ repos:
 
   - repo: local
     hooks:
-      - id: forbid-monkeypatch
-        name: forbid non-cwd/env monkeypatch usage
+      - id: ast-grep
+        name: ast-grep
         entry: ast-grep scan --config .github/ast-grep/sgconfig.yml
         language: python
         additional_dependencies: ["ast-grep-cli==0.45.2"]

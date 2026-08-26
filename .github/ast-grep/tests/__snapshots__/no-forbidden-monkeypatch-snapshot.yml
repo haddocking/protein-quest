@@ -9,6 +9,23 @@ snapshots:
         start: 32
         end: 64
   ? |-
+    def test_context(monkeypatch):
+        with monkeypatch.context() as nested:
+            nested.setenv("X", "y")
+  : labels:
+      - source: monkeypatch.context()
+        style: primary
+        start: 40
+        end: 61
+  ? |-
+    def test_delitem(monkeypatch):
+        monkeypatch.delitem(d, "k")
+  : labels:
+      - source: monkeypatch.delitem(d, "k")
+        style: primary
+        start: 35
+        end: 62
+  ? |-
     def test_http(monkeypatch):
         monkeypatch.setattr("requests.get", mock)
   : labels:
@@ -24,3 +41,11 @@ snapshots:
         style: primary
         start: 32
         end: 64
+  ? |-
+    def test_syspath(monkeypatch):
+        monkeypatch.syspath_prepend(path)
+  : labels:
+      - source: monkeypatch.syspath_prepend(path)
+        style: primary
+        start: 35
+        end: 68
